@@ -1,0 +1,78 @@
+# Case Converter
+
+Convert between camel, pascal, snake, kebab, constant, title, sentence and more.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Converts an identifier or a phrase between every case convention developers actually use, and shows all of them at once so you can pick. The interesting part is the word splitting: it handles acronyms the way a person would, so XMLHttpRequest becomes xml_http_request rather than x_m_l_http_request.
+
+## Supported
+
+- camelCase, PascalCase, snake_case, CONSTANT_CASE, kebab-case, COBOL-CASE, Train-Case, dot.case and path/case
+- Title Case in both the capitalise-everything and the editorial small-word variants
+- Sentence case, upper, lower, alternating and inverse
+- Acronym-aware splitting: XMLHttpRequest splits into XML, Http, Request
+- Locale-aware case mapping, including the Turkish dotted and dotless I
+- Converting each line of a pasted list independently
+
+## Limits
+
+- Word splitting is based on character classes, not a dictionary. Run-together words with no case or separator boundary, such as loginpage, stay as one word.
+- Scripts without letter case, such as Japanese or Chinese, are split into words at separators only and are otherwise returned unchanged.
+- Title case rules differ between style guides. Two variants are offered and neither claims to be the one correct answer.
+- Round-tripping through a case that loses information is lossy. Converting to lowercase and back cannot recover the original capitalisation.
+
+## Ambiguous cases, and what this does about them
+
+- Whether digits start a new word is genuinely contested: some conventions produce utf_8 and others utf8. Both are available, with utf8 as the default because it is what most language style guides use.
+- A leading acronym in camelCase could be XMLHttpRequest or xmlHttpRequest. This produces xmlHttpRequest, which is what Java, JavaScript and Go style guides all specify.
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/case-converter case-converter
+cd case-converter
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/case-converter
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { convert, splitWords, convertAll } from '@fodt/case-converter';
+
+convert('XMLHttpRequest', 'snake');   // 'xml_http_request'
+convert('user first name', 'camel');  // 'userFirstName'
+splitWords('parseHTMLString');        // ['parse', 'HTML', 'String']
+convertAll('hello world');            // every case at once
+```
+
+`splitWords` is exported separately because it is the useful primitive: once you have the words, any convention is a join. `convertLines` applies a conversion per line, which is what you want for a pasted list of identifiers.
+
+## Dependencies
+
+None. This package has no runtime dependencies.
+
+## Tests
+
+```sh
+npm test
+```
+
+Covers acronym boundaries, digit handling in both modes, non-Latin scripts, the Turkish dotted I, the German sharp s, idempotence of every identifier case, and round trips between camel, pascal, kebab and snake.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Local convenience layer for the provenance gate's commit-message layer.
+# git only hands the message file to the commit-msg hook, not pre-commit,
+# which is why this is a second hook rather than one combined script.
+#
+# NOT YET ACTIVATED — see .githooks/pre-commit for why.
+node scripts/check-provenance.mjs --commit-message-file "$1"
+exit $?

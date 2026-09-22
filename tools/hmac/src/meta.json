@@ -1,0 +1,41 @@
+{
+  "id": "hmac",
+  "name": "HMAC Generator",
+  "summary": "Compute RFC 2104 HMAC using the SHA-2 family and a text or hex key.",
+  "about": "Computes a keyed message authentication code, which is what webhook signatures, API request signing and JWT HS256 tokens are all built on. Separate from plain hashing because the key changes everything: getting the key encoding wrong is the usual reason a signature you compute does not match the one you were sent.",
+  "supports": [
+    "HMAC-MD5, HMAC-SHA1, HMAC-SHA224, HMAC-SHA256, HMAC-SHA384, HMAC-SHA512, HMAC-SHA3-256 and HMAC-SHA3-512",
+    "Key and message each read as UTF-8 text, hexadecimal bytes or Base64",
+    "Output as lowercase hex, uppercase hex, Base64 or Base64url",
+    "Comparing against an expected signature using a comparison that does not leak where it differs",
+    "A report of what HMAC will do with your key length, including whether it gets hashed first"
+  ],
+  "limits": [
+    "This computes a MAC. It does not fetch a request or verify a live webhook; you paste the exact signed payload yourself.",
+    "Getting the signed payload byte-for-byte right is the hard part of signature verification, and every API defines it differently. This tool cannot know your API's canonicalisation rules.",
+    "A MAC proves the holder of the key produced the message. It is not a signature in the public key sense: anyone who can verify can also forge.",
+    "Comparing here is safer than using == in your own code, but the real fix is to compare safely in the code that checks the signature."
+  ],
+  "ambiguities": [
+    "Whether a key is text or bytes is the most common trap. A key written as 0b0b0b… may be sixteen bytes of hex or a twelve-character string. Both readings are offered and the byte length is shown so you can tell which one matches.",
+    "HMAC accepts a key of any length: longer than the block size is hashed first, shorter is padded with zeros. The tool reports which is happening, since a silently hashed key surprises people."
+  ],
+  "standards": [
+    {
+      "label": "RFC 2104 — HMAC: Keyed-Hashing for Message Authentication",
+      "url": "https://www.rfc-editor.org/rfc/rfc2104"
+    },
+    { "label": "RFC 4231 — HMAC-SHA-224/256/384/512 test vectors", "url": "https://www.rfc-editor.org/rfc/rfc4231" },
+    { "label": "RFC 2202 — HMAC-MD5 and HMAC-SHA-1 test cases", "url": "https://www.rfc-editor.org/rfc/rfc2202" },
+    {
+      "label": "FIPS 198-1 — The Keyed-Hash Message Authentication Code",
+      "url": "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.198-1.pdf"
+    }
+  ],
+  "dependencies": { "@noble/hashes": "^2.4.0" },
+  "keywords": ["hmac", "signature", "webhook", "rfc2104", "mac"],
+  "primaryExport": "computeHmac",
+  "usage": "import { computeHmac, hmacBytes, timingSafeEqual } from '@fodt/hmac';\n\ncomputeHmac('secret', 'payload');\ncomputeHmac('736563726574', 'payload', { keyEncoding: 'hex', algorithm: 'sha512' });\ntimingSafeEqual(computed, receivedSignature);",
+  "apiNotes": "`hmacBytes` is the primitive and takes `Uint8Array` for both key and message. `describeKey` reports the block size, whether the key will be hashed first, and whether it is shorter than the digest, all of which affect how much security you actually have.",
+  "testNotes": "Asserted against the normative vectors in RFC 4231 (cases 1, 2, 3, 4, 6 and 7, including the over-length key case) and RFC 2202 for HMAC-MD5 and HMAC-SHA1. A differential pass compares every algorithm against Node's own `crypto.createHmac` over 150 random key and message pairs, plus the empty key and empty message case."
+}

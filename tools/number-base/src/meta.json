@@ -1,0 +1,30 @@
+{
+  "id": "number-base",
+  "name": "Number Base Converter",
+  "summary": "Convert integers between any bases from 2 to 36, with arbitrary precision.",
+  "about": "Converts whole numbers between any pair of bases from 2 to 36. Everything is computed with arbitrary-precision integers, so a 256-bit hash converts to decimal exactly rather than becoming 1.157920892373162e+77, which is what happens in most browser-based converters. It also shows how the value sits in fixed-width integers, including the two complement form of a negative number.",
+  "supports": [
+    "Any base from 2 to 36, in both directions, with no size limit",
+    "The 0x, 0o and 0b prefixes, and separators written as underscores, spaces, commas or apostrophes",
+    "Negative numbers, with the sign kept outside any prefix",
+    "Two complement at 8, 16, 32, 64, 128 and 256 bits, with the smallest width that fits each value",
+    "Digit grouping: bytes in binary, nibbles in hexadecimal",
+    "Arbitrary-precision arithmetic and bitwise operations between two numbers"
+  ],
+  "limits": [
+    "Whole numbers only. There is no fractional part, so 0.5 in binary is not something this converts. The IEEE 754 inspector handles fractional binary values.",
+    "Bases above 36 would need digits beyond the 26 letters, and there is no agreed alphabet for them. Base58 and Base64 have their own tools here because they encode bytes rather than numbers.",
+    "Bitwise operations on a negative number use the arbitrary-precision two complement of an infinite-width integer, which is what JavaScript BigInt does. That differs from a fixed-width language where the result wraps.",
+    "The exponent for a power is capped, and a shift is capped at 4096 places, because the result would otherwise be too large to render."
+  ],
+  "ambiguities": [
+    "Integer division truncates towards zero, so -7 divided by 2 is -3. C, Java, Go and Rust all agree; Python rounds towards negative infinity and gives -4. The choice made here is the more common one and is stated on the page.",
+    "The remainder takes the sign of the dividend, so -7 modulo 3 is -1 rather than 2. This follows from the division rule above."
+  ],
+  "standards": [],
+  "keywords": ["base", "radix", "binary", "hexadecimal", "octal", "bigint", "twos-complement"],
+  "primaryExport": "parseInBase",
+  "usage": "import { parseInBase, toBase, convertAll, widthReport } from '@fodt/number-base';\n\nparseInBase('0xdead_beef', 16).value;   // 3735928559n\ntoBase(255n, 2);                        // '11111111'\nconvertAll(255n);                       // every common base at once\nwidthReport(-1n).twosComplement;        // ff, ffff, ffffffff, …",
+  "apiNotes": "Values are `bigint` throughout. `parseInBase` returns the magnitude with a separate `negative` flag, so a leading zero or a prefix can still be reported accurately.",
+  "testNotes": "Round trips every base from 2 to 36 over a set of values including zero, negatives and 2 to the 64th. Agreement with the platform is checked against `Number.prototype.toString` and `parseInt` for values a double can hold, and precision is checked by converting a 64-digit hexadecimal hash to its exact 78-digit decimal form. Two complement is asserted at every width, and division and modulo sign behaviour is pinned down explicitly."
+}

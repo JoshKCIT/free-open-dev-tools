@@ -1,0 +1,236 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Any failing job here blocks the deploy workflow, which requires this one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Static checks and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # A clean, frozen install. If the lockfile does not match the manifests,
+      # this fails rather than quietly resolving something different.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate the catalog and check it is complete
+        run: pnpm run catalog
+
+      - name: Sync the generated tool files
+        run: pnpm run sync
+
+      - name: Fail if generated files are out of date
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Generated files are out of date. Run 'pnpm sync && pnpm catalog' and commit the result."
+            git --no-pager diff --stat
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Format check
+        run: pnpm run format:check
+
+      - name: Unit tests
+        run: pnpm exec vitest run --reporter=default --reporter=json --outputFile=test-results/unit.json
+
+      - name: Catalog, documentation and no-transmission gate
+        run: pnpm run check:catalog
+
+      - name: Standalone package structure
+        run: pnpm run check:standalone
+
+      - name: Dependency licences and third-party notices
+        run: pnpm run check:licenses
+
+      - name: Forbidden reference gate
+        run: pnpm run check:provenance
+        env:
+          PROVENANCE_DENYLIST: ${{ secrets.PROVENANCE_DENYLIST }}
+
+      - name: Fail if the notices file changed
+        run: |
+          if [ -n "$(git status --porcelain docs/THIRD-PARTY.md)" ]; then
+            echo "docs/THIRD-PARTY.md is out of date. Run 'pnpm check:licenses' and commit the result."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: test-results/unit.json
+          retention-days: 14
+
+  audit:
+    name: Dependency audit and secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Only production dependencies reach a visitor's browser, so a high or
+      # critical advisory there is a release blocker.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
+
+      # Development dependencies are reported but do not block, because they
+      # never ship. They still need to be seen.
+      - name: Audit development dependencies (advisory)
+        run: pnpm audit --audit-level moderate || true
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+
+  browser:
+    name: Browser and privacy verification
+    runs-on: ubuntu-latest
+    needs: static
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser engines
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+
+      # Tests run against the production build, so what is verified is what
+      # would be deployed, not a development server.
+      - name: Build
+        run: pnpm run build:web
+        env:
+          VITE_BASE: /
+          VITE_COMMIT: ${{ github.sha }}
+
+      - name: Browser tests, including the privacy harness
+        run: pnpm exec playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  standalone:
+    name: Each tool folder works on its own
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Deliberately uses npm, not pnpm, and copies each folder to a temporary
+      # directory outside the workspace. That is what a developer who runs
+      # `npx degit` actually gets, so it is what has to work.
+      - name: Install, build and test every tool folder in isolation
+        run: node scripts/check-standalone.mjs --full
+
+  release-manifest:
+    name: Release manifest
+    runs-on: ubuntu-latest
+    needs: [static, browser, audit, standalone]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: unit-test-results
+          path: test-results
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: playwright-report
+          path: .
+        continue-on-error: true
+
+      - name: Build the manifest from the real results
+        run: pnpm run manifest
+
+      - name: Summary
+        run: |
+          echo '## Release manifest' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          head -30 docs/RELEASE-MANIFEST.md >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: |
+            docs/RELEASE-MANIFEST.json
+            docs/RELEASE-MANIFEST.md
+          retention-days: 90

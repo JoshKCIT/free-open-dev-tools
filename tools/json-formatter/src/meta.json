@@ -1,0 +1,44 @@
+{
+  "id": "json-formatter",
+  "name": "JSON Formatter & Validator",
+  "summary": "Format, minify, sort and validate JSON, with duplicate key and big number reporting.",
+  "about": "Formats and validates JSON with a parser written for this purpose rather than the browser's built-in one. That matters because JSON.parse silently discards two things that cause real bugs: duplicate keys, where it keeps only the last, and numbers too large for a double, which it quietly rounds. Both are reported here with the exact line and path.",
+  "supports": [
+    "Full RFC 8259 validation with the line, column and path of the first error",
+    "Indent with two, three or four spaces, with tabs, or minify to one line",
+    "Sorting keys ascending or descending at every level, leaving array order alone",
+    "Reporting every duplicate key, and choosing whether the first or last value wins",
+    "Reporting every number that loses precision when stored as a double, such as a 64-bit id",
+    "JSONC input, with comments and trailing commas, for tsconfig and similar files",
+    "Escaping all non-ASCII as \\uXXXX for transports that mangle UTF-8",
+    "JSON Lines output for a top-level array, and a tree view of the structure",
+    "Repair suggestions for the common mistakes, each verified to actually parse"
+  ],
+  "limits": [
+    "Values are held as JavaScript values, so a number too large for a double is reported but still stored rounded. The tool tells you the original text; it does not preserve it in the output.",
+    "Key order is preserved as the document had it, except that a key which looks like an array index is moved to the front by the JavaScript object model. This affects only objects whose keys are non-negative integers.",
+    "Sorting uses locale-aware string comparison, so the order of keys in different scripts depends on the browser's collation.",
+    "A document nested deeper than the configured limit, 512 levels by default, is refused rather than risking the tab.",
+    "This does not validate against a schema. The JSON Schema validator does that."
+  ],
+  "ambiguities": [
+    "RFC 8259 says object names SHOULD be unique and leaves the behaviour undefined when they are not. JavaScript, Python and Go all keep the last value; some streaming parsers keep the first. The default matches JSON.parse, both alternatives are offered, and every duplicate is reported either way.",
+    "JSON numbers have no defined precision limit, but nearly every parser stores them as a double. An id such as 9007199254740993 parses without error and comes back as a different number. This is reported instead of being left to surprise you later.",
+    "Comments and trailing commas are not JSON, but they are extremely common in configuration files. They are off by default and available as an explicit option, so what you are parsing is never in doubt."
+  ],
+  "standards": [
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    },
+    {
+      "label": "ECMA-404 — The JSON Data Interchange Syntax",
+      "url": "https://ecma-international.org/publications-and-standards/standards/ecma-404/"
+    }
+  ],
+  "keywords": ["json", "formatter", "validator", "pretty-print", "minify", "rfc8259", "jsonc"],
+  "primaryExport": "format",
+  "usage": "import { format, parseJson, toTree } from '@fodt/json-formatter';\n\nformat('{\"b\":2,\"a\":1}', { indent: '2', sortKeys: 'asc' });\n\nconst r = parseJson('{\"a\":1,\"a\":2}');\nr.duplicates;      // [{ key: 'a', path: '$.a', line: 1, … }]\nr.precisionLoss;   // numbers that changed when stored\nr.stats;           // counts and maximum depth",
+  "apiNotes": "`parseJson` never throws. It returns `{ ok, value, error, duplicates, precisionLoss, stats }`, so a broken document can be explained rather than rejected. `format` wraps it and adds the rendered output plus byte counts.",
+  "testNotes": "Conformance is checked directly against RFC 8259 rules: leading zeros, bare decimal points, empty exponents, NaN and Infinity, single quotes, unquoted keys, raw control characters in strings, invalid escapes and trailing content. A 2000-case fuzz pass asserts that this parser accepts exactly what `JSON.parse` accepts, and a sample set asserts it produces exactly the same values. Duplicate key and precision loss reporting, JSONC parsing, prototype pollution safety and a 20,000 element document are each covered."
+}

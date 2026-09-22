@@ -1,0 +1,10 @@
+#!/bin/sh
+# Local convenience layer for the provenance gate (scripts/check-provenance.mjs).
+# CI is the real enforcement; this hook only saves a contributor a round trip.
+#
+# NOT YET ACTIVATED. The tree still carries references at this point in the
+# cleanup, so turning this on now (`git config core.hooksPath .githooks`)
+# would block every commit the rest of this phase needs to make. Activation
+# happens in the final local-verification plan of this phase.
+node scripts/check-provenance.mjs
+exit $?

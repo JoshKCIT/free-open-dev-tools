@@ -1,0 +1,38 @@
+{
+  "id": "base64",
+  "name": "Base64 Encoder & Decoder",
+  "summary": "Encode and decode Base64 and Base64url, for text and files, with explicit UTF-8 handling and padding control.",
+  "about": "Converts between bytes and Base64 text exactly as RFC 4648 defines it, including the URL-safe alphabet used by JSON Web Tokens. Text is treated as UTF-8 before encoding, which is where most Base64 tools quietly disagree with each other on anything outside ASCII. Decoding is strict by default and tells you exactly what is wrong rather than returning something that looks plausible.",
+  "supports": [
+    "The standard alphabet (+ and /) and the URL-safe alphabet (- and _), or automatic acceptance of either",
+    "Padded and unpadded output, and line wrapping at any width for MIME",
+    "Full Unicode via UTF-8, including emoji and other characters outside the Basic Multilingual Plane",
+    "Arbitrary binary data, with a hex view of the decoded bytes",
+    "Strict decoding that rejects whitespace, bad padding and non-canonical trailing bits, and a lenient mode that accepts them"
+  ],
+  "limits": [
+    "Decoded bytes that are not valid UTF-8 are shown with U+FFFD replacement characters in the text view. The hex view shows the real bytes, and the download gives you the exact bytes.",
+    "A lone surrogate in the input cannot be encoded as UTF-8 and becomes U+FFFD, so that round trip is lossy. This is a property of UTF-8, not a bug here.",
+    "This is an encoding, not encryption. Base64 provides no confidentiality whatsoever.",
+    "Very large inputs are held in memory in full. Files beyond a few hundred megabytes may exhaust the tab."
+  ],
+  "ambiguities": [
+    "Unpadded Base64 is common in the wild but is not valid under RFC 4648 section 3.2 unless the specification using it says padding is omitted. Strict mode rejects it and says so; lenient mode accepts it.",
+    "Non-canonical encodings, where the unused bits of the final character are not zero, decode to the same bytes in most libraries. RFC 4648 section 3.5 says a strict decoder should reject them, and strict mode does."
+  ],
+  "standards": [
+    {
+      "label": "RFC 4648 — The Base16, Base32, and Base64 Data Encodings",
+      "url": "https://www.rfc-editor.org/rfc/rfc4648"
+    },
+    {
+      "label": "RFC 2045 section 6.8 — Base64 Content-Transfer-Encoding (line wrapping)",
+      "url": "https://www.rfc-editor.org/rfc/rfc2045#section-6.8"
+    }
+  ],
+  "keywords": ["base64", "base64url", "rfc4648", "encoding", "decoder"],
+  "primaryExport": "encodeText",
+  "usage": "import { encodeText, decodeToText, encodeBytes, decodeToBytes } from '@fodt/base64';\n\nencodeText('foobar');                            // 'Zm9vYmFy'\ndecodeToText('Zm9vYmFy');                        // 'foobar'\nencodeText('foo', { alphabet: 'url', padding: false });\ndecodeToBytes('Zg==', { mode: 'lenient' });      // Uint8Array [ 0x66 ]",
+  "apiNotes": "`decodeToBytes` and `decodeToText` throw `Base64Error`, which carries a `position` field pointing at the offending character in the input. `encodeBytes` is the primitive; the text helpers are thin wrappers that run the input through `TextEncoder` first.",
+  "testNotes": "The seven normative test vectors from RFC 4648 section 10 are asserted in both directions. Beyond those: every byte value 0 to 255, non-canonical trailing bits, padding errors, lone surrogates, a 400 KB input, and a differential check of 300 random buffers against Node's own `Buffer.toString('base64')` and `'base64url'`."
+}
