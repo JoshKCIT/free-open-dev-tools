@@ -1,0 +1,250 @@
+{
+  "base64": {
+    "id": "base64",
+    "name": "Base64 Encoder & Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "base64",
+      "base64url",
+      "rfc4648",
+      "encoding",
+      "decoder"
+    ]
+  },
+  "case-converter": {
+    "id": "case-converter",
+    "name": "Case Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "case",
+      "camelcase",
+      "snake-case",
+      "kebab-case",
+      "identifier",
+      "naming"
+    ]
+  },
+  "chmod-calculator": {
+    "id": "chmod-calculator",
+    "name": "Chmod Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "chmod",
+      "permissions",
+      "unix",
+      "octal",
+      "umask",
+      "setuid",
+      "sticky"
+    ]
+  },
+  "hash-text": {
+    "id": "hash-text",
+    "name": "Text Hash Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "hash",
+      "md5",
+      "sha256",
+      "sha1",
+      "crc32",
+      "checksum",
+      "digest"
+    ]
+  },
+  "hmac": {
+    "id": "hmac",
+    "name": "HMAC Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "hmac",
+      "signature",
+      "webhook",
+      "rfc2104",
+      "mac"
+    ]
+  },
+  "html-entities": {
+    "id": "html-entities",
+    "name": "HTML Entity Encoder & Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "entities": "^8.1.0"
+    },
+    "keywords": [
+      "html",
+      "entities",
+      "escape",
+      "encode",
+      "xml",
+      "htmlspecialchars"
+    ]
+  },
+  "ip-subnet": {
+    "id": "ip-subnet",
+    "name": "IP Subnet & CIDR Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "subnet",
+      "cidr",
+      "ipv4",
+      "ipv6",
+      "netmask",
+      "vlsm",
+      "network"
+    ]
+  },
+  "json-formatter": {
+    "id": "json-formatter",
+    "name": "JSON Formatter & Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "json",
+      "formatter",
+      "validator",
+      "pretty-print",
+      "minify",
+      "rfc8259",
+      "jsonc"
+    ]
+  },
+  "jwt-decoder": {
+    "id": "jwt-decoder",
+    "name": "JWT Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "jwt",
+      "jws",
+      "jwe",
+      "token",
+      "decode",
+      "rfc7519",
+      "claims"
+    ]
+  },
+  "number-base": {
+    "id": "number-base",
+    "name": "Number Base Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "base",
+      "radix",
+      "binary",
+      "hexadecimal",
+      "octal",
+      "bigint",
+      "twos-complement"
+    ]
+  },
+  "slug-generator": {
+    "id": "slug-generator",
+    "name": "URL Slug Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "slug",
+      "slugify",
+      "url",
+      "permalink",
+      "transliterate"
+    ]
+  },
+  "text-diff": {
+    "id": "text-diff",
+    "name": "Text Diff",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "diff",
+      "compare",
+      "unified-diff",
+      "myers",
+      "text"
+    ]
+  },
+  "unix-timestamp": {
+    "id": "unix-timestamp",
+    "name": "Unix Timestamp Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "timestamp",
+      "epoch",
+      "unix-time",
+      "iso8601",
+      "timezone",
+      "date"
+    ]
+  },
+  "url-codec": {
+    "id": "url-codec",
+    "name": "URL Encoder & Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "url",
+      "percent-encoding",
+      "urlencode",
+      "rfc3986",
+      "form-urlencoded"
+    ]
+  },
+  "uuid": {
+    "id": "uuid",
+    "name": "UUID Generator & Parser",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "uuid",
+      "guid",
+      "uuidv4",
+      "uuidv7",
+      "rfc9562",
+      "identifier"
+    ]
+  },
+  "word-counter": {
+    "id": "word-counter",
+    "name": "Word & Character Counter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "word-count",
+      "character-count",
+      "readability",
+      "frequency",
+      "reading-time"
+    ]
+  }
+}

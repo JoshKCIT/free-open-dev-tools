@@ -1,0 +1,48 @@
+{
+  "name": "free-open-dev-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Free & Open Dev Tools - browser-local developer utilities with independently reusable source code.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.22.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./tools/*\" run build && pnpm --filter @fodt/web run build",
+    "build:web": "pnpm --filter @fodt/web run build",
+    "dev": "pnpm --filter @fodt/web run dev",
+    "preview": "pnpm --filter @fodt/web run preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc -p apps/web/tsconfig.json --noEmit && tsc -p tsconfig.tools.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium",
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check:standalone": "node scripts/check-standalone.mjs",
+    "check:catalog": "node scripts/check-catalog.mjs",
+    "check:provenance": "node scripts/check-provenance.mjs",
+    "catalog": "node scripts/build-catalog.mjs",
+    "manifest": "node scripts/build-release-manifest.mjs",
+    "verify": "pnpm install --lockfile-only --silent && pnpm run sync && pnpm run catalog && pnpm run ledger && pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test && pnpm run check:catalog && pnpm run check:standalone && pnpm run check:licenses && pnpm run check:provenance",
+    "sync": "node scripts/sync-tools.mjs",
+    "ledger": "node scripts/build-ledger.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.39.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
+  }
+}

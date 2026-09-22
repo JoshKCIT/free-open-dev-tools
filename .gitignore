@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+*.tsbuildinfo
+.DS_Store
+test-results/
+playwright-report/
+blob-report/
+.env
+.env.*
+!.env.example
+
+# Holds the provenance gate's forbidden-name list. Must stay out of git; the
+# gate reads it from here locally and from a CI repository variable in CI.
+.provenance-denylist
+
+# GSD planning docs are kept local (commit_docs: false)
+.planning/
+
+# GSD run-scoped isolation sentinel (tooling scaffolding, never shipped)
+.gsd/

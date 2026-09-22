@@ -1,0 +1,39 @@
+{
+  "id": "text-diff",
+  "name": "Text Diff",
+  "summary": "Compare two texts line by line or word by word and produce a unified diff.",
+  "about": "Compares two blocks of text using the same Myers algorithm that git and every editor use, so the result is the smallest set of changes rather than the first one found. It also names the differences you cannot see: line endings, trailing whitespace, a missing final newline, zero-width characters, and text that differs only in Unicode normalisation.",
+  "supports": [
+    "Line, word and character granularity",
+    "A side-by-side view that pairs a replaced line with its replacement",
+    "Unified diff output with a configurable amount of context, as git and patch use",
+    "Ignoring case, ignoring whitespace, and comparing lines regardless of their order",
+    "Normalising CRLF and CR to LF before comparing, or not, as you choose",
+    "Naming differences that are invisible on screen, which is usually the answer when two files look the same"
+  ],
+  "limits": [
+    "Diffing by character on a very large input is slow, because the algorithm cost grows with the number of differences. Line granularity is the right choice for anything over a few thousand lines.",
+    "This is a text diff. It does not understand structure, so a reordered JSON object or a reformatted block of code shows as many changes. The JSON diff tool compares structurally.",
+    "The unified diff output is the standard format but is not produced by git, so a patch generated here may order equivalent hunks differently from one git would produce. It applies the same.",
+    "Word granularity splits on whitespace only. It does not understand punctuation or word boundaries in scripts that do not use spaces."
+  ],
+  "ambiguities": [
+    "When several edit scripts are equally short, which one to show is a presentation choice. Myers prefers deletions before insertions, which is what git does and what this follows, so a replaced line appears as a removal then an addition.",
+    "Whether a trailing newline counts as a difference is genuinely contested. It is treated as a real difference and called out separately, because in a configuration file it sometimes matters and in prose it never does."
+  ],
+  "standards": [
+    {
+      "label": "Myers, An O(ND) Difference Algorithm and Its Variations (1986)",
+      "url": "http://www.xmailserver.org/diff2.pdf"
+    },
+    {
+      "label": "POSIX diff, unified format",
+      "url": "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/diff.html"
+    }
+  ],
+  "keywords": ["diff", "compare", "unified-diff", "myers", "text"],
+  "primaryExport": "diffText",
+  "usage": "import { diffText, unifiedDiff, sideBySide, invisibleDifferences } from '@fodt/text-diff';\n\ndiffText(a, b);                                  // changes plus statistics\ndiffText(a, b, { granularity: 'word' });\nunifiedDiff(a, b, { context: 3 });               // git-style patch text\nsideBySide(a, b);                                // aligned rows for two columns\ninvisibleDifferences(a, b);                      // why they look identical",
+  "apiNotes": "`diffSequences` is exported separately and works on arrays of anything with a custom equality function, so it can diff tokens, records or objects rather than only text.",
+  "testNotes": "The algorithm is checked against the textbook Myers example for producing a genuinely minimal script, and by a property test that applying the edit script reproduces the right-hand side exactly across several shapes including empty sides and a full reversal. The unified diff output is checked for correct hunk headers, context limits, hunk splitting and edge insertions. Invisible difference detection covers line endings, trailing whitespace, final newline, byte order marks, zero-width characters and Unicode normalisation."
+}

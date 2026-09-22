@@ -1,0 +1,49 @@
+{
+  "id": "ip-subnet",
+  "name": "IP Subnet & CIDR Calculator",
+  "summary": "Calculate IPv4 and IPv6 network details, split subnets, and summarise ranges to CIDR.",
+  "about": "Works out everything about a network block: the network and broadcast addresses, the mask and wildcard, the usable host range, and how many addresses it holds. It handles IPv6 with the same arithmetic as IPv4 by doing all of it in arbitrary precision integers, and it names the reserved blocks so you can tell at a glance whether an address is private, documentation or genuinely routable.",
+  "supports": [
+    "IPv4 and IPv6, with prefix lengths from /0 to /32 and /0 to /128",
+    "Network, broadcast, first and last host, mask, wildcard mask and binary views",
+    "A dotted subnet mask such as 255.255.255.0 in place of a prefix length",
+    "RFC 5952 canonical IPv6 formatting, plus the fully expanded form",
+    "Embedded IPv4 addresses, zone indexes and bracketed IPv6 notation on input",
+    "Splitting a block into equal subnets of a longer prefix",
+    "Converting an arbitrary address range into the fewest CIDR blocks that cover it exactly",
+    "Summarising a list of blocks by merging adjacent and overlapping ones",
+    "Naming reserved and special-purpose ranges from the RFC 6890 registries",
+    "Reverse DNS names, in-addr.arpa and ip6.arpa",
+    "Generating random addresses inside a block"
+  ],
+  "limits": [
+    "This is arithmetic, not a network query. It never looks up who owns an address, whether a host is reachable, or what a name resolves to. Those all need a server.",
+    "The list of special-purpose ranges is a fixed copy of the well-known registries. It covers the blocks that matter day to day, not every entry IANA has ever recorded, and registries do change.",
+    "Splitting shows at most a thousand subnets at a time. The total count is always reported in full.",
+    "IPv6 zone indexes such as %eth0 identify a local interface and are stripped, because they are not part of the address."
+  ],
+  "ambiguities": [
+    "A /31 has no broadcast address and both of its addresses are usable, as RFC 3021 defines for point-to-point links. Applying the usual subtract-two rule makes a working link look unusable, so /31 and /32 are handled as their own cases.",
+    "An IPv4 octet with a leading zero, such as 192.168.01.1, is read as decimal by some libraries and octal by others. That disagreement has been used to slip past address filters, so it is refused rather than guessed at.",
+    "An address given without a prefix is treated as a single host, /32 or /128, rather than assumed to be a classful network."
+  ],
+  "standards": [
+    { "label": "RFC 4632 — Classless Inter-domain Routing (CIDR)", "url": "https://www.rfc-editor.org/rfc/rfc4632" },
+    { "label": "RFC 4291 — IP Version 6 Addressing Architecture", "url": "https://www.rfc-editor.org/rfc/rfc4291" },
+    {
+      "label": "RFC 5952 — A Recommendation for IPv6 Address Text Representation",
+      "url": "https://www.rfc-editor.org/rfc/rfc5952"
+    },
+    {
+      "label": "RFC 3021 — Using 31-Bit Prefixes on IPv4 Point-to-Point Links",
+      "url": "https://www.rfc-editor.org/rfc/rfc3021"
+    },
+    { "label": "RFC 1918 — Address Allocation for Private Internets", "url": "https://www.rfc-editor.org/rfc/rfc1918" },
+    { "label": "RFC 6890 — Special-Purpose IP Address Registries", "url": "https://www.rfc-editor.org/rfc/rfc6890" }
+  ],
+  "keywords": ["subnet", "cidr", "ipv4", "ipv6", "netmask", "vlsm", "network"],
+  "primaryExport": "describe",
+  "usage": "import { describe, contains, split, rangeToCidrs, summarise } from '@fodt/ip-subnet';\n\ndescribe('192.168.1.130/26');\n// network 192.168.1.128, broadcast 192.168.1.191, 62 usable hosts\n\ncontains('10.0.0.0/8', '10.1.2.3');        // true\nsplit('192.168.1.0/24', 26);               // four /26 blocks\nrangeToCidrs('192.168.1.1', '192.168.1.6');\nsummarise(['192.168.0.0/25', '192.168.0.128/25']);  // ['192.168.0.0/24']",
+  "apiNotes": "All arithmetic uses `bigint`, so IPv6 is handled exactly rather than approximately, and counts such as the size of a /64 are returned as strings to avoid losing precision. Parsing throws `IpError` with a message that says what was wrong with the address.",
+  "testNotes": "Covers RFC 5952 formatting rules including the single-zero-group exception, the RFC 3021 /31 case, /0 and /32 and /128 edges, dotted masks and masks with gaps, leading-zero octets, the RFC 1918 and RFC 6890 special ranges including the 172.16.0.0/12 boundary, and a property check that the blocks produced by rangeToCidrs cover exactly the requested range and no more."
+}

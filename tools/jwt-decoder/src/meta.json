@@ -1,0 +1,37 @@
+{
+  "id": "jwt-decoder",
+  "name": "JWT Decoder",
+  "summary": "Decode the header and payload of a JSON Web Token. Decoding is not verification.",
+  "about": "Takes a JSON Web Token apart and shows what it claims, with every registered claim explained and every timestamp rendered as a readable date. It deliberately does not check the signature, because that is a different job needing a key, and blurring the two is how people end up trusting a token anyone could have written. The signer and verifier tool does that half.",
+  "supports": [
+    "Three-segment JWS tokens: header, payload and signature",
+    "Five-segment JWE tokens, where the header is shown and the payload is correctly reported as unreadable without the key",
+    "Every claim in the IANA JSON Web Token Claims registry, with a plain description of what it means",
+    "Timestamps rendered as an ISO date plus how long ago or how far ahead they are",
+    "Warnings for an expired token, a not-yet-valid token, a missing expiry, and an alg of none",
+    "Detection of timestamps given in milliseconds instead of seconds, which is the most common JWT bug",
+    "Tokens pasted with a Bearer prefix or surrounding whitespace",
+    "The exact signing input, so you can check a signature in another tool"
+  ],
+  "limits": [
+    "This does not verify the signature. A token shown here may be expired, forged, or edited by anyone who had it. Use the JWT signer and verifier for that.",
+    "A JWE payload is encrypted. Only its header can be read, and no amount of decoding will reveal the contents without the decryption key.",
+    "Claims are shown as the token states them. Whether an issuer, audience or scope is one you should accept is a policy question this tool cannot answer.",
+    "Relative times are computed against your device clock. If that clock is wrong, the expiry warnings will be wrong too."
+  ],
+  "ambiguities": [
+    "Decoding and verifying are routinely conflated, including by tools that show a green tick next to a token whose signature they never checked. This tool is deliberately split in two, and every decode repeats the warning.",
+    "RFC 7519 section 2 defines NumericDate as seconds since the Unix epoch, but passing a JavaScript millisecond timestamp is such a common mistake that it is detected and called out specifically."
+  ],
+  "standards": [
+    { "label": "RFC 7519 — JSON Web Token (JWT)", "url": "https://www.rfc-editor.org/rfc/rfc7519" },
+    { "label": "RFC 7515 — JSON Web Signature (JWS)", "url": "https://www.rfc-editor.org/rfc/rfc7515" },
+    { "label": "RFC 7516 — JSON Web Encryption (JWE)", "url": "https://www.rfc-editor.org/rfc/rfc7516" },
+    { "label": "IANA JSON Web Token Claims registry", "url": "https://www.iana.org/assignments/jwt/jwt.xhtml" }
+  ],
+  "keywords": ["jwt", "jws", "jwe", "token", "decode", "rfc7519", "claims"],
+  "primaryExport": "decodeJwt",
+  "usage": "import { decodeJwt } from '@fodt/jwt-decoder';\n\nconst decoded = decodeJwt(token);\ndecoded.header;        // { alg: 'HS256', typ: 'JWT' }\ndecoded.payload;       // the claims as an object\ndecoded.claims;        // rows with descriptions and readable times\ndecoded.warnings;      // expiry, alg none, millisecond timestamps\ndecoded.signingInput;  // exactly what a verifier signs",
+  "apiNotes": "`decodeJwt` never throws: malformed input comes back in `errors` with an explanation. Pass `{ now }` to make expiry checks deterministic, which is what the tests do.",
+  "testNotes": "The worked example token from RFC 7519 section 3.1 is decoded and every field asserted, including its URI-named custom claim and its 32 byte HS256 signature. Beyond that: alg none in both cases, expired and not-yet-valid tokens, missing expiry, millisecond timestamps, JWE recognition, non-Base64url segments, segments that decode to something other than a JSON object, and a set of deliberately malformed inputs asserted never to throw."
+}

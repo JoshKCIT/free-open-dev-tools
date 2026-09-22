@@ -1,0 +1,194 @@
+name: Deploy to GitHub Pages
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit to deploy. Leave empty for the tip of main. Used for rollback.'
+        required: false
+        type: string
+
+# Never deploy two builds at once, and never cancel one halfway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # The whole workflow is skipped unless CI passed on this exact commit, so a
+  # failing test cannot be followed by a deploy. A skipped run is visibly
+  # different from a successful one, which a gate job returning false was not.
+  build:
+    name: Build
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve the commit being deployed
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build
+        run: pnpm run build:web
+        env:
+          # A project page is served from a subdirectory, so assets and routes
+          # must be built with that prefix.
+          VITE_BASE: /free-open-dev-tools/
+          VITE_COMMIT: ${{ steps.commit.outputs.sha }}
+          VITE_BUILD_DATE: ${{ github.event.repository.updated_at }}
+
+      - name: Record what is being deployed
+        run: pnpm run manifest
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  verify:
+    name: Post-deployment checks
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # These run against the live site. A failure here means the deployment is
+      # broken and should be rolled back, which is why it is a separate job.
+      - name: The site responds and serves the expected content
+        run: |
+          BASE="https://joshkcit.github.io/free-open-dev-tools"
+          fail=0
+
+          check() {
+            local path="$1"
+            local expect="$2"
+            local code
+            code=$(curl -sS -o /tmp/body -w '%{http_code}' "$BASE$path")
+            if [ "$code" != "200" ]; then
+              echo "FAIL $path returned $code"
+              fail=1
+              return
+            fi
+            if ! grep -qi "$expect" /tmp/body; then
+              echo "FAIL $path did not contain '$expect'"
+              fail=1
+              return
+            fi
+            echo "ok   $path"
+          }
+
+          check "/" "Free developer tools"
+          check "/tools/" "All tools"
+          check "/privacy/" "Privacy"
+          check "/catalog/" "Catalog"
+          check "/tools/base64/" "Base64"
+          check "/tools/json-formatter/" "JSON Formatter"
+          check "/sitemap.xml" "urlset"
+          check "/robots.txt" "User-agent"
+
+          echo "--- a path that should not exist ---"
+          code=$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/tools/definitely-not-a-tool/")
+          echo "404 path returned $code"
+
+          exit $fail
+
+      - name: No third-party asset is referenced by the deployed page
+        run: |
+          BASE="https://joshkcit.github.io/free-open-dev-tools"
+          body=$(curl -sS "$BASE/tools/base64/")
+          if echo "$body" | grep -Eo '(src|href)="https?://[^"]+"' | grep -v 'joshkcit.github.io'; then
+            echo "FAIL the deployed page references a third-party asset"
+            exit 1
+          fi
+          echo "ok   every asset is served from our own origin"
+
+      - name: No provenance reference in the deployed site
+        env:
+          PROVENANCE_DENYLIST: ${{ vars.PROVENANCE_DENYLIST }}
+        run: |
+          if [ -z "$PROVENANCE_DENYLIST" ]; then
+            echo "FAIL PROVENANCE_DENYLIST is empty. The deployed-site check cannot check anything. Set the repository variable."
+            exit 1
+          fi
+
+          BASE="https://joshkcit.github.io/free-open-dev-tools"
+          fail=0
+
+          check_body() {
+            local url="$1"
+            local body
+            body=$(curl -sS "$url")
+            local lower
+            lower=$(echo "$body" | tr '[:upper:]' '[:lower:]')
+            IFS=',
+          '
+            for token in $PROVENANCE_DENYLIST; do
+              token=$(echo "$token" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '[:upper:]' '[:lower:]')
+              [ -z "$token" ] && continue
+              case "$token" in \#*) continue ;; esac
+              if echo "$lower" | grep -qF "$token"; then
+                echo "FAIL $url carries a provenance reference"
+                fail=1
+                break
+              fi
+            done
+            unset IFS
+          }
+
+          # The prerendered page descriptions live in the served HTML, not the bundle, so
+          # an HTML pass matters independently of the JavaScript pass below.
+          for path in "/catalog/" "/" "/about/"; do
+            check_body "$BASE$path"
+          done
+
+          # Extract built script URLs from one of the fetched pages and check each one.
+          html=$(curl -sS "$BASE/")
+          scripts=$(echo "$html" | grep -Eo 'src="[^"]+\.js"' | sed -E 's/^src="//; s/"$//')
+          for script in $scripts; do
+            case "$script" in
+              http*) url="$script" ;;
+              /*) url="https://joshkcit.github.io$script" ;;
+              *) url="$BASE/$script" ;;
+            esac
+            check_body "$url"
+          done
+
+          exit $fail

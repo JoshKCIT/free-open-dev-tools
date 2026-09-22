@@ -1,0 +1,1010 @@
+[
+  {
+    "id": "base64",
+    "name": "Base64 Encoder & Decoder",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Encode and decode Base64 and Base64url, for text and files, with explicit UTF-8 handling and padding control."
+  },
+  {
+    "id": "base32",
+    "name": "Base32 Encoder & Decoder",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Encode and decode RFC 4648 Base32, Base32hex and Crockford Base32."
+  },
+  {
+    "id": "base58",
+    "name": "Base58 Encoder & Decoder",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Encode and decode Base58 and Base58Check using the Bitcoin, Ripple and Flickr alphabets."
+  },
+  {
+    "id": "url-codec",
+    "name": "URL Encoder & Decoder",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Percent-encode and decode using component, full-URI and form-encoding rules."
+  },
+  {
+    "id": "html-entities",
+    "name": "HTML Entity Encoder & Decoder",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Encode and decode HTML entities, including named, decimal and hexadecimal references."
+  },
+  {
+    "id": "unicode-inspector",
+    "name": "Unicode Inspector",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Inspect code points, convert to and from escape sequences, normalise, and find invisible characters."
+  },
+  {
+    "id": "text-radix",
+    "name": "Text to Binary, Hex & Octal",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Convert text to and from binary, hexadecimal, octal and decimal in any supported encoding."
+  },
+  {
+    "id": "json-string-escape",
+    "name": "JSON String Escaper",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Escape and unescape JSON string literals exactly as RFC 8259 defines them."
+  },
+  {
+    "id": "data-uri",
+    "name": "Data URI Converter",
+    "category": "encoding",
+    "tier": 2,
+    "summary": "Convert files to and from data URIs with correct MIME type and Base64 handling."
+  },
+  {
+    "id": "morse-code",
+    "name": "Morse Code Translator",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Translate text to and from International Morse Code."
+  },
+  {
+    "id": "classical-cipher",
+    "name": "Classical Cipher Workbench",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Caesar, ROT13, ROT47, Atbash and Vigenere, for learning and puzzle work only."
+  },
+  {
+    "id": "nato-phonetic",
+    "name": "NATO Phonetic Alphabet",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Spell text out using the ICAO/NATO phonetic alphabet."
+  },
+  {
+    "id": "number-base",
+    "name": "Number Base Converter",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Convert integers between any bases from 2 to 36, with arbitrary precision."
+  },
+  {
+    "id": "ieee754",
+    "name": "IEEE 754 Float Inspector",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Show the exact sign, exponent and mantissa bits behind a binary32 or binary64 value."
+  },
+  {
+    "id": "roman-numerals",
+    "name": "Roman Numeral Converter",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Convert between Roman numerals and integers using standard subtractive notation."
+  },
+  {
+    "id": "number-to-words",
+    "name": "Number to Words",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Spell numbers out in English, in short scale, with ordinal and currency modes."
+  },
+  {
+    "id": "scientific-notation",
+    "name": "Scientific Notation Converter",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Convert between decimal, scientific, engineering and E notation."
+  },
+  {
+    "id": "hash-text",
+    "name": "Text Hash Generator",
+    "category": "hashing",
+    "tier": 1,
+    "summary": "Compute MD5, SHA-1, SHA-256, SHA-384, SHA-512 and CRC32 over text."
+  },
+  {
+    "id": "hash-file",
+    "name": "File Hash & Checksum",
+    "category": "hashing",
+    "tier": 2,
+    "summary": "Hash files of any size in a worker and compare against an expected checksum."
+  },
+  {
+    "id": "hmac",
+    "name": "HMAC Generator",
+    "category": "hashing",
+    "tier": 1,
+    "summary": "Compute RFC 2104 HMAC using the SHA-2 family and a text or hex key."
+  },
+  {
+    "id": "bcrypt",
+    "name": "Bcrypt Hash & Verify",
+    "category": "hashing",
+    "tier": 2,
+    "summary": "Hash a password with bcrypt at a chosen cost, and verify a password against a hash."
+  },
+  {
+    "id": "password-generator",
+    "name": "Password Generator",
+    "category": "hashing",
+    "tier": 1,
+    "summary": "Generate passwords and passphrases from the cryptographic random source, with entropy shown."
+  },
+  {
+    "id": "password-strength",
+    "name": "Password Strength Estimator",
+    "category": "hashing",
+    "tier": 2,
+    "summary": "Estimate guessing resistance and show the reasoning, without sending the password anywhere."
+  },
+  {
+    "id": "jwt-decoder",
+    "name": "JWT Decoder",
+    "category": "hashing",
+    "tier": 1,
+    "summary": "Decode the header and payload of a JSON Web Token. Decoding is not verification."
+  },
+  {
+    "id": "jwt-signature",
+    "name": "JWT Signer & Verifier",
+    "category": "hashing",
+    "tier": 2,
+    "summary": "Sign and verify JWTs with HMAC, RSA and ECDSA using the browser crypto API."
+  },
+  {
+    "id": "basic-auth",
+    "name": "HTTP Basic Auth Header",
+    "category": "hashing",
+    "tier": 1,
+    "summary": "Build and decode an RFC 7617 Basic authorization header."
+  },
+  {
+    "id": "luhn",
+    "name": "Luhn & Card Number Validator",
+    "category": "hashing",
+    "tier": 1,
+    "summary": "Check a number against the Luhn algorithm and identify the issuer pattern."
+  },
+  {
+    "id": "uuid",
+    "name": "UUID Generator & Parser",
+    "category": "generators",
+    "tier": 1,
+    "summary": "Generate UUID v1, v3, v4, v5 and v7, and parse any UUID back into its fields."
+  },
+  {
+    "id": "random-string",
+    "name": "Random String & Nano ID",
+    "category": "generators",
+    "tier": 1,
+    "summary": "Generate random identifiers from a chosen alphabet, with entropy shown."
+  },
+  {
+    "id": "random-number",
+    "name": "Random Number Generator",
+    "category": "generators",
+    "tier": 1,
+    "summary": "Generate random integers or decimals in a range, optionally from the cryptographic source."
+  },
+  {
+    "id": "json-formatter",
+    "name": "JSON Formatter & Validator",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Format, minify, sort and validate JSON, with duplicate key and big number reporting."
+  },
+  {
+    "id": "json-diff",
+    "name": "JSON Diff",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Compare two JSON documents structurally and list added, removed and changed paths."
+  },
+  {
+    "id": "jsonpath",
+    "name": "JSONPath Tester",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Evaluate RFC 9535 JSONPath expressions against a document."
+  },
+  {
+    "id": "json-schema-validator",
+    "name": "JSON Schema Validator",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Validate data against JSON Schema draft-07 and 2020-12 with readable error paths."
+  },
+  {
+    "id": "json-schema-generator",
+    "name": "JSON Schema Generator",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Infer a JSON Schema from one or more sample documents."
+  },
+  {
+    "id": "json-flatten",
+    "name": "JSON Flatten & Unflatten",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Flatten nested JSON to a path-keyed map and rebuild it losslessly."
+  },
+  {
+    "id": "json-to-code",
+    "name": "JSON to Typed Code",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP types from JSON."
+  },
+  {
+    "id": "json-to-zod",
+    "name": "JSON to Zod Schema",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Generate a Zod validation schema from a JSON sample or JSON Schema."
+  },
+  {
+    "id": "data-convert",
+    "name": "JSON, YAML & TOML Converter",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow."
+  },
+  {
+    "id": "csv-json",
+    "name": "CSV & JSON Converter",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Convert between RFC 4180 CSV and JSON with delimiter, quoting and header control."
+  },
+  {
+    "id": "xml-json",
+    "name": "XML & JSON Converter",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Convert between XML and JSON with explicit attribute and text node handling."
+  },
+  {
+    "id": "csv-viewer",
+    "name": "CSV Viewer",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "View, sort and filter delimited data, with automatic delimiter detection."
+  },
+  {
+    "id": "data-to-sql",
+    "name": "CSV & JSON to SQL",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect."
+  },
+  {
+    "id": "sql-to-types",
+    "name": "SQL Schema to TypeScript",
+    "category": "json-data",
+    "tier": 3,
+    "summary": "Turn CREATE TABLE statements into TypeScript, Prisma or Drizzle definitions."
+  },
+  {
+    "id": "php-unserialize",
+    "name": "PHP Unserialize",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Decode PHP serialized strings into JSON."
+  },
+  {
+    "id": "list-compare",
+    "name": "List Comparison",
+    "category": "json-data",
+    "tier": 1,
+    "summary": "Find the union, intersection and differences between two lists."
+  },
+  {
+    "id": "mock-data",
+    "name": "Mock Data Generator",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Generate deterministic fake records from a seed, with no network calls."
+  },
+  {
+    "id": "text-lines",
+    "name": "Line Toolkit",
+    "category": "text",
+    "tier": 1,
+    "summary": "Sort, deduplicate, shuffle, number, trim, filter, join and split lines."
+  },
+  {
+    "id": "case-converter",
+    "name": "Case Converter",
+    "category": "text",
+    "tier": 1,
+    "summary": "Convert between camel, pascal, snake, kebab, constant, title, sentence and more."
+  },
+  {
+    "id": "word-counter",
+    "name": "Word & Character Counter",
+    "category": "text",
+    "tier": 1,
+    "summary": "Count characters, words, sentences, paragraphs and word frequency, with reading time."
+  },
+  {
+    "id": "text-diff",
+    "name": "Text Diff",
+    "category": "text",
+    "tier": 1,
+    "summary": "Compare two texts line by line or word by word and produce a unified diff."
+  },
+  {
+    "id": "find-replace",
+    "name": "Find and Replace",
+    "category": "text",
+    "tier": 1,
+    "summary": "Literal find and replace with case, whole word and multiline options."
+  },
+  {
+    "id": "regex-tester",
+    "name": "Regex Tester & Explainer",
+    "category": "text",
+    "tier": 1,
+    "summary": "Test, replace and explain regular expressions with a time limit that stops runaway patterns."
+  },
+  {
+    "id": "slug-generator",
+    "name": "URL Slug Generator",
+    "category": "text",
+    "tier": 1,
+    "summary": "Turn any title into a clean URL slug, with transliteration and length control."
+  },
+  {
+    "id": "lorem-ipsum",
+    "name": "Lorem Ipsum Generator",
+    "category": "text",
+    "tier": 1,
+    "summary": "Generate placeholder words, sentences and paragraphs from a seed."
+  },
+  {
+    "id": "email-extractor",
+    "name": "Pattern Extractor",
+    "category": "text",
+    "tier": 1,
+    "summary": "Pull emails, URLs, IP addresses and phone numbers out of unstructured text."
+  },
+  {
+    "id": "ascii-art",
+    "name": "ASCII Art Text",
+    "category": "text",
+    "tier": 2,
+    "summary": "Render text as an ASCII banner from bundled figlet-style fonts."
+  },
+  {
+    "id": "html-formatter",
+    "name": "HTML Formatter & Minifier",
+    "category": "code",
+    "tier": 2,
+    "summary": "Beautify or minify HTML without executing it."
+  },
+  {
+    "id": "css-formatter",
+    "name": "CSS Formatter & Minifier",
+    "category": "code",
+    "tier": 2,
+    "summary": "Beautify or minify CSS."
+  },
+  {
+    "id": "js-formatter",
+    "name": "JavaScript Formatter & Minifier",
+    "category": "code",
+    "tier": 2,
+    "summary": "Beautify or minify JavaScript and TypeScript without running it."
+  },
+  {
+    "id": "xml-formatter",
+    "name": "XML Formatter & Validator",
+    "category": "code",
+    "tier": 1,
+    "summary": "Format, minify and well-formedness check XML, with external entities disabled."
+  },
+  {
+    "id": "yaml-formatter",
+    "name": "YAML Formatter & Validator",
+    "category": "code",
+    "tier": 1,
+    "summary": "Validate and reformat YAML, reporting anchors, aliases and duplicate keys."
+  },
+  {
+    "id": "sql-formatter",
+    "name": "SQL Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Format SQL for a chosen dialect, or minify it."
+  },
+  {
+    "id": "svg-optimizer",
+    "name": "SVG Optimizer",
+    "category": "code",
+    "tier": 2,
+    "summary": "Shrink SVGs and strip scripts, event handlers and external references."
+  },
+  {
+    "id": "jsx-converter",
+    "name": "HTML & SVG to JSX",
+    "category": "code",
+    "tier": 2,
+    "summary": "Convert markup to JSX or a typed React component."
+  },
+  {
+    "id": "ts-to-js",
+    "name": "TypeScript to JavaScript",
+    "category": "code",
+    "tier": 2,
+    "summary": "Strip TypeScript types to plain JavaScript without running the code."
+  },
+  {
+    "id": "tailwind-css",
+    "name": "Tailwind & CSS Converter",
+    "category": "code",
+    "tier": 3,
+    "summary": "Convert Tailwind utility classes to CSS and back for the core utility set."
+  },
+  {
+    "id": "markdown-html",
+    "name": "Markdown & HTML Converter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Convert Markdown to sanitised HTML and back, with a table of contents option."
+  },
+  {
+    "id": "table-builder",
+    "name": "Table Builder",
+    "category": "code",
+    "tier": 2,
+    "summary": "Build a table visually and export it as Markdown, HTML, CSV or JSON."
+  },
+  {
+    "id": "bbcode",
+    "name": "BBCode Converter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Convert between BBCode, Markdown and sanitised HTML."
+  },
+  {
+    "id": "code-complexity",
+    "name": "Code Complexity Analyzer",
+    "category": "code",
+    "tier": 3,
+    "summary": "Report cyclomatic complexity and function length for JavaScript and TypeScript."
+  },
+  {
+    "id": "xpath-tester",
+    "name": "XPath Tester",
+    "category": "code",
+    "tier": 2,
+    "summary": "Evaluate XPath 1.0 expressions against an XML document."
+  },
+  {
+    "id": "git-diff-viewer",
+    "name": "Git Diff Viewer",
+    "category": "code",
+    "tier": 2,
+    "summary": "Render unified diff output with per-file and per-hunk navigation."
+  },
+  {
+    "id": "graphql-to-typescript",
+    "name": "GraphQL SDL to TypeScript",
+    "category": "code",
+    "tier": 3,
+    "summary": "Generate TypeScript types from a GraphQL schema definition."
+  },
+  {
+    "id": "json-to-graphql",
+    "name": "JSON to GraphQL Schema",
+    "category": "code",
+    "tier": 3,
+    "summary": "Infer GraphQL type definitions from sample JSON."
+  },
+  {
+    "id": "openapi-validator",
+    "name": "OpenAPI Validator",
+    "category": "code",
+    "tier": 3,
+    "summary": "Check an OpenAPI 3.x or Swagger 2.0 document for structural errors."
+  },
+  {
+    "id": "openapi-to-typescript",
+    "name": "OpenAPI to TypeScript",
+    "category": "code",
+    "tier": 3,
+    "summary": "Generate TypeScript types from an OpenAPI document."
+  },
+  {
+    "id": "css-unit",
+    "name": "CSS Unit Converter",
+    "category": "css",
+    "tier": 1,
+    "summary": "Convert between px, rem, em, pt, pc, in, cm, mm, vw, vh and percent."
+  },
+  {
+    "id": "css-clamp",
+    "name": "CSS Clamp Generator",
+    "category": "css",
+    "tier": 1,
+    "summary": "Produce a fluid clamp() value from a size range and a viewport range."
+  },
+  {
+    "id": "css-specificity",
+    "name": "CSS Specificity Calculator",
+    "category": "css",
+    "tier": 2,
+    "summary": "Score a selector and explain which parts contribute."
+  },
+  {
+    "id": "gradient-generator",
+    "name": "CSS Gradient Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Build linear, radial and conic gradients with a live preview."
+  },
+  {
+    "id": "box-shadow",
+    "name": "CSS Box Shadow Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Design layered box shadows with a live preview."
+  },
+  {
+    "id": "text-shadow",
+    "name": "CSS Text Shadow Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Design layered text shadows with a live preview."
+  },
+  {
+    "id": "border-radius",
+    "name": "CSS Border Radius Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Set each corner independently with a live preview."
+  },
+  {
+    "id": "flexbox-playground",
+    "name": "Flexbox Playground",
+    "category": "css",
+    "tier": 3,
+    "summary": "Experiment with flex container and item properties against a live preview."
+  },
+  {
+    "id": "grid-generator",
+    "name": "CSS Grid Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Lay out grid tracks and areas with a live preview."
+  },
+  {
+    "id": "css-animation",
+    "name": "CSS Animation & Transition",
+    "category": "css",
+    "tier": 3,
+    "summary": "Build keyframe animations and transitions with a live preview."
+  },
+  {
+    "id": "css-transform",
+    "name": "CSS Transform Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Compose translate, rotate, scale and skew with a live preview."
+  },
+  {
+    "id": "css-filter",
+    "name": "CSS Filter Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Compose filter functions with a live preview."
+  },
+  {
+    "id": "clip-path",
+    "name": "CSS Clip-path Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Draw polygon, circle, ellipse and inset shapes with a live preview."
+  },
+  {
+    "id": "css-effects",
+    "name": "Glassmorphism & Neumorphism",
+    "category": "css",
+    "tier": 3,
+    "summary": "Generate frosted glass and soft UI effects with a live preview."
+  },
+  {
+    "id": "aspect-ratio",
+    "name": "Aspect Ratio Calculator",
+    "category": "css",
+    "tier": 1,
+    "summary": "Solve for a missing dimension, and list common ratios and resolutions."
+  },
+  {
+    "id": "color-converter",
+    "name": "Colour Converter",
+    "category": "color",
+    "tier": 1,
+    "summary": "Convert between HEX, RGB, HSL, HWB, LAB, LCH, OKLAB, OKLCH and CMYK."
+  },
+  {
+    "id": "color-palette",
+    "name": "Colour Palette & Shades",
+    "category": "color",
+    "tier": 2,
+    "summary": "Build harmonies, tints, shades, tones and blends from a base colour."
+  },
+  {
+    "id": "contrast-checker",
+    "name": "Colour Contrast Checker",
+    "category": "color",
+    "tier": 1,
+    "summary": "Check WCAG 2.2 contrast ratios and report the APCA lightness contrast."
+  },
+  {
+    "id": "image-color-extractor",
+    "name": "Image Colour Extractor",
+    "category": "color",
+    "tier": 3,
+    "summary": "Extract a dominant palette from an image entirely in the browser."
+  },
+  {
+    "id": "unix-timestamp",
+    "name": "Unix Timestamp Converter",
+    "category": "datetime",
+    "tier": 1,
+    "summary": "Convert between epoch values and dates, with unit detection and time zone control."
+  },
+  {
+    "id": "timezone-converter",
+    "name": "Time Zone Converter",
+    "category": "datetime",
+    "tier": 2,
+    "summary": "Convert a moment between IANA time zones, showing offsets and DST transitions."
+  },
+  {
+    "id": "date-diff",
+    "name": "Date & Duration Calculator",
+    "category": "datetime",
+    "tier": 1,
+    "summary": "Measure the gap between two moments and add or subtract durations."
+  },
+  {
+    "id": "cron-expression",
+    "name": "Cron Expression Parser & Builder",
+    "category": "datetime",
+    "tier": 1,
+    "summary": "Describe a cron expression in plain English and list the next runs, per dialect."
+  },
+  {
+    "id": "date-format",
+    "name": "Date Format Tester",
+    "category": "datetime",
+    "tier": 2,
+    "summary": "Preview strftime, Unicode LDML and Intl date patterns side by side."
+  },
+  {
+    "id": "ip-subnet",
+    "name": "IP Subnet & CIDR Calculator",
+    "category": "network",
+    "tier": 1,
+    "summary": "Calculate IPv4 and IPv6 network details, split subnets, and summarise ranges to CIDR."
+  },
+  {
+    "id": "ip-ptr",
+    "name": "IP to PTR Record",
+    "category": "network",
+    "tier": 1,
+    "summary": "Build in-addr.arpa and ip6.arpa reverse DNS names from an address."
+  },
+  {
+    "id": "user-agent",
+    "name": "User Agent Parser",
+    "category": "network",
+    "tier": 2,
+    "summary": "Parse a User-Agent string into browser, engine, OS and device, with confidence noted."
+  },
+  {
+    "id": "curl-converter",
+    "name": "cURL Builder & Code Generator",
+    "category": "network",
+    "tier": 2,
+    "summary": "Build a request visually and emit cURL, fetch, Python, Go, PHP or HTTPie. It never sends the request."
+  },
+  {
+    "id": "security-headers",
+    "name": "Security Headers & CSP Builder",
+    "category": "network",
+    "tier": 2,
+    "summary": "Compose Content-Security-Policy and the other security headers for common servers."
+  },
+  {
+    "id": "url-parser",
+    "name": "URL & Query String Parser",
+    "category": "network",
+    "tier": 1,
+    "summary": "Split a URL into its parts and turn query strings into structured data."
+  },
+  {
+    "id": "utm-builder",
+    "name": "UTM Campaign Builder",
+    "category": "network",
+    "tier": 1,
+    "summary": "Attach campaign parameters to a URL correctly."
+  },
+  {
+    "id": "meta-tags",
+    "name": "Meta Tags & Social Preview",
+    "category": "network",
+    "tier": 2,
+    "summary": "Generate SEO, Open Graph and Twitter Card tags and preview them locally."
+  },
+  {
+    "id": "robots-txt",
+    "name": "robots.txt Generator & Validator",
+    "category": "network",
+    "tier": 2,
+    "summary": "Build a robots.txt file and check it against the REP specification."
+  },
+  {
+    "id": "sitemap-generator",
+    "name": "XML Sitemap Generator",
+    "category": "network",
+    "tier": 2,
+    "summary": "Turn a URL list into a valid sitemap, with index splitting past the size limit."
+  },
+  {
+    "id": "schema-markup",
+    "name": "JSON-LD Schema Builder",
+    "category": "network",
+    "tier": 3,
+    "summary": "Build schema.org JSON-LD for the common content types."
+  },
+  {
+    "id": "hreflang",
+    "name": "Hreflang Tag Generator",
+    "category": "network",
+    "tier": 2,
+    "summary": "Generate reciprocal hreflang tags and check the language and region codes."
+  },
+  {
+    "id": "htaccess-generator",
+    "name": ".htaccess Generator",
+    "category": "network",
+    "tier": 3,
+    "summary": "Generate Apache rules for redirects, HTTPS, caching and directory protection."
+  },
+  {
+    "id": "nginx-config",
+    "name": "Nginx Config Generator",
+    "category": "network",
+    "tier": 3,
+    "summary": "Generate an nginx server block for common hosting patterns."
+  },
+  {
+    "id": "http-status-codes",
+    "name": "HTTP Status Code Reference",
+    "category": "reference",
+    "tier": 1,
+    "summary": "Search every registered HTTP status code with its defining document."
+  },
+  {
+    "id": "mime-types",
+    "name": "MIME Type Lookup",
+    "category": "reference",
+    "tier": 1,
+    "summary": "Look up a media type by extension, or an extension by media type."
+  },
+  {
+    "id": "ascii-table",
+    "name": "ASCII Table",
+    "category": "reference",
+    "tier": 1,
+    "summary": "The full ASCII table in decimal, hex, octal and binary, with control code names."
+  },
+  {
+    "id": "emoji-picker",
+    "name": "Emoji Picker",
+    "category": "reference",
+    "tier": 3,
+    "summary": "Search emoji by name and copy the character, code points or escape."
+  },
+  {
+    "id": "chmod-calculator",
+    "name": "Chmod Calculator",
+    "category": "devops",
+    "tier": 1,
+    "summary": "Convert between symbolic and octal Unix permissions, including setuid and sticky bits."
+  },
+  {
+    "id": "gitignore-generator",
+    "name": ".gitignore Generator",
+    "category": "devops",
+    "tier": 2,
+    "summary": "Compose a .gitignore from bundled templates for languages, tools and editors."
+  },
+  {
+    "id": "git-command-builder",
+    "name": "Git Command Builder",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Assemble a git command from options, with an explanation of each flag."
+  },
+  {
+    "id": "dockerfile-lint",
+    "name": "Dockerfile Linter",
+    "category": "devops",
+    "tier": 2,
+    "summary": "Parse a Dockerfile and report syntax problems and common mistakes."
+  },
+  {
+    "id": "docker-compose-validator",
+    "name": "Docker Compose Validator",
+    "category": "devops",
+    "tier": 2,
+    "summary": "Validate a Compose file against the schema and report unknown keys."
+  },
+  {
+    "id": "k8s-validator",
+    "name": "Kubernetes Manifest Validator",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Check Kubernetes manifests for required fields and obvious errors."
+  },
+  {
+    "id": "github-actions-validator",
+    "name": "GitHub Actions Validator",
+    "category": "devops",
+    "tier": 2,
+    "summary": "Validate a workflow file and report invalid keys, triggers and expressions."
+  },
+  {
+    "id": "dotenv-toolkit",
+    "name": ".env Validator & Converter",
+    "category": "devops",
+    "tier": 1,
+    "summary": "Validate a .env file and convert it to Compose, Kubernetes, shell or JSON."
+  },
+  {
+    "id": "tsconfig-builder",
+    "name": "tsconfig.json Builder",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Assemble a tsconfig with explanations of each option."
+  },
+  {
+    "id": "package-json-generator",
+    "name": "package.json Generator",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Build a valid package.json with the fields npm actually reads."
+  },
+  {
+    "id": "eslint-to-biome",
+    "name": "ESLint to Biome",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Translate an ESLint config to the closest Biome equivalent, flagging gaps."
+  },
+  {
+    "id": "mcp-config-builder",
+    "name": "MCP Config Builder",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Build a Model Context Protocol server configuration file."
+  },
+  {
+    "id": "readme-generator",
+    "name": "README Generator",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Assemble a project README from sections and badges."
+  },
+  {
+    "id": "compression-tester",
+    "name": "Compression Size Tester",
+    "category": "devops",
+    "tier": 2,
+    "summary": "Compare gzip and deflate sizes for a payload using the browser compression API."
+  },
+  {
+    "id": "qr-generator",
+    "name": "QR Code Generator",
+    "category": "media",
+    "tier": 2,
+    "summary": "Generate QR codes for text, URLs, WiFi, vCard, email and SMS payloads."
+  },
+  {
+    "id": "barcode-generator",
+    "name": "Barcode Generator",
+    "category": "media",
+    "tier": 3,
+    "summary": "Generate Code 128, EAN-13, EAN-8 and UPC-A barcodes as SVG."
+  },
+  {
+    "id": "image-converter",
+    "name": "Image Converter & Resizer",
+    "category": "media",
+    "tier": 3,
+    "summary": "Convert, resize and re-encode images entirely in the browser canvas."
+  },
+  {
+    "id": "exif-viewer",
+    "name": "EXIF Viewer & Remover",
+    "category": "media",
+    "tier": 3,
+    "summary": "Read image metadata and write a copy with it removed."
+  },
+  {
+    "id": "favicon-generator",
+    "name": "Favicon Generator",
+    "category": "media",
+    "tier": 3,
+    "summary": "Produce favicon sizes and an ICO from text, an emoji or an image."
+  },
+  {
+    "id": "placeholder-image",
+    "name": "Placeholder Image Generator",
+    "category": "media",
+    "tier": 2,
+    "summary": "Generate placeholder SVG or PNG images at any size."
+  },
+  {
+    "id": "pdf-merge",
+    "name": "PDF Merge",
+    "category": "media",
+    "tier": 3,
+    "summary": "Combine PDFs into one document in the browser."
+  },
+  {
+    "id": "pdf-split",
+    "name": "PDF Split & Page Organizer",
+    "category": "media",
+    "tier": 3,
+    "summary": "Split, extract, delete, reorder and rotate PDF pages in the browser."
+  },
+  {
+    "id": "pdf-to-image",
+    "name": "PDF to Image",
+    "category": "media",
+    "tier": 3,
+    "summary": "Render PDF pages to PNG or JPEG in the browser."
+  },
+  {
+    "id": "image-to-pdf",
+    "name": "Image to PDF",
+    "category": "media",
+    "tier": 3,
+    "summary": "Place images into a PDF with page size and orientation control."
+  },
+  {
+    "id": "archive-toolkit",
+    "name": "ZIP & TAR Toolkit",
+    "category": "media",
+    "tier": 3,
+    "summary": "Create and extract ZIP archives and extract TAR and gzip archives in the browser."
+  }
+]

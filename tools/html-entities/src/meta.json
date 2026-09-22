@@ -1,0 +1,43 @@
+{
+  "id": "html-entities",
+  "name": "HTML Entity Encoder & Decoder",
+  "summary": "Encode and decode HTML entities, including named, decimal and hexadecimal references.",
+  "about": "Converts between characters and HTML entity references in both directions, with the full HTML5 named reference set rather than the handful most tools carry. It also lists every reference it finds in your text with the exact code points it decodes to, which is usually what you actually want to know when something renders as mojibake.",
+  "supports": [
+    "All 2231 HTML5 named references, plus decimal and hexadecimal numeric references",
+    "Five encoding strategies: minimal, everything above ASCII, every character that has a name, XML only, and the set that is safe inside a quoted attribute",
+    "Numeric output in decimal or hexadecimal instead of named references",
+    "Characters above U+FFFF, emitted as a single reference rather than a surrogate pair",
+    "Legacy references with no closing semicolon, as HTML5 requires, and a strict mode that rejects them",
+    "The HTML5 replacement mapping for the 0x80 to 0x9F range, so &#128; decodes to the euro sign",
+    "An inspection view listing every reference found, its code points, and anything unrecognised"
+  ],
+  "limits": [
+    "Encoding here protects markup, not JavaScript, CSS, URLs or SQL. Each of those needs its own escaping, and using HTML escaping for them is a security bug rather than a formatting choice.",
+    "Decoded output can contain a script tag, because that is what decoding means. Never insert decoded text into a page as HTML.",
+    "This escapes text. It does not sanitise markup: it will not strip a dangerous tag, it will make the whole thing inert. If you need to keep some markup and remove the rest, you need a sanitiser.",
+    "A handful of HTML5 named references decode to two code points. They encode back to the characters, not to the original name."
+  ],
+  "ambiguities": [
+    "HTML5 matches the longest valid prefix, so &notit; decodes to the not sign followed by the literal text it;. This is correct and surprises nearly everyone, so the inspection view shows what was actually matched.",
+    "&apos; is defined in XML and HTML5 but not in HTML 4. Minimal encoding emits the numeric &#39; instead, which every parser has always understood.",
+    "Codes 0x80 to 0x9F are control characters in Unicode, but HTML5 maps them to the Windows-1252 characters that real documents meant. That mapping is applied, because not applying it turns euro signs into invisible controls."
+  ],
+  "standards": [
+    {
+      "label": "HTML Standard, named character references",
+      "url": "https://html.spec.whatwg.org/multipage/named-characters.html"
+    },
+    {
+      "label": "HTML Standard, numeric character reference end state",
+      "url": "https://html.spec.whatwg.org/multipage/parsing.html#numeric-character-reference-end-state"
+    },
+    { "label": "XML 1.0, predefined entities", "url": "https://www.w3.org/TR/xml/#sec-predefined-ent" }
+  ],
+  "dependencies": { "entities": "^8.1.0" },
+  "keywords": ["html", "entities", "escape", "encode", "xml", "htmlspecialchars"],
+  "primaryExport": "encode",
+  "usage": "import { encode, decode, inspect } from '@fodt/html-entities';\n\nencode('<a href=\"x\">a & b</a>');            // '&lt;a href=&quot;x&quot;&gt;a &amp; b&lt;/a&gt;'\nencode('café', { strategy: 'non-ascii' });   // 'caf&eacute;'\ndecode('&notit;');                           // '¬it;'\ninspect('&amp; &#169;');                     // what each reference is",
+  "apiNotes": "The named reference tables come from the `entities` package, which implements the HTML Standard exactly. This package adds the strategy choices, the numeric output modes and the inspection report on top.",
+  "testNotes": "Covers the five predefined entities, the ampersand double-encoding trap, all five strategies, numeric output in both bases, astral characters, the HTML5 legacy 0x80 to 0x9F mapping, references without a semicolon, the longest-prefix &notit; case, multi-code-point references, and a round-trip property test across every strategy over a sample including script tags, non-breaking spaces and a 3000 character string."
+}

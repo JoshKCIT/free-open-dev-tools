@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+pnpm-lock.yaml
+
+# Generated files. Their formatting is decided by the generator that writes
+# them, and CI checks they are up to date by regenerating and diffing, so
+# running a formatter over them afterwards would only create a conflict.
+docs/LEDGER.md
+docs/THIRD-PARTY.md
+docs/RELEASE-MANIFEST.md
+docs/RELEASE-MANIFEST.json
+apps/web/src/generated-catalog.json
+apps/web/src/generated-tools.json
+tools/*/README.md
+tools/*/LICENSE
+tools/*/package.json
+tools/*/tsconfig.json
+tools/*/vitest.config.ts
