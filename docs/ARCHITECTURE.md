@@ -108,3 +108,5 @@ React, React DOM, React Router and `@noble/hashes`.
 Cryptographic primitives always come from a reviewed library. Everything else, including CRC-32, the IP arithmetic,
 the JSON parser and the chmod logic, is implemented here because doing so is straightforward, testable against a
 published standard, and avoids a supply chain entry for no real gain.
+
+These were surveyed for the probe.
