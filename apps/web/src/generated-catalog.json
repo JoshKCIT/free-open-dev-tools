@@ -7,10 +7,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Encode and decode Base64 and Base64url, for text and files, with explicit UTF-8 handling and padding control.",
-      "implemented": true,
-      "sources": [
-        "probe"
-      ]
+      "implemented": true
     },
     {
       "id": "base32",
