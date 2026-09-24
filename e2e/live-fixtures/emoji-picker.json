@@ -1,0 +1,6 @@
+{
+  "id": "emoji-picker",
+  "label": "grinning face finds U+1F600",
+  "steps": [{ "action": "fill", "field": "query", "value": "grinning face" }],
+  "expect": ["U+1F600"]
+}

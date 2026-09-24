@@ -1,0 +1,37 @@
+{
+  "id": "emoji-picker",
+  "name": "Emoji Picker",
+  "summary": "Search emoji by name and copy the character, code points or escape.",
+  "about": "Searches every fully-qualified emoji from the latest official Unicode emoji-test.txt by name, and hands back the character in the exact form your code or document needs: the raw character, its code points, a JavaScript escape, a UTF-16 escape, or an HTML entity. The data is bundled into this page's own chunk at build time; nothing is fetched when you search.",
+  "supports": [
+    "Searching by every word in an emoji's full published name, such as 'grinning face' or 'waving hand: light skin tone'",
+    "Multi-code-point sequences, such as a flag or a skin-tone or hair variant, with one escape per code point",
+    "Five copyable forms: the character itself, space-separated code points (U+XXXX), a JavaScript code point escape, a UTF-16 escape, and an HTML numeric entity",
+    "Every group and subgroup Unicode organises emoji into (Smileys & Emotion, People & Body, and so on)"
+  ],
+  "limits": [
+    "Only fully-qualified sequences are bundled (UTS #51 ED-18); a minimally-qualified, unqualified or component-only form is not a separate search result",
+    "Search matches published names only, not keywords, categories or other languages",
+    "Whether an emoji actually renders as a picture, or falls back to separate characters or a missing-glyph box, depends on fonts installed on your device, not on this tool",
+    "The bundled data is a snapshot of one Unicode emoji-test.txt version; a sequence added after that version was fetched is not found here until the bundle is regenerated"
+  ],
+  "ambiguities": [
+    "A query is split on whitespace into words; every word must appear somewhere in the emoji's name (case-insensitive) for a match, so 'skin tone' and 'tone skin' match the same names"
+  ],
+  "standards": [{ "label": "UTS #51 — Unicode Emoji", "url": "https://www.unicode.org/reports/tr51" }],
+  "keywords": ["emoji", "unicode", "code point", "escape", "picker", "uts 51"],
+  "primaryExport": "searchEmoji",
+  "usage": "import { searchEmoji, formsOf } from '@fodt/emoji-picker';\n\nconst { results } = searchEmoji('grinning face');\nformsOf(results[0]); // { character, codePoints, jsEscape, utf16Escape, htmlEntity }",
+  "apiNotes": "`searchEmoji` ranks an exact name match first, then a name-prefix match, then every other match in the file's own (CLDR) order; it never reorders ties beyond that. `formsOf` returns one escape per Unicode code point in `jsEscape` and `htmlEntity`, and one escape per UTF-16 code unit in `utf16Escape`, which differ for any code point above U+FFFF (every emoji above Unicode 1.0 or so).",
+  "testNotes": "The bundled-count assertion is checked against the number in the fetched emoji-test.txt's own 'fully-qualified' footer line, not counted from the bundle itself. Absence of component/minimally-qualified/unqualified forms is checked against code points hand-picked from the same fetched file (263A alone, 1F3FB alone).",
+  "bundledData": [
+    {
+      "name": "Unicode emoji-test.txt 18.0",
+      "source": "https://www.unicode.org/Public/emoji/latest/emoji-test.txt",
+      "licence": "Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "attribution": "\"emoji-test.txt\", (c) 2026 Unicode, Inc., from the Unicode Character Database and UTS #51, licensed under the Unicode License V3 (https://www.unicode.org/license.txt).",
+      "noticeFile": "src/emoji-test-NOTICE.txt"
+    }
+  ]
+}
