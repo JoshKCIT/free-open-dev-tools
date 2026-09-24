@@ -75,6 +75,35 @@ it('full width layout matches the figlet reference implementation for every bund
   }
 });
 
+it('fitted layout matches the figlet reference implementation for every bundled font', () => {
+  const sample = "Az09 !@#'.,";
+  for (const name of FONT_NAMES) {
+    figlet.parseFont(name, FONTS[name]);
+    const reference = figlet.textSync(sample, { font: name, horizontalLayout: 'fitted' });
+    const ours = renderBanner(name, sample, { layout: 'fitted' }).lines.join('\n');
+    expect(ours, `font "${name}" fitted output differs from the figlet reference`).toBe(reference);
+  }
+});
+
+it('fitted characters touch without overlapping and a hardblank blocks fitting', () => {
+  // small.flf's own space (32) glyph is entirely hardblank (proven in the
+  // "hardblanks render as spaces" test below): two spaces back to back
+  // must NOT compress at all in fitted layout, because a hardblank counts
+  // as visible for fitting purposes and blocks the very fit that would
+  // otherwise be available between two all-blank glyphs.
+  const fittedSpaces = renderBanner('small', '  ', { layout: 'fitted' });
+  const fullSpaces = renderBanner('small', '  ', { layout: 'full' });
+  expect(fittedSpaces.lines).toEqual(fullSpaces.lines);
+
+  // Two ordinary letters DO touch: fitted output is narrower than full
+  // width once real gaps exist between glyphs.
+  const fittedLT = renderBanner('standard', 'LT', { layout: 'fitted' });
+  const fullLT = renderBanner('standard', 'LT', { layout: 'full' });
+  const fittedWidth = Math.max(...fittedLT.lines.map((l) => l.length));
+  const fullWidth = Math.max(...fullLT.lines.map((l) => l.length));
+  expect(fittedWidth).toBeLessThan(fullWidth);
+});
+
 it('hardblanks render as spaces and endmark runs are stripped', () => {
   const font = parseFont(FONTS.small);
   // Fetched directly from small.flf this session: the space (32)
