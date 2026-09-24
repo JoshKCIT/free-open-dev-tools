@@ -1,0 +1,33 @@
+{
+  "id": "nato-phonetic",
+  "name": "NATO Phonetic Alphabet",
+  "summary": "Spell text out using the ICAO/NATO phonetic alphabet.",
+  "about": "Converts text to and from the ICAO spelling alphabet (Alpha, Bravo, Charlie... and the aviation pronunciation of the ten digits), the standard way to spell letters and numbers aloud so they cannot be confused with a similar-sounding one.",
+  "supports": [
+    "Each of the 26 letters to and from its spelling word, case-insensitively in both directions",
+    "Each of the 10 digits to and from its ICAO pronunciation word, including the four digits whose aviation pronunciation differs from the ordinary English word",
+    "A configurable separator between the words of a spelled-out group",
+    "Reading a spelled message back into text, tolerant of any run of whitespace between words and case-insensitive",
+    "A choice of what happens to a character with no word: reject with its position (the default), drop it, or replace it with a configured stand-in"
+  ],
+  "limits": [
+    "This spells characters; it does not transcribe pronunciation or produce audio.",
+    "The digit words used here are the ICAO aviation pronunciations, which differ from the ordinary English words for several digits (for example 9 is spoken \"niner\").",
+    "ICAO defines this alphabet in documents that are sold rather than freely published (ICAO Annex 10 Volume II and ICAO Doc 9432, the Manual of Radiotelephony). The table here was cross-checked against publicly available civil aviation authority publications that reproduce it, not against the primary ICAO document itself.",
+    "Other spelling alphabets exist, including military and historical ones with different words, and are not offered here."
+  ],
+  "ambiguities": [
+    "A word that is not in the table is rejected with its position rather than guessed at, because a near-miss spelling word is exactly the kind of mistake this tool exists to catch."
+  ],
+  "standards": [
+    {
+      "label": "ICAO Annex 10, Volume II, Chapter 5 — Aeronautical Telecommunications (spelling alphabet placement)",
+      "url": "https://www.icao.int/sites/default/files/postalhistory/annex_10_aeronautical_telecommunications.htm"
+    }
+  ],
+  "keywords": ["nato phonetic", "icao", "phonetic alphabet", "spelling alphabet", "alpha bravo charlie"],
+  "primaryExport": "toPhonetic",
+  "usage": "import { toPhonetic, fromPhonetic } from '@fodt/nato-phonetic';\n\ntoPhonetic('SOS 9');            // 'Sierra Oscar Sierra Niner'\nfromPhonetic('Sierra Oscar Sierra Niner');   // 'SOS9'",
+  "apiNotes": "`toPhonetic` and `fromPhonetic` throw `NatoPhoneticError`, which carries a `position` field pointing at the offending character or word in the input. `PHONETIC` maps every letter and digit to its spelling word; the reverse lookup is derived from it rather than written out a second time.",
+  "testNotes": "ICAO's own Annex 10 material was consulted for the alphabet's placement in Volume II, Chapter 5, and is cited above; ICAO Doc 9432, the Manual of Radiotelephony, which carries the digit pronunciations, could not itself be retrieved during this work. In its place, the 26 letter words and 10 digit words in the production table were cross-checked against publicly available civil aviation authority publications that reproduce them, named in the test file. No machine-readable conformance file exists for either half. The tests iterate the transcribed table in both directions for coverage, AND separately assert all 36 letter-and-digit pairs transcribed a second time, independently, by hand from the same cross-checked sources, which is what would catch a mistranscription that a table-iterating test alone cannot."
+}
