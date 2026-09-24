@@ -1,0 +1,36 @@
+{
+  "id": "text-radix",
+  "name": "Text to Binary, Hex & Octal",
+  "summary": "Convert text to and from binary, hexadecimal, octal and decimal in any supported encoding.",
+  "about": "Converts text to groups of digits, one group per byte, in binary, octal, decimal or hexadecimal. This always reads the input as characters, never as a numeric value: typing 255 produces the bytes of the three characters '2', '5' and '5', not the number two hundred and fifty-five. Choose which character encoding produces those bytes -- UTF-8, either byte order of UTF-16, or windows-1252 -- because the same text is a different set of bytes under each one.",
+  "supports": [
+    "Binary, octal, decimal and hexadecimal, in both directions, one group of digits per byte",
+    "UTF-8, UTF-16 in both byte orders, and windows-1252, per the WHATWG Encoding Standard",
+    "A configurable group separator, and parsing that also accepts any run of whitespace regardless of it",
+    "Fixed-width groups (padded to the radix's conventional per-byte width) or unpadded groups, as an option",
+    "Upper-case or lower-case hexadecimal digits",
+    "The empty string, which produces no groups and parses back to the empty string"
+  ],
+  "limits": [
+    "This tool always reads its input as text characters, never as a numeric value. There is no mode, option or heuristic anywhere in it that reads a number out of the input instead -- the live Number Base Converter does that job.",
+    "The label iso-8859-1 maps to windows-1252 under the WHATWG Encoding Standard this tool follows, and the two differ in the 0x80 to 0x9F range: byte 0x80 is the euro sign under this standard, not U+0080.",
+    "windows-1252 cannot represent most of Unicode. A character it has no byte for is refused, naming the character and the encoding, rather than silently substituted with a replacement character.",
+    "The unit of grouping is always one byte, whatever the encoding, so a single UTF-16 or multi-byte UTF-8 character spans more than one group.",
+    "UTF-16LE and UTF-16BE differ only in which byte of each two-byte code unit comes first. Neither one is more correct; a file or protocol that expects one and receives the other will misread every character."
+  ],
+  "ambiguities": [
+    "Grouping by byte rather than by UTF-16 code unit was a deliberate choice: grouping by code unit would hide the byte order entirely, which is the only reason this tool offers two UTF-16 options at all.",
+    "Group padding, separator and hexadecimal letter case are purely cosmetic. None of the three changes which bytes are produced or parsed back."
+  ],
+  "standards": [
+    {
+      "label": "WHATWG Encoding Standard",
+      "url": "https://encoding.spec.whatwg.org/"
+    }
+  ],
+  "keywords": ["text to binary", "text to hex", "text to octal", "encoding", "windows-1252", "utf-16", "byte grouping"],
+  "primaryExport": "textToRadix",
+  "usage": "import { textToRadix, radixToText } from '@fodt/text-radix';\n\ntextToRadix('Hi');                                          // '48 69'\ntextToRadix('Hi', { radix: 'binary' });                     // '01001000 01101001'\nradixToText('48 69');                                       // 'Hi'\ntextToRadix('€', { encoding: 'windows-1252' });             // '80'\nradixToText('80', { encoding: 'windows-1252' });            // '€'",
+  "apiNotes": "`textToRadix` and `radixToText` throw `TextRadixError`, which carries a `position` field pointing at the offending character or group in the input, when a position is meaningful. `ENCODINGS` exposes a label and a short note for each of the four supported encodings, for building a select control from.",
+  "testNotes": "Every radix round trips in every encoding. The windows-1252 codec is checked against a vendored, verbatim copy of the WHATWG index-windows-1252.txt file for all 256 byte values, including the euro sign at 0x80 and the five C1 control code points at 0x81, 0x8D, 0x8F, 0x90 and 0x9D -- never against Node's own TextDecoder, which decodes windows-1252 with each byte equal to its own code point on the Node version this project runs and would pass an incorrect implementation."
+}
