@@ -279,10 +279,10 @@ const CANNOT_CHECK_MESSAGE =
   'This tool cannot check this hash for this password. The $2x$ tag marks a hash made by an old, ' +
   'buggy bcrypt implementation that mishandled password bytes at 0x80 or above (a sign-extension ' +
   'bug in the original C code). The library this tool uses does not expose a way to reproduce that ' +
-  'bug, and answering "incorrect" for a password that might in fact be the right one would be a ' +
-  'wrong answer presented as a right one — worse than refusing. Only $2x$ hashes checked against a ' +
-  'password containing a byte at or above 0x80 are affected; every other tag, and every ASCII-only ' +
-  'password, verifies normally.';
+  'bug, and reporting this as a mismatch when it might in fact be right would be a wrong answer ' +
+  'presented as a right one — worse than refusing. Only $2x$ hashes checked against a password ' +
+  'containing a byte at or above 0x80 are affected; every other tag, and every ASCII-only password, ' +
+  'verifies normally.';
 
 /**
  * Verifies a password against a hash carrying any of the tags the
