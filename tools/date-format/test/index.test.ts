@@ -2,9 +2,11 @@ import { it, expect } from 'vitest';
 import {
   wallClock,
   formatStrftime,
+  formatLdml,
   formatIntl,
   parseMoment,
   STRFTIME_CONVERSIONS,
+  LDML_LETTERS,
   DateFormatError,
 } from '../src/index';
 
@@ -148,4 +150,79 @@ it('a bare local time with no zone qualifier is rejected, and an explicit offset
   expect(() => parseMoment('1996-07-10T15:08:56')).toThrow('explicit Z or UTC offset');
   expect(parseMoment('1996-07-10T22:08:56Z').getTime()).toBe(837036536000);
   expect(parseMoment('1996-07-10T15:08:56-07:00').getTime()).toBe(837036536000);
+});
+
+/**
+ * Oracle: UTS #35 Part 4 "Date Format Patterns", section "Date Format
+ * Pattern Examples", fetched live this session
+ * (https://www.unicode.org/reports/tr35/tr35-dates.html). The table's six
+ * rows, quoted verbatim from the fetched page:
+ *
+ *   yyyy.MM.dd G 'at' HH:mm:ss zzz        | 1996.07.10 AD at 15:08:56 PDT
+ *   EEE, MMM d, ''yy                      | Wed, July 10, '96
+ *   h:mm a                                | 12:08 PM
+ *   hh 'o''clock' a, zzzz                 | 12 o'clock PM, Pacific Daylight Time
+ *   K:mm a, z                             | 0:00 PM, PST
+ *   yyyyy.MMMM.dd GGG hh:mm aaa           | 01996.July.10 AD 12:08 PM
+ *
+ * Row 1, 3, 4 and 6 are for "a particular locale" the table does not name
+ * further, but its own captions state the moments used: 15:08:56 PDT for
+ * row 1, and 12:08:56 PDT for rows 3, 4 and 6 (the row-5 "winter 12:00 PST"
+ * moment is stated directly in the surrounding prose the plan already
+ * quotes). Row 2's own result ("Wed, July 10, '96") is the one place the
+ * examples table disagrees with its own Date Field Symbol Table, which
+ * defines MMM as "Abbreviated" -- see the next test, which asserts this
+ * tool follows the field table (giving "Jul"), not the inconsistent example.
+ */
+it('UTS #35 date format pattern examples render exactly as documented', () => {
+  const afternoon = wallClock(new Date('1996-07-10T22:08:56.000Z'), 'America/Los_Angeles'); // 15:08:56 PDT
+  expect(formatLdml("yyyy.MM.dd G 'at' HH:mm:ss zzz", afternoon)).toBe('1996.07.10 AD at 15:08:56 PDT');
+
+  const noon = wallClock(new Date('1996-07-10T19:08:56.000Z'), 'America/Los_Angeles'); // 12:08:56 PDT
+  expect(formatLdml('h:mm a', noon)).toBe('12:08 PM');
+  expect(formatLdml("hh 'o''clock' a, zzzz", noon)).toBe("12 o'clock PM, Pacific Daylight Time");
+  expect(formatLdml('yyyyy.MMMM.dd GGG hh:mm aaa', noon)).toBe('01996.July.10 AD 12:08 PM');
+
+  const winterNoon = wallClock(new Date('1996-01-10T20:00:00.000Z'), 'America/Los_Angeles'); // 12:00 PST
+  expect(formatLdml('K:mm a, z', winterNoon)).toBe('0:00 PM, PST');
+});
+
+it('the UTS #35 example with MMM follows the field table and gives Jul', () => {
+  // Date Field Symbol Table, month row: "MMM | Sep | Abbreviated". The
+  // examples table's own row 2 result ("Wed, July 10, '96") uses the full
+  // month name for MMM instead, which contradicts that field definition --
+  // this tool follows the field table, not the inconsistent example.
+  const afternoon = wallClock(new Date('1996-07-10T22:08:56.000Z'), 'America/Los_Angeles');
+  expect(formatLdml("EEE, MMM d, ''yy", afternoon)).toBe("Wed, Jul 10, '96");
+});
+
+it('LDML k shows hour 0 as 24 and K shows hour 12 as 0, unlike strftime H and I', () => {
+  const midnight = wallClock(new Date('1996-07-10T00:00:00.000Z'), 'UTC'); // hour 0
+  expect(formatLdml('k', midnight)).toBe('24');
+  expect(formatLdml('kk', midnight)).toBe('24');
+  expect(formatStrftime('%H', midnight)).toBe('00');
+
+  const noon = wallClock(new Date('1996-07-10T12:00:00.000Z'), 'UTC'); // hour 12
+  expect(formatLdml('K', noon)).toBe('0');
+  expect(formatLdml('KK', noon)).toBe('00');
+  expect(formatStrftime('%I', noon)).toBe('12');
+});
+
+it('LDML quoted literals and doubled apostrophes render as literal text', () => {
+  expect(formatLdml("'yyyy'", wall)).toBe('yyyy');
+  expect(formatLdml("''", wall)).toBe("'");
+  expect(formatLdml("yyyy''MM", wall)).toBe("1996'07");
+  expect(() => formatLdml("'unterminated", wall)).toThrow(DateFormatError);
+});
+
+it('an unsupported LDML pattern letter is rejected by name', () => {
+  expect(() => formatLdml('YYYY', wall)).toThrow(DateFormatError);
+  expect(() => formatLdml('YYYY', wall)).toThrow('YYYY');
+  expect(() => formatLdml('www', wall)).toThrow(DateFormatError);
+  expect(() => formatLdml('ee', wall)).toThrow(DateFormatError);
+  expect(() => formatLdml('cc', wall)).toThrow(DateFormatError);
+  expect(() => formatLdml('P', wall)).toThrow(DateFormatError);
+  for (const letter of Object.keys(LDML_LETTERS)) {
+    expect(() => formatLdml(letter, wall)).not.toThrow();
+  }
 });

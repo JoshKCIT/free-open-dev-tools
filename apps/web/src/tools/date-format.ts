@@ -1,4 +1,12 @@
-import { meta, wallClock, formatStrftime, formatIntl, parseMoment, DateFormatError } from '@fodt/date-format';
+import {
+  meta,
+  wallClock,
+  formatStrftime,
+  formatLdml,
+  formatIntl,
+  parseMoment,
+  DateFormatError,
+} from '@fodt/date-format';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** The IANA zones worth offering by default. Any IANA name typed elsewhere in this tool's own text is not accepted here -- this select only offers a fixed short list. */
@@ -61,6 +69,13 @@ export default defineTool({
       default: '%Y-%m-%d %H:%M:%S %z',
     },
     {
+      name: 'ldml',
+      label: 'Unicode LDML pattern (UTS #35)',
+      type: 'text',
+      mono: true,
+      default: "yyyy.MM.dd G 'at' HH:mm:ss zzz",
+    },
+    {
       name: 'locale',
       label: 'Intl locale',
       type: 'select',
@@ -106,6 +121,18 @@ export default defineTool({
           label: 'strftime (POSIX/C locale)',
           value: formatStrftime(strftimePattern, wall),
         });
+      } catch (err) {
+        return {
+          outputs,
+          errors: [{ message: err instanceof DateFormatError ? err.message : String(err) }],
+        };
+      }
+    }
+
+    const ldmlPattern = str(values, 'ldml');
+    if (ldmlPattern) {
+      try {
+        outputs.push({ kind: 'code', label: 'LDML (Unicode UTS #35)', value: formatLdml(ldmlPattern, wall) });
       } catch (err) {
         return {
           outputs,

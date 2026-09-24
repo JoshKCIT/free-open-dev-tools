@@ -1,0 +1,10 @@
+{
+  "id": "date-format",
+  "label": "UTS #35 examples table row 1, a moment in the LDML pattern",
+  "steps": [
+    { "action": "fill", "field": "moment", "value": "1996-07-10T15:08:56-07:00" },
+    { "action": "select", "field": "zone", "value": "America/Los_Angeles" },
+    { "action": "fill", "field": "ldml", "value": "yyyy.MM.dd G 'at' HH:mm:ss zzz" }
+  ],
+  "expect": ["1996.07.10 AD at 15:08:56 PDT"]
+}

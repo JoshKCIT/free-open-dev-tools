@@ -7,14 +7,16 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Renders one moment through a hand-written POSIX strftime pattern and the browser's own Intl.DateTimeFormat, side by side, so you can see what a C library, a shell script or a server log format string will actually print without running it. Neither formatter is transcribed from a library: strftime is implemented here against the POSIX.1-2017 conversion list because JavaScript has no built-in strftime, over a wall clock read once from Intl and then reused by every column.
+Renders one moment through a hand-written POSIX strftime pattern, a hand-written Unicode LDML (UTS #35) pattern, and the browser's own Intl.DateTimeFormat, side by side, so you can see what a C library, a Java or ICU-based formatter, or a server log format string will actually print without running it. Neither pattern formatter is transcribed from a library: JavaScript has no built-in strftime or LDML formatter, so both are implemented here over one wall clock read once from Intl and then reused by every column.
 
 ## Supported
 
 - Every POSIX.1-2017 strftime conversion (a A b B c C d D e F g G h H I j m M n p r R S t T u U V w W x X y Y z Z %) in the POSIX (C) locale, with English weekday and month names
 - The E and O locale-alternative modifiers, accepted and treated as a no-op since the POSIX/C locale defines no alternative representation to switch to
 - ISO 8601 week-based year and week number (%g, %G, %V) with the same Monday-first, first-Thursday-owns-week-1 rule as %U/%W's own simpler Sunday/Monday-first week counting
-- Any IANA time zone for resolving the wall clock strftime and Intl render against, via Intl.DateTimeFormat, not a bundled tz database
+- Unicode LDML (UTS #35) pattern letters G, y, Q, q, M, L, d, D, E, a, h, H, k, K, m, s, S, z, Z, O, X and x, with English names, quoted literal text and doubled apostrophes for a literal quote
+- LDML's k (hour 1-24, 0 shown as 24) and K (hour 0-11, 12 shown as 0), distinct from strftime's H (0-23) and I (1-12)
+- Any IANA time zone for resolving the wall clock strftime, LDML and Intl render against, via Intl.DateTimeFormat, not a bundled tz database
 - Intl.DateTimeFormat rendered directly in a chosen locale (en-US, en-GB, de-DE, fr-FR, ja-JP) with independent date and time style controls (full, long, medium, short or the locale default)
 - A moment given with an explicit Z or UTC offset, read as that exact instant before formatting in the chosen zone
 
@@ -23,17 +25,22 @@ Renders one moment through a hand-written POSIX strftime pattern and the browser
 - A bare local time with no Z and no UTC offset is refused rather than guessed: the zone field chooses the display zone, never the input's meaning, so an unqualified time has no way to be read unambiguously
 - strftime flags and field widths (for example a leading + or a digit width such as %+4Y) are POSIX extensions this tool does not implement; an unsupported flag or width is rejected by name rather than silently ignored
 - strftime week/year fields (%U, %W, %V, %g, %G) use each rule's own week-1 definition and can legitimately disagree with each other for the same date -- this is a property of the standard, not a bug
-- Named time zone abbreviations and long names (%Z, and the LDML z/zzzz forms) come from the browser's own Intl data and can differ slightly between browsers for the same zone and instant
+- LDML's week-based fields Y, w, W, e and c are not implemented: their numbering depends on a locale's own first-day-of-week and minimal-days-in-first-week rules, which this tool does not model. They are rejected by name, same as any other unsupported letter
+- LDML's G (era) renders only the Anno Domini forms (AD, Anno Domini, A); it does not distinguish BC/BCE dates
+- Named time zone abbreviations and long names (strftime %Z, and LDML z/zzzz) come from the browser's own Intl data and can differ slightly between browsers for the same zone and instant
 - Leap seconds are not representable: seconds always read 00-59, never 60, because JavaScript's own Date has no notion of one
 - Intl.DateTimeFormat's own output for a given locale and style is the browser's choice, not a fixed spec this tool controls; it can change between browser versions
 
 ## Ambiguous cases, and what this does about them
 
 - strftime's %c, %x and %X are locale-defined; this tool implements only the POSIX (C) locale's own stated forms (%a %b %e %T %Y, %m/%d/%y and %H:%M:%S respectively), not a locale-sensitive rendering
+- UTS #35's own Date Format Pattern Examples table is internally inconsistent: its EEE, MMM d, ''yy row prints the full month name ('July') for MMM, but the Date Field Symbol Table two sections later defines MMM as 'Abbreviated' (example 'Sep'). This tool follows the field table's own rule (MMM gives 'Jul'), not the example row, and the fetched inconsistency is asserted directly in this tool's own tests rather than silently resolved
+- LDML's Z (4 letters) and O (4 letters) are both documented as 'the long localized GMT format', but the spec's own example rows show different zero-padding (ZZZZ's example is 'GMT-8:00', OOOO's is 'GMT-08:00'). This tool renders both the same way (zero-padded, e.g. 'GMT-08:00'), treating the stated equivalence as authoritative over the one unpadded example digit
 
 ## Defined by
 
 - [POSIX.1-2017 (IEEE Std 1003.1-2017) -- strftime](https://pubs.opengroup.org/onlinepubs/9699919799/functions/strftime.html)
+- [UTS #35 Part 4 -- Unicode Locale Data Markup Language (LDML): Dates](https://www.unicode.org/reports/tr35/tr35-dates.html)
 - [ECMA-402 -- ECMAScript Internationalization API Specification](https://tc39.es/ecma402/)
 
 ## Use it on its own
@@ -57,14 +64,15 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { wallClock, formatStrftime, formatIntl, parseMoment } from '@fodt/date-format';
+import { wallClock, formatStrftime, formatLdml, formatIntl, parseMoment } from '@fodt/date-format';
 
 const wall = wallClock(parseMoment('1996-07-10T15:08:56-07:00'), 'America/Los_Angeles');
 formatStrftime('%Y-%m-%d %H:%M:%S %z', wall); // '1996-07-10 15:08:56 -0700'
+formatLdml("yyyy.MM.dd G 'at' HH:mm:ss zzz", wall); // '1996.07.10 AD at 15:08:56 PDT'
 formatIntl(parseMoment('1996-07-10T15:08:56-07:00'), { locale: 'en-US', zone: 'America/Los_Angeles', dateStyle: 'full' });
 ```
 
-`wallClock` resolves a moment's calendar and clock fields in one IANA zone once, via Intl.DateTimeFormat's formatToParts; `formatStrftime` and the LDML formatter both read only from that resolved struct, never touching Intl again, so the two hand-written columns can never disagree about what the wall clock actually is. `formatIntl` is the one function that calls Intl.DateTimeFormat directly, as the tool's own third, independent column. `parseMoment` throws DateFormatError for a bare local time with no zone qualifier.
+`wallClock` resolves a moment's calendar and clock fields in one IANA zone once, via Intl.DateTimeFormat's formatToParts; `formatStrftime` and `formatLdml` both read only from that resolved struct, never touching Intl again, so the two hand-written columns can never disagree about what the wall clock actually is. `formatIntl` is the one function that calls Intl.DateTimeFormat directly, as the tool's own third, independent column. `parseMoment` throws DateFormatError for a bare local time with no zone qualifier. `STRFTIME_CONVERSIONS` and `LDML_LETTERS` each map their conversion letter to the function that renders it, and are what each formatter's unsupported-letter check is built from.
 
 ## Dependencies
 
@@ -76,7 +84,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-POSIX.1-2017 strftime conversions are checked against real GNU date output for a fixed instant (1996-07-10T15:08:56-07:00 in America/Los_Angeles, epoch 837036536) run live in this session, plus two January-boundary dates (2021-01-01, 2024-12-30) for the %U/%W/%V/%G week-numbering rules, which disagree with each other by design at a year boundary. ECMA-402's Intl column is checked against a documented Intl.DateTimeFormat call for the same moment.
+POSIX.1-2017 strftime conversions are checked against real GNU date output for a fixed instant (1996-07-10T15:08:56-07:00 in America/Los_Angeles, epoch 837036536) run live in this session, plus two January-boundary dates (2021-01-01, 2024-12-30) for the %U/%W/%V/%G week-numbering rules, which disagree with each other by design at a year boundary. LDML patterns are checked against UTS #35's own Date Format Pattern Examples table, fetched live this session, including its one internally inconsistent row (asserted as a documented inconsistency, not silently normalised). ECMA-402's Intl column is checked against a documented Intl.DateTimeFormat call for the same moment.
 
 ## Licence
 

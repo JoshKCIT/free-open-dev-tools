@@ -308,3 +308,196 @@ export function formatIntl(instant: Date, options: IntlFormatOptions): string {
   if (options.timeStyle && options.timeStyle !== 'none') opts.timeStyle = options.timeStyle;
   return new Intl.DateTimeFormat(options.locale, opts).format(instant);
 }
+
+// -----------------------------------------------------------------------
+// Unicode LDML (UTS #35 Part 4, Date Format Patterns)
+// -----------------------------------------------------------------------
+
+const WEEKDAY_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+function ordinalSuffix(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return 'th';
+  switch (n % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+function quarterOf(month: number): number {
+  return Math.floor((month - 1) / 3) + 1;
+}
+
+function offsetParts(offsetMinutes: number): { sign: string; hours: number; minutes: number } {
+  const sign = offsetMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(offsetMinutes);
+  return { sign, hours: Math.floor(abs / 60), minutes: abs % 60 };
+}
+
+/** ISO8601 basic offset, always four digits, e.g. "-0800", "+0000". */
+function isoBasicOffset(offsetMinutes: number): string {
+  const { sign, hours, minutes } = offsetParts(offsetMinutes);
+  return `${sign}${pad2(hours)}${pad2(minutes)}`;
+}
+
+/** ISO8601 basic offset, minutes omitted when zero, e.g. "-08", "+0530". */
+function isoBasicOffsetOptionalMinutes(offsetMinutes: number): string {
+  const { sign, hours, minutes } = offsetParts(offsetMinutes);
+  return minutes === 0 ? `${sign}${pad2(hours)}` : `${sign}${pad2(hours)}${pad2(minutes)}`;
+}
+
+/** ISO8601 extended offset, e.g. "-08:00". */
+function isoExtendedOffset(offsetMinutes: number): string {
+  const { sign, hours, minutes } = offsetParts(offsetMinutes);
+  return `${sign}${pad2(hours)}:${pad2(minutes)}`;
+}
+
+/** Short localized GMT format, e.g. "GMT-8", "GMT+5:30", bare "GMT" at zero. */
+function gmtShort(offsetMinutes: number): string {
+  if (offsetMinutes === 0) return 'GMT';
+  const { sign, hours, minutes } = offsetParts(offsetMinutes);
+  return `GMT${sign}${hours}${minutes ? `:${pad2(minutes)}` : ''}`;
+}
+
+/** Long localized GMT format, always zero-padded and always showing minutes, e.g. "GMT-08:00". */
+function gmtLong(offsetMinutes: number): string {
+  const { sign, hours, minutes } = offsetParts(offsetMinutes);
+  return `GMT${sign}${pad2(hours)}:${pad2(minutes)}`;
+}
+
+function ldmlQuarter(wall: WallClock, length: number): string {
+  const q = quarterOf(wall.month);
+  if (length === 1) return String(q);
+  if (length === 2) return pad2(q);
+  if (length === 3) return `Q${q}`;
+  if (length === 4) return `${q}${ordinalSuffix(q)} quarter`;
+  return String(q);
+}
+
+function ldmlMonth(wall: WallClock, length: number): string {
+  if (length === 1) return String(wall.month);
+  if (length === 2) return pad2(wall.month);
+  if (length === 3) return MONTH_ABBR[wall.month - 1]!;
+  if (length === 4) return MONTH_FULL[wall.month - 1]!;
+  return MONTH_ABBR[wall.month - 1]!.slice(0, 1);
+}
+
+function ldmlWeekday(wall: WallClock, length: number): string {
+  if (length <= 3) return WEEKDAY_ABBR[wall.weekday]!;
+  if (length === 4) return WEEKDAY_FULL[wall.weekday]!;
+  if (length === 5) return WEEKDAY_ABBR[wall.weekday]!.slice(0, 1);
+  return WEEKDAY_SHORT[wall.weekday]!;
+}
+
+/**
+ * LDML pattern letter to its English rendering, one function per letter,
+ * each reading the field length it was invoked with. Only the letters this
+ * tool implements are keys here -- `formatLdml` throws for any letter that
+ * is not a key, which is also how the week-based fields `Y`, `w`, `W`, `e`
+ * and `c` are rejected (their numbering depends on locale week rules this
+ * tool does not model; see `limits`).
+ */
+export const LDML_LETTERS: Record<string, (wall: WallClock, length: number) => string> = {
+  G: (_wall, length) => (length === 4 ? 'Anno Domini' : length === 5 ? 'A' : 'AD'),
+  y: (wall, length) => (length === 2 ? pad2(((wall.year % 100) + 100) % 100) : String(wall.year).padStart(length, '0')),
+  Q: ldmlQuarter,
+  q: ldmlQuarter,
+  M: ldmlMonth,
+  L: ldmlMonth,
+  d: (wall, length) => (length === 1 ? String(wall.day) : pad2(wall.day)),
+  D: (wall, length) => String(wall.dayOfYear).padStart(length, '0'),
+  E: ldmlWeekday,
+  a: (wall, length) => (length >= 5 ? (wall.hour < 12 ? 'a' : 'p') : wall.hour < 12 ? 'AM' : 'PM'),
+  h: (wall, length) => {
+    const v = wall.hour % 12 === 0 ? 12 : wall.hour % 12;
+    return length === 1 ? String(v) : pad2(v);
+  },
+  H: (wall, length) => (length === 1 ? String(wall.hour) : pad2(wall.hour)),
+  k: (wall, length) => {
+    const v = wall.hour === 0 ? 24 : wall.hour;
+    return length === 1 ? String(v) : pad2(v);
+  },
+  K: (wall, length) => {
+    const v = wall.hour % 12;
+    return length === 1 ? String(v) : pad2(v);
+  },
+  m: (wall, length) => (length === 1 ? String(wall.minute) : pad2(wall.minute)),
+  s: (wall, length) => (length === 1 ? String(wall.second) : pad2(wall.second)),
+  S: (wall, length) => {
+    const base = pad3(wall.millisecond);
+    return length <= 3 ? base.slice(0, length) : base.padEnd(length, '0');
+  },
+  z: (wall, length) => (length >= 4 ? wall.longZoneName : wall.shortZoneName),
+  Z: (wall, length) => {
+    if (length >= 5) return wall.offsetMinutes === 0 ? 'Z' : isoExtendedOffset(wall.offsetMinutes);
+    if (length === 4) return gmtLong(wall.offsetMinutes);
+    return isoBasicOffset(wall.offsetMinutes);
+  },
+  O: (wall, length) => (length >= 4 ? gmtLong(wall.offsetMinutes) : gmtShort(wall.offsetMinutes)),
+  X: (wall, length) => {
+    if (wall.offsetMinutes === 0) return 'Z';
+    if (length === 1) return isoBasicOffsetOptionalMinutes(wall.offsetMinutes);
+    if (length === 3 || length === 5) return isoExtendedOffset(wall.offsetMinutes);
+    return isoBasicOffset(wall.offsetMinutes);
+  },
+  x: (wall, length) => {
+    if (length === 1) return isoBasicOffsetOptionalMinutes(wall.offsetMinutes);
+    if (length === 3 || length === 5) return isoExtendedOffset(wall.offsetMinutes);
+    return isoBasicOffset(wall.offsetMinutes);
+  },
+};
+
+/**
+ * Renders a Unicode LDML (UTS #35) date pattern against an already resolved
+ * wall clock. Tokenises runs of the same ASCII letter into one field each;
+ * text between single quotes is literal, and a doubled single quote (`''`)
+ * is always a literal quote character, in or out of a quoted run -- the
+ * standard LDML quoting rule. Every ASCII letter not in `LDML_LETTERS` is
+ * rejected by name, including the week-based fields this tool does not
+ * implement.
+ */
+export function formatLdml(pattern: string, wall: WallClock): string {
+  let out = '';
+  let i = 0;
+  let inQuote = false;
+  while (i < pattern.length) {
+    const ch = pattern[i]!;
+    if (ch === "'") {
+      if (pattern[i + 1] === "'") {
+        out += "'";
+        i += 2;
+        continue;
+      }
+      inQuote = !inQuote;
+      i++;
+      continue;
+    }
+    if (inQuote) {
+      out += ch;
+      i++;
+      continue;
+    }
+    if (/[A-Za-z]/.test(ch)) {
+      let j = i;
+      while (j < pattern.length && pattern[j] === ch) j++;
+      const length = j - i;
+      const fn = LDML_LETTERS[ch];
+      if (!fn) throw new DateFormatError(`"${ch.repeat(length)}" is not a supported LDML pattern letter.`);
+      out += fn(wall, length);
+      i = j;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  if (inQuote) {
+    throw new DateFormatError("The pattern has an unterminated quoted literal (an odd number of ' characters).");
+  }
+  return out;
+}
