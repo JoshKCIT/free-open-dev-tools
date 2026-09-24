@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "operation", "value": "sort" },
+    "values": { "input": "banana apple cherry" },
+    "attachesFile": false
+  }
+]

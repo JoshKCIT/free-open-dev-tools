@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -140,6 +140,74 @@ async function settle(page: Page): Promise<void> {
 async function firstCodeBlockText(page: Page): Promise<string> {
   const text = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
   return text.trim();
+}
+
+/** One step of a live fixture file: what to do to a single field, or press Run. */
+interface LiveStep {
+  action: 'fill' | 'select' | 'check' | 'uncheck' | 'radio' | 'run';
+  field?: string;
+  value?: string;
+}
+
+/**
+ * The shape of one `e2e/live-fixtures/<file>.json` file. `id` names the tool
+ * page it drives and must match the file's own name (checked below, not
+ * assumed); `expect` lists every string the Output section's rendered text
+ * must contain once `steps` have run.
+ */
+interface LiveFixtureFile {
+  id: string;
+  label: string;
+  steps: LiveStep[];
+  expect: string[];
+}
+
+/** One file loaded from `e2e/live-fixtures/`, paired with the file name it came from. */
+interface LoadedLiveFixture {
+  file: string;
+  data: LiveFixtureFile;
+}
+
+/**
+ * Per-tool deployed-site fixture files, one per id, under
+ * `e2e/live-fixtures/<id>.json`. Lets a later plan register its own
+ * first-use fixture without editing this file at all (Phase 3's own
+ * shared_procedure, step 8).
+ */
+function loadLiveFixtureFiles(): LoadedLiveFixture[] {
+  const dir = join(root, 'e2e', 'live-fixtures');
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .map((file) => ({ file, data: JSON.parse(readFileSync(join(dir, file), 'utf8')) as LiveFixtureFile }));
+}
+
+const LIVE_FIXTURE_FILES = loadLiveFixtureFiles();
+/** Every tool id a live fixture file declares, in file-load order. */
+const LIVE_FIXTURE_IDS = LIVE_FIXTURE_FILES.map((f) => f.data.id);
+
+/** Applies one `LiveStep` to the page. The six known actions are the only ones a fixture file may use. */
+async function applyLiveStep(page: Page, step: LiveStep): Promise<void> {
+  switch (step.action) {
+    case 'fill':
+      await fillField(page, step.field!, step.value ?? '');
+      break;
+    case 'select':
+      await page.locator(`#f-${step.field}`).selectOption(step.value ?? '');
+      break;
+    case 'check':
+      await page.locator(`#f-${step.field}`).check();
+      break;
+    case 'uncheck':
+      await page.locator(`#f-${step.field}`).uncheck();
+      break;
+    case 'radio':
+      await setRadio(page, step.field!, step.value ?? '');
+      break;
+    case 'run':
+      await pressRunIfPresent(page);
+      break;
+  }
 }
 
 // --- The per-tool fixture table ---------------------------------------------
@@ -370,6 +438,21 @@ const FIXTURES: Fixture[] = [
   },
 ];
 
+// Every tool built from Phase 3 onward registers its own first-use fixture
+// as a file under e2e/live-fixtures/, rather than a literal entry above.
+for (const { data } of LIVE_FIXTURE_FILES) {
+  FIXTURES.push({
+    id: data.id,
+    label: data.label,
+    setup: async (page) => {
+      for (const step of data.steps) await applyLiveStep(page, step);
+    },
+    check: async (page) => {
+      for (const text of data.expect) await containsCheck(text)(page);
+    },
+  });
+}
+
 test.describe('the live catalog shows exactly the built tools', () => {
   test('the rendered catalog counts 38 links to built tool pages, not the 144-entry catalog size', async ({ page }) => {
     await page.goto(rel('/catalog'));
@@ -382,7 +465,7 @@ test.describe('the live catalog shows exactly the built tools', () => {
 });
 
 test.describe('every new tool is reachable from its own category page', () => {
-  for (const id of NEW_TOOL_IDS) {
+  for (const id of [...NEW_TOOL_IDS, ...LIVE_FIXTURE_IDS]) {
     test(`${id} is reachable by clicking its own link on its category page, not only by direct URL`, async ({
       page,
     }) => {
@@ -414,4 +497,34 @@ test.describe('every new tool gives a correct, checkable result on first use', (
     const missing = NEW_TOOL_IDS.filter((id) => !covered.has(id));
     expect(missing, `these new tools have no first-use fixture: ${missing.join(', ')}`).toEqual([]);
   });
+});
+
+test('every live fixture file names a built tool page and uses only known step actions', () => {
+  const KNOWN_ACTIONS: LiveStep['action'][] = ['fill', 'select', 'check', 'uncheck', 'radio', 'run'];
+  const pageIds = new Set(
+    readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => f.replace(/\.ts$/, '')),
+  );
+
+  for (const { file, data } of LIVE_FIXTURE_FILES) {
+    const idFromFileName = file.replace(/\.json$/, '');
+    expect(data.id, `e2e/live-fixtures/${file} declares id "${data.id}", which does not match its own file name`).toBe(
+      idFromFileName,
+    );
+    expect(
+      pageIds,
+      `e2e/live-fixtures/${file} names a tool id ("${data.id}") with no page in apps/web/src/tools`,
+    ).toContain(data.id);
+    expect(
+      Array.isArray(data.expect) && data.expect.length > 0,
+      `e2e/live-fixtures/${file} has an empty "expect" array`,
+    ).toBe(true);
+    for (const step of data.steps) {
+      expect(
+        KNOWN_ACTIONS.includes(step.action),
+        `e2e/live-fixtures/${file} uses an unknown step action "${step.action}"`,
+      ).toBe(true);
+    }
+  }
 });

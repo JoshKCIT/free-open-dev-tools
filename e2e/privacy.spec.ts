@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Request, type TestInfo } from '@playwright/test';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -399,7 +399,7 @@ interface FixtureEntry {
   attachesFile: boolean;
 }
 
-const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
+const BUILT_IN_FIXTURES: Record<string, FixtureEntry[]> = {
   // Encode mode with a synthetic file attached: reaches file reading and
   // media-type sniffing instead of the invalid-URI rejection.
   'data-uri': [{ mode: { field: 'direction', value: 'encode' }, attachesFile: true }],
@@ -435,6 +435,65 @@ const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
   'random-string': [{ attachesFile: false }],
   'random-number': [{ attachesFile: false }],
 };
+
+/**
+ * Per-tool valid-scenario fixture files, one per id, under
+ * `e2e/privacy-fixtures/<id>.json`. This is what lets a later plan register
+ * its own fixture without editing this file at all (Phase 3's own
+ * shared_procedure, step 7): the file's name is the tool id, and its content
+ * is a JSON array in the exact shape of `FixtureEntry[]`.
+ *
+ * Every entry must carry a boolean `attachesFile`, and a file's id must not
+ * already be declared in `BUILT_IN_FIXTURES` -- both are structural mistakes
+ * that should fail loudly at collection time, not be silently ignored.
+ */
+function loadPrivacyFixtureFiles(): Record<string, FixtureEntry[]> {
+  const dir = join(root, 'e2e', 'privacy-fixtures');
+  if (!existsSync(dir)) return {};
+
+  const result: Record<string, FixtureEntry[]> = {};
+  for (const file of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+    const id = file.replace(/\.json$/, '');
+    if (id in BUILT_IN_FIXTURES) {
+      throw new Error(`e2e/privacy-fixtures/${file} declares an id ("${id}") already in BUILT_IN_FIXTURES.`);
+    }
+    const raw: unknown = JSON.parse(readFileSync(join(dir, file), 'utf8'));
+    const isValid =
+      Array.isArray(raw) &&
+      raw.every(
+        (e) =>
+          e !== null && typeof e === 'object' && typeof (e as { attachesFile?: unknown }).attachesFile === 'boolean',
+      );
+    if (!isValid) {
+      throw new Error(
+        `e2e/privacy-fixtures/${file} must be a JSON array of fixture entries, each with a boolean "attachesFile".`,
+      );
+    }
+    result[id] = raw as FixtureEntry[];
+  }
+  return result;
+}
+
+const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
+  ...BUILT_IN_FIXTURES,
+  ...loadPrivacyFixtureFiles(),
+};
+
+test('every privacy fixture file is loaded and names a real tool page', () => {
+  const dir = join(root, 'e2e', 'privacy-fixtures');
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')) : [];
+  for (const file of files) {
+    const id = file.replace(/\.json$/, '');
+    expect(
+      Object.prototype.hasOwnProperty.call(VALID_SCENARIO_FIXTURES, id),
+      `e2e/privacy-fixtures/${file} was not merged into VALID_SCENARIO_FIXTURES under the id "${id}"`,
+    ).toBe(true);
+    expect(
+      toolIds,
+      `e2e/privacy-fixtures/${file} names a tool id ("${id}") with no page in apps/web/src/tools`,
+    ).toContain(id);
+  }
+});
 
 /**
  * A fixed sleep clears the 140ms auto-run debounce (ToolRunner.tsx:257) with

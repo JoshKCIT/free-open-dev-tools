@@ -1,0 +1,9 @@
+{
+  "id": "text-lines",
+  "label": "sorting three lines by code point returns them alphabetically",
+  "steps": [
+    { "action": "fill", "field": "input", "value": "banana\ncherry\napple" },
+    { "action": "select", "field": "operation", "value": "sort" }
+  ],
+  "expect": ["apple banana cherry"]
+}
