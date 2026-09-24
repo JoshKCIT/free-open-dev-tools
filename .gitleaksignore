@@ -11,3 +11,7 @@ b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:
 b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:jwt:23
 b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:jwt:32
 b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:jwt:45
+# The same pyca/bcrypt published test-vector password as above, reused in the deployed-site fixture spec.
+a41f69cebe85850298e9a03ab9dd1522b3c6a4a5:e2e/live-catalog.spec.ts:generic-api-key:341
+# A JWT computed independently in the fixture spec from RFC 7518's own HMAC-SHA256 construction, not a real credential.
+a41f69cebe85850298e9a03ab9dd1522b3c6a4a5:e2e/live-catalog.spec.ts:jwt:368
