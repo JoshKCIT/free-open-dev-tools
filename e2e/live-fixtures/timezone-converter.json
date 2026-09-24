@@ -1,0 +1,10 @@
+{
+  "id": "timezone-converter",
+  "label": "A fall-back overlap in New York, converted to UTC, shows both occurrences",
+  "steps": [
+    { "action": "fill", "field": "moment", "value": "2024-11-03T01:30" },
+    { "action": "select", "field": "fromZone", "value": "America/New_York" },
+    { "action": "select", "field": "toZone", "value": "UTC" }
+  ],
+  "expect": ["05:30", "06:30"]
+}
