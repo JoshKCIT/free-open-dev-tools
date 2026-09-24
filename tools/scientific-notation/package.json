@@ -20,7 +20,13 @@
     "LICENSE"
   ],
   "sideEffects": false,
-  "keywords": [],
+  "keywords": [
+    "scientific-notation",
+    "engineering-notation",
+    "e-notation",
+    "exponent",
+    "significant-figures"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
