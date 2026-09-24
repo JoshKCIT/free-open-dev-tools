@@ -12,7 +12,7 @@
     "The empty string, which produces no groups and parses back to the empty string"
   ],
   "limits": [
-    "This tool always reads its input as text characters, never as a numeric value. There is no mode, option or heuristic anywhere in it that reads a number out of the input instead -- the live Number Base Converter does that job.",
+    "This tool always reads its input as text characters, never as a numeric value. There is no mode, option or heuristic anywhere in it that reads a number out of the input instead.",
     "The label iso-8859-1 maps to windows-1252 under the WHATWG Encoding Standard this tool follows, and the two differ in the 0x80 to 0x9F range: byte 0x80 is the euro sign under this standard, not U+0080.",
     "windows-1252 cannot represent most of Unicode. A character it has no byte for is refused, naming the character and the encoding, rather than silently substituted with a replacement character.",
     "The unit of grouping is always one byte, whatever the encoding, so a single UTF-16 or multi-byte UTF-8 character spans more than one group.",
