@@ -4,7 +4,7 @@
   "summary": "Hash files of any size in a worker and compare against an expected checksum.",
   "about": "Streams a file through every selected digest algorithm in a single pass, in a background thread, so a file of any size can be hashed without loading the whole thing into memory or freezing the tab. Paste a checksum you were given and it tells you whether it matches, ignoring case and separators.",
   "supports": [
-    "MD5, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-512, Keccak-256, RIPEMD-160 and CRC-32, the same set the text hash tool offers",
+    "MD5, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-512, Keccak-256, RIPEMD-160 and CRC-32",
     "Files of any size, read in fixed-size chunks so memory use stays flat regardless of file size",
     "Every selected algorithm computed in a single pass over the file, so the file is never read twice",
     "A progress bar driven by bytes actually read, and a Cancel button that really stops the background work",
@@ -13,14 +13,14 @@
     "Keccak-256 as distinct from SHA3-256, which matters if you work with Ethereum"
   ],
   "limits": [
-    "A hash is not encryption and not a password store. For passwords use a purpose-built function such as bcrypt, scrypt or Argon2; the bcrypt tool here is the right one for that.",
+    "A hash is not encryption and not a password store. For passwords use a purpose-built function such as bcrypt, scrypt or Argon2.",
     "MD5 and SHA-1 are cryptographically broken. They are included because you will meet them in existing systems, and they are labelled accordingly.",
     "CRC-32 is an error-detection code, not a hash. It is trivial to construct a collision on purpose.",
     "A matching checksum tells you the file arrived unchanged from whatever produced that checksum. It does not tell you the file is safe or came from who you think it did.",
     "The file never leaves this tab, which also means nothing here can compare a file against a checksum published somewhere else without you typing or pasting that checksum in yourself."
   ],
   "ambiguities": [
-    "What Ethereum calls sha3 is original Keccak, not the FIPS 202 SHA-3 that was standardised later with different padding. Both are offered and labelled separately, exactly as the text hash tool does.",
+    "What Ethereum calls sha3 is original Keccak, not the FIPS 202 SHA-3 that was standardised later with different padding. Both are offered and labelled separately.",
     "Comparison against a pasted checksum ignores case and the separators colon, space, underscore and hyphen, because checksums are copied from many different formatting conventions. A checksum that differs only in digit values, not formatting, is still reported as not matching."
   ],
   "standards": [
