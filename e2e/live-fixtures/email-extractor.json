@@ -1,0 +1,12 @@
+{
+  "id": "email-extractor",
+  "label": "an email, a URL and an IPv4 address are pulled out of one sentence",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "Contact ops@example.com or https://example.com/status from 192.0.2.10."
+    }
+  ],
+  "expect": ["ops@example.com", "https://example.com/status", "192.0.2.10"]
+}

@@ -77,10 +77,9 @@ it('E.164 international phone numbers with separators are extracted and a date o
   // article, itself fetched live from https://en.wikipedia.org/w/index.php?title=E.164&action=raw,
   // 2026-09-24, which quotes and cites the ITU document directly): "Plan-conforming telephone
   // numbers are limited to only digits and to a maximum of fifteen digits."
-  const results = extractPatterns(
-    'Call +44 20 7946 0958 or +1 (555) 010-4477. Not on 2024-03-10 and not 192.0.2.10.',
-    { kinds: ['phone'] },
-  );
+  const results = extractPatterns('Call +44 20 7946 0958 or +1 (555) 010-4477. Not on 2024-03-10 and not 192.0.2.10.', {
+    kinds: ['phone'],
+  });
   expect(values(results)).toEqual(['+44 20 7946 0958', '+1 (555) 010-4477']);
 });
 
