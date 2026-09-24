@@ -89,6 +89,28 @@ test.describe('tool pages', () => {
   }
 });
 
+test.describe('progress and cancel stay inert until a tool opts in', () => {
+  /**
+   * The shared page layer (apps/web/src/lib/tool-ui.ts, apps/web/src/
+   * components/ToolRunner.tsx) gained an optional progress callback, a
+   * cancellable flag and a Cancel button. Every one of these 22 tools plus
+   * the 16 existing ones is additive-only: this walks every live page and
+   * proves none of them renders the new controls, because none of them has
+   * opted in yet. It rejects an implementation that rendered Cancel on
+   * `running` alone rather than `cancellable && running`, or that put the
+   * progress element in the tree unconditionally.
+   */
+  test('no tool page renders a Cancel button or a progress element before any run starts', async ({ page }) => {
+    for (const id of toolIds) {
+      await page.goto(rel(`/tools/${id}`));
+      const cancelButton = page.getByRole('button', { name: 'Cancel', exact: true });
+      expect(await cancelButton.count(), `${id} renders a Cancel button before opting in`).toBe(0);
+      const progressEl = page.locator('progress.tool-progress');
+      expect(await progressEl.count(), `${id} renders a progress element before opting in`).toBe(0);
+    }
+  });
+});
+
 test.describe('representative workflows', () => {
   test('Base64: encode, then decode back', async ({ page }) => {
     await page.goto(rel('/tools/base64'));
