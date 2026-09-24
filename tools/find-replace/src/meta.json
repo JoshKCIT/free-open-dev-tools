@@ -1,0 +1,30 @@
+{
+  "id": "find-replace",
+  "name": "Find and Replace",
+  "summary": "Literal find and replace with case, whole word and multiline options.",
+  "about": "Finds a piece of text and replaces every occurrence, treating the text to find as literal characters rather than a regular expression, and the replacement text as literal characters rather than a pattern with dollar-sign sequences. Case sensitivity, whole-word matching and matching across a line break are all optional.",
+  "supports": [
+    "Case-sensitive or case-insensitive matching",
+    "Whole-word matching, where a Unicode letter, mark, number or connector punctuation counts as part of a word",
+    "Multiline matching, where the text to find spans a line break",
+    "A literal dollar-sign sequence in the replacement, inserted exactly as typed",
+    "Regular-expression symbols in the text to find, treated as ordinary characters",
+    "A count of the number of non-overlapping replacements made",
+    "An empty text to find, which leaves the input unchanged"
+  ],
+  "limits": [
+    "This is literal find and replace, not a regular-expression engine: no wildcards, character classes or capture groups are read from the text to find.",
+    "With multiline off, a text to find that contains a line break is refused rather than silently never matching.",
+    "With multiline on, CRLF line endings in both the input and the text to find are normalised to a single line feed before matching, and the output uses a line feed too.",
+    "Whole-word boundaries follow this tool's own definition of a word character (a Unicode letter, mark, number or connector punctuation); punctuation such as a hyphen is never treated as part of a word."
+  ],
+  "ambiguities": [
+    "\"Whole word\" has no single universal definition. This tool treats a Unicode letter, mark, number or connector punctuation as a word character and everything else as a boundary, which matches how most text editors define it."
+  ],
+  "standards": [],
+  "keywords": ["find", "replace", "text", "search"],
+  "primaryExport": "findReplace",
+  "usage": "import { findReplace } from '@fodt/find-replace';\n\nfindReplace('a.b axb', 'a.b', 'X');\n// { output: 'X axb', count: 1 }",
+  "apiNotes": "The replacement is inserted through a replacer function, never a string replacement pattern, so a dollar sign in the replacement text is never expanded. A bad option, such as a multiline text to find with multiline off, throws `FindReplaceError`.",
+  "testNotes": "No standard defines literal find and replace, so standards is empty; tests assert behaviour against hand-worked examples covering literal matching of regular-expression symbols, a dollar-sign replacement text, case sensitivity, whole-word boundaries including accented letters and digits, multiline matching, and non-overlapping match counting."
+}

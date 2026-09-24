@@ -1,0 +1,11 @@
+{
+  "id": "find-replace",
+  "label": "whole word replaces the standalone cat but leaves concatenated alone",
+  "steps": [
+    { "action": "fill", "field": "input", "value": "The cat sat on the concatenated mat." },
+    { "action": "fill", "field": "find", "value": "cat" },
+    { "action": "fill", "field": "replacement", "value": "dog" },
+    { "action": "check", "field": "wholeWord" }
+  ],
+  "expect": ["The dog sat on the concatenated mat."]
+}
