@@ -1,0 +1,77 @@
+# Lorem Ipsum Generator
+
+Generate placeholder words, sentences and paragraphs from a seed.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Generates deterministic placeholder text from a seed of your choosing: exact words, sentences or paragraphs, with the classic "Lorem ipsum dolor sit amet..." opening if you want it. The same seed and settings always produce the same output, so a mock-up stays stable across reloads instead of reshuffling every time.
+
+## Supported
+
+- Exact counts of words (1-1000), sentences (1-200) or paragraphs (1-50)
+- A text seed of any length, hashed to a starting state with FNV-1a
+- Byte-identical repeat output for the same seed and settings
+- The classic opening line, on by default, still counted toward the total you asked for
+- Sentences of 4-16 words with an occasional comma, capitalised, ending in a period
+- Paragraphs of 3-7 sentences separated by a blank line
+
+## Limits
+
+- The word bank is a fixed 63-word vocabulary taken from the standard passage; it is not a general Latin generator and produces no other words
+- Sentence and paragraph shape (word counts per sentence, sentences per paragraph, comma placement) is a fixed pseudo-random rule, not a model of real prose rhythm
+- The seeded generator is deterministic on purpose and must never be used anywhere unpredictability matters, such as a password or a token
+- Word-count mode strips all punctuation, including the comma in the classic opening, since a word list has no sentence structure of its own
+
+## Ambiguous cases, and what this does about them
+
+- "An occasional comma" is implemented as roughly one sentence in three getting a single comma at a random interior word; no comma-placement standard is claimed
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/lorem-ipsum lorem-ipsum
+cd lorem-ipsum
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/lorem-ipsum
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { generateLorem } from '@fodt/lorem-ipsum';
+
+generateLorem({ unit: 'words', count: 5, seed: 'lorem' });
+// { text: 'Lorem ipsum dolor sit amet', words: 5, sentences: 0, paragraphs: 0 }
+
+generateLorem({ unit: 'paragraphs', count: 2, seed: 'demo', classicOpening: false });
+```
+
+`fnv1a32` and `mulberry32` are exported separately from `generateLorem` because this tool's own tests prove each in isolation against published test vectors and an independent BigInt reimplementation, before trusting the composed generator built on top of them. `mulberry32` returns a function yielding raw 32-bit unsigned integers, not the [0, 1) float most published versions divide down to.
+
+## Dependencies
+
+None. This package has no runtime dependencies.
+
+## Tests
+
+```sh
+npm test
+```
+
+No standards body defines Lorem ipsum text or its generation. Tests instead assert: the FNV-1a 32-bit hash function against three published test vectors from the FNV internet-draft; mulberry32 against an independent BigInt reimplementation of the same algorithm for 1000 outputs; that the same seed and settings always produce byte-identical output; that different seeds produce different output; that word, sentence and paragraph counts are always exactly what was asked for; that the classic opening appears only when requested; and that an out-of-range or non-integer count is rejected naming the valid range.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).

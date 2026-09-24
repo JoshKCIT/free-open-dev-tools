@@ -1,0 +1,9 @@
+{
+  "id": "lorem-ipsum",
+  "label": "five words with the classic opening gives Lorem ipsum dolor sit amet",
+  "steps": [
+    { "action": "select", "field": "unit", "value": "words" },
+    { "action": "fill", "field": "count", "value": "5" }
+  ],
+  "expect": ["Lorem ipsum dolor sit amet"]
+}
