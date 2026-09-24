@@ -15,3 +15,5 @@ b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:
 a41f69cebe85850298e9a03ab9dd1522b3c6a4a5:e2e/live-catalog.spec.ts:generic-api-key:341
 # A JWT computed independently in the fixture spec from RFC 7518's own HMAC-SHA256 construction, not a real credential.
 a41f69cebe85850298e9a03ab9dd1522b3c6a4a5:e2e/live-catalog.spec.ts:jwt:368
+# The pyca/bcrypt test password used as the bcrypt page's verify example.
+e053df95bbe407385cfefac2b41eb2663bba9ed9:apps/web/src/tools/bcrypt.ts:generic-api-key:96
