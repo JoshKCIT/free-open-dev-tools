@@ -1,0 +1,6 @@
+{
+  "id": "ascii-table",
+  "label": "filtering by 0x41 shows the letter A's binary form 1000001",
+  "steps": [{ "action": "fill", "field": "filter", "value": "0x41" }],
+  "expect": ["1000001"]
+}

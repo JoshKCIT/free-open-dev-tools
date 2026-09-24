@@ -1,0 +1,45 @@
+{
+  "id": "ascii-table",
+  "name": "ASCII Table",
+  "summary": "The full ASCII table in decimal, hex, octal and binary, with control code names.",
+  "about": "Shows every one of the 128 standard ASCII codes, each in decimal, hexadecimal, octal, binary and its printed character, with the RFC 20 name for every control code. A filter box finds a row by any of those forms or by a control name.",
+  "supports": [
+    "All 128 seven-bit ASCII codes, 0 through 127",
+    "Each code shown in decimal, two-digit upper-case hexadecimal, three-digit octal and seven-bit binary",
+    "The RFC 20 abbreviation and name for codes 0 to 31 and for 127 (DEL), and SP for 32",
+    "The printed character itself for codes 33 to 126",
+    "Filtering by an exact number in decimal, 0x/0X hexadecimal, 0o octal or 0b binary",
+    "Filtering by a single character or by a substring of a control abbreviation or name, case-insensitively"
+  ],
+  "limits": [
+    "ASCII is a seven-bit code: this table stops at 127 and has nothing to say about extended 8-bit code pages such as Latin-1 or Windows-1252",
+    "The filter matches a single row per exact-number query; it does not accept a range or a comparison",
+    "Control character names are RFC 20's own abbreviations and names, not the longer definitions given in later standards"
+  ],
+  "ambiguities": [
+    "RFC 20 section 4.1 tags each control character's category with (CC), (FE) or (IS). Those category tags are not part of the name shown here; only the plain name is kept",
+    "Code 32 has no control abbreviation of its own in RFC 20's control-character list; it is shown here as SP (Space), matching its entry in the printable character table"
+  ],
+  "standards": [
+    { "label": "RFC 20 — ASCII format for Network Interchange", "url": "https://www.rfc-editor.org/rfc/rfc20" },
+    {
+      "label": "ANSI X3.4-1968 — USA Standard Code for Information Interchange",
+      "url": "https://www.iso.org/standard/2298.html"
+    }
+  ],
+  "keywords": [
+    "ascii",
+    "table",
+    "character set",
+    "decimal",
+    "hexadecimal",
+    "octal",
+    "binary",
+    "control codes",
+    "rfc 20"
+  ],
+  "primaryExport": "ASCII_ROWS",
+  "usage": "import { ASCII_ROWS, CONTROL_CODES, filterRows } from '@fodt/ascii-table';\n\nASCII_ROWS[65]; // { code: 65, dec: '65', hex: '41', oct: '101', bin: '1000001', char: 'A', abbreviation: undefined, name: undefined }\nfilterRows('0x41'); // rows matching code 65 only",
+  "apiNotes": "`ASCII_ROWS` is generated programmatically from `Array.from({ length: 128 })`, not hand-typed, so every decimal/hex/oct/bin/char column is derived arithmetically from the row's own code. `CONTROL_CODES` is a small hand-transcribed lookup keyed by code, covering 0-31, 32 (SP) and 127 (DEL); `ASCII_ROWS` reads its `abbreviation`/`name` fields from that lookup where one exists. `filterRows(query)` never mutates `ASCII_ROWS`; it returns a filtered array, and an empty query returns every row.",
+  "testNotes": "RFC 20 section 4.1 is quoted directly (not copied from `CONTROL_CODES`) for at least eight control names, independently confirming the transcription. The generated decimal/hex/oct/bin columns are checked against `Number.prototype.toString` conversions computed in the test, not against `ASCII_ROWS` itself, so a generation bug cannot hide behind a self-referential assertion."
+}
