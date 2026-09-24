@@ -813,6 +813,10 @@ test.describe('local processing', () => {
 
       const storage = await readStorage(page);
       expect(storage, `The canary was written to storage on /tools/${id}`).not.toContain(value);
+      // Proven to fail against a deliberate storage leak on a number-only page
+      // (random-number has no text box), 2026-09-23: injecting one line writing
+      // the min field's value into sessionStorage turned this assertion red,
+      // naming this exact message and the tracer, then green again once removed.
       expect(storage, `The numeric tracer was written to storage on /tools/${id}`).not.toContain(numericValue);
 
       expect(recorder.consoleText.join('\n'), `The canary was written to the console on /tools/${id}`).not.toContain(
