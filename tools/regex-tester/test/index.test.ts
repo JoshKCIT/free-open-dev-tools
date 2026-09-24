@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { testPattern, RegexToolError, MAX_MATCHES } from '../src/index';
+import { testPattern, replacePattern, RegexToolError, MAX_MATCHES } from '../src/index';
 
 it('test mode lists every match with its index and capture groups', () => {
   const r = testPattern('(?<year>[0-9]{4})-([0-9]{2})', 'g', 'Released 2024-03 and 2025-11.');
@@ -59,4 +59,31 @@ it('without the global flag only the first match is returned', () => {
   expect(r.matches[0]!.index).toBe(1);
   expect(r.total).toBe(1);
   expect(r.truncated).toBe(false);
+});
+
+/**
+ * ECMA-262 section 22.1.3.19.1 GetSubstitution defines every replacement
+ * pattern this test proves against a real call to replacePattern, quoted
+ * from https://tc39.es/ecma262/#sec-getsubstitution (fetched this session):
+ * `templateRemainder starts with "$$"` -> `refReplacement be "$"`;
+ * `starts with "$&"` -> `refReplacement be matched` (the whole match);
+ * `starts with "$" followed by 1 or more decimal digits` -> `refReplacement
+ * be capture` at that 1-based index; `starts with "$<"` -> `refReplacement
+ * be ... ToString(capture)` for the named group up to the next `>`.
+ */
+it('ECMA-262 replacement patterns for numbered and named groups, the whole match and a literal dollar are applied', () => {
+  const r = replacePattern('(?<year>[0-9]{4})-([0-9]{2})', '', 'Released 2024-03.', '$<year>/$2 ($&) $$');
+  expect(r.mode).toBe('replace');
+  expect(r.output).toBe('Released 2024/03 (2024-03) $.');
+  expect(r.count).toBe(1);
+});
+
+it('replace without the global flag changes only the first match', () => {
+  const withoutGlobal = replacePattern('a', '', 'aaaa', 'b');
+  expect(withoutGlobal.output).toBe('baaa');
+  expect(withoutGlobal.count).toBe(1);
+
+  const withGlobal = replacePattern('a', 'g', 'aaaa', 'b');
+  expect(withGlobal.output).toBe('bbbb');
+  expect(withGlobal.count).toBe(4);
 });
