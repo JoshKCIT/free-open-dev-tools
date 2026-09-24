@@ -24,17 +24,20 @@ export default defineTool({
       name: 'layout',
       label: 'Layout',
       type: 'select',
-      default: 'full',
-      options: [{ value: 'full', label: 'Full width' }],
+      default: 'fitted',
+      options: [
+        { value: 'fitted', label: 'Fitted (characters touch)' },
+        { value: 'full', label: 'Full width' },
+      ],
     },
   ],
-  examples: [{ label: 'Hello, standard font', values: { text: 'Hello', font: 'standard', layout: 'full' } }],
+  examples: [{ label: 'Hello, standard font', values: { text: 'Hello', font: 'standard', layout: 'fitted' } }],
   run(values): ToolResult {
     const text = str(values, 'text');
     if (!text) return { outputs: [] };
 
     const font = str(values, 'font', 'standard');
-    const layout = str(values, 'layout', 'full') as Layout;
+    const layout = str(values, 'layout', 'fitted') as Layout;
 
     let result;
     try {

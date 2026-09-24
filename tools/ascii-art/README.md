@@ -65,14 +65,14 @@ repository directly. The whole point is that you can vendor it: it is small enou
 import { renderBanner, parseFont, FONT_NAMES } from '@fodt/ascii-art';
 
 FONT_NAMES; // the 15 bundled font names
-renderBanner('standard', 'Hi', { layout: 'full' }).lines.join('\n');
+renderBanner('standard', 'Hi', { layout: 'fitted' }).lines.join('\n');
 
 // parseFont is exposed separately, for reading a font's own structure directly:
 import { FONTS } from '@fodt/ascii-art/dist/fonts/index.js'; // internal build output, not a stable subpath export
 parseFont(FONTS.standard);
 ```
 
-`renderBanner(fontName, text, { layout })` takes a bundled font's name (one of `FONT_NAMES`), not a parsed font, so the caller never has to parse a font itself just to render with it; it throws `FigletFontError` for an unknown font name or for a layout not yet supported. `parseFont(text)` reads a raw FIGfont Version 2 file's text into a `FigFont` object directly, for callers that want the parsed structure itself (this package's own tests use it this way); it throws `FigletFontError` for anything that does not match the format's header, signature or required character set. `FONT_NAMES` and `FONTS` (defined in `src/fonts/index.ts`, re-exported from this package's own `index.ts` as `FONT_NAMES`) are the only place the 15 bundled font names and their text live; this package's own `index.ts` never imports the `figlet` npm package, which is a devDependency used only by this package's own tests as a differential oracle.
+`renderBanner(fontName, text, { layout })` takes a bundled font's name (one of `FONT_NAMES`), not a parsed font, so the caller never has to parse a font itself just to render with it; it throws `FigletFontError` for an unknown font name. `parseFont(text)` reads a raw FIGfont Version 2 file's text into a `FigFont` object directly, for callers that want the parsed structure itself (this package's own tests use it this way); it throws `FigletFontError` for anything that does not match the format's header, signature or required character set. `FONT_NAMES` and `FONTS` (defined in `src/fonts/index.ts`, re-exported from this package's own `index.ts` as `FONT_NAMES`) are the only place the 15 bundled font names and their text live; this package's own `index.ts` never imports the `figlet` npm package, which is a devDependency used only by this package's own tests as a differential oracle.
 
 ## Dependencies
 
@@ -84,7 +84,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every bundled font's full-width and fitted output is compared directly against the `figlet` npm package's own `textSync` output for the same font text and the same input, for a sample of printable ASCII characters. `figlet` is never imported outside the test file. The FIGfont Version 2 specification (figfont.txt) is cited by name for the header format, the hardblank substitution rule and the endmark-stripping rule.
+Every bundled font's full-width AND fitted output is compared directly against the `figlet` npm package's own `textSync` output for the same font text and the same input, for a sample of printable ASCII characters (FIGfont Version 2 specification, figfont.txt, cited by name for the header format, the hardblank substitution rule and the endmark-stripping rule). The fitted overlap search is a faithful, hand-verified port of the figlet reference implementation's own fitting-only algorithm (growing a candidate overlap window one column at a time and stopping at the first two-sided collision), not a simplified leading/trailing-blank-run count, which was checked empirically against the reference package and found to diverge on most fonts before this port. `figlet` is never imported outside the test file.
 
 ## Licence
 

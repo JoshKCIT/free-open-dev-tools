@@ -163,17 +163,74 @@ function getFont(fontName: string): FigFont {
 }
 
 /**
- * Composes one input line's characters side by side in full-width layout,
- * where every character keeps its own designed width as-is. Fitted
- * (kerning) layout is added in a later task of this plan.
+ * The largest overlap between the trailing edge of `txt1` (the row
+ * composed so far) and the leading edge of `txt2` (the next character's
+ * row) such that no column has a visible sub-character on both sides.
+ * Growing the candidate overlap one column at a time and stopping at the
+ * first collision is a faithful port of the fitting-only branch of the
+ * figlet reference implementation's own overlap search -- simply counting
+ * each side's leading/trailing blank run is not equivalent, because a
+ * row can carry visible content on both sides of a gap (checked directly
+ * against the figlet reference package for all 15 bundled fonts).
  */
-function composeLine(font: FigFont, lineText: string, layout: Layout, missing: Set<string>): string[] {
-  if (layout !== 'full') {
-    throw new FigletFontError('Fitted layout is not supported yet.');
+function horizontalFitLength(txt1: string, txt2: string): number {
+  const len1 = txt1.length;
+  const len2 = txt2.length;
+  if (len1 === 0) return 0;
+
+  let curDist = 1;
+  while (curDist <= len1) {
+    const seg1 = txt1.slice(len1 - curDist, len1 - curDist + curDist);
+    const checkLen = Math.min(curDist, len2);
+    let collided = false;
+    for (let i = 0; i < checkLen; i++) {
+      if (seg1[i] !== ' ' && txt2[i] !== ' ') {
+        curDist -= 1;
+        collided = true;
+        break;
+      }
+    }
+    if (collided) break;
+    curDist += 1;
+  }
+  return Math.min(len1, curDist);
+}
+
+/**
+ * Overlays `txt2`'s leading `overlap` columns onto `txt1`'s trailing
+ * `overlap` columns -- at every such column exactly one side is visible,
+ * by construction of `overlap` -- then appends whatever remains of `txt2`
+ * past the overlap.
+ */
+function horizontalFit(txt1: string, txt2: string, overlap: number): string {
+  const len1 = txt1.length;
+  const len2 = txt2.length;
+  const piece1 = txt1.slice(0, Math.max(0, len1 - overlap));
+
+  const seg1Start = Math.max(0, len1 - overlap);
+  const seg1 = txt1.slice(seg1Start, seg1Start + overlap);
+  const seg2 = txt2.slice(0, Math.min(overlap, len2));
+  let piece2 = '';
+  for (let i = 0; i < overlap; i++) {
+    const ch1 = i < len1 ? seg1[i] : ' ';
+    const ch2 = i < len2 ? seg2[i] : ' ';
+    piece2 += ch1 !== ' ' ? ch1 : ch2;
   }
 
+  const piece3 = overlap >= len2 ? '' : txt2.slice(overlap, overlap + Math.max(0, len2 - overlap));
+  return piece1 + piece2 + piece3;
+}
+
+/**
+ * Composes one input line's characters side by side. Full-width layout
+ * keeps every character's own designed width as-is (equivalent to a
+ * fitting overlap of zero throughout). Fitted layout moves each new
+ * character as far left as `horizontalFitLength` allows, so characters
+ * touch but never overlap, with a hardblank counting as visible and
+ * blocking the fit exactly like any other non-space sub-character.
+ */
+function composeLine(font: FigFont, lineText: string, layout: Layout, missing: Set<string>): string[] {
   let buffer: string[] = Array.from({ length: font.height }, () => '');
-  let started = false;
 
   for (const ch of lineText) {
     const code = ch.codePointAt(0)!;
@@ -182,12 +239,18 @@ function composeLine(font: FigFont, lineText: string, layout: Layout, missing: S
       missing.add(ch);
       continue;
     }
-    if (!started) {
-      buffer = glyph.slice();
-      started = true;
+
+    if (layout === 'full') {
+      buffer = buffer.map((row, i) => row + glyph[i]!);
       continue;
     }
-    buffer = buffer.map((row, i) => row + glyph[i]!);
+
+    let overlap = Infinity;
+    for (let r = 0; r < font.height; r++) {
+      overlap = Math.min(overlap, horizontalFitLength(buffer[r]!, glyph[r]!));
+    }
+    if (!Number.isFinite(overlap)) overlap = 0;
+    buffer = buffer.map((row, i) => horizontalFit(row, glyph[i]!, overlap));
   }
 
   // A hardblank substitutes for an ordinary space only at the very end,
