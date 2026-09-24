@@ -686,6 +686,13 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
         const el = page.locator(`main #f-${field}`);
         if ((await el.count()) === 0) continue;
         if (!(await el.first().isVisible())) continue;
+        // A select cannot be typed into: choose the option instead. Only
+        // typed text is recorded as a value the leak assertions search for.
+        const tag = await el.first().evaluate((n) => n.tagName);
+        if (tag === 'SELECT') {
+          await el.first().selectOption(fieldValue);
+          continue;
+        }
         await el.first().fill(fieldValue);
         typedValues.add(fieldValue);
       }
