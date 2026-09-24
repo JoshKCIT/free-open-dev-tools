@@ -1,0 +1,37 @@
+{
+  "id": "date-format",
+  "name": "Date Format Tester",
+  "summary": "Preview strftime, Unicode LDML and Intl date patterns side by side.",
+  "about": "Renders one moment through a hand-written POSIX strftime pattern and the browser's own Intl.DateTimeFormat, side by side, so you can see what a C library, a shell script or a server log format string will actually print without running it. Neither formatter is transcribed from a library: strftime is implemented here against the POSIX.1-2017 conversion list because JavaScript has no built-in strftime, over a wall clock read once from Intl and then reused by every column.",
+  "supports": [
+    "Every POSIX.1-2017 strftime conversion (a A b B c C d D e F g G h H I j m M n p r R S t T u U V w W x X y Y z Z %) in the POSIX (C) locale, with English weekday and month names",
+    "The E and O locale-alternative modifiers, accepted and treated as a no-op since the POSIX/C locale defines no alternative representation to switch to",
+    "ISO 8601 week-based year and week number (%g, %G, %V) with the same Monday-first, first-Thursday-owns-week-1 rule as %U/%W's own simpler Sunday/Monday-first week counting",
+    "Any IANA time zone for resolving the wall clock strftime and Intl render against, via Intl.DateTimeFormat, not a bundled tz database",
+    "Intl.DateTimeFormat rendered directly in a chosen locale (en-US, en-GB, de-DE, fr-FR, ja-JP) with independent date and time style controls (full, long, medium, short or the locale default)",
+    "A moment given with an explicit Z or UTC offset, read as that exact instant before formatting in the chosen zone"
+  ],
+  "limits": [
+    "A bare local time with no Z and no UTC offset is refused rather than guessed: the zone field chooses the display zone, never the input's meaning, so an unqualified time has no way to be read unambiguously",
+    "strftime flags and field widths (for example a leading + or a digit width such as %+4Y) are POSIX extensions this tool does not implement; an unsupported flag or width is rejected by name rather than silently ignored",
+    "strftime week/year fields (%U, %W, %V, %g, %G) use each rule's own week-1 definition and can legitimately disagree with each other for the same date -- this is a property of the standard, not a bug",
+    "Named time zone abbreviations and long names (%Z, and the LDML z/zzzz forms) come from the browser's own Intl data and can differ slightly between browsers for the same zone and instant",
+    "Leap seconds are not representable: seconds always read 00-59, never 60, because JavaScript's own Date has no notion of one",
+    "Intl.DateTimeFormat's own output for a given locale and style is the browser's choice, not a fixed spec this tool controls; it can change between browser versions"
+  ],
+  "ambiguities": [
+    "strftime's %c, %x and %X are locale-defined; this tool implements only the POSIX (C) locale's own stated forms (%a %b %e %T %Y, %m/%d/%y and %H:%M:%S respectively), not a locale-sensitive rendering"
+  ],
+  "standards": [
+    {
+      "label": "POSIX.1-2017 (IEEE Std 1003.1-2017) -- strftime",
+      "url": "https://pubs.opengroup.org/onlinepubs/9699919799/functions/strftime.html"
+    },
+    { "label": "ECMA-402 -- ECMAScript Internationalization API Specification", "url": "https://tc39.es/ecma402/" }
+  ],
+  "keywords": ["strftime", "date-format", "ldml", "intl", "posix", "unicode"],
+  "primaryExport": "formatStrftime",
+  "usage": "import { wallClock, formatStrftime, formatIntl, parseMoment } from '@fodt/date-format';\n\nconst wall = wallClock(parseMoment('1996-07-10T15:08:56-07:00'), 'America/Los_Angeles');\nformatStrftime('%Y-%m-%d %H:%M:%S %z', wall); // '1996-07-10 15:08:56 -0700'\nformatIntl(parseMoment('1996-07-10T15:08:56-07:00'), { locale: 'en-US', zone: 'America/Los_Angeles', dateStyle: 'full' });",
+  "apiNotes": "`wallClock` resolves a moment's calendar and clock fields in one IANA zone once, via Intl.DateTimeFormat's formatToParts; `formatStrftime` and the LDML formatter both read only from that resolved struct, never touching Intl again, so the two hand-written columns can never disagree about what the wall clock actually is. `formatIntl` is the one function that calls Intl.DateTimeFormat directly, as the tool's own third, independent column. `parseMoment` throws DateFormatError for a bare local time with no zone qualifier.",
+  "testNotes": "POSIX.1-2017 strftime conversions are checked against real GNU date output for a fixed instant (1996-07-10T15:08:56-07:00 in America/Los_Angeles, epoch 837036536) run live in this session, plus two January-boundary dates (2021-01-01, 2024-12-30) for the %U/%W/%V/%G week-numbering rules, which disagree with each other by design at a year boundary. ECMA-402's Intl column is checked against a documented Intl.DateTimeFormat call for the same moment."
+}
