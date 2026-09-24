@@ -445,6 +445,13 @@ const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
  * back at false (ToolRunner.tsx:320). The sleep alone is not the proof; the
  * signal is.
  */
+/** True when a run-as-you-type page is showing output with no input problem and no crash. */
+async function autoRunSucceeded(page: Page): Promise<boolean> {
+  const output = page.locator('section[aria-label="Output"]');
+  if ((await output.locator('.issue-list, .note-error').count()) > 0) return false;
+  return (await output.locator('.panel-body > div:not(.note)').count()) > 0;
+}
+
 async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(200);
   try {
@@ -685,8 +692,16 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     }
 
     if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
-    if (await pressRunIfPresent(page)) runsCompleted++;
-    await settle(page);
+    if (await pressRunIfPresent(page)) {
+      runsCompleted++;
+      await settle(page);
+    } else {
+      // A page that runs as you type has no Run button: the fixture counts as a
+      // completed run only when the automatic run produced output without an
+      // input problem or a crash, i.e. it reached the real processing path.
+      await settle(page);
+      if (await autoRunSucceeded(page)) runsCompleted++;
+    }
   }
 
   const remaining = pushedKeys.size - visitedKeys.size;
