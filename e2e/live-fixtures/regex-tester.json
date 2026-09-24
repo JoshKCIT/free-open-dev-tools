@@ -1,0 +1,10 @@
+{
+  "id": "regex-tester",
+  "label": "testing a date pattern lists both matches",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "test" },
+    { "action": "fill", "field": "pattern", "value": "([0-9]{4})-([0-9]{2})" },
+    { "action": "fill", "field": "input", "value": "Released 2024-03 and 2025-11." }
+  ],
+  "expect": ["2024-03", "2025-11"]
+}

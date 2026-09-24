@@ -1,4 +1,4 @@
-import { meta, SUPPORTED_FLAGS, type RegexJob, type MatchRow } from '@fodt/regex-tester';
+import { meta, SUPPORTED_FLAGS, type RegexJob, type MatchRow, type ExplainPart } from '@fodt/regex-tester';
 import { regexInWorker } from '../lib/run-regex-in-worker';
 import { defineTool, str, bool, type Field, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
@@ -31,6 +31,7 @@ export default defineTool({
       options: [
         { value: 'test', label: 'Test' },
         { value: 'replace', label: 'Replace' },
+        { value: 'explain', label: 'Explain' },
       ],
     },
     {
@@ -55,6 +56,7 @@ export default defineTool({
       label: 'Text',
       type: 'textarea',
       rows: 10,
+      visible: (values) => values.mode !== 'explain',
       placeholder: 'Type or paste here. Nothing leaves your browser.',
     },
   ],
@@ -67,8 +69,9 @@ export default defineTool({
   async run(values, ctx): Promise<ToolResult> {
     const mode = str(values, 'mode', 'test') as RegexJob['mode'];
     const pattern = str(values, 'pattern');
+    if (!pattern) return { outputs: [] };
     const input = str(values, 'input');
-    if (!pattern || !input) return { outputs: [] };
+    if (mode !== 'explain' && !input) return { outputs: [] };
 
     const flags = SUPPORTED_FLAGS.filter((flag) => bool(values, `flag-${flag}`, flag === 'g')).join('');
     const job: RegexJob = { mode, pattern, flags, input, replacement: str(values, 'replacement') };
@@ -77,7 +80,7 @@ export default defineTool({
       const result = await regexInWorker(job, ctx);
       if (result.mode === 'test') return renderTest(result.matches, result.total, result.truncated);
       if (result.mode === 'replace') return renderReplace(result.output, result.count);
-      return { outputs: [] };
+      return renderExplain(result.parts);
     } catch (err) {
       // An abort rejection is let through rather than swallowed: the
       // runner's own cancellation note already owns that message. Every
@@ -120,5 +123,25 @@ function renderReplace(output: string, count: number): ToolResult {
   return {
     outputs: [{ kind: 'code', label: 'Result', value: output }],
     stats: [['Replacements', String(count)]],
+  };
+}
+
+function renderExplain(parts: ExplainPart[]): ToolResult {
+  if (parts.length === 0) {
+    return { outputs: [{ kind: 'note', tone: 'info', value: 'Nothing to explain yet.' }] };
+  }
+  return {
+    outputs: [
+      {
+        kind: 'table',
+        label: 'Explanation',
+        table: {
+          // Non-breaking spaces, not regular ones: a plain space run collapses in HTML, so it would not indent at all.
+          headers: ['Part', 'Meaning'],
+          rows: parts.map((p) => ['  '.repeat(p.depth) + p.source, p.description]),
+          mono: [0],
+        },
+      },
+    ],
   };
 }

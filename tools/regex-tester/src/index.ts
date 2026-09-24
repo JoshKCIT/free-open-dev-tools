@@ -11,6 +11,7 @@
  * the outside, which is why no timer or DOM reference appears anywhere in
  * this file.
  */
+import { RegExpParser, type AST } from '@eslint-community/regexpp';
 import meta from './meta.json';
 
 export { meta };
@@ -223,8 +224,189 @@ export function replacePattern(pattern: string, flags: string, input: string, re
   return { mode: 'replace', output, count };
 }
 
-export function explainPattern(_pattern: string, _flags: string): RegexExplainResult {
-  throw new RegexToolError('Explain mode is not available yet.');
+function describeQuantifier(node: AST.Quantifier): string {
+  const greedy = node.greedy ? 'greedy' : 'lazy (as few as possible)';
+  if (node.min === 0 && node.max === Infinity) return `${greedy}, zero or more times`;
+  if (node.min === 1 && node.max === Infinity) return `${greedy}, one or more times`;
+  if (node.min === 0 && node.max === 1) return `${greedy}, zero or one time (optional)`;
+  if (node.min === node.max) return `exactly ${node.min} time${node.min === 1 ? '' : 's'}`;
+  if (node.max === Infinity) return `${greedy}, ${node.min} or more times`;
+  return `${greedy}, between ${node.min} and ${node.max} times`;
+}
+
+function describeCharacterSet(node: AST.CharacterSet): string {
+  switch (node.kind) {
+    case 'any':
+      return 'any character except a line terminator (or truly any character when the s flag is set)';
+    case 'digit':
+      return node.negate ? 'any character that is not a digit (0-9)' : 'a digit (0-9)';
+    case 'space':
+      return node.negate ? 'any character that is not whitespace' : 'a whitespace character';
+    case 'word':
+      return node.negate
+        ? 'any character that is not a word character (letter, digit or underscore)'
+        : 'a word character (letter, digit or underscore)';
+    case 'property': {
+      const property = node.value ? `${node.key}=${node.value}` : node.key;
+      return `${node.negate ? 'any character NOT matching' : 'a character matching'} the Unicode property ${property}`;
+    }
+  }
+}
+
+function describeBackreference(node: AST.Backreference): string {
+  return typeof node.ref === 'number'
+    ? `the same text already matched by group ${node.ref}`
+    : `the same text already matched by the group named "${node.ref}"`;
+}
+
+/** One entry per element of a character class: a literal character, a range, or a nested character set. */
+function describeCharacterClassElement(el: AST.ClassRangesCharacterClassElement): string {
+  if (el.type === 'Character') return `"${String.fromCodePoint(el.value)}"`;
+  if (el.type === 'CharacterClassRange') {
+    return `${String.fromCodePoint(el.min.value)} through ${String.fromCodePoint(el.max.value)}`;
+  }
+  return describeCharacterSet(el);
+}
+
+function describeCharacterClass(node: AST.ClassRangesCharacterClass): string {
+  const items = node.elements.map(describeCharacterClassElement);
+  const body = items.length > 0 ? items.join(', ') : 'nothing (an empty character class never matches)';
+  return node.negate ? `any character NOT one of: ${body}` : `one of: ${body}`;
+}
+
+function describeAssertionOpen(node: AST.Assertion): string {
+  switch (node.kind) {
+    case 'start':
+      return 'start of the string (or, with the m flag, start of a line)';
+    case 'end':
+      return 'end of the string (or, with the m flag, end of a line)';
+    case 'word':
+      return node.negate
+        ? 'not a word boundary'
+        : 'a word boundary (between a word character and a non-word character, or a string edge)';
+    case 'lookahead':
+      return node.negate
+        ? 'negative lookahead: the following is NOT matched next, without consuming it'
+        : 'lookahead: the following IS matched next, without consuming it';
+    case 'lookbehind':
+      return node.negate
+        ? 'negative lookbehind: the following is NOT matched immediately before this point, without consuming it'
+        : 'lookbehind: the following IS matched immediately before this point, without consuming it';
+  }
+}
+
+function walkAlternatives(alternatives: AST.Alternative[], depth: number, parts: ExplainPart[]): void {
+  if (alternatives.length === 1) {
+    walkElements(alternatives[0]!.elements, depth, parts);
+    return;
+  }
+  alternatives.forEach((alt, i) => {
+    parts.push({
+      depth,
+      source: alt.raw,
+      description: `alternative ${i + 1} of ${alternatives.length}, separated by |`,
+    });
+    walkElements(alt.elements, depth + 1, parts);
+  });
+}
+
+function walkElements(elements: AST.Element[], depth: number, parts: ExplainPart[]): void {
+  for (const el of elements) walkElement(el, depth, parts);
+}
+
+function walkElement(node: AST.Element, depth: number, parts: ExplainPart[]): void {
+  if (node.type === 'Quantifier') {
+    parts.push({ depth, source: node.raw, description: describeQuantifier(node) });
+    walkElement(node.element, depth + 1, parts);
+    return;
+  }
+  if (node.type === 'Assertion') {
+    parts.push({ depth, source: node.raw, description: describeAssertionOpen(node) });
+    if (node.kind === 'lookahead' || node.kind === 'lookbehind') {
+      walkAlternatives(node.alternatives, depth + 1, parts);
+    }
+    return;
+  }
+  walkAtom(node, depth, parts);
+}
+
+/** QuantifiableElement minus the two node types already routed to walkElement above (Quantifier and LookaheadAssertion). */
+function walkAtom(
+  node: Exclude<AST.QuantifiableElement, AST.Quantifier | AST.LookaheadAssertion>,
+  depth: number,
+  parts: ExplainPart[],
+): void {
+  switch (node.type) {
+    case 'CapturingGroup':
+      parts.push({
+        depth,
+        source: node.raw,
+        description: node.name ? `a named capturing group called "${node.name}"` : 'a capturing group',
+      });
+      walkAlternatives(node.alternatives, depth + 1, parts);
+      return;
+    case 'Group':
+      parts.push({ depth, source: node.raw, description: 'a non-capturing group' });
+      walkAlternatives(node.alternatives, depth + 1, parts);
+      return;
+    case 'Character':
+      parts.push({
+        depth,
+        source: node.raw,
+        description: `the literal character "${String.fromCodePoint(node.value)}"`,
+      });
+      return;
+    case 'CharacterClass':
+      parts.push({
+        depth,
+        source: node.raw,
+        description: node.unicodeSets
+          ? 'a Unicode-set-mode character class (v flag) -- not offered by this tool since the v flag is not supported'
+          : describeCharacterClass(node),
+      });
+      return;
+    case 'CharacterSet':
+      parts.push({ depth, source: node.raw, description: describeCharacterSet(node) });
+      return;
+    case 'Backreference':
+      parts.push({ depth, source: node.raw, description: describeBackreference(node) });
+      return;
+    case 'ExpressionCharacterClass':
+      parts.push({
+        depth,
+        source: node.raw,
+        description:
+          'a character class set expression (v flag) -- not offered by this tool since the v flag is not supported',
+      });
+      return;
+  }
+}
+
+/**
+ * Parses with @eslint-community/regexpp (the same parser ESLint's own regex
+ * rules use, already a transitive devDependency of this repository) and
+ * walks the AST into a flat, depth-annotated part list -- depth is what
+ * lets the page indent a quantifier's own quantified element, or a group's
+ * own contents, beneath it. The engine's own `new RegExp` runs first
+ * (through the same `compile` every other mode uses) purely so an invalid
+ * pattern or unsupported flag is rejected with the identical message
+ * testPattern and replacePattern already give; regexpp's own parse should
+ * then always succeed, since it targets the same ECMA-262 grammar the
+ * engine just accepted.
+ */
+export function explainPattern(pattern: string, flags: string): RegexExplainResult {
+  compile(pattern, flags);
+
+  let root: AST.Pattern;
+  try {
+    root = new RegExpParser().parsePattern(pattern, 0, pattern.length, { unicode: flags.includes('u') });
+  } catch (err) {
+    throw new RegexToolError(err instanceof Error ? err.message : 'This pattern could not be parsed.');
+  }
+
+  const parts: ExplainPart[] = [];
+  walkAlternatives(root.alternatives, 0, parts);
+  return { mode: 'explain', parts };
 }
 
 export function runRegexJob(job: RegexJob): RegexResult {
