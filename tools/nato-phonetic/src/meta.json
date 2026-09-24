@@ -2,7 +2,7 @@
   "id": "nato-phonetic",
   "name": "NATO Phonetic Alphabet",
   "summary": "Spell text out using the ICAO/NATO phonetic alphabet.",
-  "about": "Converts text to and from the ICAO spelling alphabet (Alpha, Bravo, Charlie... and the aviation pronunciation of the ten digits), the standard way to spell letters and numbers aloud so they cannot be confused with a similar-sounding one.",
+  "about": "Converts text to and from the ICAO spelling alphabet (Alfa, Bravo, Charlie... and the aviation pronunciation of the ten digits), the standard way to spell letters and numbers aloud so they cannot be confused with a similar-sounding one. It writes ICAO's own spellings, Alfa and Juliett, and also reads back the common spellings Alpha and Juliet.",
   "supports": [
     "Each of the 26 letters to and from its spelling word, case-insensitively in both directions",
     "Each of the 10 digits to and from its ICAO pronunciation word, including the four digits whose aviation pronunciation differs from the ordinary English word",

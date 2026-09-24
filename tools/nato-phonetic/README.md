@@ -7,7 +7,7 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Converts text to and from the ICAO spelling alphabet (Alpha, Bravo, Charlie... and the aviation pronunciation of the ten digits), the standard way to spell letters and numbers aloud so they cannot be confused with a similar-sounding one.
+Converts text to and from the ICAO spelling alphabet (Alfa, Bravo, Charlie... and the aviation pronunciation of the ten digits), the standard way to spell letters and numbers aloud so they cannot be confused with a similar-sounding one. It writes ICAO's own spellings, Alfa and Juliett, and also reads back the common spellings Alpha and Juliet.
 
 ## Supported
 

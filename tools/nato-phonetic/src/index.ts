@@ -6,11 +6,12 @@ export { meta };
 // literal, so every character stays a quoted string literal in the source
 // (prettier strips unnecessary quotes from identifier-like object keys).
 //
-// Letters: the standard ICAO spelling alphabet (Alpha through Zulu).
+// Letters: the standard ICAO spelling alphabet (Alfa through Zulu), in ICAO's
+// own spellings: Alfa and Juliett, not Alpha and Juliet.
 // Digits: the ICAO aviation pronunciation words, which differ from the
 // ordinary English words for four of the ten digits (3, 4, 5 and 9).
 const PHONETIC_ENTRIES: [string, string][] = [
-  ['A', 'Alpha'],
+  ['A', 'Alfa'],
   ['B', 'Bravo'],
   ['C', 'Charlie'],
   ['D', 'Delta'],
@@ -51,7 +52,12 @@ const PHONETIC_ENTRIES: [string, string][] = [
 export const PHONETIC: Record<string, string> = Object.fromEntries(PHONETIC_ENTRIES);
 
 /** Reverse lookup, derived from PHONETIC rather than written out a second time. Keys are lower-cased for case-insensitive matching. */
-const REVERSE: Map<string, string> = new Map(Object.entries(PHONETIC).map(([ch, word]) => [word.toLowerCase(), ch]));
+const REVERSE: Map<string, string> = new Map([
+  ...Object.entries(PHONETIC).map(([ch, word]): [string, string] => [word.toLowerCase(), ch]),
+  // Common spellings of ICAO's Alfa and Juliett, accepted when reading back, never produced.
+  ['alpha', 'A'],
+  ['juliet', 'J'],
+]);
 
 export class NatoPhoneticError extends Error {
   /** Index into the input where the problem was found, when known. */

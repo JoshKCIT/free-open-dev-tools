@@ -9,7 +9,7 @@ it('each of the thirty-six independently transcribed pairs equals the production
   // civil aviation authority publications this tool's table was checked
   // against (see meta.json testNotes for the full provenance statement).
   const independentlyTranscribed: [string, string][] = [
-    ['A', 'Alpha'],
+    ['A', 'Alfa'],
     ['B', 'Bravo'],
     ['C', 'Charlie'],
     ['D', 'Delta'],
@@ -119,4 +119,10 @@ it('a word that is not in the table is rejected with its position and the offend
     expect(err).toBeInstanceOf(NatoPhoneticError);
     expect((err as NatoPhoneticError).message).toContain('Wrongword');
   }
+});
+
+it('writes the ICAO spellings Alfa and Juliett, and reads back the common Alpha and Juliet', () => {
+  expect(toPhonetic('AJ')).toBe('Alfa Juliett');
+  expect(fromPhonetic('Alpha Juliet')).toBe('AJ');
+  expect(fromPhonetic('Alfa Juliett')).toBe('AJ');
 });
