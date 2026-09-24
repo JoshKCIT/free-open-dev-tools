@@ -571,3 +571,230 @@ export function nextRuns(parsed: ParsedCron, fromUtc: Date, count: number): Next
   }
   return { runs };
 }
+
+// -------------------------------------------------------------- description
+//
+// Wording below is this tool's own (no standard defines it; see meta.json's
+// testNotes). It is built purely from the parsed field sets, so it always
+// describes exactly what nextRuns will actually compute.
+
+const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTH_LABELS = [
+  '',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
+}
+
+function listWords(items: string[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/** True for a sorted array of two or more values that are consecutive integers. */
+function isContiguousRange(sorted: number[]): boolean {
+  if (sorted.length < 2) return false;
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] !== sorted[i - 1]! + 1) return false;
+  }
+  return true;
+}
+
+/** A step N such that `values` is exactly {min, min+N, min+2N, ...} up to `max`, or null. */
+function detectUniformStep(values: number[], min: number, max: number): number | null {
+  if (values.length < 2 || values[0] !== min) return null;
+  const step = values[1]! - values[0]!;
+  if (step <= 0) return null;
+  const expected: number[] = [];
+  for (let v = min; v <= max; v += step) expected.push(v);
+  if (expected.length !== values.length) return null;
+  return expected.every((v, i) => v === values[i]) ? step : null;
+}
+
+function describeTime(parsed: ParsedCron): string {
+  const hours = [...parsed.hour.values].sort((a, b) => a - b);
+  const minutes = [...parsed.minute.values].sort((a, b) => a - b);
+  const seconds =
+    parsed.dialect === 'quartz' && parsed.seconds ? [...parsed.seconds.values].sort((a, b) => a - b) : [0];
+  const isFullHour = hours.length === 24;
+  const isFullMinute = minutes.length === 60;
+  const isFullSecond = seconds.length === 60;
+  const minuteStep = isFullMinute ? null : detectUniformStep(minutes, 0, 59);
+  const secondStep = isFullSecond ? null : detectUniformStep(seconds, 0, 59);
+
+  if (isFullMinute && isFullHour) {
+    return 'every minute';
+  }
+
+  if (minuteStep !== null) {
+    const unit = `every ${minuteStep} minute${minuteStep === 1 ? '' : 's'}`;
+    if (isFullHour) return unit;
+    if (isContiguousRange(hours)) {
+      return `${unit}, from ${pad2(hours[0]!)}:00 to ${pad2(hours[hours.length - 1]!)}:59`;
+    }
+    return `${unit} during hour${hours.length > 1 ? 's' : ''} ${listWords(hours.map(String))}`;
+  }
+
+  if (isFullMinute) {
+    if (isContiguousRange(hours)) {
+      return `every minute from ${pad2(hours[0]!)}:00 to ${pad2(hours[hours.length - 1]!)}:59`;
+    }
+    return `every minute during hour${hours.length > 1 ? 's' : ''} ${listWords(hours.map(String))}`;
+  }
+
+  // Explicit list of instants -- every hour x minute (x second, Quartz only) combination.
+  const instants: string[] = [];
+  for (const h of hours) {
+    for (const mi of minutes) {
+      if (parsed.dialect !== 'quartz') {
+        instants.push(`${pad2(h)}:${pad2(mi)}`);
+      } else if (secondStep !== null) {
+        instants.push(`${pad2(h)}:${pad2(mi)} (every ${secondStep} second${secondStep === 1 ? '' : 's'})`);
+      } else if (isFullSecond) {
+        instants.push(`${pad2(h)}:${pad2(mi)} (every second)`);
+      } else {
+        for (const s of seconds) instants.push(`${pad2(h)}:${pad2(mi)}:${pad2(s)}`);
+      }
+    }
+  }
+  return `at ${listWords(instants)}`;
+}
+
+function describeDayOfMonthValues(field: CronField): string {
+  const values = [...field.values].sort((a, b) => a - b);
+  const step = detectUniformStep(values, 1, 31);
+  if (step !== null) return `every ${ordinal(step)} day of the month`;
+  if (isContiguousRange(values)) return `day-of-month ${values[0]} through ${values[values.length - 1]}`;
+  return `day-of-month ${listWords(values.map(String))}`;
+}
+
+function describeDayOfWeekValues(field: CronField): string {
+  const values = [...field.values].sort((a, b) => a - b);
+  if (values.length === 1) return WEEKDAY_LABELS[values[0]!]!;
+  if (isContiguousRange(values)) {
+    return `${WEEKDAY_LABELS[values[0]!]} through ${WEEKDAY_LABELS[values[values.length - 1]!]}`;
+  }
+  return listWords(values.map((v) => WEEKDAY_LABELS[v]!));
+}
+
+function describeDomSpecial(special: DaySpecial): string {
+  switch (special.kind) {
+    case 'last':
+      return 'the last day of the month';
+    case 'lastOffset':
+      return `the ${ordinal(special.offset)}-to-last day of the month`;
+    case 'lastWeekday':
+      return 'the last weekday of the month';
+    case 'nearestWeekday':
+      return `the weekday nearest day ${special.day} of the month`;
+    default:
+      return '';
+  }
+}
+
+function describeDowSpecial(special: DaySpecial): string {
+  switch (special.kind) {
+    case 'lastDow':
+      return `the last ${WEEKDAY_LABELS[special.weekday]} of the month`;
+    case 'nthDow':
+      return `the ${ordinal(special.nth)} ${WEEKDAY_LABELS[special.weekday]} of the month`;
+    default:
+      return '';
+  }
+}
+
+/**
+ * The day clause: the either-day OR rule (Unix, both fields restricted) is
+ * stated by joining the two field descriptions with "or"; when only one
+ * field restricts (or neither does), only that field's own condition is
+ * stated ("and" between two conditions only happens for the asterisk-step
+ * exception, where a day-of-month step written with "*" is not
+ * "restricted" in crontab(5)'s own literal sense but still narrows the
+ * matching days). Quartz never has this ambiguity: exactly one of the two
+ * fields is "?", so only the other field's own condition is ever stated.
+ */
+function describeDay(parsed: ParsedCron): string | null {
+  if (parsed.dialect === 'quartz') {
+    if (parsed.dayOfMonth.isQuestion) {
+      const dow = parsed.dayOfWeek;
+      return `on ${dow.special ? describeDowSpecial(dow.special) : describeDayOfWeekValues(dow)}`;
+    }
+    const dom = parsed.dayOfMonth;
+    return `on ${dom.special ? describeDomSpecial(dom.special) : describeDayOfMonthValues(dom)}`;
+  }
+
+  const domPhrase = parsed.dayOfMonth.values.size < 31 ? describeDayOfMonthValues(parsed.dayOfMonth) : null;
+  const dowPhrase = parsed.dayOfWeek.values.size < 7 ? describeDayOfWeekValues(parsed.dayOfWeek) : null;
+  if (!domPhrase && !dowPhrase) return null;
+  if (domPhrase && dowPhrase) {
+    return parsed.domRestricted && parsed.dowRestricted
+      ? `on ${domPhrase}, or on ${dowPhrase}`
+      : `on ${domPhrase} and on ${dowPhrase}`;
+  }
+  return `on ${domPhrase ?? dowPhrase}`;
+}
+
+function describeMonth(parsed: ParsedCron): string | null {
+  const months = [...parsed.month.values].sort((a, b) => a - b);
+  if (months.length === 12) return null;
+  if (isContiguousRange(months)) {
+    return `in ${MONTH_LABELS[months[0]!]} through ${MONTH_LABELS[months[months.length - 1]!]}`;
+  }
+  return `in ${listWords(months.map((m) => MONTH_LABELS[m]!))}`;
+}
+
+function describeYear(parsed: ParsedCron): string | null {
+  if (parsed.dialect !== 'quartz' || !parsed.year) return null;
+  const years = [...parsed.year.values].sort((a, b) => a - b);
+  if (isContiguousRange(years)) {
+    return `in ${years[0]} through ${years[years.length - 1]}`;
+  }
+  return `in ${listWords(years.map(String))}`;
+}
+
+/**
+ * One English sentence describing when `parsed` fires: a time clause, then
+ * (when the fields restrict it) a day clause, a month clause and, for
+ * Quartz, a year clause.
+ */
+export function describeCron(parsed: ParsedCron): string {
+  const timePhrase = describeTime(parsed);
+  const clauses = [describeDay(parsed), describeMonth(parsed), describeYear(parsed)].filter(
+    (c): c is string => c !== null,
+  );
+  return clauses.length > 0 ? `${capitalize(timePhrase)}, ${clauses.join(', ')}.` : `${capitalize(timePhrase)}.`;
+}

@@ -1,4 +1,4 @@
-import { meta, parseCron, nextRuns, DIALECTS, type Dialect } from '@fodt/cron-expression';
+import { meta, parseCron, nextRuns, describeCron, DIALECTS, type Dialect } from '@fodt/cron-expression';
 import { defineTool, str, num, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -86,6 +86,8 @@ export default defineTool({
       const parsed = parseCron(expression, dialect);
       const result = nextRuns(parsed, from, count);
       const outputs: OutputBlock[] = [];
+
+      outputs.push({ kind: 'text', label: 'In plain English', value: describeCron(parsed) });
 
       if (result.runs.length > 0) {
         outputs.push({

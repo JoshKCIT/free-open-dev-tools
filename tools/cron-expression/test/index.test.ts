@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { meta, parseCron, nextRuns, CronError, DIALECTS } from '../src/index';
+import { meta, parseCron, nextRuns, describeCron, CronError, DIALECTS } from '../src/index';
 
 const FROM = new Date('2024-01-01T00:00:00Z');
 
@@ -195,4 +195,35 @@ it('Quartz requires a question mark in exactly one day field and rejects a year 
   expect(() => parseCron('0 0 12 * * ? 2100', 'quartz')).toThrow(CronError);
   expect(() => parseCron('0 0 12 * * ? 2099', 'quartz')).not.toThrow();
   expect(() => parseCron('0 0 12 * * ? 1970', 'quartz')).not.toThrow();
+});
+
+// --------------------------------------------------------------- description
+
+function describeExpr(expression: string, dialect: 'unix' | 'quartz'): string {
+  return describeCron(parseCron(expression, dialect));
+}
+
+it('plain-English descriptions for the reference expressions read as documented', () => {
+  // Unix, both day fields restricted: the either-day OR rule is stated.
+  expect(describeExpr('30 4 1,15 * 5', 'unix')).toBe('At 04:30, on day-of-month 1 and 15, or on Friday.');
+  // Unix, the asterisk-step exception: dayOfMonth is NOT "restricted" in
+  // crontab(5)'s literal sense, but its narrowed values still combine with
+  // "and", never "or".
+  expect(describeExpr('0 0 */2 * 5', 'unix')).toBe('At 00:00, on every 2nd day of the month and on Friday.');
+  // Step + contiguous hour range + contiguous weekday range.
+  expect(describeExpr('*/15 9-17 * * mon-fri', 'unix')).toBe(
+    'Every 15 minutes, from 09:00 to 17:59, on Monday through Friday.',
+  );
+  // Weekday list (not contiguous) + a contiguous month range.
+  expect(describeExpr('0 9 * jan-mar mon,wed,fri', 'unix')).toBe(
+    'At 09:00, on Monday, Wednesday and Friday, in January through March.',
+  );
+  // A day with no restriction at all in either field.
+  expect(describeExpr('0 0 * * *', 'unix')).toBe('At 00:00.');
+  // Quartz: the nth-weekday-of-month special form, with seconds.
+  expect(describeExpr('0 15 10 ? * 6#3', 'quartz')).toBe('At 10:15:00, on the 3rd Friday of the month.');
+  // Quartz: the day-of-month "L" special form.
+  expect(describeExpr('0 15 10 L * ?', 'quartz')).toBe('At 10:15:00, on the last day of the month.');
+  // Quartz: a plain weekday value plus a single restricted month, multiple minute values.
+  expect(describeExpr('0 10,44 14 ? 3 WED', 'quartz')).toBe('At 14:10:00 and 14:44:00, on Wednesday, in March.');
 });
