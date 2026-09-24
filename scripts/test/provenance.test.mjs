@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { redactDenylistTokens, extractCatalogEntries } from '../lib/provenance.mjs';
+import { redactDenylistTokens, extractCatalogEntries, authoredTextFromSourceMap } from '../lib/provenance.mjs';
 
 // These tests use an invented, synthetic token that has nothing to do with
 // the real provenance denylist. The real denylist lives only in a
@@ -101,5 +101,37 @@ describe('extractCatalogEntries (CR-02 regression)', () => {
 
     expect(found).toBe(true);
     expect(entries.some((e) => FORBIDDEN_ENTRY_KEYS.some((k) => Object.hasOwn(e, k)))).toBe(true);
+  });
+});
+
+describe('authoredTextFromSourceMap (phrase layer reads authored sources only)', () => {
+  const map = (sources, sourcesContent) => JSON.stringify({ version: 3, sources, sourcesContent, mappings: '' });
+
+  it('keeps the content of sources this project wrote', () => {
+    const text = authoredTextFromSourceMap(
+      map(['../../src/tools/example.ts'], ['export const note = "zzz-synthetic-phrase";']),
+    );
+    expect(text).toContain('zzz-synthetic-phrase');
+  });
+
+  it('drops the content of a bundled dependency, so a dictionary word cannot trip the phrase layer', () => {
+    const text = authoredTextFromSourceMap(
+      map(
+        ['../../../../node_modules/.pnpm/pkg@1.0.0/node_modules/pkg/dist/words.js', '../../src/tools/example.ts'],
+        ['export default ["zzz-dictionary-word"];', 'export const ok = 1;'],
+      ),
+    );
+    expect(text).not.toContain('zzz-dictionary-word');
+    expect(text).toContain('export const ok = 1;');
+  });
+
+  it('treats Windows-style dependency paths as dependencies too', () => {
+    const text = authoredTextFromSourceMap(map(['..\\node_modules\\pkg\\words.js'], ['zzz-dictionary-word']));
+    expect(text).toBe('');
+  });
+
+  it('returns null for an unreadable map or one without sourcesContent, so the caller scans the whole file', () => {
+    expect(authoredTextFromSourceMap('not json')).toBeNull();
+    expect(authoredTextFromSourceMap(JSON.stringify({ version: 3, sources: ['a.ts'], mappings: '' }))).toBeNull();
   });
 });

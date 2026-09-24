@@ -34,7 +34,7 @@ import { join, extname, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import { ROOT } from './lib/catalog.mjs';
-import { redactDenylistTokens, extractCatalogEntries } from './lib/provenance.mjs';
+import { redactDenylistTokens, extractCatalogEntries, authoredTextFromSourceMap } from './lib/provenance.mjs';
 
 /** Extensions the built-output scan (layers 1 and 3) reads, in one shared place. */
 const DIST_EXTENSIONS = new Set(['.js', '.html', '.css', '.json', '.xml', '.txt', '.map']);
@@ -310,8 +310,19 @@ for (const rel of trackedFiles) {
     for (const full of distFiles) {
       const rel = relative(ROOT, full).split('\\').join('/');
       if (SELF_EXEMPT.has(rel)) continue;
+      // A chunk with a source map is scanned through the map, authored sources
+      // only, so a bundled dependency's ordinary vocabulary cannot trip the
+      // phrase layer. Layer 1 (names) still scans every byte of every file.
+      if (rel.endsWith('.js') && existsSync(full + '.map')) continue;
       const text = readScannableText(full);
       if (text === null) continue;
+      if (rel.endsWith('.map')) {
+        // readScannableText lower-cases, which would also lower-case the
+        // map's own sourcesContent key, so the map is parsed from the raw file.
+        const authored = authoredTextFromSourceMap(readFileSync(full, 'utf8'));
+        scanTextForPhrases(rel, authored === null ? text : authored.toLowerCase());
+        continue;
+      }
       scanTextForPhrases(rel, text);
     }
   }

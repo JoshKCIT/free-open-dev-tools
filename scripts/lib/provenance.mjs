@@ -44,3 +44,34 @@ export function extractCatalogEntries(data) {
   if (Array.isArray(data?.canonical)) return { entries: data.canonical, found: true };
   return { entries: [], found: false };
 }
+
+/**
+ * The text this project wrote, taken out of a built chunk's source map: the
+ * original content of every source that is not a third-party dependency.
+ *
+ * The phrase layer (D-21 layer 3) exists to catch derivation wording in our
+ * own words. A bundled dependency can legitimately contain an ordinary word
+ * from the phrase list (a password scorer's English dictionary holds one),
+ * and a gate that fires on legitimate content gets switched off
+ * (the D-22 reasoning). So for a chunk that has a source map, the phrase
+ * layer reads only the authored sources recovered here.
+ *
+ * Returns `null` when the map cannot be read or carries no sourcesContent,
+ * so the caller falls back to scanning the whole built file.
+ */
+export function authoredTextFromSourceMap(mapText) {
+  let map;
+  try {
+    map = JSON.parse(mapText);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(map?.sources) || !Array.isArray(map?.sourcesContent)) return null;
+  const parts = [];
+  map.sources.forEach((source, i) => {
+    if (/(^|[\\/])node_modules[\\/]/.test(String(source))) return;
+    const content = map.sourcesContent[i];
+    if (typeof content === 'string') parts.push(content);
+  });
+  return parts.join('\n');
+}
