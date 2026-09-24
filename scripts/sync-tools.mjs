@@ -131,6 +131,17 @@ ${bullets(meta.ambiguities)}
 ${meta.standards.map((s) => `- [${s.label}](${s.url})`).join('\n')}
 `
       : ''
+  }${
+    meta.bundledData && meta.bundledData.length
+      ? `
+## Bundled data
+
+This folder ships a data file that is not an npm dependency, so it travels with the folder when it is
+copied out on its own:
+
+${meta.bundledData.map((d) => `- **${d.name}** (${d.licence}) — [source](${d.source}). ${d.attribution}`).join('\n')}
+`
+      : ''
   }
 ## Use it on its own
 
