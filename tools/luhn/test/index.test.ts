@@ -114,11 +114,15 @@ it('each of the four Discover range families matches at both of its boundaries',
   expect(identify('6011000000000004').map((m) => m.id)).toEqual(['discover']);
   expect(identify('6012000000000003')).toEqual([]);
 
-  // 622126-622925, six-digit range.
-  expect(identify('6221250000000001')).toEqual([]);
+  // 622126-622925, six-digit range. Immediately outside this specific
+  // sub-range on either side is still inside China UnionPay's own wider
+  // "62" range (620000-629999), so Discover is correctly absent while
+  // unionpay is correctly present -- not an empty match, because these
+  // two ranges are the very overlap this tool exists to report honestly.
+  expect(identify('6221250000000001').map((m) => m.id)).toEqual(['unionpay']);
   expect(identify('6221260000000000').map((m) => m.id)).toEqual(expect.arrayContaining(['discover']));
   expect(identify('6229250000000003').map((m) => m.id)).toEqual(expect.arrayContaining(['discover']));
-  expect(identify('6229260000000002')).toEqual([]);
+  expect(identify('6229260000000002').map((m) => m.id)).toEqual(['unionpay']);
 
   // 644-649, three-digit range. Its own low boundary is a clean
   // exclusion; 643 does not fall in any of Discover's other three
