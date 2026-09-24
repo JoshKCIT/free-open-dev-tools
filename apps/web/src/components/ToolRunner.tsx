@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Field, ToolPage, ToolResult, Values } from '../lib/tool-ui';
+import { formatBytes } from '../lib/tool-ui';
 import OutputView from './OutputView';
 
 function initialValues(fields: Field[]): Values {
@@ -191,7 +192,8 @@ function FieldControl({ field, value, onChange }: { field: Field; value: unknown
         </div>
       );
 
-    case 'file':
+    case 'file': {
+      const selected = Array.isArray(value) ? (value as File[]) : [];
       return (
         <div className="field">
           <label htmlFor={id}>{field.label}</label>
@@ -203,9 +205,20 @@ function FieldControl({ field, value, onChange }: { field: Field; value: unknown
             aria-describedby={describedBy}
             onChange={(e) => onChange(Array.from(e.target.files ?? []))}
           />
+          {/* No custom empty-state copy: when nothing is chosen the browser
+              renders its own placeholder, which the design contract records
+              as deliberate. This summary line is additive and shown only
+              once at least one file is selected. */}
+          {selected.length > 0 && selected[0] ? (
+            <p className="field-help">
+              {selected[0].name} — {formatBytes(selected[0].size)}
+              {selected.length > 1 ? `, and ${selected.length - 1} more` : ''}
+            </p>
+          ) : null}
           {help}
         </div>
       );
+    }
 
     default:
       return null;
@@ -218,6 +231,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const [result, setResult] = useState<ToolResult | null>(null);
   const [running, setRunning] = useState(false);
   const [crashed, setCrashed] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ fraction: number; detail?: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runSeq = useRef(0);
 
@@ -225,6 +239,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
     setValues(base);
     setResult(null);
     setCrashed(null);
+    setProgress(null);
   }, [base]);
 
   const execute = useCallback(
@@ -235,8 +250,32 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
       const seq = ++runSeq.current;
       setRunning(true);
       setCrashed(null);
+      setProgress(null);
       try {
-        const r = await tool.run(v, { signal: controller.signal });
+        const r = await tool.run(v, {
+          signal: controller.signal,
+          onProgress: (fraction, detail) => {
+            // Guarded on BOTH the captured sequence AND the captured
+            // controller's aborted state. The sequence counter is only
+            // advanced when a run begins, or when the run is abandoned
+            // below. After a cancel with no new run started, the sequence
+            // is unchanged -- a job that ignores its abort signal and
+            // keeps reporting would sail through a sequence-only guard and
+            // repaint the bar the cancel just cleared. Checking abortion
+            // too closes that gap.
+            if (seq === runSeq.current && !controller.signal.aborted) {
+              setProgress({ fraction, detail });
+            }
+          },
+        });
+        // A tool may finish its work without ever observing the abort
+        // signal. If the controller has already been aborted (by Cancel or
+        // by the run being abandoned below), return here before setting a
+        // result, so a late result can never overwrite the cancellation
+        // note that was already set. Only the catch path checked this
+        // before; the success path checked only the sequence, which is
+        // not enough.
+        if (controller.signal.aborted) return;
         if (seq === runSeq.current) setResult(r);
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -245,11 +284,67 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
           setCrashed(err instanceof Error ? err.message : String(err));
         }
       } finally {
-        if (seq === runSeq.current) setRunning(false);
+        if (seq === runSeq.current) {
+          setRunning(false);
+          setProgress(null);
+        }
       }
     },
     [tool],
   );
+
+  /**
+   * The single operation that invalidates whatever run is currently in
+   * flight. Cancel, Reset, the field value setter and the example buttons
+   * all route through this rather than each reimplementing invalidation,
+   * so a visitor who edits the form, resets it or picks a different
+   * example while a cancellable run is in flight can never be handed that
+   * run's result into a form that has since moved on.
+   *
+   * Does all four of the following, in this order:
+   *   1. advance the run sequence counter -- every sequence-based guard in
+   *      this component (the progress callback above, and the success
+   *      path in `execute`) now treats the in-flight run as stale;
+   *   2. abort the controller -- a worker or a signal-observing tool
+   *      stops; a tool that ignores the signal cannot be stopped from
+   *      here, only suppressed (see the comment above `execute`'s abort
+   *      check);
+   *   3. clear the progress state, so a stale bar can never linger into
+   *      whatever comes next;
+   *   4. clear `running` directly. This step is NOT redundant: step 1
+   *      already advanced the sequence, so the `finally` block in
+   *      `execute` above -- which only clears `running` while its
+   *      captured sequence is still current -- will skip its own cleanup
+   *      once that promise settles. Without this step the Run button,
+   *      gated on `disabled={running}`, would stay disabled forever.
+   */
+  const abandonRun = useCallback((reason: 'cancel' | 'reset' | 'edit') => {
+    // 1. advance the run sequence counter.
+    runSeq.current++;
+    // 2. abort the controller.
+    abortRef.current?.abort();
+    // 3. clear the progress state.
+    setProgress(null);
+    // 4. clear running directly -- step 1 already advanced the sequence, so
+    //    execute's own finally (which only clears running while its
+    //    captured sequence is still current) skips its own cleanup here.
+    //    Without this the Run button, disabled while running, would never
+    //    re-enable once the abandoned promise settles.
+    setRunning(false);
+    if (reason === 'cancel') {
+      // Cancelling never shows a partial result: a half-computed digest a
+      // visitor might copy and trust is worse than none.
+      setCrashed(null);
+      setResult({
+        outputs: [{ kind: 'note', tone: 'warn', value: 'Cancelled before finishing. No result was produced.' }],
+      });
+    } else if (reason === 'reset') {
+      setResult(null);
+      setCrashed(null);
+    }
+    // reason === 'edit': leave the result panel exactly as it is. The
+    // visitor is mid-thought, not starting over.
+  }, []);
 
   // Debounced auto-run. The delay keeps a large paste from re-running per keystroke.
   useEffect(() => {
@@ -261,9 +356,23 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const visibleFields = tool.fields.filter((f) => !f.visible || f.visible(values));
-  const set = (name: string, v: unknown) => setValues((prev) => ({ ...prev, [name]: v }));
+  const set = (name: string, v: unknown) => {
+    if (tool.cancellable && running) abandonRun('edit');
+    setValues((prev) => ({ ...prev, [name]: v }));
+  };
 
   const hasOutput = result && result.outputs.length > 0;
+  const statsBlock =
+    result?.stats && result.stats.length > 0 ? (
+      <div className="stats">
+        {result.stats.map(([k, v]) => (
+          <span key={k}>
+            {k} <strong>{v}</strong>
+          </span>
+        ))}
+      </div>
+    ) : null;
+  const statsPosition = result?.statsPosition ?? 'before-outputs';
 
   return (
     <div className="tool-layout">
@@ -279,7 +388,15 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
                   type="button"
                   className="button"
                   style={{ padding: '3px 9px', fontSize: '0.78rem' }}
-                  onClick={() => setValues({ ...base, ...ex.values })}
+                  onClick={() => {
+                    // Bypasses the field setter, so it must abandon an
+                    // in-flight cancellable run itself -- otherwise a
+                    // visitor who picks a different example mid-run could
+                    // be handed the old run's result into the new example's
+                    // fields.
+                    if (tool.cancellable && running) abandonRun('edit');
+                    setValues({ ...base, ...ex.values });
+                  }}
                 >
                   {ex.label}
                 </button>
@@ -302,10 +419,16 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
                 {running ? 'Working…' : 'Run'}
               </button>
             ) : null}
+            {tool.cancellable && running ? (
+              <button type="button" className="button" onClick={() => abandonRun('cancel')}>
+                Cancel
+              </button>
+            ) : null}
             <button
               type="button"
               className="button"
               onClick={() => {
+                if (tool.cancellable && running) abandonRun('reset');
                 setValues(base);
                 setResult(null);
                 setCrashed(null);
@@ -314,6 +437,12 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
               Reset
             </button>
           </div>
+          {progress ? (
+            <>
+              <progress className="tool-progress" max={1} value={progress.fraction} aria-label="Run progress" />
+              {progress.detail ? <p className="field-help">{progress.detail}</p> : null}
+            </>
+          ) : null}
         </div>
       </section>
 
@@ -357,20 +486,15 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
               ))
             : null}
 
-          {result?.stats && result.stats.length > 0 ? (
-            <div className="stats">
-              {result.stats.map(([k, v]) => (
-                <span key={k}>
-                  {k} <strong>{v}</strong>
-                </span>
-              ))}
-            </div>
-          ) : null}
+          {statsPosition === 'before-outputs' ? statsBlock : null}
 
           {hasOutput ? (
             <div>
               {result.outputs.map((b, i) => (
-                <OutputView key={i} block={b} />
+                <Fragment key={i}>
+                  <OutputView block={b} />
+                  {statsPosition === 'after-first-output' && i === 0 ? statsBlock : null}
+                </Fragment>
               ))}
             </div>
           ) : !result?.errors?.length && !crashed ? (
@@ -378,6 +502,8 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
               {tool.autoRun === false ? 'Choose your input, then press Run.' : 'Output appears here as you type.'}
             </p>
           ) : null}
+
+          {statsPosition === 'after-outputs' ? statsBlock : null}
         </div>
       </section>
     </div>

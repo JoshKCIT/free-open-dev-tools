@@ -80,11 +80,31 @@ export interface ToolResult {
   warnings?: string[];
   /** Small facts shown above the output, such as byte counts or timings. */
   stats?: [string, string][];
+  /**
+   * Where the `stats` block renders relative to `outputs`. Absent means
+   * `'before-outputs'`, which is today's order (every stats entry before
+   * every output block) -- so no page already live changes.
+   *
+   * This is a closed three-valued union rather than a two-state boolean on
+   * purpose. The password-strength readout has a design-contract-fixed
+   * order of verdict note, then stats, then a "Why" list, then a crack-time
+   * table: the stats belong between the FIRST output block and the rest, a
+   * position no boolean can express ("before all" or "after all" both give
+   * the wrong order). `'after-first-output'` says exactly that.
+   */
+  statsPosition?: 'before-outputs' | 'after-first-output' | 'after-outputs';
 }
 
 export interface RunContext {
   /** Aborts when the user edits input again or leaves the page. */
   signal: AbortSignal;
+  /**
+   * Reports fractional progress (0-1) for long-running work, with an
+   * optional detail string describing what stage it is at. Optional; most
+   * tools never call it, and a tool that never calls it behaves exactly as
+   * it does today -- no progress bar, no Cancel button, nothing rendered.
+   */
+  onProgress?(fraction: number, detail?: string): void;
 }
 
 export interface ToolDocs {
@@ -117,6 +137,13 @@ export interface ToolPage {
   run(values: Values, ctx: RunContext): ToolResult | Promise<ToolResult>;
   /** Re-run as the user types. Off for tools with an expensive or file-based run. */
   autoRun?: boolean;
+  /**
+   * Declares that this tool's work can be abandoned part way through, and
+   * that the visitor should be offered a control that does so. Absent
+   * means false everywhere it is checked: no Cancel button ever renders,
+   * and editing the form or pressing Reset never aborts an in-flight run.
+   */
+  cancellable?: boolean;
   /** Every tool in this release is 'local'. The value is displayed on the page. */
   processing?: 'local';
 }
@@ -154,6 +181,24 @@ export function str(values: Values, field: string, fallback = ''): string {
 export function files(values: Values, field: string): File[] {
   const v = values[field];
   return Array.isArray(v) ? (v as File[]) : [];
+}
+
+/**
+ * A short human-readable size string: bytes below the kilobyte threshold
+ * (no decimal place), then kilobytes, megabytes or gigabytes on powers of
+ * 1024, one decimal place each. Pure, so three tool pages this phase that
+ * report file sizes in `stats` stay consistent with each other.
+ */
+export function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n < 1024) return `${Math.max(0, Math.round(n))} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = n / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${value.toFixed(1)} ${units[unit]}`;
 }
 
 /** Convenience for the common "one block of text out" case. */

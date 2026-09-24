@@ -635,6 +635,11 @@ input[type='file'] {
   padding: 5px 10px;
   font-size: 0.82rem;
 }
+.tool-progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent);
+}
 
 .output-block + .output-block {
   margin-top: 14px;
