@@ -1,0 +1,40 @@
+{
+  "id": "password-strength",
+  "name": "Password Strength Estimator",
+  "summary": "Estimate guessing resistance and show the reasoning, without sending the password anywhere.",
+  "about": "Scores a password against a real word-list-backed model rather than counting character classes, so the result comes with a reason: a common leaked password, a dictionary word, a keyboard pattern or a predictable date, each named in plain language alongside how long it would take to guess under a few different kinds of attack.",
+  "supports": [
+    "A score from 0 (very weak) to 4 (very strong), with a plain-language label for each",
+    "Plain-language reasons for the score: a common leaked password, a dictionary word (optionally with digits or symbols attached), a keyboard-adjacent sequence, a repeated character run, or a predictable date",
+    "Estimated time to crack under four attack scenarios: an online attack that is rate-limited, an online attack that is not, an offline attack against a slow, salted hash, and an offline attack against a fast, unsalted hash",
+    "Scoring as you type, with the same 140ms debounce every other live-scoring tool on this site uses",
+    "English common-password and common-word dictionaries, plus keyboard-adjacency data for the most common layouts",
+    "Passwords up to 256 characters; anything longer is truncated before scoring and the report says so"
+  ],
+  "limits": [
+    "This is an estimate against a model's own assumptions, not a guarantee. A password this tool rates highly can still be rejected by a service's own policy, and a password it rates poorly is not automatically compromised.",
+    "The dictionaries are English and weighted towards passwords leaked from English-language services, so a strong password in another language may score higher than it deserves.",
+    "The score is not a policy. Nothing here enforces a minimum score or blocks a choice; it only explains one.",
+    "Input longer than 256 characters is truncated to that length before scoring, and the report states when truncation happened.",
+    "The password is scored inside this page and never leaves the browser: no request, no storage, no cookie, no URL parameter."
+  ],
+  "ambiguities": [
+    "The reference for every test in this tool's suite is the installed scorer itself, not an external vector table: this tool exposes what the library computed for a given input rather than reimplementing a published algorithm from a paper. The common-password and dictionary-word test cases are asserted by the kind of match the library reports, not by an exact score, so a future dictionary update in the library does not turn the suite red for no reason."
+  ],
+  "standards": [
+    {
+      "label": "Dan Wheeler, \"zxcvbn: Low-Budget Password Strength Estimation\", USENIX Security 2016 — the model the scorer this tool wraps implements",
+      "url": "https://www.usenix.org/conference/usenixsecurity16/technical-sessions/presentation/wheeler"
+    }
+  ],
+  "keywords": ["password", "strength", "zxcvbn", "entropy", "security", "guessability"],
+  "primaryExport": "score",
+  "usage": "import { score, SCORE_LABELS } from '@fodt/password-strength';\n\nconst report = score('correct horse battery staple');\nreport.score;      // 0-4\nreport.label;       // 'Very strong'\nreport.reasons;     // plain-language StrengthReason[]\nreport.crackTimes;  // one entry per attack scenario",
+  "apiNotes": "The scorer (`@zxcvbn-ts/core`) and both language packs (`@zxcvbn-ts/language-common`, `@zxcvbn-ts/language-en`) are imported statically at the top of this file so their dictionaries land in this page's own build chunk rather than being fetched on first use. The scorer's one-time options-setting call is reachable only from inside `score()`, guarded by a module-level flag, because this package (like every tool package here) declares `sideEffects: false`, which permits a bundler to drop an unused top-level call.",
+  "testNotes": "The installed library is the oracle: these tests assert that a known leaked password is reported via a dictionary match, that a dictionary word with digits appended reports both parts, that a long random passphrase scores at the top of the range, that a keyboard-adjacent run and a repeated-character run are each named, and that the score-to-tone mapping and the plain-language crack-time scenario names match the design contract. None of this cites an external vector table, because the scorer's own output is what this tool exposes.",
+  "dependencies": {
+    "@zxcvbn-ts/core": "4.2.0",
+    "@zxcvbn-ts/language-common": "4.1.3",
+    "@zxcvbn-ts/language-en": "4.1.1"
+  }
+}
