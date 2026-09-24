@@ -1,0 +1,87 @@
+# JWT Signer & Verifier
+
+Sign and verify JWTs with HMAC, RSA and ECDSA using the browser crypto API.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Signs and verifies JSON Web Signatures over the browser's own SubtleCrypto interface, covering the keyed-hash, RSASSA-PKCS1-v1_5, RSASSA-PSS and ECDSA algorithm families RFC 7518 defines. Verification always takes its algorithm and its key from you, never from the token's own header, because trusting the header is the algorithm-confusion attack that lets an attacker present a public key as a shared secret. A valid signature says nothing about the claims inside the token; it only proves who holds the key.
+
+## Supported
+
+- Signing and verifying with HS256, HS384 and HS512 (a shared secret, read as UTF-8 text, hexadecimal or Base64)
+- Signing and verifying with RS256, RS384 and RS512 (RSASSA-PKCS1-v1_5) and PS256, PS384 and PS512 (RSASSA-PSS)
+- Signing and verifying with ES256, ES384 and ES512 (ECDSA over P-256, P-384 and P-521)
+- Keys supplied as a PKCS8 private key PEM, an SPKI public key PEM or a JSON Web Key
+- Reporting whether a token's own header algorithm agrees with the algorithm you chose, without ever verifying under the header's terms
+- Refusing the unsecured 'none' algorithm outright, on both signing and verification
+- Distinguishing a bad signature from an unparseable token from a key that could not be imported, as three separate outcomes
+- Reporting the exact bytes that were signed, so a mismatch can be tracked back to the payload rather than guessed at
+
+## Limits
+
+- This checks the signature only, not the claims: a token with an expired 'exp' or a wrong 'aud' still verifies here if the signature is genuinely valid. Read the claims with a decoder before trusting them.
+- The unsecured 'none' algorithm is refused on purpose, on both signing and verification. Nothing here will produce or accept an unsigned token.
+- ECDSA signatures are not deterministic: signing the same header and payload twice with the same key produces two different, both-valid signatures. Two correct signatures of the same token will not match each other byte for byte.
+- A key pasted here is used only in this page and never sent anywhere, but this tool cannot see what your browser extensions or clipboard managers do with it before it arrives.
+
+## Ambiguous cases, and what this does about them
+
+- The algorithm to verify under is taken from you, the visitor, never from the token's own header. RFC 7515 does not forbid reading the header, but a verifier that does is vulnerable to algorithm confusion: an attacker who obtains a public key can present it as an HMAC secret and sign a forged token the header itself claims is trustworthy. This tool reads the header only to report whether it agrees with what you chose.
+
+## Defined by
+
+- [RFC 7515 — JSON Web Signature (JWS)](https://www.rfc-editor.org/rfc/rfc7515)
+- [RFC 7518 — JSON Web Algorithms (JWA)](https://www.rfc-editor.org/rfc/rfc7518)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/jwt-signature jwt-signature
+cd jwt-signature
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/jwt-signature
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { sign, verify, ALGORITHMS } from '@fodt/jwt-signature';
+import { importSigningKey, importVerifyingKey } from '@fodt/jwt-signature';
+
+const key = await importSigningKey('HS256', { kind: 'secret', encoding: 'utf8', value: 'a-shared-secret' });
+const token = await sign('{"typ":"JWT","alg":"HS256"}', '{"sub":"1234567890"}', key, { algorithm: 'HS256' });
+
+const verifyKey = await importVerifyingKey('HS256', { kind: 'secret', encoding: 'utf8', value: 'a-shared-secret' });
+const report = await verify(token, verifyKey, { algorithm: 'HS256' });
+// report.valid === true
+```
+
+Every function is asynchronous because SubtleCrypto's own key-import, sign and verify calls are asynchronous. `sign()` takes the header and payload as verbatim strings, not objects, because the exact signed bytes are the JSON text itself; a caller passing an object must serialise it first. `verify()`'s options require an `algorithm`; there is no default, and passing none throws rather than guessing.
+
+## Dependencies
+
+None. This package has no runtime dependencies.
+
+## Tests
+
+```sh
+npm test
+```
+
+Signing and verification are asserted against RFC 7515 Appendix A's own worked examples: A.1 (HS256) is checked character for character against the exact compact token the RFC prints, and A.2 (RS256), A.3 (ES256) and A.4 (ES512) are verified against the RFC's own public keys. ECDSA examples are verified rather than reproduced, since the algorithm is not deterministic. Every supported algorithm also signs and verifies a freshly generated key pair as a self-consistency check.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
