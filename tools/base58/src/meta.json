@@ -1,0 +1,37 @@
+{
+  "id": "base58",
+  "name": "Base58 Encoder & Decoder",
+  "summary": "Encode and decode Base58 and Base58Check using the Bitcoin, Ripple and Flickr alphabets.",
+  "about": "Converts between bytes and Base58 text, the alphanumeric encoding Bitcoin addresses and several other systems use to avoid the visually confusable characters Base64 allows. Also offers Base58Check, which appends a four-byte checksum so a mistyped or corrupted value can be detected before it is used.",
+  "supports": [
+    "The Bitcoin, Ripple (XRP Ledger) and Flickr Base58 alphabets, each a distinct ordering of the same 58 characters",
+    "Arbitrary binary data in either direction, not only values that happen to look like an address",
+    "Base58Check: a version byte plus payload, checksummed with a double SHA-256 and its first four bytes, matching how Bitcoin addresses and private keys (WIF) are built",
+    "Exact preservation of leading zero bytes, which the plain Base58 integer conversion cannot recover on its own and must be handled as a separate step",
+    "Detection of a corrupted Base58Check value, reported as a checksum mismatch rather than a generic decode failure",
+    "A version byte separate from the payload on decode, matching how Bitcoin addresses and the wallet import format (WIF) split those two pieces"
+  ],
+  "limits": [
+    "Only the Bitcoin alphabet has an implementation that defines it normatively (the Bitcoin Core source). The Ripple and Flickr alphabets are de facto conventions used by their respective ecosystems' own libraries, not documents published by a standards body.",
+    "This tool does not interpret what a decoded payload means. It will happily decode a Base58Check value into a version byte and a payload with no opinion on whether that payload is a valid address, a private key, or something else entirely.",
+    "Base58Check's four-byte checksum is meant to catch accidental transcription errors, not deliberate tampering. It is not a cryptographic signature and provides no authentication.",
+    "This is an encoding, not encryption. Base58 and Base58Check provide no confidentiality whatsoever."
+  ],
+  "ambiguities": [
+    "The three alphabets are the same 58 characters in three different orders, so a Base58 string decoded on the wrong alphabet produces different bytes with no error at all. Pick the alphabet the source system actually used.",
+    "A Base58Check value with a valid checksum still is not proof the payload is a real, spendable address. Checksum validity means the string was transcribed correctly, nothing more."
+  ],
+  "standards": [
+    {
+      "label": "Bitcoin Core — base58.cpp (defines the Bitcoin alphabet)",
+      "url": "https://github.com/bitcoin/bitcoin/blob/master/src/base58.cpp"
+    },
+    { "label": "Bitcoin Wiki — Base58Check encoding", "url": "https://en.bitcoin.it/wiki/Base58Check_encoding" }
+  ],
+  "dependencies": { "@noble/hashes": "^2.4.0" },
+  "keywords": ["base58", "base58check", "bitcoin", "ripple", "xrp", "flickr", "encoding", "decoder"],
+  "primaryExport": "encodeBytes",
+  "usage": "import { encodeBytes, decodeToBytes, encodeCheck, decodeCheck } from '@fodt/base58';\n\nencodeBytes(new Uint8Array([0, 1, 2]));                     // '1Ahz2'\ndecodeToBytes('1Ahz2');                                      // Uint8Array [0, 1, 2]\nencodeCheck(0x00, hexBytes);                                 // 'Base58Check address'\ndecodeCheck('1PMycacnJaSqwwJqjawXBErnLsZ7RkXUAs');           // { version: 0, payload: Uint8Array }",
+  "apiNotes": "`decodeToBytes` and `decodeCheck` throw `Base58Error`, which carries a `position` field where a bad character was found. `encodeCheck` takes a version byte and a payload and returns the full checksummed string; `decodeCheck` returns `{ version, payload }` separately rather than one joined array. The checksum in `encodeCheck`/`decodeCheck` is computed with `sha256` from `@noble/hashes`, applied twice.",
+  "testNotes": "The Bitcoin alphabet is transcribed character for character from `bitcoin/bitcoin`'s own `base58.cpp`. The Ripple alphabet is transcribed from `@scure/base`'s `base58xrp` export, which is the alphabet the XRP Ledger's own `ripple-address-codec` library (via `xrpl.js`) actually uses at runtime — an independent second source from Bitcoin's. The Flickr alphabet is transcribed from the same `@scure/base` library's `base58flickr` export. All three are asserted against an independently transcribed copy in the test file, not merely checked for length and uniqueness. The Base58Check known-answer triple (version 0x00, payload `f54a5851e9372b87810a8e60cdd2e7cfd80b6e31`, encoded `1PMycacnJaSqwwJqjawXBErnLsZ7RkXUAs`) is taken from the Bitcoin Wiki's 'Technical background of version 1 Bitcoin addresses' worked example and independently recomputed with Node's own `crypto` module before being fixed as a test vector."
+}
