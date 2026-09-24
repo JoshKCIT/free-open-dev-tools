@@ -288,3 +288,12 @@ describe('additional coverage', () => {
     expect(formatDigest(digest, 'base64url')).toBe(createHash('sha256').update('abc').digest('base64url'));
   });
 });
+
+it('RFC 1321 appendix A.5, FIPS 180-4 and FIPS 202: the published digests of abc, fed in one byte at a time', () => {
+  const state = createHashers(['md5', 'sha256', 'sha3-256']);
+  for (const byte of utf8ToBytes('abc')) updateHashers(state, Uint8Array.of(byte));
+  const byId = Object.fromEntries(finishHashers(state, 'hex').map((r) => [r.algorithm, r.digest]));
+  expect(byId.md5).toBe('900150983cd24fb0d6963f7d28e17f72');
+  expect(byId.sha256).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  expect(byId['sha3-256']).toBe('3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532');
+});

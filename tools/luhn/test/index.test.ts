@@ -200,3 +200,9 @@ describe('luhn', () => {
     });
   });
 });
+
+it('ISO/IEC 7812-1 Annex B: 7992739871 takes check digit 3, and 79927398713 passes', () => {
+  expect(checkDigit('7992739871')).toBe('3');
+  expect(isValid('79927398713')).toBe(true);
+  expect(isValid('79927398710')).toBe(false);
+});

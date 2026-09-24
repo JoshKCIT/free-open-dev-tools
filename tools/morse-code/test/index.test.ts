@@ -123,3 +123,9 @@ it('decoding tolerates any run of whitespace between letters, and treats three o
 it('a run-together token with no separator at all is not the same as separated letters, and is rejected', () => {
   expect(() => fromMorse('...---...')).toThrow(MorseError);
 });
+
+it('ITU-R M.1677-1: SOS is three dots, three dashes, three dots, and reads back as SOS', () => {
+  const code = toMorse('SOS');
+  expect(code.split(/\s+/)).toEqual(['...', '---', '...']);
+  expect(fromMorse(code)).toBe('SOS');
+});
