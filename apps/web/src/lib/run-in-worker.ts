@@ -126,11 +126,15 @@ export function hashFileInWorker(
     const job: HashFileJobMessage = { type: 'hash-file-job', file, algorithms, format, chunkSize };
     try {
       worker.postMessage(job);
-    } catch (err) {
+    } catch {
       // postMessage throws synchronously when its argument cannot be
       // structured-cloned. Settle from the catch rather than leaving the
-      // promise pending.
-      settle({ ok: false, error: err instanceof Error ? err : new Error('The background task could not start.') });
+      // promise pending. The same fixed message as the other native
+      // failure paths below: the raw exception (often a terse native
+      // "could not be cloned" error) is not more useful to a visitor than
+      // this sentence, and matching it keeps every startup failure on this
+      // page reading the same way.
+      settle({ ok: false, error: new Error('The background task could not start.') });
     }
   });
 }

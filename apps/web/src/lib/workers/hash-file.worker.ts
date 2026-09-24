@@ -6,7 +6,14 @@
  * the tool package (@fodt/hash-file); this file only owns reading a file in
  * slices and the message protocol back to the page.
  */
-import { createHashers, updateHashers, finishHashers, type Algorithm, type OutputFormat, type FileHashResult } from '@fodt/hash-file';
+import {
+  createHashers,
+  updateHashers,
+  finishHashers,
+  type Algorithm,
+  type OutputFormat,
+  type FileHashResult,
+} from '@fodt/hash-file';
 
 /** One message the page sends to start a run. */
 export interface HashFileJobMessage {
