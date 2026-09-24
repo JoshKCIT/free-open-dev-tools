@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Request } from '@playwright/test';
+import { test, expect, type Page, type Request, type TestInfo } from '@playwright/test';
 import { readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,10 +17,12 @@ const rel = (path: string) => path.replace(/^\//, '');
  * The privacy claim, checked rather than asserted.
  *
  * For every tool page this drives the real production build, types a unique
- * canary string into every input, and then fails if that canary escaped
- * through any channel: a network request, storage, the URL, a cookie, or the
- * console. It also fails if the page made any network request at all while
- * processing, whatever the contents.
+ * canary string and a distinctive numeric tracer into every control it can
+ * reach, in every mode a radio/select/checkbox can put the page into, and
+ * then fails if either value escaped through any channel: a network
+ * request, storage, the URL, a cookie, or the console. It also fails if the
+ * page made any network request at all while processing, whatever the
+ * contents.
  *
  * A tool that leaks input here blocks the release.
  */
@@ -34,6 +36,35 @@ const toolIds = readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
 /** Distinctive enough that it cannot appear by accident in a bundle or a log. */
 function canary(id: string): string {
   return `CANARY-7f3a91-${id}-d4e8b2`;
+}
+
+/**
+ * A distinctive per-tool NEGATIVE INTEGER tracer (D-18 requires an integer,
+ * never a fraction). Construction, pinned exactly because Task 3's mutation
+ * check recomputes this value independently and compares it to what the
+ * suite prints:
+ *
+ *   - the literal "-"
+ *   - the fixed five-digit prefix 98765
+ *   - six digits folded from the tool id: sum each character's code
+ *     multiplied by its ONE-BASED position in the id, modulo 1,000,000,
+ *     zero-padded to six digits.
+ *
+ * So numericCanary('random-number') is "-98765" followed by six digits,
+ * eleven characters in total.
+ *
+ * It is an integer (not a fraction), it is negative -- which is how the
+ * runaway-loop risk is handled without breaking D-18: a field that means a
+ * count, a length, a repetition or a bit width either clamps a negative
+ * value or rejects it outright, none of them loops on it -- and it is long
+ * and unusual enough that finding it in storage, a cookie or a URL names the
+ * page it came from unambiguously.
+ */
+function numericCanary(id: string): string {
+  let sum = 0;
+  for (let i = 0; i < id.length; i++) sum += id.charCodeAt(i) * (i + 1);
+  const fold = String(sum % 1000000).padStart(6, '0');
+  return `-98765${fold}`;
 }
 
 interface Recorder {
@@ -66,7 +97,17 @@ async function instrument(page: Page): Promise<Recorder> {
   };
 }
 
-/** Everything the page could have written locally that we can read back. */
+/**
+ * Everything the page could have written locally that we can read back.
+ *
+ * The `idb:<name>` line is the original, unchanged check. Everything after
+ * it is additive: for each database it also opens it read-only, enumerates
+ * every object store, and reads every record with `getAll()`, bounded to a
+ * small cap per store so a page that never uses IndexedDB -- which is all of
+ * them today -- costs nothing beyond the `databases()` call itself. Wrapped
+ * in its own try/catch so an engine that cannot do this degrades to the
+ * database-name line only, rather than failing the suite.
+ */
 async function readStorage(page: Page): Promise<string> {
   return page.evaluate(async () => {
     const parts: string[] = [];
@@ -89,7 +130,48 @@ async function readStorage(page: Page): Promise<string> {
     parts.push(`cookie:${document.cookie}`);
     try {
       const databases = (await indexedDB.databases?.()) ?? [];
-      for (const db of databases) parts.push(`idb:${db.name}`);
+      for (const db of databases) {
+        parts.push(`idb:${db.name}`);
+        if (!db.name) continue;
+        try {
+          const opened = await new Promise<IDBDatabase | null>((resolve) => {
+            const req = indexedDB.open(db.name!);
+            const timer = setTimeout(() => resolve(null), 1000);
+            req.onsuccess = () => {
+              clearTimeout(timer);
+              resolve(req.result);
+            };
+            req.onerror = () => {
+              clearTimeout(timer);
+              resolve(null);
+            };
+            req.onblocked = () => {
+              clearTimeout(timer);
+              resolve(null);
+            };
+          });
+          if (!opened) continue;
+          for (const storeName of Array.from(opened.objectStoreNames)) {
+            try {
+              const tx = opened.transaction(storeName, 'readonly');
+              const store = tx.objectStore(storeName);
+              const records = await new Promise<unknown[]>((resolve) => {
+                const req = store.getAll(undefined, 50);
+                req.onsuccess = () => resolve((req.result as unknown[]) ?? []);
+                req.onerror = () => resolve([]);
+              });
+              for (const record of records) {
+                parts.push(`idb-record:${db.name}/${storeName}=${JSON.stringify(record)}`);
+              }
+            } catch {
+              /* a store that cannot be read this way is skipped, not fatal */
+            }
+          }
+          opened.close();
+        } catch {
+          /* an engine that cannot do this degrades to the database-name line above */
+        }
+      }
     } catch {
       /* not supported everywhere */
     }
@@ -97,41 +179,378 @@ async function readStorage(page: Page): Promise<string> {
   });
 }
 
-async function fillVisibleInputs(page: Page, value: string): Promise<number> {
-  const inputs = page.locator(
+/**
+ * Fills every visible text-like input with `textValue` and every visible
+ * number input with `numericValue`. Widened from the original text-only
+ * version so number fields -- never canary-tested before this plan -- are
+ * covered too.
+ */
+async function fillVisibleInputs(
+  page: Page,
+  textValue: string,
+  numericValue: string,
+): Promise<{ text: number; number: number }> {
+  const textInputs = page.locator(
     'main textarea, main input[type="text"], main input[type="search"], main input:not([type])',
   );
-  const count = await inputs.count();
-  let filled = 0;
-  for (let i = 0; i < count; i++) {
-    const field = inputs.nth(i);
+  let text = 0;
+  const textCount = await textInputs.count();
+  for (let i = 0; i < textCount; i++) {
+    const field = textInputs.nth(i);
     if (!(await field.isVisible())) continue;
     if (!(await field.isEditable())) continue;
-    await field.fill(value);
-    filled++;
+    await field.fill(textValue);
+    text++;
   }
-  return filled;
+
+  const numberInputs = page.locator('main input[type="number"]');
+  let number = 0;
+  const numberCount = await numberInputs.count();
+  for (let i = 0; i < numberCount; i++) {
+    const field = numberInputs.nth(i);
+    if (!(await field.isVisible())) continue;
+    if (!(await field.isEditable())) continue;
+    await field.fill(numericValue);
+    number++;
+  }
+
+  return { text, number };
 }
 
 /**
- * Fills every text input the tool can show, not just the ones visible first.
- *
- * Several tools hide fields behind a mode switch, so a test that only filled
- * the default view would leave whole code paths unchecked.
+ * A discovered, driveable control state: a radio option, one of a checkbox's
+ * two states, one option of a select, or a range moved to its maximum.
+ * `field` is the stable identity -- a radio's `name`, or the `f-<name>`
+ * element id ToolRunner.tsx assigns every other control type, with the
+ * `f-` prefix stripped.
  */
-async function fillEveryInput(page: Page, value: string): Promise<number> {
-  let filled = await fillVisibleInputs(page, value);
+interface ControlState {
+  kind: 'radio' | 'checkbox' | 'select' | 'range';
+  field: string;
+  value: string;
+  key: string;
+}
 
-  const radios = page.locator('main input[type="radio"]');
+interface QueuedState extends ControlState {
+  /** The ordered control states that were in effect, beyond page defaults, when this was discovered. */
+  prerequisites: ControlState[];
+}
+
+/** Every driveable control state visible right now, scanned from scratch. */
+async function scanControlStates(page: Page): Promise<ControlState[]> {
+  const main = page.locator('main');
+  const states: ControlState[] = [];
+
+  const radios = main.locator('input[type="radio"]');
   const radioCount = await radios.count();
+  const seenRadioKeys = new Set<string>();
   for (let i = 0; i < radioCount; i++) {
-    const radio = radios.nth(i);
-    if (!(await radio.isVisible())) continue;
-    await radio.check();
-    await page.waitForTimeout(80);
-    filled += await fillVisibleInputs(page, value);
+    const el = radios.nth(i);
+    if (!(await el.isVisible())) continue;
+    const field = await el.getAttribute('name');
+    const value = await el.getAttribute('value');
+    if (field === null || value === null) continue;
+    const key = `radio:${field}=${value}`;
+    if (seenRadioKeys.has(key)) continue;
+    seenRadioKeys.add(key);
+    states.push({ kind: 'radio', field, value, key });
   }
-  return filled;
+
+  const checkboxes = main.locator('input[type="checkbox"]');
+  const checkboxCount = await checkboxes.count();
+  for (let i = 0; i < checkboxCount; i++) {
+    const el = checkboxes.nth(i);
+    if (!(await el.isVisible())) continue;
+    const id = await el.getAttribute('id');
+    if (!id || !id.startsWith('f-')) continue;
+    const field = id.slice(2);
+    for (const value of ['true', 'false']) {
+      states.push({ kind: 'checkbox', field, value, key: `checkbox:${field}=${value}` });
+    }
+  }
+
+  const selects = main.locator('select');
+  const selectCount = await selects.count();
+  for (let i = 0; i < selectCount; i++) {
+    const el = selects.nth(i);
+    if (!(await el.isVisible())) continue;
+    const id = await el.getAttribute('id');
+    if (!id || !id.startsWith('f-')) continue;
+    const field = id.slice(2);
+    const options = el.locator('option');
+    const optionCount = await options.count();
+    for (let j = 0; j < optionCount; j++) {
+      const value = await options.nth(j).getAttribute('value');
+      if (value === null) continue;
+      states.push({ kind: 'select', field, value, key: `select:${field}=${value}` });
+    }
+  }
+
+  const ranges = main.locator('input[type="range"]');
+  const rangeCount = await ranges.count();
+  for (let i = 0; i < rangeCount; i++) {
+    const el = ranges.nth(i);
+    if (!(await el.isVisible())) continue;
+    const id = await el.getAttribute('id');
+    if (!id || !id.startsWith('f-')) continue;
+    const field = id.slice(2);
+    const max = (await el.getAttribute('max')) ?? '';
+    states.push({ kind: 'range', field, value: max, key: `range:${field}=max` });
+  }
+
+  return states;
+}
+
+function locateControl(page: Page, state: ControlState) {
+  const main = page.locator('main');
+  const escaped = (s: string) => s.replace(/"/g, '\\"');
+  if (state.kind === 'radio') {
+    return main.locator(`input[type="radio"][name="${escaped(state.field)}"][value="${escaped(state.value)}"]`);
+  }
+  return main.locator(`#f-${escaped(state.field)}`);
+}
+
+/** Applies a control state if its control is currently visible. Returns whether it was. */
+async function applyState(page: Page, state: ControlState): Promise<boolean> {
+  const locator = locateControl(page, state);
+  if ((await locator.count()) === 0) return false;
+  const el = locator.first();
+  if (!(await el.isVisible())) return false;
+
+  switch (state.kind) {
+    case 'radio':
+      await el.check();
+      break;
+    case 'checkbox':
+      if (state.value === 'true') await el.check();
+      else await el.uncheck();
+      break;
+    case 'select':
+      await el.selectOption(state.value);
+      break;
+    case 'range':
+      await el.fill(state.value);
+      break;
+  }
+  return true;
+}
+
+/**
+ * A fixed sleep clears the 140ms auto-run debounce (ToolRunner.tsx:257) with
+ * room to spare, but proves nothing about an asynchronous run in flight, and
+ * a later refill can schedule a second debounce that supersedes the first
+ * before it reaches the branch under test. So: sleep as a floor, then wait
+ * for the observable completion signal -- the Output section's `aria-busy`
+ * back at false (ToolRunner.tsx:320). The sleep alone is not the proof; the
+ * signal is.
+ */
+async function settle(page: Page): Promise<void> {
+  await page.waitForTimeout(200);
+  try {
+    await expect(page.locator('section[aria-label="Output"]')).toHaveAttribute('aria-busy', 'false', {
+      timeout: 8000,
+    });
+  } catch {
+    // A page that never clears aria-busy is a real finding, but this helper
+    // is a wait, not an assertion; the test's own checks catch a stuck page.
+  }
+}
+
+function keysEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const k of a) if (!b.has(k)) return false;
+  return true;
+}
+
+interface VisitLogRow {
+  position: number;
+  key: string;
+  field: string;
+  value: string;
+  prerequisites: string[];
+}
+
+interface CoverageReport {
+  textFilled: number;
+  numberFilled: number;
+  checkboxStates: number;
+  selectOptionsVisited: number;
+  rangesMoved: number;
+  radioModesVisited: number;
+  discoveredAfterChange: number;
+  filesAttached: number;
+  runsCompleted: number;
+  remaining: number;
+  totalHandled: number;
+  visitLog: VisitLogRow[];
+  pushed: string[];
+  visited: string[];
+  typedValues: string[];
+}
+
+/**
+ * Drives every control kind a tool page can render, in every mode, as a
+ * work queue over discovered control STATES rather than three nested lists.
+ *
+ * A control found at first paint is seeded with an empty prerequisite path.
+ * Applying any queued state can mount controls that were not in the document
+ * at all (ToolRunner.tsx:263 removes an invisible field from rendering
+ * entirely); the re-scan after every applied state is what discovers those
+ * and enqueues their states too, each carrying the discovering entry's own
+ * prerequisite path plus the discovering entry itself.
+ *
+ * Reset-and-replay: live-modelling this traversal against the real `uuid`
+ * field definitions (and confirming it in a real browser) showed that
+ * visiting Generate, then Inspect, then a queued `version=4` fails, because
+ * Inspect's `visible` predicates unmount the version select along with both
+ * checkboxes and the wrapper select. So every visit starts by pressing the
+ * page's own Reset button (never a reload, which would re-fire page-load
+ * requests after the recorder has armed), asserts the control set that comes
+ * back matches the first-paint baseline, then replays the queued entry's
+ * `prerequisites` in order before applying its own target state. A queued
+ * control that is still not visible after that replay FAILS the test naming
+ * the page, the control and the prerequisite path -- it is never skipped.
+ */
+async function visitEveryMode(page: Page, id: string, value: string): Promise<CoverageReport> {
+  const numericValue = numericCanary(id);
+  const resetButton = page.getByRole('button', { name: 'Reset', exact: true });
+
+  const resetToDefaults = async () => {
+    await resetButton.click();
+    await settle(page);
+  };
+
+  await resetToDefaults();
+  const baseline = await scanControlStates(page);
+  const baselineKeys = new Set(baseline.map((s) => s.key));
+
+  const pushedKeys = new Set<string>();
+  const visitedKeys = new Set<string>();
+  const visitLog: VisitLogRow[] = [];
+  const typedValues = new Set<string>([value, numericValue]);
+
+  let textFilled = 0;
+  let numberFilled = 0;
+  let checkboxStates = 0;
+  let selectOptionsVisited = 0;
+  let rangesMoved = 0;
+  let radioModesVisited = 0;
+  let discoveredAfterChange = 0;
+
+  const queue: QueuedState[] = [];
+  const pushState = (state: ControlState, prerequisites: ControlState[]) => {
+    if (pushedKeys.has(state.key)) return;
+    pushedKeys.add(state.key);
+    queue.push({ ...state, prerequisites });
+  };
+
+  const IMPLICIT: QueuedState = {
+    kind: 'radio',
+    field: '__implicit__',
+    value: '',
+    key: 'implicit:swept',
+    prerequisites: [],
+  };
+  if (baseline.length === 0) {
+    pushedKeys.add(IMPLICIT.key);
+    queue.push(IMPLICIT);
+  } else {
+    for (const s of baseline) pushState(s, []);
+  }
+
+  const INTERACTION_CAP = 3000;
+  let interactions = 0;
+
+  while (queue.length > 0) {
+    const entry = queue.shift()!;
+    const isImplicit = entry.key === IMPLICIT.key;
+
+    await resetToDefaults();
+    interactions++;
+    const afterReset = await scanControlStates(page);
+    if (!keysEqual(new Set(afterReset.map((s) => s.key)), baselineKeys)) {
+      throw new Error(`Reset on /tools/${id} did not return the page to its baseline control set.`);
+    }
+
+    const prereqDescriptions = entry.prerequisites.map((p) => `${p.field}=${p.value}`);
+    for (const prereq of entry.prerequisites) {
+      const applied = await applyState(page, prereq);
+      interactions++;
+      if (!applied) {
+        throw new Error(
+          `Queued control ${entry.field}=${entry.value} on /tools/${id} is not visible after replaying its prerequisites [${prereqDescriptions.join(', ')}]`,
+        );
+      }
+      await settle(page);
+    }
+
+    if (!isImplicit) {
+      const applied = await applyState(page, entry);
+      interactions++;
+      if (!applied) {
+        throw new Error(
+          `Queued control ${entry.field}=${entry.value} on /tools/${id} is not visible after replaying its prerequisites [${prereqDescriptions.join(', ')}]`,
+        );
+      }
+      await settle(page);
+    }
+
+    if (interactions > INTERACTION_CAP) {
+      throw new Error(
+        `Control traversal on /tools/${id} exceeded ${INTERACTION_CAP} interactions without draining the queue. This page needs more than the cap, which is a finding, not something to skip past.`,
+      );
+    }
+
+    const rescan = await scanControlStates(page);
+    let discoveredHere = 0;
+    for (const s of rescan) {
+      if (!pushedKeys.has(s.key)) {
+        discoveredHere++;
+        pushState(s, isImplicit ? [] : [...entry.prerequisites, entry]);
+      }
+    }
+    discoveredAfterChange += discoveredHere;
+
+    const filled = await fillVisibleInputs(page, value, numericValue);
+    textFilled += filled.text;
+    numberFilled += filled.number;
+    await settle(page);
+
+    visitedKeys.add(entry.key);
+    visitLog.push({
+      position: visitLog.length + 1,
+      key: entry.key,
+      field: entry.field,
+      value: entry.value,
+      prerequisites: prereqDescriptions,
+    });
+
+    if (entry.kind === 'checkbox') checkboxStates++;
+    if (entry.kind === 'select') selectOptionsVisited++;
+    if (entry.kind === 'range') rangesMoved++;
+    if (entry.kind === 'radio' && !isImplicit) radioModesVisited++;
+  }
+
+  const remaining = pushedKeys.size - visitedKeys.size;
+  const totalHandled = textFilled + numberFilled + visitedKeys.size - (baseline.length === 0 ? 1 : 0);
+
+  return {
+    textFilled,
+    numberFilled,
+    checkboxStates,
+    selectOptionsVisited,
+    rangesMoved,
+    radioModesVisited,
+    discoveredAfterChange,
+    filesAttached: 0,
+    runsCompleted: 0,
+    remaining,
+    totalHandled,
+    visitLog,
+    pushed: Array.from(pushedKeys),
+    visited: Array.from(visitedKeys),
+    typedValues: Array.from(typedValues),
+  };
 }
 
 test.describe('local processing', () => {
@@ -154,10 +573,19 @@ test.describe('local processing', () => {
     ).toEqual([]);
   });
 
+  const CONDITIONAL_COVERAGE_PAGES = ['number-base', 'base64', 'uuid', 'slug-generator'];
+
   for (const id of toolIds) {
-    test(`${id}: input never leaves the page`, async ({ page, baseURL }) => {
+    test(`${id}: input never leaves the page`, async ({ page, baseURL }, testInfo: TestInfo) => {
+      // The full control-state traversal, run on every mode, is far heavier
+      // than a single fill-and-check pass. Raise this suite's own budget
+      // rather than `playwright.config.ts`'s global 45s, which would also
+      // relax the faster site tests.
+      test.setTimeout(180_000);
+
       const recorder = await instrument(page);
       const value = canary(id);
+      const numericValue = numericCanary(id);
 
       await page.goto(rel(`/tools/${id}`));
       await page.waitForLoadState('networkidle');
@@ -165,8 +593,24 @@ test.describe('local processing', () => {
       // processing input, which is what the claim is about.
       recorder.arm();
 
-      const filled = await fillEveryInput(page, value);
-      expect(filled, `No editable text input found on /tools/${id}`).toBeGreaterThan(0);
+      const report = await visitEveryMode(page, id, value);
+      await testInfo.attach('coverage-report', {
+        body: JSON.stringify(report, null, 2),
+        contentType: 'application/json',
+      });
+
+      expect(report.totalHandled, `No editable control of any kind found on /tools/${id}`).toBeGreaterThan(0);
+      expect(
+        report.remaining,
+        `/tools/${id}: ${report.remaining} discovered control state(s) were queued but never visited`,
+      ).toBe(0);
+
+      if (CONDITIONAL_COVERAGE_PAGES.includes(id)) {
+        expect(
+          report.discoveredAfterChange,
+          `/tools/${id}: no control was discovered only after another control changed`,
+        ).toBeGreaterThanOrEqual(1);
+      }
 
       // Give auto-run, debouncing and any worker time to finish.
       await page.waitForTimeout(1200);
@@ -187,13 +631,33 @@ test.describe('local processing', () => {
       expect(url, 'A tool must not put input in the URL, because URLs reach history and server logs').not.toContain(
         'CANARY',
       );
+      expect(url, `The numeric tracer reached the URL on /tools/${id}`).not.toContain(numericValue);
 
       const storage = await readStorage(page);
       expect(storage, `The canary was written to storage on /tools/${id}`).not.toContain(value);
+      expect(storage, `The numeric tracer was written to storage on /tools/${id}`).not.toContain(numericValue);
 
       expect(recorder.consoleText.join('\n'), `The canary was written to the console on /tools/${id}`).not.toContain(
         value,
       );
+      expect(
+        recorder.consoleText.join('\n'),
+        `The numeric tracer was written to the console on /tools/${id}`,
+      ).not.toContain(numericValue);
+
+      // Every value the harness typed, not only the two tracers: a page that
+      // rejects the tracer as invalid and then stores a Task 2 fixture value
+      // must still be caught. A short floor avoids false reports from an
+      // ordinary "true" or "0" a fixture might supply.
+      for (const typed of report.typedValues) {
+        if (typed.length < 6) continue;
+        expect(url, `The value "${typed}" reached the URL on /tools/${id}`).not.toContain(typed);
+        expect(storage, `The value "${typed}" was written to storage on /tools/${id}`).not.toContain(typed);
+        expect(
+          recorder.consoleText.join('\n'),
+          `The value "${typed}" was written to the console on /tools/${id}`,
+        ).not.toContain(typed);
+      }
 
       // The page must still have produced something, otherwise this test would
       // pass trivially on a tool that silently does nothing.
@@ -203,6 +667,58 @@ test.describe('local processing', () => {
       expect(baseURL).toBeTruthy();
     });
   }
+
+  // Named regression test for the reset-and-replay fix: on uuid, visiting
+  // Generate then Inspect used to unmount the version select, both
+  // checkboxes and the wrapper select, stranding twelve queued states that
+  // could never become visible again. See the reasoning above visitEveryMode.
+  test('uuid: the control sweep visits every discovered state, including every version after Inspect', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const recorder = await instrument(page);
+    const value = canary('uuid');
+
+    await page.goto(rel('/tools/uuid'));
+    await page.waitForLoadState('networkidle');
+    recorder.arm();
+
+    const report = await visitEveryMode(page, 'uuid', value);
+
+    expect(report.remaining, 'every pushed state must have been visited').toBe(0);
+    expect(new Set(report.visited)).toEqual(new Set(report.pushed));
+
+    const inspectRow = report.visitLog.find((r) => r.field === 'mode' && r.value === 'inspect');
+    expect(inspectRow, 'mode=inspect must appear in the visit log').toBeTruthy();
+    const inspectPosition = inspectRow!.position;
+
+    for (const version of ['4', '7', '1', '5', '3']) {
+      const row = report.visitLog.find((r) => r.field === 'version' && r.value === version);
+      expect(row, `version=${version} must appear in the visit log`).toBeTruthy();
+      expect(
+        row!.position,
+        `version=${version} was visited at position ${row!.position}, which must be after mode=inspect (position ${inspectPosition})`,
+      ).toBeGreaterThan(inspectPosition);
+    }
+
+    const namespaceValues = [
+      '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+      '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
+      '6ba7b812-9dad-11d1-80b4-00c04fd430c8',
+      '6ba7b814-9dad-11d1-80b4-00c04fd430c8',
+    ];
+    for (const ns of namespaceValues) {
+      const row = report.visitLog.find((r) => r.field === 'namespace' && r.value === ns);
+      expect(row, `namespace=${ns} must appear in the visit log`).toBeTruthy();
+      const hasVersionPrereq = row!.prerequisites.some((p) => p === 'version=5' || p === 'version=3');
+      expect(
+        hasVersionPrereq,
+        `namespace=${ns} must have been reached with version=5 or version=3 among its prerequisites [${row!.prerequisites.join(', ')}]`,
+      ).toBe(true);
+    }
+
+    expect(report.visitLog.length, 'the sweep must visit at least 18 states on uuid').toBeGreaterThanOrEqual(18);
+  });
 
   test('the report-an-issue link carries no input', async ({ page }) => {
     const value = canary('issue-link');

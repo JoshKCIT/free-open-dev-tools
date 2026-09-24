@@ -275,9 +275,7 @@ if (problems.length > 0) {
 }
 
 const requireSuffix =
-  requiredIds.length > 0
-    ? ` ${requiredIds.length} required id${requiredIds.length === 1 ? '' : 's'} checked.`
-    : '';
+  requiredIds.length > 0 ? ` ${requiredIds.length} required id${requiredIds.length === 1 ? '' : 's'} checked.` : '';
 console.log(
   `Catalog check passed. ${packageIds.length} tool packages, ${pageIds.length} pages, all present in the catalog, all documented, none capable of transmitting input.${requireSuffix}`,
 );
