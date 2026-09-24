@@ -16,7 +16,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Encode and decode RFC 4648 Base32, Base32hex and Crockford Base32.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "base58",
@@ -25,7 +25,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Encode and decode Base58 and Base58Check using the Bitcoin, Ripple and Flickr alphabets.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "url-codec",
@@ -52,7 +52,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Inspect code points, convert to and from escape sequences, normalise, and find invisible characters.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "text-radix",
@@ -61,7 +61,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Convert text to and from binary, hexadecimal, octal and decimal in any supported encoding.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-string-escape",
@@ -70,7 +70,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Escape and unescape JSON string literals exactly as RFC 8259 defines them.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "data-uri",
@@ -79,7 +79,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 2,
       "summary": "Convert files to and from data URIs with correct MIME type and Base64 handling.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "morse-code",
@@ -88,7 +88,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Translate text to and from International Morse Code.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "classical-cipher",
@@ -97,7 +97,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Caesar, ROT13, ROT47, Atbash and Vigenere, for learning and puzzle work only.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "nato-phonetic",
@@ -106,7 +106,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Spell text out using the ICAO/NATO phonetic alphabet.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "number-base",
@@ -124,7 +124,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Show the exact sign, exponent and mantissa bits behind a binary32 or binary64 value.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "roman-numerals",
@@ -133,7 +133,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Convert between Roman numerals and integers using standard subtractive notation.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "number-to-words",
@@ -142,7 +142,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Spell numbers out in English, in short scale, with ordinal and currency modes.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "scientific-notation",
@@ -151,7 +151,7 @@
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
       "summary": "Convert between decimal, scientific, engineering and E notation.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "hash-text",
@@ -169,7 +169,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 2,
       "summary": "Hash files of any size in a worker and compare against an expected checksum.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "hmac",
@@ -187,7 +187,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 2,
       "summary": "Hash a password with bcrypt at a chosen cost, and verify a password against a hash.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "password-generator",
@@ -196,7 +196,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 1,
       "summary": "Generate passwords and passphrases from the cryptographic random source, with entropy shown.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "password-strength",
@@ -205,7 +205,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 2,
       "summary": "Estimate guessing resistance and show the reasoning, without sending the password anywhere.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "jwt-decoder",
@@ -223,7 +223,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 2,
       "summary": "Sign and verify JWTs with HMAC, RSA and ECDSA using the browser crypto API.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "basic-auth",
@@ -232,7 +232,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 1,
       "summary": "Build and decode an RFC 7617 Basic authorization header.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "luhn",
@@ -241,7 +241,7 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 1,
       "summary": "Check a number against the Luhn algorithm and identify the issuer pattern.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "uuid",
@@ -259,7 +259,7 @@
       "categoryLabel": "Identifiers and randomness",
       "tier": 1,
       "summary": "Generate random identifiers from a chosen alphabet, with entropy shown.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "random-number",
@@ -268,7 +268,7 @@
       "categoryLabel": "Identifiers and randomness",
       "tier": 1,
       "summary": "Generate random integers or decimals in a range, optionally from the cryptographic source.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-formatter",

@@ -1,4 +1,38 @@
 {
+  "base32": {
+    "id": "base32",
+    "name": "Base32 Encoder & Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "base32",
+      "base32hex",
+      "crockford",
+      "rfc4648",
+      "encoding",
+      "decoder"
+    ]
+  },
+  "base58": {
+    "id": "base58",
+    "name": "Base58 Encoder & Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "base58",
+      "base58check",
+      "bitcoin",
+      "ripple",
+      "xrp",
+      "flickr",
+      "encoding",
+      "decoder"
+    ]
+  },
   "base64": {
     "id": "base64",
     "name": "Base64 Encoder & Decoder",
@@ -11,6 +45,39 @@
       "rfc4648",
       "encoding",
       "decoder"
+    ]
+  },
+  "basic-auth": {
+    "id": "basic-auth",
+    "name": "HTTP Basic Auth Header",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "basic-auth",
+      "authorization",
+      "www-authenticate",
+      "rfc7617",
+      "http",
+      "credentials"
+    ]
+  },
+  "bcrypt": {
+    "id": "bcrypt",
+    "name": "Bcrypt Hash & Verify",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "bcrypt-ts": "^9.0.2"
+    },
+    "keywords": [
+      "bcrypt",
+      "password",
+      "hash",
+      "verify",
+      "salt",
+      "cost factor",
+      "crypt"
     ]
   },
   "case-converter": {
@@ -42,6 +109,57 @@
       "umask",
       "setuid",
       "sticky"
+    ]
+  },
+  "classical-cipher": {
+    "id": "classical-cipher",
+    "name": "Classical Cipher Workbench",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "caesar",
+      "rot13",
+      "rot47",
+      "atbash",
+      "vigenere",
+      "cipher",
+      "substitution cipher"
+    ]
+  },
+  "data-uri": {
+    "id": "data-uri",
+    "name": "Data URI Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "data-uri",
+      "data-url",
+      "base64",
+      "mime-type",
+      "file-encoding",
+      "rfc2397"
+    ]
+  },
+  "hash-file": {
+    "id": "hash-file",
+    "name": "File Hash & Checksum",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "hash",
+      "checksum",
+      "file",
+      "md5",
+      "sha256",
+      "sha1",
+      "crc32",
+      "digest",
+      "worker"
     ]
   },
   "hash-text": {
@@ -95,6 +213,22 @@
       "htmlspecialchars"
     ]
   },
+  "ieee754": {
+    "id": "ieee754",
+    "name": "IEEE 754 Float Inspector",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "ieee754",
+      "float",
+      "binary32",
+      "binary64",
+      "nan",
+      "subnormal",
+      "bit-pattern"
+    ]
+  },
   "ip-subnet": {
     "id": "ip-subnet",
     "name": "IP Subnet & CIDR Calculator",
@@ -127,6 +261,20 @@
       "jsonc"
     ]
   },
+  "json-string-escape": {
+    "id": "json-string-escape",
+    "name": "JSON String Escaper",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "json string escape",
+      "unescape json",
+      "rfc8259",
+      "unicode escape",
+      "surrogate pair"
+    ]
+  },
   "jwt-decoder": {
     "id": "jwt-decoder",
     "name": "JWT Decoder",
@@ -143,6 +291,69 @@
       "claims"
     ]
   },
+  "jwt-signature": {
+    "id": "jwt-signature",
+    "name": "JWT Signer & Verifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "jwt",
+      "jws",
+      "jose",
+      "hmac",
+      "rsa",
+      "ecdsa",
+      "sign",
+      "verify",
+      "webcrypto",
+      "rfc7515",
+      "rfc7518"
+    ]
+  },
+  "luhn": {
+    "id": "luhn",
+    "name": "Luhn & Card Number Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "luhn algorithm",
+      "check digit",
+      "card number validator",
+      "mod 10",
+      "issuer identification number"
+    ]
+  },
+  "morse-code": {
+    "id": "morse-code",
+    "name": "Morse Code Translator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "morse",
+      "morse code",
+      "itu",
+      "cw",
+      "telegraphy",
+      "prosign"
+    ]
+  },
+  "nato-phonetic": {
+    "id": "nato-phonetic",
+    "name": "NATO Phonetic Alphabet",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "nato phonetic",
+      "icao",
+      "phonetic alphabet",
+      "spelling alphabet",
+      "alpha bravo charlie"
+    ]
+  },
   "number-base": {
     "id": "number-base",
     "name": "Number Base Converter",
@@ -157,6 +368,114 @@
       "octal",
       "bigint",
       "twos-complement"
+    ]
+  },
+  "number-to-words": {
+    "id": "number-to-words",
+    "name": "Number to Words",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "number to words",
+      "spell out numbers",
+      "cardinal",
+      "ordinal",
+      "currency in words",
+      "short scale"
+    ]
+  },
+  "password-generator": {
+    "id": "password-generator",
+    "name": "Password Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "password",
+      "passphrase",
+      "generator",
+      "entropy",
+      "eff wordlist",
+      "random"
+    ]
+  },
+  "password-strength": {
+    "id": "password-strength",
+    "name": "Password Strength Estimator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@zxcvbn-ts/core": "4.2.0",
+      "@zxcvbn-ts/language-common": "4.1.3",
+      "@zxcvbn-ts/language-en": "4.1.1"
+    },
+    "keywords": [
+      "password",
+      "strength",
+      "zxcvbn",
+      "entropy",
+      "security",
+      "guessability"
+    ]
+  },
+  "random-number": {
+    "id": "random-number",
+    "name": "Random Number Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "random",
+      "rng",
+      "random number",
+      "integer",
+      "decimal",
+      "crypto.getRandomValues",
+      "rejection sampling"
+    ]
+  },
+  "random-string": {
+    "id": "random-string",
+    "name": "Random String & Nano ID",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "random string",
+      "identifier",
+      "nano id",
+      "entropy",
+      "generator"
+    ]
+  },
+  "roman-numerals": {
+    "id": "roman-numerals",
+    "name": "Roman Numeral Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "roman numerals",
+      "numeral converter",
+      "subtractive notation",
+      "mcmxciv",
+      "integer to roman",
+      "roman to integer"
+    ]
+  },
+  "scientific-notation": {
+    "id": "scientific-notation",
+    "name": "Scientific Notation Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "scientific-notation",
+      "engineering-notation",
+      "e-notation",
+      "exponent",
+      "significant-figures"
     ]
   },
   "slug-generator": {
@@ -185,6 +504,38 @@
       "unified-diff",
       "myers",
       "text"
+    ]
+  },
+  "text-radix": {
+    "id": "text-radix",
+    "name": "Text to Binary, Hex & Octal",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "text to binary",
+      "text to hex",
+      "text to octal",
+      "encoding",
+      "windows-1252",
+      "utf-16",
+      "byte grouping"
+    ]
+  },
+  "unicode-inspector": {
+    "id": "unicode-inspector",
+    "name": "Unicode Inspector",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "unicode",
+      "code points",
+      "normalization",
+      "invisible characters",
+      "escape sequences",
+      "nfc",
+      "nfd"
     ]
   },
   "unix-timestamp": {
