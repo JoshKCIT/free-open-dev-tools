@@ -13,6 +13,19 @@ import { ROOT, loadCatalog } from './lib/catalog.mjs';
 const problems = [];
 const note = (msg) => problems.push(msg);
 
+// Additive completion gate: with no --require flag, behaviour below this
+// point is byte-identical to before this flag existed. `--require=<ids>` lets
+// a plan assert that a whole new tool actually has a catalog entry, a
+// package AND a page, instead of the enumeration below silently reporting
+// success for zero of them.
+const requireArg = process.argv.find((a) => a.startsWith('--require='))?.split('=')[1];
+const requiredIds = requireArg
+  ? requireArg
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : [];
+
 const catalog = loadCatalog();
 const catalogIds = new Set(catalog.map((c) => c.id));
 
@@ -42,6 +55,21 @@ for (const id of pageIds) {
     note(
       `apps/web/src/tools/${id}.ts has no matching tools/${id} package. The site must never ship logic that has no tests.`,
     );
+  }
+}
+
+// --- named ids must be fully wired, when --require asked for it -----------
+// Additive: only runs when the flag is present, and only adds to `problems`
+// via the existing `note()` helper, so the enumeration above is unaffected.
+for (const id of requiredIds) {
+  if (!catalogIds.has(id)) {
+    note(`--require=${id}: no entry in docs/catalog.json, so this id can never go live.`);
+  }
+  if (!packageIds.includes(id)) {
+    note(`--require=${id}: no tools/${id} package.`);
+  }
+  if (!pageIds.includes(id)) {
+    note(`--require=${id}: no apps/web/src/tools/${id}.ts page.`);
   }
 }
 
@@ -246,6 +274,10 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
+const requireSuffix =
+  requiredIds.length > 0
+    ? ` ${requiredIds.length} required id${requiredIds.length === 1 ? '' : 's'} checked.`
+    : '';
 console.log(
-  `Catalog check passed. ${packageIds.length} tool packages, ${pageIds.length} pages, all present in the catalog, all documented, none capable of transmitting input.`,
+  `Catalog check passed. ${packageIds.length} tool packages, ${pageIds.length} pages, all present in the catalog, all documented, none capable of transmitting input.${requireSuffix}`,
 );

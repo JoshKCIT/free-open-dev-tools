@@ -21,12 +21,43 @@ import { ROOT } from './lib/catalog.mjs';
 
 const full = process.argv.includes('--full');
 const only = process.argv.find((a) => a.startsWith('--only='))?.split('=')[1];
+// Comma-separated so `--only=a,b,c` selects several folders at once. Every
+// requested name must match a folder; a name that matches nothing is an
+// error naming that name, not a silently-empty selection.
+const onlyNames = only
+  ? only
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  : null;
 
 const toolsDir = join(ROOT, 'tools');
-const ids = readdirSync(toolsDir)
+const allToolDirs = readdirSync(toolsDir)
   .filter((d) => statSync(join(toolsDir, d)).isDirectory())
-  .filter((d) => !only || d === only)
   .sort();
+
+let ids;
+if (onlyNames) {
+  const missing = onlyNames.filter((name) => !allToolDirs.includes(name));
+  if (missing.length > 0) {
+    console.error(
+      `Standalone structure check found no tool folder for: ${missing.join(', ')}.\n` +
+        `Folders that do exist under tools/: ${allToolDirs.join(', ')}.\n` +
+        `Check the spelling against the folder name.`,
+    );
+    process.exit(1);
+  }
+  ids = allToolDirs.filter((d) => onlyNames.includes(d));
+} else {
+  ids = allToolDirs;
+}
+
+// A gate that checked nothing must never report success, whatever the reason
+// the selection ended up empty.
+if (ids.length === 0) {
+  console.error('Standalone structure check selected no tool folder at all. Nothing was checked.');
+  process.exit(1);
+}
 
 const problems = [];
 const note = (msg) => problems.push(msg);
