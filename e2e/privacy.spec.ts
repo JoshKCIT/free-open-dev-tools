@@ -336,6 +336,107 @@ async function applyState(page: Page, state: ControlState): Promise<boolean> {
 }
 
 /**
+ * Attaches a small synthetic file, whose BYTES are the canary itself, to
+ * every visible file input. Making the file's contents the canary turns the
+ * file path into a real test of whether file contents escape, rather than
+ * just whether a file was picked.
+ */
+async function attachCanaryFiles(page: Page, value: string): Promise<number> {
+  const fileInputs = page.locator('main input[type="file"]');
+  const count = await fileInputs.count();
+  let attached = 0;
+  for (let i = 0; i < count; i++) {
+    const field = fileInputs.nth(i);
+    if (!(await field.isVisible())) continue;
+    await field.setInputFiles({
+      name: 'canary.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(value, 'utf8'),
+    });
+    attached++;
+  }
+  return attached;
+}
+
+/**
+ * Presses the Run button if this state rendered one, and waits for it to
+ * return to its idle label -- a precise finish signal, not a sleep, because
+ * the button reads the "Working…" label for the whole run
+ * (ToolRunner.tsx:302) and only flips back once `execute()` resolves. A page
+ * that runs as-you-type (`autoRun` true) renders no such button; that is not
+ * a failure, there is simply nothing to press.
+ *
+ * Located by CSS class rather than accessible name, because the button's own
+ * accessible name toggles between "Run" and "Working…" while it runs, which
+ * would make a name-based locator stop matching the moment it is clicked.
+ */
+async function pressRunIfPresent(page: Page): Promise<boolean> {
+  const button = page.locator('main div.toolbar button.button-primary');
+  if ((await button.count()) === 0) return false;
+  if (!(await button.first().isVisible())) return false;
+  await button.first().click();
+  await expect(button.first()).toHaveText('Run', { timeout: 60_000 });
+  return true;
+}
+
+/**
+ * A valid-scenario fixture: input that is actually valid for a page, so its
+ * real processing path runs rather than only its input-rejection path. A
+ * canary string is not valid input everywhere -- `luhn`'s parser rejects
+ * anything that is not a digit or separator, so the tracer pass alone never
+ * reaches its checksum. The rule for whether a page needs an entry: it does
+ * when the canary string or the numeric tracer is not valid input for its
+ * primary field, i.e. when the tracer pass would reach only that page's
+ * input-rejection path. A page not in this table gets the tracer pass only,
+ * which is correct when its canary input is already valid.
+ */
+interface FixtureEntry {
+  /** A radio option or select value to select first, if the tool needs a specific mode. */
+  mode?: { field: string; value: string };
+  /** Field values to type, keyed by field name (the `f-<field>` element id). */
+  values?: Record<string, string>;
+  /** Whether this page has a file input at all. Pages with none must attach zero files. */
+  attachesFile: boolean;
+}
+
+const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
+  // Encode mode with a synthetic file attached: reaches file reading and
+  // media-type sniffing instead of the invalid-URI rejection.
+  'data-uri': [{ mode: { field: 'direction', value: 'encode' }, attachesFile: true }],
+  // A synthetic file attached with at least one algorithm selected: reaches the worker.
+  'hash-file': [{ attachesFile: true }],
+  // Hash mode, a real password, cost at its maximum: reaches the second
+  // worker and the above-threshold path the malformed-hash rejection in
+  // Verify mode never touches.
+  bcrypt: [
+    {
+      mode: { field: 'mode', value: 'hash' },
+      values: { password: 'correct horse battery staple', cost: '15' },
+      attachesFile: false,
+    },
+  ],
+  // Generate mode: reaches generate() (tools/uuid/src/index.ts:305) rather
+  // than the invalid-UUID return in Inspect mode.
+  uuid: [{ mode: { field: 'mode', value: 'generate' }, attachesFile: false }],
+  // Three entries, because one successful path is not every successful path:
+  // (a) Sign, HMAC, a shared secret and a payload carrying the canary as a
+  // claim value; (b) Sign, an asymmetric algorithm, exercising key import;
+  // (c) Verify, with a token and key that actually verify, exercising the
+  // success branch rather than only rejection.
+  'jwt-signature': [
+    { mode: { field: 'mode', value: 'sign' }, values: { algorithm: 'HS256' }, attachesFile: false },
+    { mode: { field: 'mode', value: 'sign' }, values: { algorithm: 'RS256' }, attachesFile: false },
+    { mode: { field: 'mode', value: 'verify' }, attachesFile: false },
+  ],
+  // A published, widely-reproduced Luhn-valid test number, so the checksum
+  // path runs rather than the not-a-digit-or-separator rejection.
+  luhn: [{ values: { input: '79927398713' }, attachesFile: false }],
+  'password-generator': [{ attachesFile: false }],
+  'random-string': [{ attachesFile: false }],
+  'random-number': [{ attachesFile: false }],
+};
+
+/**
  * A fixed sleep clears the 140ms auto-run debounce (ToolRunner.tsx:257) with
  * room to spare, but proves nothing about an asynchronous run in flight, and
  * a later refill can schedule a second debounce that supersedes the first
@@ -436,6 +537,8 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
   let rangesMoved = 0;
   let radioModesVisited = 0;
   let discoveredAfterChange = 0;
+  let filesAttached = 0;
+  let runsCompleted = 0;
 
   const queue: QueuedState[] = [];
   const pushState = (state: ControlState, prerequisites: ControlState[]) => {
@@ -514,6 +617,14 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     const filled = await fillVisibleInputs(page, value, numericValue);
     textFilled += filled.text;
     numberFilled += filled.number;
+
+    // Called from inside the visit of EVERY control state, not once per page
+    // and not once per radio mode after the whole sweep -- a single Run
+    // pressed at the end only ever exercises whichever mode, checkbox and
+    // select state the sweep happened to leave live last (on uuid: hyphens
+    // on, version v3), never the state actually under test.
+    filesAttached += await attachCanaryFiles(page, value);
+    if (await pressRunIfPresent(page)) runsCompleted++;
     await settle(page);
 
     visitedKeys.add(entry.key);
@@ -531,6 +642,53 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     if (entry.kind === 'radio' && !isImplicit) radioModesVisited++;
   }
 
+  // The valid-scenario fixture pass: one extra visit per fixture entry,
+  // after the queue has fully drained, starting from the same Reset click
+  // every queued visit starts from so the fixture's mode is applied to the
+  // defaults rather than to whatever state the last queued visit left
+  // behind. Runs only for the handful of pages whose real processing cannot
+  // be reached with the tracer alone.
+  for (const fixture of VALID_SCENARIO_FIXTURES[id] ?? []) {
+    await resetToDefaults();
+
+    if (fixture.mode) {
+      const appliedAsRadio = await applyState(page, {
+        kind: 'radio',
+        field: fixture.mode.field,
+        value: fixture.mode.value,
+        key: '',
+      });
+      if (!appliedAsRadio) {
+        const select = page.locator(`main #f-${fixture.mode.field}`);
+        if ((await select.count()) > 0 && (await select.first().isVisible())) {
+          await select.first().selectOption(fixture.mode.value);
+        }
+      }
+      await settle(page);
+    }
+
+    // Fill every other visible field with the ordinary tracers first, so a
+    // field the fixture does not specifically override still carries a
+    // value the leak assertions search for.
+    const filled = await fillVisibleInputs(page, value, numericValue);
+    textFilled += filled.text;
+    numberFilled += filled.number;
+
+    if (fixture.values) {
+      for (const [field, fieldValue] of Object.entries(fixture.values)) {
+        const el = page.locator(`main #f-${field}`);
+        if ((await el.count()) === 0) continue;
+        if (!(await el.first().isVisible())) continue;
+        await el.first().fill(fieldValue);
+        typedValues.add(fieldValue);
+      }
+    }
+
+    if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
+    if (await pressRunIfPresent(page)) runsCompleted++;
+    await settle(page);
+  }
+
   const remaining = pushedKeys.size - visitedKeys.size;
   const totalHandled = textFilled + numberFilled + visitedKeys.size - (baseline.length === 0 ? 1 : 0);
 
@@ -542,8 +700,8 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     rangesMoved,
     radioModesVisited,
     discoveredAfterChange,
-    filesAttached: 0,
-    runsCompleted: 0,
+    filesAttached,
+    runsCompleted,
     remaining,
     totalHandled,
     visitLog,
@@ -610,6 +768,26 @@ test.describe('local processing', () => {
           report.discoveredAfterChange,
           `/tools/${id}: no control was discovered only after another control changed`,
         ).toBeGreaterThanOrEqual(1);
+      }
+
+      // A page in the valid-scenario fixture table must actually reach its
+      // real processing path, not just declare that it should.
+      const fixtures = VALID_SCENARIO_FIXTURES[id];
+      if (fixtures && fixtures.length > 0) {
+        expect(report.runsCompleted, `/tools/${id}: the valid-scenario fixture never completed a Run`).toBeGreaterThan(
+          0,
+        );
+        if (fixtures.some((f) => f.attachesFile)) {
+          expect(
+            report.filesAttached,
+            `/tools/${id}: a fixture declares attachesFile but no file was ever attached`,
+          ).toBeGreaterThan(0);
+        } else {
+          expect(
+            report.filesAttached,
+            `/tools/${id}: a file was attached on a page whose fixture declares no file input`,
+          ).toBe(0);
+        }
       }
 
       // Give auto-run, debouncing and any worker time to finish.
