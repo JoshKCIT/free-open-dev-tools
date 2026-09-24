@@ -77,7 +77,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every radix round trips in every encoding. The windows-1252 codec is checked against a vendored, verbatim copy of the WHATWG index-windows-1252.txt file for all 256 byte values, including the euro sign at 0x80 and the five C1 control code points at 0x81, 0x8D, 0x8F, 0x90 and 0x9D -- never against Node's own TextDecoder, which decodes windows-1252 as literal Latin-1 on the Node version this project runs and would pass an incorrect implementation.
+Every radix round trips in every encoding. The windows-1252 codec is checked against a vendored, verbatim copy of the WHATWG index-windows-1252.txt file for all 256 byte values, including the euro sign at 0x80 and the five C1 control code points at 0x81, 0x8D, 0x8F, 0x90 and 0x9D -- never against Node's own TextDecoder, which decodes windows-1252 with each byte equal to its own code point on the Node version this project runs and would pass an incorrect implementation.
 
 ## Licence
 
