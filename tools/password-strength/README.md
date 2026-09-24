@@ -13,7 +13,7 @@ Scores a password against a real word-list-backed model rather than counting cha
 
 - A score from 0 (very weak) to 4 (very strong), with a plain-language label for each
 - Plain-language reasons for the score: a common leaked password, a dictionary word (optionally with digits or symbols attached), a keyboard-adjacent sequence, a repeated character run, or a predictable date
-- Estimated time to crack under four attack scenarios: an online attack that is rate-limited, an online attack that is not, an offline attack against a slow hash such as bcrypt, and an offline attack against a fast hash such as SHA-256
+- Estimated time to crack under four attack scenarios: an online attack that is rate-limited, an online attack that is not, an offline attack against a slow, salted hash, and an offline attack against a fast, unsalted hash
 - Scoring as you type, with the same 140ms debounce every other live-scoring tool on this site uses
 - English common-password and common-word dictionaries, plus keyboard-adjacency data for the most common layouts
 - Passwords up to 256 characters; anything longer is truncated before scoring and the report says so
