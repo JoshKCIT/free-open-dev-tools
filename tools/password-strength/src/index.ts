@@ -111,7 +111,12 @@ export interface StrengthReport {
 }
 
 const CRACK_TIME_ORDER: readonly [
-  'onlineThrottlingXPerHour' | 'onlineNoThrottlingXPerSecond' | 'offlineSlowHashingXPerSecond' | 'offlineFastHashingXPerSecond',
+  (
+    | 'onlineThrottlingXPerHour'
+    | 'onlineNoThrottlingXPerSecond'
+    | 'offlineSlowHashingXPerSecond'
+    | 'offlineFastHashingXPerSecond'
+  ),
   string,
 ][] = [
   ['onlineThrottlingXPerHour', 'Online attack, rate-limited'],
@@ -180,7 +185,10 @@ function describeMatch(match: MatchExtended): { sentence: string; kind: string }
       };
     }
     case 'separator': {
-      return { sentence: 'A common separator character, such as a space or a hyphen, between two other parts.', kind: 'separator' };
+      return {
+        sentence: 'A common separator character, such as a space or a hyphen, between two other parts.',
+        kind: 'separator',
+      };
     }
     case 'bruteforce':
     default: {
