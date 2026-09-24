@@ -1,0 +1,13 @@
+# Known test data and placeholders, reviewed by hand on 2026-09-24. None is a real secret.
+# Each line is one exact finding (commit:file:rule:line); anything else is still scanned.
+# A malformed PEM whose labels disagree, used to test that the key reader rejects it.
+1b5b3d0ca77c61e616c4473e9831753697bbbb76:tools/jwt-signature/test/keys.test.ts:private-key:65
+# A test password from the pyca/bcrypt published test vectors.
+2d0b5113883d2b0c76acf99631e83c6e4233765c:tools/bcrypt/test/index.test.ts:generic-api-key:27
+# Placeholder hint text in the empty key box on the JWT page, not a key.
+77ef0e44780cf7608dbb41c0cd4693f0f35fe1df:apps/web/src/tools/jwt-signature.ts:private-key:139
+# RFC 7515 Appendix A example key and example tokens, published in the standard for testing.
+b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:generic-api-key:21
+b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:jwt:23
+b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:jwt:32
+b2c68dc079ce9567ac7190c5ba39854a6d9619a2:tools/jwt-signature/test/index.test.ts:jwt:45
