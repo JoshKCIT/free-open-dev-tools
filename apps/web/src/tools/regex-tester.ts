@@ -28,7 +28,10 @@ export default defineTool({
       label: 'Mode',
       type: 'radio',
       default: 'test',
-      options: [{ value: 'test', label: 'Test' }],
+      options: [
+        { value: 'test', label: 'Test' },
+        { value: 'replace', label: 'Replace' },
+      ],
     },
     {
       name: 'pattern',
@@ -38,6 +41,15 @@ export default defineTool({
       placeholder: 'Type or paste here. Nothing leaves your browser.',
     },
     ...flagFields,
+    {
+      name: 'replacement',
+      label: 'Replacement',
+      type: 'text',
+      mono: true,
+      visible: (values) => values.mode === 'replace',
+      help: 'ECMA-262 replacement patterns: $& the whole match, $1 a numbered group, $<name> a named group, $$ a literal dollar sign.',
+      placeholder: 'Type or paste here. Nothing leaves your browser.',
+    },
     {
       name: 'input',
       label: 'Text',
@@ -59,12 +71,13 @@ export default defineTool({
     if (!pattern || !input) return { outputs: [] };
 
     const flags = SUPPORTED_FLAGS.filter((flag) => bool(values, `flag-${flag}`, flag === 'g')).join('');
-    const job: RegexJob = { mode, pattern, flags, input };
+    const job: RegexJob = { mode, pattern, flags, input, replacement: str(values, 'replacement') };
 
     try {
       const result = await regexInWorker(job, ctx);
-      if (result.mode !== 'test') return { outputs: [] };
-      return renderTest(result.matches, result.total, result.truncated);
+      if (result.mode === 'test') return renderTest(result.matches, result.total, result.truncated);
+      if (result.mode === 'replace') return renderReplace(result.output, result.count);
+      return { outputs: [] };
     } catch (err) {
       // An abort rejection is let through rather than swallowed: the
       // runner's own cancellation note already owns that message. Every
@@ -101,4 +114,11 @@ function renderTest(matches: MatchRow[], total: number, truncated: boolean): Too
   }
   const stats: [string, string][] = [['Matches', truncated ? `${total} (showing first 1000)` : String(total)]];
   return { outputs, stats };
+}
+
+function renderReplace(output: string, count: number): ToolResult {
+  return {
+    outputs: [{ kind: 'code', label: 'Result', value: output }],
+    stats: [['Replacements', String(count)]],
+  };
 }

@@ -197,13 +197,30 @@ export function testPattern(pattern: string, flags: string, input: string): Rege
   return { mode: 'test', matches, total, truncated: total > matches.length };
 }
 
-export function replacePattern(
-  _pattern: string,
-  _flags: string,
-  _input: string,
-  _replacement: string,
-): RegexReplaceResult {
-  throw new RegexToolError('Replace mode is not available yet.');
+/**
+ * Replaces every match (or, without the global flag, only the first) using
+ * the engine's own ECMA-262 GetSubstitution semantics for the replacement
+ * string -- $$, $&, $`, $', $n/$nn and $<name> are the engine's, not
+ * hand-rolled here, which is deliberately unlike this project's literal
+ * find-and-replace tool: there, a replacement string is escaped so a
+ * dollar sequence is never expanded; here, that expansion is the feature.
+ * Two fresh compiles of the same pattern and flags: one purely to count
+ * matches (matchAll requires the global flag; exec does not carry the same
+ * lastIndex state a second, independent call would need to reset), the
+ * other handed straight to String.prototype.replace so its own built-in
+ * substitution logic runs unmodified.
+ */
+export function replacePattern(pattern: string, flags: string, input: string, replacement: string): RegexReplaceResult {
+  const counter = compile(pattern, flags);
+  let count = 0;
+  if (flags.includes('g')) {
+    for (const _match of input.matchAll(counter)) count++;
+  } else if (counter.exec(input)) {
+    count = 1;
+  }
+
+  const output = input.replace(compile(pattern, flags), replacement);
+  return { mode: 'replace', output, count };
 }
 
 export function explainPattern(_pattern: string, _flags: string): RegexExplainResult {

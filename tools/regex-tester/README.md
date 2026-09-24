@@ -17,6 +17,8 @@ Tests a JavaScript regular expression against text and lists every match with it
 - Up to 1000 displayed matches, with the true total still counted past that cap
 - A plain message naming the engine's own SyntaxError when a pattern or flag combination is invalid
 - A time limit around 1.5 seconds that stops a runaway match and reports it instead of freezing the page
+- Replace mode: ECMA-262 replacement patterns ($$, $&, $`, $', $1-$99 and $<name>) applied by the engine itself, with a count of matches replaced
+- Replace without the global flag changing only the first match, exactly as String.prototype.replace does
 
 ## Limits
 
@@ -32,6 +34,7 @@ Tests a JavaScript regular expression against text and lists every match with it
 ## Defined by
 
 - [ECMA-262 — RegExp (Regular Expression) Objects (section 22.2)](https://tc39.es/ecma262/#sec-regexp-regular-expression-objects)
+- [ECMA-262 — GetSubstitution, the replacement-pattern algorithm (section 22.1.3.19.1)](https://tc39.es/ecma262/#sec-getsubstitution)
 
 ## Use it on its own
 
@@ -54,15 +57,18 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { testPattern, runRegexJob } from '@fodt/regex-tester';
+import { testPattern, replacePattern, runRegexJob } from '@fodt/regex-tester';
 
 testPattern('[0-9]+', 'g', 'a1 b22');
 // { mode: 'test', matches: [...], total: 2, truncated: false }
 
+replacePattern('(?<year>[0-9]{4})-([0-9]{2})', '', '2024-03', '$<year>/$2');
+// { mode: 'replace', output: '2024/03', count: 1 }
+
 runRegexJob({ mode: 'test', pattern: '[0-9]+', flags: 'g', input: 'a1 b22' });
 ```
 
-testPattern, replacePattern and explainPattern are synchronous and can run for an unbounded time on a pathological pattern; this package never times out on its own. The page composes a time limit around it by running the match in a worker and terminating it from the page, which is why this package itself contains no timer, no worker and no DOM reference. A malformed pattern or an unsupported/repeated flag throws RegexToolError carrying the engine's own message.
+testPattern, replacePattern and explainPattern are synchronous and can run for an unbounded time on a pathological pattern; this package never times out on its own. The page composes a time limit around it by running the match in a worker and terminating it from the page, which is why this package itself contains no timer, no worker and no DOM reference. A malformed pattern or an unsupported/repeated flag throws RegexToolError carrying the engine's own message. replacePattern hands the replacement string straight to the engine's own String.prototype.replace, so $$, $&, $`, $', $n and $<name> expand exactly as ECMA-262 defines -- unlike this project's separate literal find-and-replace tool, where a dollar sequence is deliberately never expanded.
 
 ## Dependencies
 
@@ -74,7 +80,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Test mode is checked against ECMA-262 section 22.2's own defined matching behaviour: every match's index and capture groups, the global flag's defined advance-past-zero-length-match rule, the display cap counting past 1000 while still reporting the true total, and the engine's own SyntaxError message surfacing for an invalid pattern or an unsupported or repeated flag.
+Test mode is checked against ECMA-262 section 22.2's own defined matching behaviour: every match's index and capture groups, the global flag's defined advance-past-zero-length-match rule, the display cap counting past 1000 while still reporting the true total, and the engine's own SyntaxError message surfacing for an invalid pattern or an unsupported or repeated flag. Replace mode is checked against ECMA-262 section 22.1.3.19.1 (GetSubstitution): the whole match, a named group, a numbered group and a literal dollar sign each substitute exactly as that algorithm defines, and replacing without the global flag changes only the first match.
 
 ## Licence
 
