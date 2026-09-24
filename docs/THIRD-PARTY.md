@@ -8,6 +8,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 
 | Package | Version | Licence | Origin | Used by |
 | --- | --- | --- | --- | --- |
+| [@eslint-community/regexpp](https://github.com/eslint-community/regexpp#readme) | 4.12.2 | MIT | direct | tools/regex-tester |
 | [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/base58, tools/hash-file, tools/hash-text, tools/hmac, tools/uuid |
 | [@zxcvbn-ts/core](https://github.com/zxcvbn-ts/zxcvbn) | 4.2.0 | MIT | direct | tools/password-strength |
 | [@zxcvbn-ts/dictionary-compression](https://github.com/zxcvbn-ts/dictionary-compression) | 3.0.1 | MIT | transitive (via @zxcvbn-ts/language-common, @zxcvbn-ts/language-en) | tools/password-strength |
@@ -16,6 +17,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [bcrypt-ts](git://github.com/Mister-Hope/bcrypt-ts) | 9.0.2 | MIT | direct | tools/bcrypt |
 | [entities](https://github.com/fb55/entities) | 8.1.0 | BSD-2-Clause | direct | tools/html-entities |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
+| [mime-db]() | 1.54.0 | MIT | direct | tools/mime-types |
 | [react](https://react.dev/) | 19.3.0 | MIT | direct | apps/web |
 | [react-dom](https://react.dev/) | 19.3.0 | MIT | direct | apps/web |
 | [react-router](https://github.com/remix-run/react-router) | 7.18.4 | MIT | transitive (via react-router-dom) | apps/web |
@@ -23,6 +25,34 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [scheduler](https://react.dev/) | 0.28.0 | MIT | transitive (via react-dom) | apps/web |
 
 ## Full notices
+
+### @eslint-community/regexpp 4.12.2
+
+Licence: MIT
+
+```text
+MIT License
+
+Copyright (c) 2018 Toru Nagashima
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ### @noble/hashes 2.4.0
 
@@ -295,6 +325,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### mime-db 1.54.0
+
+Licence: MIT
+
+```text
+(The MIT License)
+
+Copyright (c) 2014 Jonathan Ong <me@jongleberry.com>
+Copyright (c) 2015-2022 Douglas Christopher Wilson <doug@somethingdoug.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### react 19.3.0
 
 Licence: MIT
@@ -445,7 +505,358 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 
 | Data | Licence | Bundled into | Source |
 | --- | --- | --- | --- |
+| FIGlet 2.2.5 fonts (15) | BSD-3-Clause | `tools/ascii-art` | [source](https://github.com/cmatsuoka/figlet/tree/master/fonts) |
+| Unicode emoji-test.txt 18.0 | Unicode-3.0 | `tools/emoji-picker` | [source](https://www.unicode.org/Public/emoji/latest/emoji-test.txt) |
 | EFF Long Wordlist | CC BY 3.0 US | `tools/password-generator` | [source](https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases) |
+
+### FIGlet 2.2.5 fonts (15) (bundled into `tools/ascii-art`)
+
+Licence: BSD-3-Clause ([full text](https://raw.githubusercontent.com/cmatsuoka/figlet/master/LICENSE))
+
+Attribution: FIGlet fonts by Glenn Chappell, Ian Chai, John Cowan, Bruce Jakeway and Paul Burton, part of the FIGlet project (Copyright (C) 1991-2011 Glenn Chappell, Ian Chai, John Cowan, Christiaan Keet and Claudio Matsuoka), licensed under the BSD-3-Clause licence.
+
+```text
+FIGlet 2.2.5 fonts (15 bundled, D-41)
+
+Source repository: https://github.com/cmatsuoka/figlet
+Fonts directory: https://github.com/cmatsuoka/figlet/tree/master/fonts
+Fetched: 2026-09-24
+
+Licence: BSD-3-Clause. Full text of the repository's own LICENSE file follows,
+then, per bundled font, its name, source URL and the author/permission
+comment lines transcribed from its own header.
+
+================================================================
+Copyright (C) 1991, 1993, 1994 Glenn Chappell and Ian Chai
+Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001 John Cowan
+Copyright (C) 2002 Christiaan Keet
+Copyright (C) 2011 Claudio Matsuoka
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holders nor the names of their
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+================================================================
+
+----------------------------------------------------------------
+standard
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/standard.flf
+
+Standard by Glenn Chappell & Ian Chai 3/93 -- based on Frank's .sig
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Modified for figlet 2.2 by John Cowan <cowan@ccil.org>
+  to add Latin-{2,3,4,5} support (Unicode U+0100-017F).
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+---
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+Modified 2012-05 by Patrick Gillespie (patorjk@gmail.com) to add the 0xCA0 character.
+
+----------------------------------------------------------------
+small
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/small.flf
+
+Small by Glenn Chappell 4/93 -- based on Standard
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+slant
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/slant.flf
+
+Slant by Glenn Chappell 3/93 -- based on Standard
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+big
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/big.flf
+
+Big by Glenn Chappell 4/93 -- based on Standard
+Includes ISO Latin-1
+Greek characters by Bruce Jakeway <pbjakeway@neumann.uwaterloo.ca>
+figlet release 2.2 -- November 1996
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+----------------------------------------------------------------
+block
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/block.flf
+
+Block by Glenn Chappell 4/93 -- straight version of Lean
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+bubble
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/bubble.flf
+
+Bubble by Glenn Chappell 4/93
+Includes characters 128-255
+Enhanced for Latin-2,3,4 by John Cowan <cowan@ccil.org>
+Latin character sets supported only if your screen font does
+figlet release 2.2 -- November 1996
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+----------------------------------------------------------------
+digital
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/digital.flf
+
+Digital by Glenn Chappell 1/94 -- based on Bubble
+Includes characters 128-255
+Enhanced for Latin-2,3,4 by John Cowan <cowan@ccil.org>
+Latin character sets supported only if your screen font does
+figlet release 2.2 -- November 1996
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+----------------------------------------------------------------
+lean
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/lean.flf
+
+Lean by Glenn Chappell 4/93 -- based on various .sig's
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+mini
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/mini.flf
+
+Mini by Glenn Chappell 4/93
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+script
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/script.flf
+
+Script by Glenn Chappell 4/93
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+shadow
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/shadow.flf
+
+Shadow by Glenn Chappell 6/93 -- based on Standard & SmShadow
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+smscript
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/smscript.flf
+
+SmScript by Glenn Chappell 4/93 -- based on Script
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+smshadow
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/smshadow.flf
+
+SmShadow by Glenn Chappell 4/93 -- based on Small
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+smslant
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/smslant.flf
+
+SmSlant by Glenn Chappell 6/93 - based on Small & Slant
+Includes ISO Latin-1
+figlet release 2.1 -- 12 Aug 1994
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Modified by Paul Burton <solution@earthlink.net> 12/96 to include new parameter
+supported by FIGlet and FIGWin.  May also be slightly modified for better use
+of new full-width/kern/smush alternatives, but default output is NOT changed.
+
+
+----------------------------------------------------------------
+term
+Source: https://raw.githubusercontent.com/cmatsuoka/figlet/master/fonts/term.flf
+
+Terminal by Glenn Chappell 4/93
+Includes characters 128-255
+Enhanced for Latin-2,3,4 by John Cowan <cowan@ccil.org>
+Latin character sets supported only if your screen font does
+figlet release 2.2 -- November 1996
+Permission is hereby given to modify this font, as long as the
+modifier's name is placed on a comment line.
+
+Double-checked by Paul Burton <solution@earthlink.net> 12/96.  Added the new
+parameter supported by FIGlet and FIGWin.  Unlike all other FIGfonts, this one
+is intended to produce output exactly the same as the input unless a control
+file is used.  Therefore it produces the SAME output for smush, kern or fit.
+```
+
+### Unicode emoji-test.txt 18.0 (bundled into `tools/emoji-picker`)
+
+Licence: Unicode-3.0 ([full text](https://www.unicode.org/license.txt))
+
+Attribution: "emoji-test.txt", (c) 2026 Unicode, Inc., from the Unicode Character Database and UTS #51, licensed under the Unicode License V3 (https://www.unicode.org/license.txt).
+
+```text
+emoji-test.txt
+Date: 2026-04-30, 22:40:18 GMT
+Version: 18.0 (UTS #51)
+Source: https://www.unicode.org/Public/emoji/latest/emoji-test.txt
+Fetched: 2026-09-24
+
+The bundled file's own header, quoted verbatim:
+
+# emoji-test.txt
+# Date: 2026-04-30, 22:40:18 GMT
+# (c) 2026 Unicode(r), Inc.
+# Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
+# For terms of use and license, see https://www.unicode.org/terms_of_use.html
+
+---
+
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright (c) 1991-2026 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
+```
 
 ### EFF Long Wordlist (bundled into `tools/password-generator`)
 

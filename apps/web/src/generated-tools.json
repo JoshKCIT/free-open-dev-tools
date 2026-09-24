@@ -1,4 +1,36 @@
 {
+  "ascii-art": {
+    "id": "ascii-art",
+    "name": "ASCII Art Text",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "ascii art",
+      "figlet",
+      "banner",
+      "text art",
+      "font"
+    ]
+  },
+  "ascii-table": {
+    "id": "ascii-table",
+    "name": "ASCII Table",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "ascii",
+      "table",
+      "character set",
+      "decimal",
+      "hexadecimal",
+      "octal",
+      "binary",
+      "control codes",
+      "rfc 20"
+    ]
+  },
   "base32": {
     "id": "base32",
     "name": "Base32 Encoder & Decoder",
@@ -127,6 +159,21 @@
       "substitution cipher"
     ]
   },
+  "cron-expression": {
+    "id": "cron-expression",
+    "name": "Cron Expression Parser & Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "cron",
+      "crontab",
+      "quartz",
+      "schedule",
+      "next-run",
+      "vixie"
+    ]
+  },
   "data-uri": {
     "id": "data-uri",
     "name": "Data URI Converter",
@@ -140,6 +187,79 @@
       "mime-type",
       "file-encoding",
       "rfc2397"
+    ]
+  },
+  "date-diff": {
+    "id": "date-diff",
+    "name": "Date & Duration Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "date difference",
+      "duration",
+      "date calculator",
+      "iso8601",
+      "elapsed time",
+      "add days"
+    ]
+  },
+  "date-format": {
+    "id": "date-format",
+    "name": "Date Format Tester",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "strftime",
+      "date-format",
+      "ldml",
+      "intl",
+      "posix",
+      "unicode"
+    ]
+  },
+  "email-extractor": {
+    "id": "email-extractor",
+    "name": "Pattern Extractor",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "email-extractor",
+      "regex-extraction",
+      "ip-address",
+      "phone-number",
+      "url-extraction",
+      "pattern-matching"
+    ]
+  },
+  "emoji-picker": {
+    "id": "emoji-picker",
+    "name": "Emoji Picker",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "emoji",
+      "unicode",
+      "code point",
+      "escape",
+      "picker",
+      "uts 51"
+    ]
+  },
+  "find-replace": {
+    "id": "find-replace",
+    "name": "Find and Replace",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "find",
+      "replace",
+      "text",
+      "search"
     ]
   },
   "hash-file": {
@@ -211,6 +331,21 @@
       "encode",
       "xml",
       "htmlspecialchars"
+    ]
+  },
+  "http-status-codes": {
+    "id": "http-status-codes",
+    "name": "HTTP Status Code Reference",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "http",
+      "status code",
+      "reason phrase",
+      "rfc",
+      "reference",
+      "registry"
     ]
   },
   "ieee754": {
@@ -311,6 +446,22 @@
       "rfc7518"
     ]
   },
+  "lorem-ipsum": {
+    "id": "lorem-ipsum",
+    "name": "Lorem Ipsum Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "lorem-ipsum",
+      "placeholder-text",
+      "dummy-text",
+      "mock-up",
+      "seeded-random",
+      "fnv-1a",
+      "mulberry32"
+    ]
+  },
   "luhn": {
     "id": "luhn",
     "name": "Luhn & Card Number Validator",
@@ -323,6 +474,23 @@
       "card number validator",
       "mod 10",
       "issuer identification number"
+    ]
+  },
+  "mime-types": {
+    "id": "mime-types",
+    "name": "MIME Type Lookup",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "mime-db": "1.54.0"
+    },
+    "keywords": [
+      "mime",
+      "media type",
+      "content-type",
+      "extension",
+      "mime-db",
+      "rfc 6838"
     ]
   },
   "morse-code": {
@@ -449,6 +617,23 @@
       "generator"
     ]
   },
+  "regex-tester": {
+    "id": "regex-tester",
+    "name": "Regex Tester & Explainer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@eslint-community/regexpp": "4.12.2"
+    },
+    "keywords": [
+      "regex",
+      "regular-expression",
+      "pattern",
+      "match",
+      "test",
+      "redos"
+    ]
+  },
   "roman-numerals": {
     "id": "roman-numerals",
     "name": "Roman Numeral Converter",
@@ -506,6 +691,20 @@
       "text"
     ]
   },
+  "text-lines": {
+    "id": "text-lines",
+    "name": "Line Toolkit",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "lines",
+      "sort",
+      "dedupe",
+      "shuffle",
+      "text"
+    ]
+  },
   "text-radix": {
     "id": "text-radix",
     "name": "Text to Binary, Hex & Octal",
@@ -520,6 +719,22 @@
       "windows-1252",
       "utf-16",
       "byte grouping"
+    ]
+  },
+  "timezone-converter": {
+    "id": "timezone-converter",
+    "name": "Time Zone Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "timezone",
+      "time zone",
+      "dst",
+      "daylight saving",
+      "utc offset",
+      "iana",
+      "convert"
     ]
   },
   "unicode-inspector": {

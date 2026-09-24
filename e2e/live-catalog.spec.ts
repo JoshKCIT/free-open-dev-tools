@@ -78,6 +78,24 @@ const NEW_TOOL_IDS = [
   'jwt-signature',
 ];
 
+/** The 14 tools Phase 3 added (TEXT-01..06, TIME-01..04, REF-01..04). */
+const PHASE_3_TOOL_IDS = [
+  'text-lines',
+  'find-replace',
+  'regex-tester',
+  'lorem-ipsum',
+  'email-extractor',
+  'ascii-art',
+  'timezone-converter',
+  'date-diff',
+  'cron-expression',
+  'date-format',
+  'http-status-codes',
+  'mime-types',
+  'ascii-table',
+  'emoji-picker',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -454,13 +472,13 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 38 links to built tool pages, not the 144-entry catalog size', async ({ page }) => {
+  test('the rendered catalog counts 52 links to built tool pages, not the 144-entry catalog size', async ({ page }) => {
     await page.goto(rel('/catalog'));
     // The catalog body is drawn by React after load (Catalog.tsx), not by
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(38);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(52);
   });
 });
 
@@ -527,4 +545,8 @@ test('every live fixture file names a built tool page and uses only known step a
       ).toBe(true);
     }
   }
+});
+
+test('every phase 3 tool has exactly one live fixture file', () => {
+  expect([...LIVE_FIXTURE_IDS].sort()).toEqual([...PHASE_3_TOOL_IDS].sort());
 });

@@ -430,7 +430,7 @@
       "categoryLabel": "Text",
       "tier": 1,
       "summary": "Sort, deduplicate, shuffle, number, trim, filter, join and split lines.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "case-converter",
@@ -466,7 +466,7 @@
       "categoryLabel": "Text",
       "tier": 1,
       "summary": "Literal find and replace with case, whole word and multiline options.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "regex-tester",
@@ -475,7 +475,7 @@
       "categoryLabel": "Text",
       "tier": 1,
       "summary": "Test, replace and explain regular expressions with a time limit that stops runaway patterns.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "slug-generator",
@@ -493,7 +493,7 @@
       "categoryLabel": "Text",
       "tier": 1,
       "summary": "Generate placeholder words, sentences and paragraphs from a seed.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "email-extractor",
@@ -502,7 +502,7 @@
       "categoryLabel": "Text",
       "tier": 1,
       "summary": "Pull emails, URLs, IP addresses and phone numbers out of unstructured text.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "ascii-art",
@@ -511,7 +511,7 @@
       "categoryLabel": "Text",
       "tier": 2,
       "summary": "Render text as an ASCII banner from bundled figlet-style fonts.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "html-formatter",
@@ -880,7 +880,7 @@
       "categoryLabel": "Date and time",
       "tier": 2,
       "summary": "Convert a moment between IANA time zones, showing offsets and DST transitions.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "date-diff",
@@ -889,7 +889,7 @@
       "categoryLabel": "Date and time",
       "tier": 1,
       "summary": "Measure the gap between two moments and add or subtract durations.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "cron-expression",
@@ -898,7 +898,7 @@
       "categoryLabel": "Date and time",
       "tier": 1,
       "summary": "Describe a cron expression in plain English and list the next runs, per dialect.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "date-format",
@@ -907,7 +907,7 @@
       "categoryLabel": "Date and time",
       "tier": 2,
       "summary": "Preview strftime, Unicode LDML and Intl date patterns side by side.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "ip-subnet",
@@ -1042,7 +1042,7 @@
       "categoryLabel": "Reference tables",
       "tier": 1,
       "summary": "Search every registered HTTP status code with its defining document.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "mime-types",
@@ -1051,7 +1051,7 @@
       "categoryLabel": "Reference tables",
       "tier": 1,
       "summary": "Look up a media type by extension, or an extension by media type.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "ascii-table",
@@ -1060,7 +1060,7 @@
       "categoryLabel": "Reference tables",
       "tier": 1,
       "summary": "The full ASCII table in decimal, hex, octal and binary, with control code names.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "emoji-picker",
@@ -1069,7 +1069,7 @@
       "categoryLabel": "Reference tables",
       "tier": 3,
       "summary": "Search emoji by name and copy the character, code points or escape.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "chmod-calculator",
