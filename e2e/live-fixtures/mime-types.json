@@ -1,0 +1,6 @@
+{
+  "id": "mime-types",
+  "label": "photo.PNG resolves to image/png",
+  "steps": [{ "action": "fill", "field": "query", "value": "photo.PNG" }],
+  "expect": ["image/png"]
+}

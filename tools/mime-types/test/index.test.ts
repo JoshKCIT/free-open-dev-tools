@@ -76,3 +76,8 @@ it('the bundled table is the declared mime-db version and an unknown extension i
   const rows = typesForExtension('not-a-real-extension-xyz');
   expect(rows.length).toBe(0);
 });
+
+it('extensionsForType returns the registered extensions for a media type', () => {
+  expect(extensionsForType('application/json')).toContain('json');
+  expect(extensionsForType('not/a-real-type')).toEqual([]);
+});
