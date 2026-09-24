@@ -1,0 +1,10 @@
+{
+  "id": "ascii-art",
+  "label": "the letter A in the standard font, full width layout",
+  "steps": [
+    { "action": "fill", "field": "text", "value": "A" },
+    { "action": "select", "field": "font", "value": "standard" },
+    { "action": "select", "field": "layout", "value": "full" }
+  ],
+  "expect": [" /_/   \\_\\"]
+}

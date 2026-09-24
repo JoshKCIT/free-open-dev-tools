@@ -1,0 +1,46 @@
+{
+  "id": "ascii-art",
+  "name": "ASCII Art Text",
+  "summary": "Render text as an ASCII banner from bundled figlet-style fonts.",
+  "about": "Renders text as a large ASCII banner using one of 15 bundled FIGlet fonts, each shipped in the browser bundle rather than fetched. Supports full-width layout, where every character keeps its designed width, and fitted layout, where characters are moved together until they would touch.",
+  "supports": [
+    "15 bundled FIGlet Version 2 fonts: standard, small, slant, big, block, bubble, digital, lean, mini, script, shadow, smscript, smshadow, smslant and term",
+    "Full width layout, where every character occupies its full designed width",
+    "Fitted layout, where characters are moved together until any visible sub-character (including a font's own hardblank) would overlap",
+    "The 95 printable ASCII characters plus the font's own hardblank-to-space substitution",
+    "A warning naming any input character a chosen font has no glyph for, skipped rather than silently dropped"
+  ],
+  "limits": [
+    "Only full-width and fitted layouts are implemented; this tool has no smushing (character-merging) layouts, so its output is wider than the reference FIGlet program's default for a font designed to smush",
+    "Right-to-left fonts and vertical layout are not supported",
+    "A character outside a font's own character set (anything past the 95 printable ASCII characters, the required Deutsch characters and that font's own code-tagged extras) is skipped, not substituted",
+    "Only the 15 fonts whose own FIGlet 2.2.5 header explicitly grants a modification permission are bundled; ivrit, mnemonic and banner, published in the same repository, are excluded because their headers grant no such permission (D-41)"
+  ],
+  "ambiguities": [
+    "Output rows keep every character's own designed width, trailing spaces included: this was checked directly against the figlet reference package's own textSync output for the same font and text, which also keeps them",
+    "A hardblank sub-character renders as an ordinary space in the output text, matching the FIGfont specification's own definition of a hardblank as a sub-character 'displayed as a blank'",
+    "Multi-line input (a line break in the text field) is rendered as separate, independently laid-out banner blocks stacked one after another, with no vertical smushing between them; this differs from the figlet reference package's own default multi-line behaviour, which is out of this tool's scope (see limits: no vertical layout)"
+  ],
+  "standards": [
+    {
+      "label": "FIGfont Version 2 specification",
+      "url": "https://raw.githubusercontent.com/cmatsuoka/figlet/master/figfont.txt"
+    }
+  ],
+  "bundledData": [
+    {
+      "name": "FIGlet 2.2.5 fonts (15)",
+      "source": "https://github.com/cmatsuoka/figlet/tree/master/fonts",
+      "licence": "BSD-3-Clause",
+      "licenceUrl": "https://raw.githubusercontent.com/cmatsuoka/figlet/master/LICENSE",
+      "attribution": "FIGlet fonts by Glenn Chappell, Ian Chai, John Cowan, Bruce Jakeway and Paul Burton, part of the FIGlet project (Copyright (C) 1991-2011 Glenn Chappell, Ian Chai, John Cowan, Christiaan Keet and Claudio Matsuoka), licensed under the BSD-3-Clause licence.",
+      "noticeFile": "src/fonts/FIGLET-NOTICE.txt"
+    }
+  ],
+  "devDependencies": { "figlet": "1.11.4" },
+  "keywords": ["ascii art", "figlet", "banner", "text art", "font"],
+  "primaryExport": "renderBanner",
+  "usage": "import { renderBanner, parseFont, FONT_NAMES } from '@fodt/ascii-art';\n\nFONT_NAMES; // the 15 bundled font names\nrenderBanner('standard', 'Hi', { layout: 'full' }).lines.join('\\n');\n\n// parseFont is exposed separately, for reading a font's own structure directly:\nimport { FONTS } from '@fodt/ascii-art/dist/fonts/index.js'; // internal build output, not a stable subpath export\nparseFont(FONTS.standard);",
+  "apiNotes": "`renderBanner(fontName, text, { layout })` takes a bundled font's name (one of `FONT_NAMES`), not a parsed font, so the caller never has to parse a font itself just to render with it; it throws `FigletFontError` for an unknown font name or for a layout not yet supported. `parseFont(text)` reads a raw FIGfont Version 2 file's text into a `FigFont` object directly, for callers that want the parsed structure itself (this package's own tests use it this way); it throws `FigletFontError` for anything that does not match the format's header, signature or required character set. `FONT_NAMES` and `FONTS` (defined in `src/fonts/index.ts`, re-exported from this package's own `index.ts` as `FONT_NAMES`) are the only place the 15 bundled font names and their text live; this package's own `index.ts` never imports the `figlet` npm package, which is a devDependency used only by this package's own tests as a differential oracle.",
+  "testNotes": "Every bundled font's full-width and fitted output is compared directly against the `figlet` npm package's own `textSync` output for the same font text and the same input, for a sample of printable ASCII characters. `figlet` is never imported outside the test file. The FIGfont Version 2 specification (figfont.txt) is cited by name for the header format, the hardblank substitution rule and the endmark-stripping rule."
+}
