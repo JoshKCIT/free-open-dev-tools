@@ -92,8 +92,9 @@ export default defineTool({
       label: 'Verify a known hash',
       values: {
         mode: 'verify',
-        password: 'password',
-        hash: '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        // A pyca/bcrypt test vector, the same one tools/bcrypt's own tests pin.
+        password: 'Kk4DQuMMfZL9o',
+        hash: '$2b$04$cVWp4XaNU8a4v1uMRum2SO026BWLIoQMD/TXg5uZV.0P.uO8m3YEm',
       },
     },
   ],
