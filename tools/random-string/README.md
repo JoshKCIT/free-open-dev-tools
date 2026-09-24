@@ -27,6 +27,12 @@ Generates a random identifier of a chosen length, drawn character by character f
 - A custom alphabet is used exactly as given (after removing duplicate characters), so a visitor who supplies a weak or predictable alphabet gets a weak result.
 - The generated value is shown on screen and copied by you; this tool never writes it to a file.
 
+## Ambiguous cases, and what this does about them
+
+- Nano ID is a library, not a standard. The URL-safe preset uses the same 64 characters as Nano ID's default alphabet, so a 21-character value here has the same strength as a default Nano ID, but the characters are listed in a different order and the values are not produced by that library.
+- A custom alphabet is read one Unicode code point at a time and compared exactly, so upper and lower case count as different characters, and a letter written with a separate accent mark counts as two characters, not one.
+- The unambiguous preset removes the look-alike characters 0, O, o, 1, I and l. Which characters look alike depends on the font, so this is a common convention rather than a guarantee for every typeface.
+
 ## Use it on its own
 
 ```sh
