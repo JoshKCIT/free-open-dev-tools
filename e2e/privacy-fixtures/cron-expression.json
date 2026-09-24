@@ -1,0 +1,11 @@
+[
+  {
+    "mode": { "field": "dialect", "value": "unix" },
+    "values": {
+      "expression": "30 4 1,15 * 5",
+      "from": "2024-01-01T00:00:00Z",
+      "count": "5"
+    },
+    "attachesFile": false
+  }
+]

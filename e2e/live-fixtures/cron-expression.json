@@ -1,0 +1,9 @@
+{
+  "id": "cron-expression",
+  "label": "The manual's worked example lists the 1st and every Friday",
+  "steps": [
+    { "action": "fill", "field": "expression", "value": "30 4 1,15 * 5" },
+    { "action": "fill", "field": "from", "value": "2024-01-01T00:00:00Z" }
+  ],
+  "expect": ["2024-01-01T04:30", "2024-01-05T04:30"]
+}

@@ -1,0 +1,83 @@
+# Cron Expression Parser & Builder
+
+Describe a cron expression in plain English and list the next runs, per dialect.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Parses a cron expression in either classic Unix (five-field, Vixie/cronie) or Quartz (six- or seven-field, with seconds and an optional year) form, lists the next scheduled runs in UTC and describes the schedule in one English sentence. Each dialect is grounded in its own documentation and checked against a reference implementation's next-run output wherever that reference supports the feature being tested.
+
+## Supported
+
+- Classic Unix cron: five fields (minute, hour, day-of-month, month, day-of-week), *, lists, ranges, steps, month and weekday names, and the either-day rule when both day fields are restricted
+- Unix macros @yearly, @annually, @monthly, @weekly, @daily, @midnight and @hourly
+- Quartz cron: six or seven fields (second, minute, hour, day-of-month, month, day-of-week, optional year), with L, L-n, LW, nW on day-of-month and L, nL, n#k on day-of-week
+- Quartz month 1-12 or JAN-DEC and day-of-week 1-7 or SUN-SAT, where 1 is Sunday
+- Up to 50 next runs from a chosen starting instant, all reported in UTC
+- A plain-English description of any accepted expression
+
+## Limits
+
+- AWS, Kubernetes and other cloud-scheduler cron variants are not supported, and neither is cronie's own randomised tilde range or the H (randomised value) extension some other parsers add
+- Runs are computed in UTC only; a server's local time zone and daylight-saving handling are not modelled
+- Next-run search stops after 400 years (Unix) or the year 2099 (Quartz, matching the field's own documented range) and reports that the expression never runs rather than searching forever
+- Quartz's day-of-month and day-of-week fields cannot both be restricted at once (a question mark is required in exactly one), matching real Quartz behaviour
+
+## Ambiguous cases, and what this does about them
+
+- Quartz's own CronExpression.java javadoc lists the month field as "0-11 or JAN-DEC" in one place, a well-documented leftover from Java's zero-indexed Calendar convention; this tool follows the field-summary table at the top of the same file and the 2.3.0 tutorial, both of which say "1-12 or JAN-DEC", and treats 1 and JAN as the same month
+- The same CronExpression.java source's own field-summary table currently documents the year field as "empty, 1970-2199", while the Quartz 2.3.0 tutorial's own table says "empty, 1970-2099"; this tool follows the tutorial's narrower, longer-published range
+
+## Defined by
+
+- [crontab(5) — Linux/cronie manual page](https://man7.org/linux/man-pages/man5/crontab.5.html)
+- [Quartz Scheduler 2.3.0 — CronTrigger Tutorial](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html)
+- [Quartz Scheduler — CronExpression.java (field table and special-character javadoc)](https://github.com/quartz-scheduler/quartz/blob/main/quartz/src/main/java/org/quartz/CronExpression.java)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/cron-expression cron-expression
+cd cron-expression
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/cron-expression
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { parseCron, nextRuns, describeCron } from '@fodt/cron-expression';
+
+const parsed = parseCron('30 4 1,15 * 5', 'unix');
+const { runs, neverMessage } = nextRuns(parsed, new Date('2024-01-01T00:00:00Z'), 5);
+describeCron(parsed);
+```
+
+`parseCron` throws `CronError` (with a `position` field naming the offending field, 0-indexed) for a malformed or unsupported expression. `nextRuns` returns `{ runs }` on success or `{ runs, neverMessage }` when the search horizon is exhausted before finding `count` runs — `runs` may be a shorter, non-empty list in the never-runs case.
+
+## Dependencies
+
+None. This package has no runtime dependencies.
+
+## Tests
+
+```sh
+npm test
+```
+
+Unix behaviour is checked against crontab(5)'s own worked example and prose (the either-day OR rule, the asterisk-step exception to it, macro expansions, 7-for-Sunday, rejection of @reboot/H/tilde-ranges/six fields) and, separately, against cron-parser 5.10.1's next-run output for a table of at least twelve Unix expressions covering lists, ranges, steps, names and both day fields restricted. Quartz behaviour is checked against the 2.3.0 tutorial's own worked examples (L, L-2, 6L, 6#3, 1/5, W, LW, month/weekday numbering, the required question mark, the year range) and, for the subset of syntax cron-parser also understands (translating its 0-7 weekday numbering to Quartz's 1-7 and its L-suffixed weekday form to Quartz's nL), against cron-parser's next-run output. cron-parser has no W support, so W/LW/L-n and year-restricted expressions are checked only against the tutorial's own documented examples, never against the reference; every such case is named here and in the test file. Plain-English descriptions are this tool's own wording — no standard defines a canonical phrasing — asserted as exact strings for a set of expressions across both dialects.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
