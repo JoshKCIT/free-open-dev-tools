@@ -124,3 +124,75 @@ it('an out-of-range value is rejected with the offending value named', () => {
   expect(() => parseCron('0 24 * * *', 'unix')).toThrow(/24/);
   expect(() => parseCron('0 0 32 * *', 'unix')).toThrow(/32/);
 });
+
+// ------------------------------------------------------------------- Quartz
+
+function isoQuartzRuns(expression: string, count: number, from: Date = FROM): string[] {
+  const parsed = parseCron(expression, 'quartz');
+  const result = nextRuns(parsed, from, count);
+  return result.runs.map((d) => d.toISOString());
+}
+
+// Quartz Scheduler 2.3.0 tutorial, fetched live 2026-09-24 from
+// quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html,
+// "Examples" table: "0 15 10 L * ?" -> "Fire at 10:15am on the last day of
+// every month"; "0 15 10 L-2 * ?" -> "the 2nd-to-last last day of every
+// month"; "0 15 10 ? * 6L" -> "the last Friday of every month"; "0 15 10 ?
+// * 6#3" -> "the third Friday of every month"; "0 0 12 1/5 * ?" -> "every 5
+// days every month, starting on the first day of the month"; "0 11 11 11
+// 11 ?" -> "Fire every November 11th at 11:11am."
+it('Quartz L, L-2, 6L, 6#3 and 1/5 examples from the tutorial fire on the documented days', () => {
+  expect(isoQuartzRuns('0 15 10 L * ?', 3)).toEqual([
+    '2024-01-31T10:15:00.000Z',
+    '2024-02-29T10:15:00.000Z', // 2024 is a leap year
+    '2024-03-31T10:15:00.000Z',
+  ]);
+  expect(isoQuartzRuns('0 15 10 L-2 * ?', 2)).toEqual(['2024-01-29T10:15:00.000Z', '2024-02-27T10:15:00.000Z']);
+  expect(isoQuartzRuns('0 15 10 ? * 6L', 2)).toEqual(['2024-01-26T10:15:00.000Z', '2024-02-23T10:15:00.000Z']);
+  expect(isoQuartzRuns('0 15 10 ? * 6#3', 2)).toEqual(['2024-01-19T10:15:00.000Z', '2024-02-16T10:15:00.000Z']);
+  expect(isoQuartzRuns('0 0 12 1/5 * ?', 3)).toEqual([
+    '2024-01-01T12:00:00.000Z',
+    '2024-01-06T12:00:00.000Z',
+    '2024-01-11T12:00:00.000Z',
+  ]);
+  expect(isoQuartzRuns('0 11 11 11 11 ?', 1)).toEqual(['2024-11-11T11:11:00.000Z']);
+});
+
+// Same tutorial, the "W" and "L and W ... 'LW'" prose: "if you specify 1W
+// as the value for day-of-month, and the 1st is a Saturday, the trigger
+// will fire on Monday the 3rd, as it will not 'jump' over the boundary of
+// a month's days" -- June 2024's 1st IS a Saturday (independently confirmed
+// this session). "The 'L' and 'W' characters can also be combined ... to
+// yield 'LW', which translates to 'last weekday of the month'" -- June
+// 2024's last day (the 30th) is a Sunday, so LW should land on Friday the
+// 28th.
+it('Quartz W fires on the nearest weekday without leaving the month and LW is the last weekday', () => {
+  const juneStart = new Date('2024-06-01T00:00:00Z');
+  expect(isoQuartzRuns('0 0 0 1W * ?', 1, juneStart)).toEqual(['2024-06-03T00:00:00.000Z']); // 1st is Sat -> Monday the 3rd
+  expect(isoQuartzRuns('0 0 0 15W * ?', 1, juneStart)).toEqual(['2024-06-14T00:00:00.000Z']); // 15th is Sat -> Friday the 14th
+  expect(isoQuartzRuns('0 0 0 LW * ?', 1, juneStart)).toEqual(['2024-06-28T00:00:00.000Z']); // last day (30th) is Sun -> Friday the 28th
+});
+
+// CronExpression.java's own field-summary table (fetched live 2026-09-24
+// from github.com/quartz-scheduler/quartz, main branch): "Month ... 1-12 or
+// JAN-DEC" (settled per this phase's D-39 -- the OLD "0-11" wording seen
+// elsewhere in the same file's prose is a documented artifact, not real
+// behaviour) and "Day-of-Week ... 1-7 or SUN-SAT" with the tutorial's own
+// "L (...) If used in the day-of-week field by itself, it simply means '7'
+// or 'SAT'" confirming 1 is Sunday, not Monday.
+it('Quartz month 1 and JAN are the same month and day-of-week 1 is Sunday', () => {
+  expect(isoQuartzRuns('0 0 12 1 1 ?', 1)).toEqual(isoQuartzRuns('0 0 12 1 JAN ?', 1));
+  expect(isoQuartzRuns('0 0 0 ? * 1', 1)).toEqual(isoQuartzRuns('0 0 0 ? * SUN', 1));
+  // 2024-01-01 is a Monday; the first Sunday after it is 2024-01-07.
+  expect(isoQuartzRuns('0 0 0 ? * 1', 1)).toEqual(['2024-01-07T00:00:00.000Z']);
+});
+
+it('Quartz requires a question mark in exactly one day field and rejects a year outside 1970 to 2099', () => {
+  expect(() => parseCron('0 0 12 1-31 * 1-5', 'quartz')).toThrow(CronError); // both restricted
+  expect(() => parseCron('0 0 12 * * *', 'quartz')).toThrow(CronError); // neither is "?"
+  expect(() => parseCron('0 0 12 ? * ?', 'quartz')).toThrow(CronError); // both are "?"
+  expect(() => parseCron('0 0 12 * * ? 1969', 'quartz')).toThrow(CronError);
+  expect(() => parseCron('0 0 12 * * ? 2100', 'quartz')).toThrow(CronError);
+  expect(() => parseCron('0 0 12 * * ? 2099', 'quartz')).not.toThrow();
+  expect(() => parseCron('0 0 12 * * ? 1970', 'quartz')).not.toThrow();
+});

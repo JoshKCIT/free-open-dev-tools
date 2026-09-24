@@ -7,5 +7,14 @@
       "count": "5"
     },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "dialect", "value": "quartz" },
+    "values": {
+      "expression": "0 15 10 ? * 6#3",
+      "from": "2024-01-01T00:00:00Z",
+      "count": "5"
+    },
+    "attachesFile": false
   }
 ]

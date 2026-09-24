@@ -44,3 +44,43 @@ it('Unix next runs match cron-parser for the reference expression table', () => 
     expect(ours, `mismatch for "${expression}"`).toEqual(theirs);
   }
 });
+
+/**
+ * Quartz expressions cron-parser also understands, each paired with its
+ * cron-parser-syntax translation: cron-parser has no year field (dropped),
+ * "?" is its own alias for "*" (translated literally), and its day-of-week
+ * numbering is 0-7 (0 or 7 = Sunday) where Quartz's is 1-7 (1 = Sunday) --
+ * so a plain Quartz weekday number N becomes cron-parser's N-1, and
+ * Quartz's day-of-week "nL" (last such weekday) becomes cron-parser's own
+ * "(n-1)L" form, which cron-parser documents identically ("the range 0L -
+ * 7L ... means 'last occurrence of this weekday for the month in
+ * progress'"). cron-parser has no W support at all (confirmed by its
+ * absence from the fetched README's special-character table), so W, LW,
+ * L-n and year-restricted expressions are checked only against the
+ * tutorial's own documented examples in index.test.ts, never here.
+ */
+const QUARTZ_SHARED_EXPRESSIONS: [quartz: string, cronParser: string][] = [
+  ['0 0 12 * * ?', '0 0 12 * * *'], // noon every day
+  ['0 15 10 ? * 2-6', '0 15 10 * * 1-5'], // 10:15am every weekday (Quartz Mon=2..Fri=6, cron-parser Mon=1..Fri=5)
+  ['0 0 0 1 * ?', '0 0 0 1 * *'], // midnight on the 1st of every month
+  ['0 30 9 ? * 6', '0 30 9 * * 5'], // 9:30am every Friday (Quartz 6, cron-parser 5)
+  ['0 0/15 14 ? * 2-6', '0 0/15 14 * * 1-5'], // every 15 minutes from 2pm, weekdays
+  ['0 0 12 L * ?', '0 0 12 L * *'], // noon on the last day of every month
+  ['0 0 0 ? * 6L', '0 0 0 * * 5L'], // midnight on the last Friday of every month
+  ['0 0 0 ? * 2L', '0 0 0 * * 1L'], // midnight on the last Monday of every month
+  ['0 0 6 1/10 * ?', '0 0 6 1/10 * *'], // 6am every 10 days, restarting each month
+  ['0 0 0 ? * 1', '0 0 0 * * 0'], // midnight every Sunday (Quartz 1, cron-parser 0)
+];
+
+it('Quartz next runs match cron-parser for the shared-feature expression table', () => {
+  expect(QUARTZ_SHARED_EXPRESSIONS.length).toBeGreaterThanOrEqual(8);
+  for (const [quartzExpr, cronParserExpr] of QUARTZ_SHARED_EXPRESSIONS) {
+    const parsed = parseCron(quartzExpr, 'quartz');
+    const ours = nextRuns(parsed, FROM, COUNT).runs.map((d) => d.toISOString());
+
+    const interval = CronExpressionParser.parse(cronParserExpr, { currentDate: FROM.toISOString(), tz: 'UTC' });
+    const theirs = interval.take(COUNT).map((d) => d.toDate().toISOString());
+
+    expect(ours, `mismatch for "${quartzExpr}" (cron-parser: "${cronParserExpr}")`).toEqual(theirs);
+  }
+});

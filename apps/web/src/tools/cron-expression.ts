@@ -47,6 +47,10 @@ export default defineTool({
       label: 'crontab(5) worked example',
       values: { dialect: 'unix', expression: '30 4 1,15 * 5', from: '2024-01-01T00:00:00Z', count: 10 },
     },
+    {
+      label: 'Quartz tutorial: third Friday of the month',
+      values: { dialect: 'quartz', expression: '0 15 10 ? * 6#3', from: '2024-01-01T00:00:00Z', count: 5 },
+    },
   ],
   run(values): ToolResult {
     const dialect = str(values, 'dialect', 'unix') as Dialect;
