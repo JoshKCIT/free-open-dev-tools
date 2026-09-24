@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "difference" },
+    "values": { "start": "2024-01-31", "end": "2024-03-01" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "add" },
+    "values": { "start": "2024-01-31", "duration": "P1M" },
+    "attachesFile": false
+  }
+]

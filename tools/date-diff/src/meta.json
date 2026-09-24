@@ -23,8 +23,14 @@
     "A moment with no stated UTC offset is read as UTC. This is a deliberate, stated choice, not a detection of your local time zone."
   ],
   "standards": [
-    { "label": "RFC 3339 — Date and Time on the Internet: Timestamps", "url": "https://www.rfc-editor.org/rfc/rfc3339" },
-    { "label": "ISO 8601-1:2019 — Date and time representations", "url": "https://www.iso.org/iso-8601-date-and-time-format.html" }
+    {
+      "label": "RFC 3339 — Date and Time on the Internet: Timestamps",
+      "url": "https://www.rfc-editor.org/rfc/rfc3339"
+    },
+    {
+      "label": "ISO 8601-1:2019 — Date and time representations",
+      "url": "https://www.iso.org/iso-8601-date-and-time-format.html"
+    }
   ],
   "keywords": ["date difference", "duration", "date calculator", "iso8601", "elapsed time", "add days"],
   "primaryExport": "diffMoments",
