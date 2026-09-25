@@ -1,0 +1,44 @@
+{
+  "id": "data-convert",
+  "name": "JSON, YAML & TOML Converter",
+  "summary": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow.",
+  "about": "Converts a pasted document between JSON, YAML and TOML in any direction. A YAML document converted to YAML again keeps its comments; every other conversion states in a warning exactly what it drops, such as YAML comments, TOML dates becoming strings, or key order changing.",
+  "supports": [
+    "All nine from/to pairs across JSON, YAML and TOML",
+    "YAML to YAML re-serialising through the parsed document, so comments and their position survive",
+    "The YAML 1.2 core schema, so unquoted yes and no stay strings rather than becoming booleans",
+    "TOML dates and times, read as strings with a warning since JSON and YAML core scalars have no date type",
+    "TOML tables, arrays of tables and inline tables round tripping through JSON and back",
+    "A YAML alias bomb refused by an alias-count limit instead of being expanded",
+    "A key named __proto__ or constructor surviving every conversion as an ordinary key",
+    "A parse error reported with a line and column for both YAML and TOML input"
+  ],
+  "limits": [
+    "JSON has no comments; a YAML comment survives only a YAML to YAML conversion, never a conversion to JSON or TOML",
+    "TOML has no comment syntax the reader keeps, so every TOML input's comments are dropped even converting TOML to TOML",
+    "TOML has no null; a null anywhere in the input is refused by its RFC 6901 path rather than being dropped, since TOML libraries otherwise drop it silently",
+    "A YAML tag outside the core schema, and a YAML anchor or alias, are resolved to a plain copy on output; the tag or the sharing is not preserved",
+    "TOML has no distinct date type on the JSON/YAML side of a conversion; a TOML date or time becomes a string",
+    "TOML output lists plain keys before any table, which can change the input's key order",
+    "A JSON number beyond double precision is rounded, the same limit JSON.parse itself has",
+    "Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0"
+  ],
+  "ambiguities": [
+    "Unquoted yes and no stay strings on the YAML side, per the YAML 1.2 core schema this reads with, not the YAML 1.1 boolean set some tools use",
+    "Which quoting style the YAML writer picks for a given string (plain, single or double quoted) is decided by the yaml package's own rules, not by this tool"
+  ],
+  "standards": [
+    { "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format", "url": "https://www.rfc-editor.org/rfc/rfc8259" },
+    { "label": "YAML 1.2.2", "url": "https://yaml.org/spec/1.2.2/" },
+    { "label": "TOML 1.1.0", "url": "https://toml.io/en/v1.1.0" }
+  ],
+  "keywords": ["json", "yaml", "toml", "convert", "data convert", "yaml to json", "toml to json"],
+  "primaryExport": "convertData",
+  "usage": "import { convertData } from '@fodt/data-convert';\n\nconvertData('name: Ada\\ntags:\\n  - a\\n  - b', { from: 'yaml', to: 'json' });\n// { output: '{\\n  \"name\": \"Ada\",...', warnings: [] }",
+  "apiNotes": "`convertData(text, { from, to, indent })` returns `{ output, warnings }` for a successful conversion, `indent` defaults to 2 and only affects JSON and YAML output. It throws `DataConvertError` with `line`/`column` for a parse error, or `path` (an RFC 6901 pointer) for a structural problem such as a null on the way to TOML.",
+  "testNotes": "The JSON to YAML to JSON round trip is checked against a document mixing an array, a string that looks like a number, and a nested object. YAML comment retention, the YAML 1.2 core schema's yes/no handling, and TOML dates, tables and inline tables are each checked against the fetched YAML 1.2.2 and TOML 1.1.0 examples.",
+  "dependencies": {
+    "yaml": "2.9.1",
+    "smol-toml": "1.9.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "data-convert",
+  "label": "YAML 1.2.2 Example 2.2 (player statistics) converts to JSON with its numeric values intact",
+  "steps": [
+    { "action": "select", "field": "from", "value": "yaml" },
+    { "action": "select", "field": "to", "value": "json" },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "hr:  65    # Home runs\navg: 0.278 # Batting average\nrbi: 147   # Runs Batted In\n"
+    }
+  ],
+  "expect": ["\"avg\": 0.278", "\"rbi\": 147"]
+}

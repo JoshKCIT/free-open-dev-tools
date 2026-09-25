@@ -1,0 +1,14 @@
+[
+  {
+    "values": { "from": "json", "to": "yaml", "input": "{\"name\":\"Ada\",\"tags\":[\"a\",\"b\"]}" },
+    "attachesFile": false
+  },
+  {
+    "values": { "from": "yaml", "to": "toml", "input": "name: Ada" },
+    "attachesFile": false
+  },
+  {
+    "values": { "from": "toml", "to": "json", "input": "name = \"Ada\"" },
+    "attachesFile": false
+  }
+]
