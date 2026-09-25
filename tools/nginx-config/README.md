@@ -11,6 +11,7 @@ Writes an nginx server block for a static site, a single-page app, a reverse pro
 
 ## Supported
 
+- Directive syntax checked against nginx's stable release 1.30.5 (nginx.org/en/download.html, fetched 2026-09-25)
 - A static site server block with listen, server_name, root, index and try_files
 - A single-page app that falls back to index.html through try_files
 - A reverse proxy with proxy_pass and the standard proxy_set_header lines
