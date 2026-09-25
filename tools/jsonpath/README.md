@@ -1,0 +1,81 @@
+# JSONPath Tester
+
+Evaluate RFC 9535 JSONPath expressions against a document.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Evaluates an RFC 9535 JSONPath expression against a pasted JSON document and lists every matching value together with its RFC 9535 Normalized Path. Useful for working out which query reaches the data you need before you paste it into code.
+
+## Supported
+
+- The full RFC 9535 grammar: the root identifier, dot and bracket name selectors, the wildcard selector, array index and slice selectors, the recursive descent segment, and filter selectors with comparisons, logical operators and the length(), count(), match(), search() and value() function extensions
+- Every match reported with its value and its RFC 9535 Normalized Path (section 2.7), such as $['store']['book'][0]['author']
+- match() and search() filter functions, whose patterns are RFC 9485 I-Regexp, not full JavaScript regular expressions
+- A document syntax error reported with a line and column computed by this project, the same in every browser
+- An invalid JSONPath expression refused with a column when the library reports one
+
+## Limits
+
+- match() and search() patterns are RFC 9485 I-Regexp, a restricted subset of regular expressions, not full JavaScript regular expression syntax
+- No custom function extensions beyond the four RFC 9535 names: length(), count(), match() and search()
+- A query that runs too long on the page is stopped after 1.5 seconds rather than risking the tab, because a hostile match()/search() pattern can backtrack catastrophically
+- Numbers are held as JavaScript doubles, so an integer or slice bound outside the safe integer range is not evaluated exactly
+- RFC 9535's well-typedness rule for function-extension arguments (section 2.4.3) and its integer-range rule (section 2.1) are not checked before evaluation: 38 of the compliance suite's invalid-selector cases evaluate instead of being refused, and 3 filter-expression cases give a different value or path than the suite documents. Recorded case by case in this package's own test file
+
+## Ambiguous cases, and what this does about them
+
+- Results are shown as RFC 9535 Normalized Paths, using single-quoted bracket notation such as $['a']['b'][0], which differs from the RFC 6901 pointers other pages on this site print for a document location
+
+## Defined by
+
+- [RFC 9535 — JSONPath: Query Expressions for JSON](https://www.rfc-editor.org/rfc/rfc9535)
+- [RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [RFC 9485 — I-Regexp: An Interoperable Regular Expression Format](https://www.rfc-editor.org/rfc/rfc9485)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/jsonpath jsonpath
+cd jsonpath
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/jsonpath
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { evaluateJsonPath } from '@fodt/jsonpath';
+
+const result = evaluateJsonPath('{"a":[1,2,3]}', '$.a[*]');
+result.matches; // [{ path: "$['a'][0]", value: 1 }, { path: "$['a'][1]", value: 2 }, { path: "$['a'][2]", value: 3 }]
+```
+
+`evaluateJsonPath(documentText, expression)` returns `{ matches: { path, value }[] }`. A broken document throws `JsonPathError` with `kind: 'document'` and a `line`/`column`; an invalid expression throws `JsonPathError` with `kind: 'expression'` and a `column` when the underlying library's own error reports a location. The function itself is pure and synchronous; the page runs it inside a worker with its own 1.5 second time limit, since a hostile filter pattern can take arbitrarily long.
+
+## Dependencies
+
+- `jsonpath-rfc9535` 1.3.0
+
+## Tests
+
+```sh
+npm test
+```
+
+Checked against the RFC 9535 bookstore example document and its own Table 2 query results (section 1.5), against the vendored JSONPath Compliance Test Suite (jsonpath-standard/jsonpath-compliance-test-suite), and against RFC 9535's Normalized Path examples (section 2.7.1).
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
