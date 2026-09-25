@@ -520,7 +520,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Beautify or minify HTML without executing it.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-formatter",
@@ -529,7 +529,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Beautify or minify CSS.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "js-formatter",
@@ -538,7 +538,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Beautify or minify JavaScript and TypeScript without running it.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "xml-formatter",
@@ -547,7 +547,7 @@
       "categoryLabel": "Code and markup",
       "tier": 1,
       "summary": "Format, minify and well-formedness check XML, with external entities disabled.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "yaml-formatter",
@@ -556,7 +556,7 @@
       "categoryLabel": "Code and markup",
       "tier": 1,
       "summary": "Validate and reformat YAML, reporting anchors, aliases and duplicate keys.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "sql-formatter",
@@ -565,7 +565,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Format SQL for a chosen dialect, or minify it.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "svg-optimizer",
@@ -574,7 +574,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Shrink SVGs and strip scripts, event handlers and external references.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "jsx-converter",
@@ -583,7 +583,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Convert markup to JSX or a typed React component.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "ts-to-js",
@@ -592,7 +592,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Strip TypeScript types to plain JavaScript without running the code.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "tailwind-css",
@@ -601,7 +601,7 @@
       "categoryLabel": "Code and markup",
       "tier": 3,
       "summary": "Convert Tailwind utility classes to CSS and back for the core utility set.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "markdown-html",
@@ -610,7 +610,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Convert Markdown to sanitised HTML and back, with a table of contents option.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "table-builder",
@@ -619,7 +619,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Build a table visually and export it as Markdown, HTML, CSV or JSON.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "bbcode",
@@ -628,7 +628,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Convert between BBCode, Markdown and sanitised HTML.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "code-complexity",
@@ -637,7 +637,7 @@
       "categoryLabel": "Code and markup",
       "tier": 3,
       "summary": "Report cyclomatic complexity and function length for JavaScript and TypeScript.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "xpath-tester",
@@ -646,7 +646,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Evaluate XPath 1.0 expressions against an XML document.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "git-diff-viewer",
@@ -655,7 +655,7 @@
       "categoryLabel": "Code and markup",
       "tier": 2,
       "summary": "Render unified diff output with per-file and per-hunk navigation.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "graphql-to-typescript",
@@ -664,7 +664,7 @@
       "categoryLabel": "Code and markup",
       "tier": 3,
       "summary": "Generate TypeScript types from a GraphQL schema definition.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-to-graphql",
@@ -673,7 +673,7 @@
       "categoryLabel": "Code and markup",
       "tier": 3,
       "summary": "Infer GraphQL type definitions from sample JSON.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "openapi-validator",
@@ -682,7 +682,7 @@
       "categoryLabel": "Code and markup",
       "tier": 3,
       "summary": "Check an OpenAPI 3.x or Swagger 2.0 document for structural errors.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "openapi-to-typescript",
@@ -691,7 +691,7 @@
       "categoryLabel": "Code and markup",
       "tier": 3,
       "summary": "Generate TypeScript types from an OpenAPI document.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-unit",

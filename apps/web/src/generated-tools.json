@@ -94,6 +94,29 @@
       "credentials"
     ]
   },
+  "bbcode": {
+    "id": "bbcode",
+    "name": "BBCode Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@bbob/parser": "4.4.1",
+      "dompurify": "3.4.16",
+      "mdast-util-from-markdown": "2.0.3",
+      "mdast-util-gfm": "3.1.0",
+      "micromark-extension-gfm": "3.0.0",
+      "htmlparser2": "12.0.0"
+    },
+    "keywords": [
+      "bbcode",
+      "markdown",
+      "html",
+      "forum",
+      "sanitise",
+      "commonmark",
+      "phpbb"
+    ]
+  },
   "bcrypt": {
     "id": "bcrypt",
     "name": "Bcrypt Hash & Verify",
@@ -159,6 +182,23 @@
       "substitution cipher"
     ]
   },
+  "code-complexity": {
+    "id": "code-complexity",
+    "name": "Code Complexity Analyzer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@babel/parser": "^7.29.9"
+    },
+    "keywords": [
+      "complexity",
+      "cyclomatic",
+      "javascript",
+      "typescript",
+      "lint",
+      "static analysis"
+    ]
+  },
   "cron-expression": {
     "id": "cron-expression",
     "name": "Cron Expression Parser & Builder",
@@ -172,6 +212,24 @@
       "schedule",
       "next-run",
       "vixie"
+    ]
+  },
+  "css-formatter": {
+    "id": "css-formatter",
+    "name": "CSS Formatter & Minifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "prettier": "3.9.9",
+      "csso": "5.0.5"
+    },
+    "keywords": [
+      "css",
+      "format",
+      "beautify",
+      "minify",
+      "prettier",
+      "csso"
     ]
   },
   "csv-json": {
@@ -331,6 +389,37 @@
       "search"
     ]
   },
+  "git-diff-viewer": {
+    "id": "git-diff-viewer",
+    "name": "Git Diff Viewer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "git",
+      "diff",
+      "patch",
+      "unified diff",
+      "code review"
+    ]
+  },
+  "graphql-to-typescript": {
+    "id": "graphql-to-typescript",
+    "name": "GraphQL SDL to TypeScript",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "graphql": "17.0.2"
+    },
+    "keywords": [
+      "graphql",
+      "typescript",
+      "sdl",
+      "schema",
+      "codegen",
+      "types"
+    ]
+  },
   "hash-file": {
     "id": "hash-file",
     "name": "File Hash & Checksum",
@@ -402,6 +491,26 @@
       "htmlspecialchars"
     ]
   },
+  "html-formatter": {
+    "id": "html-formatter",
+    "name": "HTML Formatter & Minifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "prettier": "3.9.9",
+      "html-minifier-terser": "7.2.0",
+      "csso": "5.0.5",
+      "terser": "5.51.2"
+    },
+    "keywords": [
+      "html",
+      "format",
+      "beautify",
+      "minify",
+      "prettier",
+      "html-minifier-terser"
+    ]
+  },
   "http-status-codes": {
     "id": "http-status-codes",
     "name": "HTTP Status Code Reference",
@@ -447,6 +556,26 @@
       "netmask",
       "vlsm",
       "network"
+    ]
+  },
+  "js-formatter": {
+    "id": "js-formatter",
+    "name": "JavaScript Formatter & Minifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "prettier": "3.9.9",
+      "terser": "5.51.2",
+      "typescript": "^5.9.3"
+    },
+    "keywords": [
+      "javascript",
+      "typescript",
+      "format",
+      "beautify",
+      "minify",
+      "prettier",
+      "terser"
     ]
   },
   "json-diff": {
@@ -562,6 +691,21 @@
       "type inference"
     ]
   },
+  "json-to-graphql": {
+    "id": "json-to-graphql",
+    "name": "JSON to GraphQL Schema",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "json",
+      "graphql",
+      "sdl",
+      "schema",
+      "infer",
+      "codegen"
+    ]
+  },
   "json-to-zod": {
     "id": "json-to-zod",
     "name": "JSON to Zod Schema",
@@ -593,6 +737,23 @@
       "json",
       "jsonpointer",
       "filter"
+    ]
+  },
+  "jsx-converter": {
+    "id": "jsx-converter",
+    "name": "HTML & SVG to JSX",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "htmlparser2": "12.0.0"
+    },
+    "keywords": [
+      "jsx",
+      "html",
+      "svg",
+      "react",
+      "component",
+      "convert"
     ]
   },
   "jwt-decoder": {
@@ -675,6 +836,27 @@
       "card number validator",
       "mod 10",
       "issuer identification number"
+    ]
+  },
+  "markdown-html": {
+    "id": "markdown-html",
+    "name": "Markdown & HTML Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "micromark": "4.0.2",
+      "micromark-extension-gfm": "3.0.0",
+      "dompurify": "3.4.16",
+      "turndown": "7.2.4"
+    },
+    "keywords": [
+      "markdown",
+      "html",
+      "commonmark",
+      "gfm",
+      "table of contents",
+      "sanitise",
+      "turndown"
     ]
   },
   "mime-types": {
@@ -768,6 +950,43 @@
       "ordinal",
       "currency in words",
       "short scale"
+    ]
+  },
+  "openapi-to-typescript": {
+    "id": "openapi-to-typescript",
+    "name": "OpenAPI to TypeScript",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1"
+    },
+    "keywords": [
+      "openapi",
+      "swagger",
+      "typescript",
+      "codegen",
+      "types",
+      "api specification"
+    ]
+  },
+  "openapi-validator": {
+    "id": "openapi-validator",
+    "name": "OpenAPI Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "ajv": "8.20.0",
+      "ajv-formats": "3.0.1",
+      "ajv-draft-04": "1.0.0",
+      "yaml": "2.9.1"
+    },
+    "keywords": [
+      "openapi",
+      "swagger",
+      "json schema",
+      "api specification",
+      "ajv",
+      "validate"
     ]
   },
   "password-generator": {
@@ -908,6 +1127,25 @@
       "transliterate"
     ]
   },
+  "sql-formatter": {
+    "id": "sql-formatter",
+    "name": "SQL Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "sql-formatter": "15.9.0"
+    },
+    "keywords": [
+      "sql",
+      "format",
+      "minify",
+      "dialect",
+      "postgresql",
+      "mysql",
+      "sqlite",
+      "sql server"
+    ]
+  },
   "sql-to-types": {
     "id": "sql-to-types",
     "name": "SQL Schema to TypeScript",
@@ -926,6 +1164,58 @@
       "mysql",
       "sqlite",
       "sql server"
+    ]
+  },
+  "svg-optimizer": {
+    "id": "svg-optimizer",
+    "name": "SVG Optimizer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "dompurify": "3.4.16",
+      "svgo": "4.1.0",
+      "fast-xml-parser": "5.11.1"
+    },
+    "keywords": [
+      "svg",
+      "optimize",
+      "optimise",
+      "sanitize",
+      "sanitise",
+      "xss",
+      "minify"
+    ]
+  },
+  "table-builder": {
+    "id": "table-builder",
+    "name": "Table Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "table",
+      "markdown",
+      "gfm",
+      "csv",
+      "json",
+      "html",
+      "grid"
+    ]
+  },
+  "tailwind-css": {
+    "id": "tailwind-css",
+    "name": "Tailwind & CSS Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "tailwind",
+      "tailwindcss",
+      "utility classes",
+      "css",
+      "convert",
+      "oklch",
+      "color-mix"
     ]
   },
   "text-diff": {
@@ -986,6 +1276,22 @@
       "utc offset",
       "iana",
       "convert"
+    ]
+  },
+  "ts-to-js": {
+    "id": "ts-to-js",
+    "name": "TypeScript to JavaScript",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "typescript": "^5.9.3"
+    },
+    "keywords": [
+      "typescript",
+      "javascript",
+      "transpile",
+      "strip types",
+      "compile"
     ]
   },
   "unicode-inspector": {
@@ -1064,6 +1370,25 @@
       "reading-time"
     ]
   },
+  "xml-formatter": {
+    "id": "xml-formatter",
+    "name": "XML Formatter & Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "fast-xml-parser": "5.11.1"
+    },
+    "keywords": [
+      "xml",
+      "format",
+      "formatter",
+      "minify",
+      "validate",
+      "well-formed",
+      "pretty print",
+      "xxe"
+    ]
+  },
   "xml-json": {
     "id": "xml-json",
     "name": "XML & JSON Converter",
@@ -1079,6 +1404,43 @@
       "xml to json",
       "json to xml",
       "xxe"
+    ]
+  },
+  "xpath-tester": {
+    "id": "xpath-tester",
+    "name": "XPath Tester",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "xpath": "0.0.34",
+      "@xmldom/xmldom": "0.9.12"
+    },
+    "keywords": [
+      "xpath",
+      "xml",
+      "query",
+      "xpath 1.0",
+      "node-set",
+      "xxe"
+    ]
+  },
+  "yaml-formatter": {
+    "id": "yaml-formatter",
+    "name": "YAML Formatter & Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1"
+    },
+    "keywords": [
+      "yaml",
+      "yml",
+      "format",
+      "validate",
+      "anchor",
+      "alias",
+      "duplicate key",
+      "yaml 1.2"
     ]
   }
 }
