@@ -1,0 +1,12 @@
+{
+  "id": "security-headers",
+  "label": "CSP Level 3's own introduction example policy (section 1.1.1, Control Execution) is emitted verbatim as the Content-Security-Policy header value",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "csp",
+      "value": "script-src https://cdn.example.com/scripts/\nobject-src 'none'"
+    }
+  ],
+  "expect": ["Content-Security-Policy: script-src https://cdn.example.com/scripts/; object-src 'none'"]
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "values": {
+      "csp": "default-src 'self' https://cdn.example.invalid\nreport-uri https://example.invalid/csp-report",
+      "permissions": "geolocation=(self \"https://example.invalid\")",
+      "netlifyPath": "/*"
+    },
+    "attachesFile": false
+  }
+]
