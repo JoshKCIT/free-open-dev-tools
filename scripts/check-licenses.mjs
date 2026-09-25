@@ -111,9 +111,31 @@ function findInstalled(name) {
   return null;
 }
 
-function licenceTextFor(dir) {
+/**
+ * A handful of published packages declare a permissive `license` field but
+ * do not include a licence file in their npm tarball at all (the source
+ * repository has one; the published `files` allowlist just omits it). For
+ * those, and only those, this project vendors a verbatim copy of the
+ * upstream repository's own LICENSE file and points at it here, keyed by
+ * exact `name@version` so a later version bump re-triggers this check
+ * rather than silently reusing a possibly-stale override.
+ */
+const MANUAL_LICENSE_OVERRIDES = {
+  // fetched from https://raw.githubusercontent.com/nodable/val-parsers/main/LICENSE
+  // (2026-09-24): the repository root's own MIT LICENSE, which the published
+  // @nodable/entities npm tarball's `files` allowlist (["src","README.md"])
+  // does not include, even though its package.json declares `"license": "MIT"`.
+  '@nodable/entities@3.0.0': 'docs/vendored-licenses/nodable-entities-LICENSE.txt',
+};
+
+function licenceTextFor(dir, name, version) {
   for (const candidate of ['LICENSE', 'LICENSE.md', 'LICENCE', 'LICENSE.txt', 'license', 'LICENSE-MIT']) {
     const path = join(dir, candidate);
+    if (existsSync(path)) return readFileSync(path, 'utf8').trim();
+  }
+  const overridePath = MANUAL_LICENSE_OVERRIDES[`${name}@${version}`];
+  if (overridePath) {
+    const path = join(ROOT, overridePath);
     if (existsSync(path)) return readFileSync(path, 'utf8').trim();
   }
   return null;
@@ -146,7 +168,7 @@ for (const dep of dependencies) {
     );
   }
 
-  const text = licenceTextFor(dir);
+  const text = licenceTextFor(dir, dep.name, manifest.version);
   if (!text) {
     problems.push(`${dep.name}@${manifest.version} ships no licence file, so its notice cannot be preserved.`);
   }

@@ -1,0 +1,9 @@
+{
+  "id": "xml-json",
+  "label": "An attribute and a title element from a book tag, using the page's default attribute prefix",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "xml-to-json" },
+    { "action": "fill", "field": "input", "value": "<book id=\"1\"><title>Moby Dick</title></book>" }
+  ],
+  "expect": ["\"@_id\": \"1\"", "\"title\": \"Moby Dick\""]
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "mode": { "field": "direction", "value": "xml-to-json" },
+    "values": {
+      "input": "<book id=\"1\"><title>Moby Dick</title></book>",
+      "attributePrefix": "@_",
+      "textKey": "#text"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "direction", "value": "json-to-xml" },
+    "values": {
+      "input": "{\"book\":{\"@_id\":\"1\",\"title\":\"Moby Dick\"}}",
+      "attributePrefix": "@_",
+      "textKey": "#text"
+    },
+    "attachesFile": false
+  }
+]
