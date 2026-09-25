@@ -1,4 +1,4 @@
-import { meta, markdownToSafeHtml, MarkdownHtmlError } from '@fodt/markdown-html';
+import { meta, markdownToSafeHtml, htmlToMarkdown, MarkdownHtmlError } from '@fodt/markdown-html';
 import { defineTool, str, bool, num, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -73,8 +73,14 @@ export default defineTool({
         return { outputs, stats: [['Headings', String(result.headings.length)]] };
       }
 
-      // Task 2 fills in the html-to-md branch.
-      return { outputs: [], errors: [{ message: 'HTML to Markdown is not available yet.' }] };
+      const result = htmlToMarkdown(input);
+      const outputs: OutputBlock[] = [
+        { kind: 'code', label: 'Markdown', language: 'markdown', value: result.markdown, download: 'document.md' },
+      ];
+      if (result.warnings.length > 0) {
+        outputs.push({ kind: 'note', label: 'Notes', tone: 'warn', value: result.warnings.join('\n') });
+      }
+      return { outputs, stats: [['Characters', String(result.markdown.length)]] };
     } catch (err) {
       if (err instanceof MarkdownHtmlError) {
         return { outputs: [], errors: [{ message: err.message }] };

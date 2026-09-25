@@ -3,8 +3,10 @@ import { micromark } from 'micromark';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
 import type { WindowLike } from 'dompurify';
 import { sanitiseToFragment, serialiseFragment, describeRemoved, type RemovedSummary } from './sanitise';
+import { htmlToMarkdown, type HtmlToMarkdownResult } from './html-to-markdown';
 
-export { meta };
+export { meta, htmlToMarkdown };
+export type { HtmlToMarkdownResult };
 
 export class MarkdownHtmlError extends Error {
   constructor(message: string) {

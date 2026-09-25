@@ -91,3 +91,44 @@ test('markdown-html preview renders headings and a GFM table for benign Markdown
   expect(srcDoc).toContain('<table');
   expect(srcDoc).toContain('baz');
 });
+
+test('markdown-html converting hostile HTML back to Markdown runs nothing and fetches nothing', async ({ page }) => {
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
+
+  await page.goto(rel('/tools/markdown-html'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const requestsAfterLoad: string[] = [];
+  page.on('request', (request) => {
+    requestsAfterLoad.push(request.url());
+  });
+
+  await page.locator('input[name="direction"][value="html-to-md"]').check();
+
+  const hostileHtml =
+    '<script>top.__fodtXss = 1;</script>' +
+    '<p>text</p>' +
+    '<img src="https://example.invalid/x.png" onerror="top.__fodtXss = 1">';
+
+  await page.locator('#f-input').fill(hostileHtml);
+
+  await page.waitForTimeout(200);
+  await expect(page.locator('section[aria-label="Output"]')).toHaveAttribute('aria-busy', 'false', {
+    timeout: 15_000,
+  });
+
+  expect(dialogs, 'no dialog should ever be raised by converting hostile HTML').toEqual([]);
+
+  const xssMark = await page.evaluate(() => (window as unknown as { __fodtXss?: unknown }).__fodtXss);
+  expect(xssMark, 'the pasted HTML must never run while it is converted').toBe(undefined);
+
+  const nonDataRequests = requestsAfterLoad.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'));
+  expect(
+    nonDataRequests,
+    `no network request may be made while converting hostile HTML: ${nonDataRequests.join(', ')}`,
+  ).toEqual([]);
+});

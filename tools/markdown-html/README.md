@@ -14,7 +14,7 @@ Parses Markdown with a CommonMark- and GitHub Flavored Markdown-conformant parse
 - CommonMark 0.31.2: every construct in the specification's own example set
 - GitHub Flavored Markdown 0.29-gfm extensions: tables, strikethrough, autolinks and the task list checkbox rewrite
 - A table of contents linking every heading to a unique GitHub-style id, to a chosen depth
-- Sanitising raw HTML embedded in Markdown before it is shown, using the same policy every rendering tool on this site shares
+- Sanitising raw HTML embedded in Markdown before it is shown, using the shared sanitising policy every rendering page on this site uses
 - Images and other resources that load from an address are removed; small inline data images are kept
 - HTML back to Markdown: ATX headings, fenced code blocks, dash bullet lists, GFM tables, strikethrough and task list items
 - Script and style content, and dangerous link targets, are dropped rather than carried into the Markdown
