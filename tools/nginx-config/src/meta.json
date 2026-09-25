@@ -1,0 +1,61 @@
+{
+  "id": "nginx-config",
+  "name": "Nginx Config Generator",
+  "summary": "Generate an nginx server block for common hosting patterns.",
+  "about": "Writes an nginx server block for a static site, a single-page app, a reverse proxy or PHP through FastCGI, with HTTPS, gzip compression, static asset expiry and Basic authentication options, using only directives quoted from nginx's own documentation.",
+  "supports": [
+    "A static site server block with listen, server_name, root, index and try_files",
+    "A single-page app that falls back to index.html through try_files",
+    "A reverse proxy with proxy_pass and the standard proxy_set_header lines",
+    "PHP through FastCGI with fastcgi_pass and the fastcgi_param settings the fastcgi module's own minimum example lists",
+    "HTTPS with ssl_certificate, ssl_certificate_key, http2 on and a port 80 server that redirects to HTTPS",
+    "gzip compression and expiry headers for static assets",
+    "Basic authentication pointing auth_basic_user_file at a password file, never writing a password",
+    "A value carrying a semicolon, brace, dollar sign, quote, backslash or (for a name or path) whitespace is refused before any output is written"
+  ],
+  "limits": [
+    "This configuration cannot be tested without a real nginx server; this tool does not run nginx -t, so a module your build lacks, a clashing server block or a missing certificate only shows up there",
+    "http2 on; needs nginx 1.25.1 or later; older builds use the listen directive's own http2 parameter instead",
+    "The password file for Basic authentication must be created on the server with Apache's htpasswd or openssl passwd; this tool never writes one",
+    "Choosing a canonical host together with a second server name that happens to match the other name's own www/bare form can make nginx warn about a conflicting server name at startup; this tool checks each value's own grammar, not the whole file's semantic consistency"
+  ],
+  "ambiguities": [
+    "The PHP pattern's SCRIPT_FILENAME parameter is written as $document_root$fastcgi_script_name (the common real-world idiom, computed from the root this tool already validated) rather than the fetched documentation's own illustrative hardcoded path example (/home/www/scripts/php$fastcgi_script_name), since this tool has no separate 'scripts root' field"
+  ],
+  "standards": [
+    { "label": "nginx — Download (current stable version)", "url": "https://nginx.org/en/download.html" },
+    { "label": "nginx — ngx_http_core_module", "url": "https://nginx.org/en/docs/http/ngx_http_core_module.html" },
+    { "label": "nginx — ngx_http_index_module", "url": "https://nginx.org/en/docs/http/ngx_http_index_module.html" },
+    { "label": "nginx — Server names", "url": "https://nginx.org/en/docs/http/server_names.html" },
+    {
+      "label": "nginx — ngx_http_rewrite_module",
+      "url": "https://nginx.org/en/docs/http/ngx_http_rewrite_module.html"
+    },
+    { "label": "nginx — ngx_http_ssl_module", "url": "https://nginx.org/en/docs/http/ngx_http_ssl_module.html" },
+    { "label": "nginx — ngx_http_v2_module", "url": "https://nginx.org/en/docs/http/ngx_http_v2_module.html" },
+    { "label": "nginx — ngx_http_proxy_module", "url": "https://nginx.org/en/docs/http/ngx_http_proxy_module.html" },
+    {
+      "label": "nginx — ngx_http_fastcgi_module",
+      "url": "https://nginx.org/en/docs/http/ngx_http_fastcgi_module.html"
+    },
+    { "label": "nginx — ngx_http_gzip_module", "url": "https://nginx.org/en/docs/http/ngx_http_gzip_module.html" },
+    {
+      "label": "nginx — ngx_http_headers_module",
+      "url": "https://nginx.org/en/docs/http/ngx_http_headers_module.html"
+    },
+    {
+      "label": "nginx — ngx_http_auth_basic_module",
+      "url": "https://nginx.org/en/docs/http/ngx_http_auth_basic_module.html"
+    },
+    { "label": "RFC 1123 — Requirements for Internet Hosts", "url": "https://www.rfc-editor.org/rfc/rfc1123" },
+    {
+      "label": "RFC 9110 — HTTP Semantics, section 5.5 Field Values",
+      "url": "https://www.rfc-editor.org/rfc/rfc9110#section-5.5"
+    }
+  ],
+  "keywords": ["nginx", "server block", "reverse proxy", "fastcgi", "php-fpm", "gzip", "ssl", "http2", "basic auth"],
+  "primaryExport": "buildNginxConfig",
+  "usage": "import { buildNginxConfig } from '@fodt/nginx-config';\n\nconst { text } = buildNginxConfig({\n  pattern: 'static',\n  serverNames: 'example.com www.example.com',\n  root: '/var/www/example.com',\n});",
+  "apiNotes": "buildNginxConfig throws NginxConfigError (field) for a value this tool refuses, a malformed server name, an out-of-scheme upstream URL or a malformed FastCGI target. Every value passes assertSingleLine first, then a per-field check refusing nginx's own syntax characters (;{}#$\"'\\\\) and, for a name or path, any whitespace.",
+  "testNotes": "listen, server_name, root, index, try_files, proxy_pass, proxy_set_header, fastcgi_pass, fastcgi_param, ssl_certificate, ssl_certificate_key, http2, gzip, gzip_types, expires, add_header, auth_basic and auth_basic_user_file syntax are checked against the official nginx documentation, fetched live and quoted in test comments (D-98); the config-file tokenizer's own escape handling is checked against nginx's own src/core/ngx_conf_file.c, fetched at the same time. No published known-answer-test vectors exist for a generated server block's own text; tests assert the generated lines match the fetched directive syntax exactly, plus a structural scan (balanced braces, every simple directive terminated)."
+}

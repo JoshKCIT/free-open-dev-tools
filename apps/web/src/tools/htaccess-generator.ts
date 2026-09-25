@@ -8,9 +8,9 @@ import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib
  * already-aborted signal. No real user interaction can reach either path
  * directly: `ToolRunner` always hands `run()` a freshly constructed,
  * non-aborted `AbortController`, and a real visitor cannot dial down the
- * fixed 60-second limit. Same pattern `apps/web/src/tools/bcrypt.ts` uses
- * for the same reason. Unconditionally assigned, and a real visitor never
- * reads or calls it.
+ * fixed 60-second limit. Same pattern this site's own password-hashing
+ * page uses for the same reason. Unconditionally assigned, and a real
+ * visitor never reads or calls it.
  */
 declare global {
   interface Window {

@@ -1,0 +1,16 @@
+[
+  {
+    "values": {
+      "serverNames": "example.invalid www.example.invalid",
+      "root": "/var/www/example",
+      "upstream": "https://example.invalid:8443",
+      "fastcgi": "127.0.0.1:9000",
+      "certificate": "/etc/ssl/example.invalid.crt",
+      "certificateKey": "/etc/ssl/example.invalid.key",
+      "realm": "Example",
+      "userFile": "/etc/nginx/.htpasswd",
+      "maxBodyMb": "10"
+    },
+    "attachesFile": false
+  }
+]

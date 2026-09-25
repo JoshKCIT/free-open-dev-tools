@@ -1,0 +1,10 @@
+{
+  "id": "nginx-config",
+  "label": "A static site's server_name and try_files lines match the fetched ngx_http_core_module example syntax exactly",
+  "steps": [
+    { "action": "select", "field": "pattern", "value": "static" },
+    { "action": "fill", "field": "serverNames", "value": "example.com" },
+    { "action": "fill", "field": "root", "value": "/var/www/example.com" }
+  ],
+  "expect": ["server_name example.com;", "try_files $uri $uri/ =404;"]
+}
