@@ -1,0 +1,55 @@
+{
+  "name": "@fodt/markdown-html",
+  "version": "1.0.0",
+  "description": "Convert Markdown to sanitised HTML and back, with a table of contents option.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "markdown",
+    "html",
+    "commonmark",
+    "gfm",
+    "table of contents",
+    "sanitise",
+    "turndown"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "micromark": "4.0.2",
+    "micromark-extension-gfm": "3.0.0",
+    "dompurify": "3.4.16",
+    "turndown": "7.2.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "jsdom": "^29.1.1",
+    "@types/jsdom": "^30.0.0",
+    "@types/turndown": "^5.0.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/markdown-html"
+  }
+}

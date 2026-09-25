@@ -1,0 +1,9 @@
+{
+  "id": "markdown-html",
+  "label": "The GFM spec's own first table example (example 198) renders as a table",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "md-to-html" },
+    { "action": "fill", "field": "input", "value": "| foo | bar |\n| --- | --- |\n| baz | bim |" }
+  ],
+  "expect": ["<th>foo</th>", "<td>baz</td>"]
+}
