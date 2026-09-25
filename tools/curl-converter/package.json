@@ -1,0 +1,48 @@
+{
+  "name": "@fodt/curl-converter",
+  "version": "1.0.0",
+  "description": "Build a request visually and emit cURL, fetch, Python, Go, PHP or HTTPie. It never sends the request.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "curl",
+    "http request builder",
+    "fetch",
+    "requests",
+    "code generator",
+    "httpie",
+    "api client"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "shell-quote": "1.10.0",
+    "@types/shell-quote": "^1.7.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/curl-converter"
+  }
+}

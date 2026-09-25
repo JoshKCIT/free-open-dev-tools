@@ -1,0 +1,45 @@
+{
+  "id": "curl-converter",
+  "name": "cURL Builder & Code Generator",
+  "summary": "Build a request visually and emit cURL, fetch, Python, Go, PHP or HTTPie. It never sends the request.",
+  "about": "Builds an HTTP request from fields (method, URL, headers, query, body, authentication) or from a pasted curl command, and writes it out as cURL, JavaScript fetch, Python requests, Go net/http, PHP curl and HTTPie code. The request described is never actually sent: every code block is text this page generates for you to run elsewhere.",
+  "supports": [
+    "Building a request from fields: method, URL, headers, query parameters, a raw, JSON, form or multipart body, and Basic or bearer authentication",
+    "Reading a pasted curl command exactly as a POSIX shell and curl itself would, including bash $'...' ANSI-C quoting, backslash-newline line continuation, and every commonly used curl option with the meaning the curl manual documents",
+    "Refusing to evaluate anything the shell could run: variable and command substitution, pipelines, redirection, sequencing and Windows cmd.exe or PowerShell line continuations are refused with a message naming the position, never run",
+    "Writing the same request as cURL, JavaScript fetch, Python requests, Go net/http, PHP curl and HTTPie, with every string literal escaped correctly for that language",
+    "Flagging a password, token, Authorization header or Cookie value present in the request, and replacing it with a placeholder in every generated snippet on request"
+  ],
+  "limits": [
+    "This tool never sends the request, so it cannot show the response, check that the URL exists, or tell whether a server accepts these headers or this body -- only actually running the generated code against a real server can",
+    "File uploads and any curl option that reads a file from disk (an @file form, a data or form field starting with @) are left out, because this page never reads files from the visitor's machine",
+    "Windows cmd.exe and PowerShell quoting are not read; a pasted command must be POSIX shell / bash syntax, the same syntax curl's own manual examples use",
+    "curl's own implicit defaults (its User-Agent string, its default Accept: */* header) are not copied into the other five languages, since those are curl's own behaviour, not part of the request the visitor described"
+  ],
+  "ambiguities": [
+    "A curl option this tool does not recognise is listed as a warning naming it, rather than guessed at or silently dropped",
+    "A header value, method or body containing a NUL character is refused outright, since no shell or language target here has a way to pass one on a command line"
+  ],
+  "standards": [
+    {
+      "label": "POSIX Shell Command Language, section 2.2 Quoting",
+      "url": "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
+    },
+    { "label": "Bash Reference Manual, ANSI-C Quoting", "url": "https://www.gnu.org/software/bash/manual/bash.html" },
+    { "label": "curl manual", "url": "https://curl.se/docs/manpage.html" },
+    { "label": "RFC 9110 -- HTTP Semantics", "url": "https://www.rfc-editor.org/rfc/rfc9110" },
+    { "label": "RFC 7617 -- The Basic HTTP Authentication Scheme", "url": "https://www.rfc-editor.org/rfc/rfc7617" },
+    { "label": "WHATWG Fetch Standard", "url": "https://fetch.spec.whatwg.org/" },
+    { "label": "WHATWG URL Standard", "url": "https://url.spec.whatwg.org/" },
+    { "label": "Python Requests -- Quickstart", "url": "https://requests.readthedocs.io/en/latest/user/quickstart/" },
+    { "label": "Go net/http package documentation", "url": "https://pkg.go.dev/net/http" },
+    { "label": "PHP curl_setopt manual page", "url": "https://www.php.net/manual/en/function.curl-setopt.php" },
+    { "label": "HTTPie documentation", "url": "https://httpie.io/docs/cli" }
+  ],
+  "keywords": ["curl", "http request builder", "fetch", "requests", "code generator", "httpie", "api client"],
+  "primaryExport": "emitAll",
+  "usage": "import { buildRequest, emitAll } from '@fodt/curl-converter';\n\nconst { request } = buildRequest({ method: 'GET', url: 'https://example.invalid/', headersText: '', queryText: '', bodyKind: 'none', bodyText: '', authKind: 'none', username: '', password: '', token: '', followRedirects: false });\nconst { snippets } = emitAll(request, { redactSecrets: false });\nconsole.log(snippets.curl);",
+  "apiNotes": "`parseCurl` and `buildRequest` throw `CurlConverterError` (optional `line`/`column`) on anything that cannot be turned into a request. `emitAll` never throws for a request it already built; it returns all six snippets plus a plain-language list of any secrets found.",
+  "testNotes": "The tokenizer is checked against a 1,000-command generated battery compared with the shell-quote package (a second, independent word splitter) rather than curl's own JavaScript port, which loads a native tree-sitter add-on through an install script; every generated snippet's string literals are decoded back with this tool's own test-only decoders for each language's literal rules and compared with the source values.",
+  "devDependencies": { "shell-quote": "1.10.0", "@types/shell-quote": "^1.7.5" }
+}
