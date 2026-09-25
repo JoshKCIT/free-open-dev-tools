@@ -1,0 +1,8 @@
+[
+  {
+    "values": {
+      "sdl": "type Query { hello: String }"
+    },
+    "attachesFile": false
+  }
+]

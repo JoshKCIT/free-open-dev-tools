@@ -1,0 +1,12 @@
+{
+  "id": "graphql-to-typescript",
+  "label": "A nullable and a non-null field on the same object type (GraphQL specification: fields are nullable unless marked non-null)",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "sdl",
+      "value": "type Person { name: String age: Int! }"
+    }
+  ],
+  "expect": ["name: string | null;", "age: number;"]
+}

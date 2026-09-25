@@ -1,0 +1,34 @@
+{
+  "id": "graphql-to-typescript",
+  "name": "GraphQL SDL to TypeScript",
+  "summary": "Generate TypeScript types from a GraphQL schema definition.",
+  "about": "Parses a pasted GraphQL schema definition (SDL) with the official graphql-js reference implementation, validates it, and turns every type in it into a matching TypeScript type. Nothing is executed: only the schema's shape is read, never a query against it.",
+  "supports": [
+    "Object, interface, union, enum, input object and scalar type definitions, per the GraphQL specification's Type System section",
+    "Non-null (!), list ([...]) and nested combinations of both, mapped to TypeScript's required, array and null-union forms",
+    "A field's own arguments, emitted as a matching TypeScript arguments type",
+    "A union-of-string-literals or a TypeScript enum for GraphQL enum values, your choice",
+    "An optional __typename discriminant field on object and interface types",
+    "A custom scalar mapped to a TypeScript type you provide, or left as unknown",
+    "Descriptions and @deprecated reasons carried into JSDoc comments on the generated types",
+    "A malformed or invalid schema refused with the reference implementation's own message and its line and column"
+  ],
+  "limits": [
+    "Only the schema is typed: operations (queries, mutations, subscriptions) written against it are not",
+    "Directives other than @deprecated are read but otherwise ignored",
+    "An interface's own fields are folded into each implementing type's TypeScript interface rather than expressed as a TypeScript extends clause",
+    "A scalar mapping that is not a plain TypeScript type expression (identifiers, |, [], null, string literals) is rejected and the scalar stays unknown, with a warning"
+  ],
+  "ambiguities": [],
+  "standards": [
+    { "label": "GraphQL Specification (September 2025 Edition)", "url": "https://spec.graphql.org/September2025/" }
+  ],
+  "keywords": ["graphql", "typescript", "sdl", "schema", "codegen", "types"],
+  "primaryExport": "graphqlToTypeScript",
+  "usage": "import { graphqlToTypeScript } from '@fodt/graphql-to-typescript';\n\ngraphqlToTypeScript('type Person { name: String age: Int! }', { enumStyle: 'union' });\n// { output: 'export interface Person {\\n  name: string | null;\\n  age: number;\\n}\\n', types: 1, warnings: [] }",
+  "apiNotes": "graphqlToTypeScript(sdl, { enumStyle = 'union', includeTypename = false, scalars = {} }) returns { output, types, warnings }, or throws GraphqlToTypeScriptError (message, line, column) for a schema graphql-js's own buildSchema or validateSchema refuses.",
+  "testNotes": "Every generated TypeScript source is compiled in memory with the installed typescript compiler in strict mode and asserted to produce zero diagnostics; sample values are also assigned to the generated types to prove they type-check as intended.",
+  "dependencies": {
+    "graphql": "17.0.2"
+  }
+}
