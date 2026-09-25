@@ -1,0 +1,17 @@
+[
+  {
+    "mode": { "field": "mode", "value": "format" },
+    "values": { "input": "<note><to>Ada</to></note>" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "minify" },
+    "values": { "input": "<note><to>Ada</to></note>" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "check" },
+    "values": { "input": "<note><to>Ada</to></note>" },
+    "attachesFile": false
+  }
+]

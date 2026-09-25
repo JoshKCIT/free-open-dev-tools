@@ -1,0 +1,9 @@
+{
+  "id": "xml-formatter",
+  "label": "Formatting a simple document keeps its element syntax unchanged (XML 1.0 section 3.1)",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "format" },
+    { "action": "fill", "field": "input", "value": "<note><to>Ada</to></note>" }
+  ],
+  "expect": ["<to>Ada</to>", "</note>"]
+}
