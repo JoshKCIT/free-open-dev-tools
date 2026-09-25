@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "schema": "{\"type\":\"object\",\"properties\":{\"age\":{\"type\":\"integer\",\"minimum\":0}},\"required\":[\"age\"]}",
+      "data": "{\"age\":-1}"
+    },
+    "attachesFile": false
+  }
+]

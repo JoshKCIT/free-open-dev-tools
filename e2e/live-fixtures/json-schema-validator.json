@@ -1,0 +1,13 @@
+{
+  "id": "json-schema-validator",
+  "label": "JSON Schema Validation 2020-12 section 6.2.4: -1 is below the minimum of 0",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "schema",
+      "value": "{\"type\":\"object\",\"properties\":{\"age\":{\"type\":\"integer\",\"minimum\":0}},\"required\":[\"age\"]}"
+    },
+    { "action": "fill", "field": "data", "value": "{\"age\":-1}" }
+  ],
+  "expect": ["/age", "minimum"]
+}
