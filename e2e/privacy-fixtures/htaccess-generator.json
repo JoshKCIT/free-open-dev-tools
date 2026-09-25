@@ -1,0 +1,14 @@
+[
+  {
+    "mode": { "field": "protection", "value": "basic" },
+    "values": {
+      "redirects": "/old /new 301",
+      "realm": "Example",
+      "userFile": "/var/www/.htpasswd",
+      "username": "alice",
+      "password": "correct horse battery staple",
+      "cost": "5"
+    },
+    "attachesFile": false
+  }
+]

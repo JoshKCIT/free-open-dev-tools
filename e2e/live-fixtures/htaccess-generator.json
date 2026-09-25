@@ -1,0 +1,6 @@
+{
+  "id": "htaccess-generator",
+  "label": "Forcing HTTPS emits RewriteEngine On and the RewriteCond %{HTTPS} off line exactly as the fetched Apache 2.4 mod_rewrite documentation writes it",
+  "steps": [{ "action": "check", "field": "forceHttps" }, { "action": "run" }],
+  "expect": ["RewriteEngine On", "RewriteCond %{HTTPS} off"]
+}
