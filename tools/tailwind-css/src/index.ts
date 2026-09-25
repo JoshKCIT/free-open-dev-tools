@@ -1,10 +1,12 @@
 import meta from './meta.json';
 import { resolveClass, type Declarations } from './utilities';
+import { cssToClasses as cssToClassesImpl, type CssToClassesOptions, type CssToClassesResult } from './reverse';
 
 export { meta };
 export { TAILWIND_VERSION, THEME } from './theme';
 export { resolveClass, SUPPORTED_CANDIDATES } from './utilities';
 export type { Declarations } from './utilities';
+export type { CssToClassesOptions, CssToClassesResult, CssToClassesRule, NormalizedDeclaration } from './reverse';
 
 export class TailwindCssError extends Error {
   constructor(message: string) {
@@ -74,4 +76,9 @@ export function classesToCss(classes: string, options: ClassesToCssOptions = {})
   }
 
   return { css, converted, unknown };
+}
+
+/** Converts CSS declarations back to the fewest core Tailwind CSS 4 classes that produce exactly those declarations. See `reverse.ts`. */
+export function cssToClasses(css: string, options: CssToClassesOptions = {}): CssToClassesResult {
+  return cssToClassesImpl(css, options);
 }

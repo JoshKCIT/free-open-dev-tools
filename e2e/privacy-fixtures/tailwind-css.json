@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "direction", "value": "classes-to-css" },
+    "values": { "input": "p-4 text-red-500" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "direction", "value": "css-to-classes" },
+    "values": { "input": "padding: 1rem;" },
+    "attachesFile": false
+  }
+]

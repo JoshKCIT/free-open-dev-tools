@@ -1,0 +1,9 @@
+{
+  "id": "tailwind-css",
+  "label": "The p-4 padding utility converted to plain CSS with the default spacing scale resolved",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "classes-to-css" },
+    { "action": "fill", "field": "input", "value": "p-4" }
+  ],
+  "expect": ["padding: 1rem"]
+}
