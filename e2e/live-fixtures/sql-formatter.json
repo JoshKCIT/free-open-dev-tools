@@ -1,0 +1,10 @@
+{
+  "id": "sql-formatter",
+  "label": "The sql-formatter README's own example gives the documented layout",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "format" },
+    { "action": "select", "field": "dialect", "value": "mysql" },
+    { "action": "fill", "field": "input", "value": "SELECT * FROM tbl" }
+  ],
+  "expect": ["SELECT", "*", "FROM", "tbl"]
+}

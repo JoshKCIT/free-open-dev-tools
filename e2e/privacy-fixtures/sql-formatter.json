@@ -1,0 +1,4 @@
+[
+  { "mode": { "field": "mode", "value": "format" }, "values": { "input": "select 1" }, "attachesFile": false },
+  { "mode": { "field": "mode", "value": "minify" }, "values": { "input": "select 1" }, "attachesFile": false }
+]

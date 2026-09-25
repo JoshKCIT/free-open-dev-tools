@@ -1,0 +1,32 @@
+{
+  "id": "sql-formatter",
+  "name": "SQL Formatter",
+  "summary": "Format SQL for a chosen dialect, or minify it.",
+  "about": "Formats a pasted SQL query for a chosen dialect using a reviewed grammar-aware formatter, or minifies it with a quote-aware lexer that removes comments and collapses whitespace without ever changing a string literal, a quoted identifier or a token. Minifying and then formatting a query gives the same result as formatting it directly.",
+  "supports": [
+    "Every SQL dialect the pinned formatter package supports, each with its own keyword case and indent options",
+    "Minifying that keeps string literals, quoted identifiers and dollar-quoted strings exactly as written, even when they hold comment markers, quotes or line breaks",
+    "PostgreSQL dollar-quoted strings, MySQL and MariaDB backtick identifiers and hash comments, SQL Server and SQLite bracket and quoted identifiers",
+    "Executable comments (/*! ... */) and optimiser hints (/*+ ... */) kept in minified output; ordinary comments removed",
+    "A query the chosen dialect's grammar cannot parse refused with its line and column"
+  ],
+  "limits": [
+    "Formatting follows the pinned formatter package's own grammar for the chosen dialect; a query it cannot parse is refused rather than partially formatted",
+    "Minifying removes ordinary line and block comments; only executable comments and optimiser hints survive",
+    "A stored-procedure body written in a dialect this tool's minifier does not special-case is treated as ordinary tokens, which is safe but not always the tightest possible minification",
+    "This does not connect to a database, execute a query, or check that a table or column referenced in it exists",
+    "Formatting a deeply nested parenthesised expression runs in a background worker with a fixed time limit, so a pathological input is stopped rather than freezing the tab"
+  ],
+  "ambiguities": [
+    "Whitespace between two tokens is collapsed to a single space rather than removed outright whenever removing it could join two tokens into a different one (for example a minus sign next to a minus sign, or a slash next to a star)"
+  ],
+  "standards": [],
+  "keywords": ["sql", "format", "minify", "dialect", "postgresql", "mysql", "sqlite", "sql server"],
+  "primaryExport": "formatSql",
+  "usage": "import { formatSql, SQL_DIALECTS } from '@fodt/sql-formatter';\n\nformatSql('SELECT * FROM tbl', { mode: 'format', dialect: 'mysql' });\n// { output: 'SELECT\\n  *\\nFROM\\n  tbl', warnings: [] }",
+  "apiNotes": "`formatSql(source, { mode, dialect, keywordCase, indent })` returns `{ output, warnings }` or throws `SqlFormatterError` with `line`/`column`. `mode` defaults to `format` (the other value is `minify`); `dialect` defaults to `sql` (Standard SQL); `keywordCase` defaults to `preserve`; `indent` defaults to 2. `minifySql(source, dialect)` is exported separately from `minify.ts` for direct use. `SQL_DIALECTS` lists every dialect value and label the pinned package supports.",
+  "testNotes": "No publishing body defines SQL formatting or minification as a single interchange format across dialects; this tool's grammar-level behaviour is proven against the installed sql-formatter package's own documented example, and its minifier is proven against the vendor lexical documentation for quoting in PostgreSQL, MySQL, SQLite and SQL Server with format(minify(x)) === format(x) as the token-preservation oracle across a corpus of queries in every tested dialect.",
+  "dependencies": {
+    "sql-formatter": "15.9.0"
+  }
+}
