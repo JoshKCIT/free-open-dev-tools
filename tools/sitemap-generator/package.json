@@ -1,7 +1,7 @@
 {
-  "name": "@fodt/robots-txt",
+  "name": "@fodt/sitemap-generator",
   "version": "1.0.0",
-  "description": "Build a robots.txt file and check it against the REP specification.",
+  "description": "Turn a URL list into a valid sitemap, with index splitting past the size limit.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,13 +21,11 @@
   ],
   "sideEffects": false,
   "keywords": [
-    "robots.txt",
-    "rfc9309",
-    "crawler",
-    "product token",
-    "disallow",
-    "allow",
-    "sitemap"
+    "sitemap",
+    "xml sitemap",
+    "sitemaps.org",
+    "seo",
+    "sitemap index"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -37,11 +35,11 @@
   "devDependencies": {
     "typescript": "^5.7.3",
     "vitest": "^3.2.4",
-    "robots-parser": "3.0.1"
+    "xmllint-wasm": "5.3.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
-    "directory": "tools/robots-txt"
+    "directory": "tools/sitemap-generator"
   }
 }

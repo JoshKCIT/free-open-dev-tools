@@ -33,7 +33,7 @@
       "url": "https://www.sitemaps.org/protocol.html"
     }
   ],
-  "keywords": ["robots.txt", "rfc9309", "crawler", "user-agent", "disallow", "allow", "sitemap"],
+  "keywords": ["robots.txt", "rfc9309", "crawler", "product token", "disallow", "allow", "sitemap"],
   "primaryExport": "checkPath",
   "usage": "import { buildRobotsTxt, parseRobotsTxt, checkPath } from '@fodt/robots-txt';\n\nconst { text } = buildRobotsTxt({ groups: [{ agents: ['*'], rules: [{ type: 'disallow', pattern: '/private/' }] }], sitemaps: [] });\nconst parsed = parseRobotsTxt(text);\ncheckPath(parsed, 'ExampleBot', '/private/page');",
   "apiNotes": "`parseRobotsTxt` never throws for malformed robots.txt content (RFC 9309 says crawlers MUST try to parse every line); problems are reported in its `problems` array with a 1-based line number. `buildRobotsTxt` throws `RobotsTxtError` for a value that cannot become a safe robots.txt line at all (a line break, an invalid product token, an invalid Sitemap URL). `checkPath` never throws.",

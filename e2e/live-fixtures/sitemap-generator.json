@@ -1,0 +1,6 @@
+{
+  "id": "sitemap-generator",
+  "label": "The sitemaps.org protocol pages own sample sitemap",
+  "steps": [{ "action": "fill", "field": "urls", "value": "http://www.example.com/" }],
+  "expect": ["<loc>http://www.example.com/</loc>", "http://www.sitemaps.org/schemas/sitemap/0.9"]
+}
