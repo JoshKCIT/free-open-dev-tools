@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "flatten" },
+    "values": { "input": "{\"user\":{\"name\":\"Ada\",\"tags\":[\"a\",\"b\"]}}" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "unflatten" },
+    "values": { "input": "{\"/user/name\":\"Ada\",\"/user/tags/0\":\"a\"}" },
+    "attachesFile": false
+  }
+]

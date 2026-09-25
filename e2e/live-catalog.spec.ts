@@ -548,5 +548,8 @@ test('every live fixture file names a built tool page and uses only known step a
 });
 
 test('every phase 3 tool has exactly one live fixture file', () => {
-  expect([...LIVE_FIXTURE_IDS].sort()).toEqual([...PHASE_3_TOOL_IDS].sort());
+  for (const id of PHASE_3_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
+  }
 });

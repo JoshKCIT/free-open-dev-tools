@@ -1,0 +1,9 @@
+{
+  "id": "json-flatten",
+  "label": "RFC 6901 section 5's own escaping example: a/b, m~n and an array element all flatten to the documented pointers",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "flatten" },
+    { "action": "fill", "field": "input", "value": "{\"foo\":[\"bar\",\"baz\"],\"a/b\":1,\"m~n\":8}" }
+  ],
+  "expect": ["\"/foo/0\": \"bar\"", "\"/a~1b\": 1", "\"/m~0n\": 8"]
+}

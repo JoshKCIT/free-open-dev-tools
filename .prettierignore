@@ -19,3 +19,6 @@ tools/*/LICENSE
 tools/*/package.json
 tools/*/tsconfig.json
 tools/*/vitest.config.ts
+
+# Vendored upstream test suites are kept byte-identical to their source.
+tools/*/test/fixtures/
