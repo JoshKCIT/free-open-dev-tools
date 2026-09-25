@@ -133,15 +133,25 @@ const MANUAL_LICENSE_OVERRIDES = {
   '@nodable/entities@3.0.0': 'docs/vendored-licenses/nodable-entities-LICENSE.txt',
 };
 
+// Some upstream packages (e.g. typescript, @mixmark-io/domino) ship a LICENSE
+// file with CRLF line endings. This project's .gitattributes normalizes every
+// text file to LF on commit (`* text=auto eol=lf`), so embedding raw CRLF
+// bytes here would make a freshly regenerated docs/THIRD-PARTY.md byte-differ
+// from the committed one on every single run, on every platform, tripping
+// CI's own "notices file is out of date" gate deterministically. Normalizing
+// to LF here keeps this generated file's line endings internally consistent
+// with the rest of the document and with what git actually stores.
+const normaliseLineEndings = (text) => text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
 function licenceTextFor(dir, name, version) {
   for (const candidate of ['LICENSE', 'LICENSE.md', 'LICENCE', 'LICENSE.txt', 'license', 'LICENSE-MIT']) {
     const path = join(dir, candidate);
-    if (existsSync(path)) return readFileSync(path, 'utf8').trim();
+    if (existsSync(path)) return normaliseLineEndings(readFileSync(path, 'utf8').trim());
   }
   const overridePath = MANUAL_LICENSE_OVERRIDES[`${name}@${version}`];
   if (overridePath) {
     const path = join(ROOT, overridePath);
-    if (existsSync(path)) return readFileSync(path, 'utf8').trim();
+    if (existsSync(path)) return normaliseLineEndings(readFileSync(path, 'utf8').trim());
   }
   return null;
 }

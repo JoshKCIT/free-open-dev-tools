@@ -75,7 +75,12 @@ export function collectBundledData(toolsDir) {
         continue;
       }
 
-      const noticeText = readFileSync(noticePath, 'utf8');
+      // Normalized the same way scripts/check-licenses.mjs normalizes an
+      // installed package's LICENSE text: this project's .gitattributes
+      // commits every text file as LF, so embedding a raw CRLF byte here
+      // (however this file arrived) would make a fresh regeneration of
+      // docs/THIRD-PARTY.md differ from the committed one on every run.
+      const noticeText = readFileSync(noticePath, 'utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       if (noticeText.trim().length === 0) {
         problems.push(`${id}: bundled data "${entry.name}"'s notice file is empty: ${entry.noticeFile}`);
         continue;
