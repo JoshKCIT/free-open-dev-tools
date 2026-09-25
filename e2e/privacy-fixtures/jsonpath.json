@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "document": "{\"store\":{\"book\":[{\"title\":\"A\",\"price\":8},{\"title\":\"B\",\"price\":12}]}}",
+      "expression": "$..book[?@.price<10].title"
+    },
+    "attachesFile": false
+  }
+]
