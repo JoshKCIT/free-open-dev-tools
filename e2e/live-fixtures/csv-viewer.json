@@ -1,0 +1,10 @@
+{
+  "id": "csv-viewer",
+  "label": "A semicolon-delimited two-row file sorts oldest first when sorted by age descending",
+  "steps": [
+    { "action": "fill", "field": "input", "value": "name;age\nAda;36\nAlan;41" },
+    { "action": "fill", "field": "sortColumn", "value": "age" },
+    { "action": "select", "field": "sortDirection", "value": "desc" }
+  ],
+  "expect": ["Detected delimiter: semicolon", "Alan"]
+}
