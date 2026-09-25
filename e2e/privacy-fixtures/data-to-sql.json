@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "format", "value": "json" },
+    "values": { "input": "[{\"id\":1,\"name\":\"Ada\"},{\"id\":2,\"name\":\"Alan\"}]" },
+    "attachesFile": false
+  }
+]

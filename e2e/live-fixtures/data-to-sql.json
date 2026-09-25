@@ -1,0 +1,10 @@
+{
+  "id": "data-to-sql",
+  "label": "PostgreSQL docs section 4.1.2.1: a single quote in a string constant is written as two adjacent single quotes; section 4.1.1: delimited identifiers use double quotes",
+  "steps": [
+    { "action": "radio", "field": "format", "value": "json" },
+    { "action": "select", "field": "dialect", "value": "postgresql" },
+    { "action": "fill", "field": "input", "value": "[{\"id\":1,\"name\":\"O'Brien\"}]" }
+  ],
+  "expect": ["'O''Brien'", "\"name\""]
+}
