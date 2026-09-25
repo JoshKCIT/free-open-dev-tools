@@ -8,10 +8,10 @@ export default defineTool({
   // Only the TypeScript + minify combination runs in a background worker
   // with a 1.5 second time limit (D-57: `ts.transpileModule` showed clear
   // super-linear growth on a long chain of string concatenation, the same
-  // finding 05-01 made for ts-to-js). Every other combination measured well
-  // under 1 second and runs on the main thread. `cancellable: true` applies
-  // to the whole page; cancelling a main-thread run is a no-op since those
-  // complete almost instantly.
+  // pattern found elsewhere on this site's own type-stripping page). Every
+  // other combination measured well under 1 second and runs on the main
+  // thread. `cancellable: true` applies to the whole page; cancelling a
+  // main-thread run is a no-op since those complete almost instantly.
   cancellable: true,
   fields: [
     {

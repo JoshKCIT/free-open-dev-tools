@@ -1,0 +1,12 @@
+{
+  "id": "html-formatter",
+  "label": "Prettier's HTML whitespace sensitivity documentation example gives its documented output",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "<span class=\"dolorum atque aspernatur\">Est molestiae sunt facilis qui rem.</span>\n<div class=\"voluptatem architecto at\">Architecto rerum architecto incidunt sint.</div>"
+    }
+  ],
+  "expect": ["<span class=\"dolorum atque aspernatur\""]
+}
