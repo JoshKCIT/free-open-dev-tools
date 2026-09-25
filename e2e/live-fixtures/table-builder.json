@@ -1,0 +1,11 @@
+{
+  "id": "table-builder",
+  "label": "GFM spec example 198's own header and data cells become its own worked table",
+  "steps": [
+    { "action": "fill", "field": "table-r0-c0", "value": "foo" },
+    { "action": "fill", "field": "table-r0-c1", "value": "bar" },
+    { "action": "fill", "field": "table-r1-c0", "value": "baz" },
+    { "action": "fill", "field": "table-r1-c1", "value": "bim" }
+  ],
+  "expect": ["| foo | bar |", "| baz | bim |"]
+}

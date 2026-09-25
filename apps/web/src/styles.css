@@ -993,3 +993,21 @@ dl.kv dd {
 dl.kv {
   grid-template-columns: minmax(110px, 40%) minmax(0, 1fr);
 }
+
+.grid-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.grid-field table {
+  border-collapse: collapse;
+}
+.grid-field td {
+  padding: 2px;
+}
+.grid-field input[type='text'] {
+  width: 110px;
+  font-family: var(--mono);
+  font-size: 0.83rem;
+  padding: 5px 7px;
+}

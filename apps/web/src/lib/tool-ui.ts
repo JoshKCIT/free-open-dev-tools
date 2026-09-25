@@ -9,7 +9,8 @@
 
 export type Values = Record<string, unknown>;
 
-export type FieldType = 'textarea' | 'text' | 'number' | 'select' | 'checkbox' | 'radio' | 'file' | 'color' | 'range';
+export type FieldType =
+  'textarea' | 'text' | 'number' | 'select' | 'checkbox' | 'radio' | 'file' | 'color' | 'range' | 'grid';
 
 export interface Field {
   name: string;
@@ -33,6 +34,10 @@ export interface Field {
   visible?: (values: Values) => boolean;
   /** Lay the control out on its own full-width row. */
   wide?: boolean;
+  /** Grid field only. Caps how many rows Add row can reach. Default 50. */
+  maxRows?: number;
+  /** Grid field only. Caps how many columns Add column can reach. Default 20. */
+  maxColumns?: number;
 }
 
 export type Tone = 'info' | 'warn' | 'error' | 'success';
@@ -208,4 +213,25 @@ export function textResult(value: string, language?: string, label?: string): To
 
 export function errorResult(message: string, issue?: Omit<ToolIssue, 'message'>): ToolResult {
   return { outputs: [], errors: [{ message, ...issue }] };
+}
+
+/**
+ * Reads a grid field's value as a rectangular copy of string[][]. Anything
+ * malformed -- not an array, an empty array, or a value whose rows are not
+ * themselves arrays of strings -- reads as a single blank cell rather than
+ * throwing, since a tool's run() should never crash on a value the grid
+ * control itself would never produce.
+ */
+export function grid(values: Values, field: string): string[][] {
+  const v = values[field];
+  if (!Array.isArray(v) || v.length === 0) return [['']];
+  const rows: string[][] = v.map((row) =>
+    Array.isArray(row) ? row.map((cell) => (typeof cell === 'string' ? cell : '')) : [''],
+  );
+  const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  return rows.map((row) => {
+    const padded = row.slice(0, width);
+    while (padded.length < width) padded.push('');
+    return padded;
+  });
 }

@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Field, ToolPage, ToolResult, Values } from '../lib/tool-ui';
 import { formatBytes } from '../lib/tool-ui';
+import GridField from './GridField';
 import OutputView from './OutputView';
 
 function initialValues(fields: Field[]): Values {
@@ -8,6 +9,11 @@ function initialValues(fields: Field[]): Values {
   for (const f of fields) {
     if (f.type === 'file') v[f.name] = [];
     else if (f.type === 'checkbox') v[f.name] = f.default ?? false;
+    // A deep copy: edits to the grid a visitor is typing into must never
+    // mutate the field's own default array, or Reset would hand back a
+    // grid the visitor had already changed.
+    else if (f.type === 'grid')
+      v[f.name] = Array.isArray(f.default) ? (f.default as string[][]).map((row) => row.slice()) : [['']];
     else v[f.name] = f.default ?? '';
   }
   return v;
@@ -219,6 +225,9 @@ function FieldControl({ field, value, onChange }: { field: Field; value: unknown
         </div>
       );
     }
+
+    case 'grid':
+      return <GridField field={field} value={value} onChange={onChange} />;
 
     default:
       return null;

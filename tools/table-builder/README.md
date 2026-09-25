@@ -25,6 +25,7 @@ Builds a table cell by cell in an editable grid, then writes it out as a GitHub 
 - The grid holds at most 50 rows and 20 columns
 - JSON output never infers a type: every cell value is always a string, including numbers and true/false/null
 - CSV has no way to express column alignment or to mark a row as a header distinct from the data
+- A cell's own leading or trailing space is not kept in the Markdown or HTML export, because GFM trims the space between a table pipe and a cell's content; CSV and JSON keep it
 
 ## Ambiguous cases, and what this does about them
 
