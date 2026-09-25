@@ -96,6 +96,26 @@ const PHASE_3_TOOL_IDS = [
   'emoji-picker',
 ];
 
+/** The 16 tools Phase 4 added (DATA-01..16). */
+const PHASE_4_TOOL_IDS = [
+  'json-diff',
+  'jsonpath',
+  'json-schema-validator',
+  'json-schema-generator',
+  'json-flatten',
+  'json-to-code',
+  'json-to-zod',
+  'data-convert',
+  'csv-json',
+  'xml-json',
+  'csv-viewer',
+  'data-to-sql',
+  'sql-to-types',
+  'php-unserialize',
+  'list-compare',
+  'mock-data',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -472,13 +492,13 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 52 links to built tool pages, not the 144-entry catalog size', async ({ page }) => {
+  test('the rendered catalog counts 68 links to built tool pages, not the 144-entry catalog size', async ({ page }) => {
     await page.goto(rel('/catalog'));
     // The catalog body is drawn by React after load (Catalog.tsx), not by
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(52);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(68);
   });
 });
 
@@ -552,4 +572,17 @@ test('every phase 3 tool has exactly one live fixture file', () => {
     const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
     expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
   }
+});
+
+test('every phase 4 tool has exactly one live fixture file', () => {
+  for (const id of PHASE_4_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
+  }
+});
+
+test('every live fixture file belongs to phase 3 or phase 4', () => {
+  const expected = [...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS].slice().sort();
+  const actual = LIVE_FIXTURE_IDS.slice().sort();
+  expect(actual).toEqual(expected);
 });

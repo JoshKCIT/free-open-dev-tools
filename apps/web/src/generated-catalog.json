@@ -286,7 +286,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 1,
       "summary": "Compare two JSON documents structurally and list added, removed and changed paths.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "jsonpath",
@@ -295,7 +295,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Evaluate RFC 9535 JSONPath expressions against a document.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-schema-validator",
@@ -304,7 +304,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Validate data against JSON Schema draft-07 and 2020-12 with readable error paths.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-schema-generator",
@@ -313,7 +313,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Infer a JSON Schema from one or more sample documents.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-flatten",
@@ -322,7 +322,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 1,
       "summary": "Flatten nested JSON to a path-keyed map and rebuild it losslessly.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-to-code",
@@ -331,7 +331,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP types from JSON.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "json-to-zod",
@@ -340,7 +340,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Generate a Zod validation schema from a JSON sample or JSON Schema.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "data-convert",
@@ -349,7 +349,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 1,
       "summary": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "csv-json",
@@ -358,7 +358,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 1,
       "summary": "Convert between RFC 4180 CSV and JSON with delimiter, quoting and header control.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "xml-json",
@@ -367,7 +367,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Convert between XML and JSON with explicit attribute and text node handling.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "csv-viewer",
@@ -376,7 +376,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "View, sort and filter delimited data, with automatic delimiter detection.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "data-to-sql",
@@ -385,7 +385,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "sql-to-types",
@@ -394,7 +394,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 3,
       "summary": "Turn CREATE TABLE statements into TypeScript, Prisma or Drizzle definitions.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "php-unserialize",
@@ -403,7 +403,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 1,
       "summary": "Decode PHP serialized strings into JSON.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "list-compare",
@@ -412,7 +412,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 1,
       "summary": "Find the union, intersection and differences between two lists.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "mock-data",
@@ -421,7 +421,7 @@
       "categoryLabel": "JSON and structured data",
       "tier": 2,
       "summary": "Generate deterministic fake records from a seed, with no network calls.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "text-lines",
