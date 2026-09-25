@@ -241,11 +241,10 @@ it('secrets can be replaced by placeholders in every emitted snippet', () => {
 it('building and converting never calls a network API', () => {
   const originalFetch = globalThis.fetch;
   const calls: string[] = [];
-  // @ts-expect-error test-only spy replacing the global
-  globalThis.fetch = (...args: unknown[]) => {
+  globalThis.fetch = ((...args: unknown[]) => {
     calls.push(String(args[0]));
     throw new Error('fetch should never be called by this package');
-  };
+  }) as typeof fetch;
   try {
     const { request } = parseCurl("curl -X POST 'https://example.invalid/' -H 'X-A: 1' -d 'x=1'");
     emitAll(request);

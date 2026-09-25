@@ -1,0 +1,23 @@
+[
+  {
+    "mode": { "field": "mode", "value": "paste" },
+    "values": {
+      "command": "curl -X POST 'https://example.invalid/api?x=1' -H 'Content-Type: application/json' -d '{\"a\":1}'"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "build" },
+    "values": {
+      "method": "POST",
+      "url": "https://example.invalid/api",
+      "headers": "X-Trace: 1",
+      "bodyKind": "json",
+      "body": "{\"a\":1}",
+      "auth": "basic",
+      "username": "alice",
+      "password": "s3cret-value"
+    },
+    "attachesFile": false
+  }
+]

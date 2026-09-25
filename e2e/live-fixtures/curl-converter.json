@@ -1,0 +1,9 @@
+{
+  "id": "curl-converter",
+  "label": "the curl manual's own -d example (curl -d \"name=curl\" https://example.com) posts as application/x-www-form-urlencoded",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "paste" },
+    { "action": "fill", "field": "command", "value": "curl -d \"name=curl\" https://example.com" }
+  ],
+  "expect": ["method: \"POST\"", "application/x-www-form-urlencoded"]
+}
