@@ -1,0 +1,6 @@
+{
+  "id": "php-unserialize",
+  "label": "An array of two strings, each length the byte count per the PHP manual",
+  "steps": [{ "action": "fill", "field": "input", "value": "a:2:{i:0;s:5:\"apple\";i:1;s:6:\"banana\";}" }],
+  "expect": ["\"apple\"", "\"banana\""]
+}
