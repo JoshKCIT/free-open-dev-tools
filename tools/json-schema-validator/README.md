@@ -28,7 +28,7 @@ Validates a pasted JSON document against a pasted JSON Schema, for both draft-07
 
 ## Ambiguous cases, and what this does about them
 
-- Every error path is an RFC 6901 JSON Pointer (for example /a/b~1c), the same notation json-diff and json-flatten use on this site, not a dollar-dot path
+- Every error path is an RFC 6901 JSON Pointer (for example /a/b~1c), not a dollar-dot path
 - format is asserted as a validation keyword when format checking is switched on, even under 2020-12, where the specification treats it as an annotation only by default
 
 ## Defined by

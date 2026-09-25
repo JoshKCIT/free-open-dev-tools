@@ -1,0 +1,9 @@
+{
+  "id": "json-schema-generator",
+  "label": "JSON Schema Validation: id appears in both samples as an integer, name in one",
+  "steps": [
+    { "action": "select", "field": "samplesAre", "value": "array" },
+    { "action": "fill", "field": "samples", "value": "[{\"id\":1,\"name\":\"Ada\"},{\"id\":2}]" }
+  ],
+  "expect": ["\"required\": [ \"id\" ]", "\"type\": \"integer\""]
+}
