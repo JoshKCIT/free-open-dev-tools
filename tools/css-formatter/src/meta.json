@@ -1,0 +1,37 @@
+{
+  "id": "css-formatter",
+  "name": "CSS Formatter & Minifier",
+  "summary": "Beautify or minify CSS.",
+  "about": "Beautifies CSS with Prettier's own CSS printer, or minifies it with csso. Both modes first parse the input with Prettier's CSS parser, so malformed CSS is refused the same way whichever mode is chosen, with the line and column of the problem.",
+  "supports": [
+    "CSS Syntax Module Level 3: rules, selectors, declarations, strings, escapes and comments",
+    "Beautify with a chosen indent (2 spaces, 4 spaces, or a tab)",
+    "Minify with csso, with structural restructuring on or off",
+    "Licence comments (/*! ... */) kept on request when minifying; other comments removed",
+    "Malformed CSS refused with its line and column in both modes"
+  ],
+  "limits": [
+    "CSS only: SCSS and Less syntax are not understood",
+    "Restructuring (on by default when minifying) may merge and reorder rules where csso judges it safe; it can be switched off",
+    "Comments other than a leading /*! licence comment are removed when minifying",
+    "A vendor hack that is not valid CSS is refused rather than passed through"
+  ],
+  "ambiguities": [
+    "csso's value compression (e.g. rewriting a colour keyword to its shorter hex form) runs even with restructure off, since restructure only controls merging and reordering rules and declarations, not value shortening"
+  ],
+  "standards": [{ "label": "CSS Syntax Module Level 3", "url": "https://www.w3.org/TR/css-syntax-3/" }],
+  "keywords": ["css", "format", "beautify", "minify", "prettier", "csso"],
+  "primaryExport": "formatCss",
+  "usage": "import { formatCss } from '@fodt/css-formatter';\n\nawait formatCss('a{color:red}', { mode: 'beautify' });\n// { output: 'a {\\n  color: red;\\n}\\n', inputBytes: 12, outputBytes: 16 }",
+  "apiNotes": "`formatCss(source, options)` is async and returns `{ output, inputBytes, outputBytes }`, or throws `CssFormatterError` with `line`/`column` (1-based) for malformed CSS. `mode` is `'beautify'` (default) or `'minify'`. Beautify options: `indent` (`2` default, `4`, or `'tab'`). Minify options: `restructure` (default `true`) and `keepLicenceComments` (default `true`, keeps only `/*! ... */` comments).",
+  "testNotes": "Beautified and minified (with restructuring off) output is parsed with css-tree and compared against the parsed input, ignoring whitespace, to prove formatting never changes the rules, selectors or declarations. The csso README's own documented minification example is checked literally. postcss is used as a second oracle for minified output.",
+  "dependencies": {
+    "prettier": "3.9.9",
+    "csso": "5.0.5"
+  },
+  "devDependencies": {
+    "@types/csso": "^5.0.5",
+    "css-tree": "^3.2.1",
+    "postcss": "^8.5.28"
+  }
+}

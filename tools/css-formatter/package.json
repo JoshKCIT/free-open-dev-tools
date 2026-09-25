@@ -1,0 +1,52 @@
+{
+  "name": "@fodt/css-formatter",
+  "version": "1.0.0",
+  "description": "Beautify or minify CSS.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "css",
+    "format",
+    "beautify",
+    "minify",
+    "prettier",
+    "csso"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "prettier": "3.9.9",
+    "csso": "5.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "@types/csso": "^5.0.5",
+    "css-tree": "^3.2.1",
+    "postcss": "^8.5.28"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/css-formatter"
+  }
+}

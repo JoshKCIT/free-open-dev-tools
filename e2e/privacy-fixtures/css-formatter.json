@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "beautify" },
+    "values": { "input": "a { color: red; }" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "minify" },
+    "values": { "input": "a { color: red; }" },
+    "attachesFile": false
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "id": "css-formatter",
+  "label": "The csso README's own minification example gives the documented output",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "minify" },
+    { "action": "fill", "field": "input", "value": ".test { color: #ff0000; }" }
+  ],
+  "expect": [".test{color:red}"]
+}
