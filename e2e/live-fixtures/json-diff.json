@@ -1,0 +1,9 @@
+{
+  "id": "json-diff",
+  "label": "RFC 6901 section 3's own escaping rule: a slash in a key is written as ~1 in the reported path",
+  "steps": [
+    { "action": "fill", "field": "first", "value": "{\"a\":1,\"b\":[1,2]}" },
+    { "action": "fill", "field": "second", "value": "{\"a\":2,\"b\":[1,2,3],\"c/d\":true}" }
+  ],
+  "expect": ["/c~1d", "/b/2"]
+}
