@@ -56,8 +56,12 @@ export interface ParsedQuery {
 const SPECIAL_SCHEMES = new Set(['ftp:', 'file:', 'http:', 'https:', 'ws:', 'wss:']);
 
 function pairsFromSearchParams(search: URLSearchParams): QueryPair[] {
+  // forEach, not for-of: URLSearchParams's Symbol.iterator needs the
+  // DOM.Iterable lib, which this project's own generated standalone
+  // tsconfig.json (`lib: ['ES2022', 'DOM']`, scripts/sync-tools.mjs) does
+  // not include -- forEach is an ordinary method and needs only 'DOM'.
   const pairs: QueryPair[] = [];
-  for (const [name, value] of search) pairs.push({ name, value });
+  search.forEach((value, name) => pairs.push({ name, value }));
   return pairs;
 }
 
