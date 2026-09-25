@@ -1,0 +1,10 @@
+[
+  {
+    "mode": { "field": "mode", "value": "url" },
+    "values": {
+      "input": "https://user:pw@example.invalid/a/b?x=1&x=2#frag",
+      "base": "https://example.invalid/"
+    },
+    "attachesFile": false
+  }
+]

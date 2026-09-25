@@ -140,6 +140,23 @@ const PHASE_5_TOOL_IDS = [
   'openapi-to-typescript',
 ];
 
+/** The 13 tools Phase 6 adds (NET-01..13). */
+const PHASE_6_TOOL_IDS = [
+  'ip-ptr',
+  'user-agent',
+  'curl-converter',
+  'security-headers',
+  'url-parser',
+  'utm-builder',
+  'meta-tags',
+  'robots-txt',
+  'sitemap-generator',
+  'schema-markup',
+  'hreflang',
+  'htaccess-generator',
+  'nginx-config',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -612,12 +629,19 @@ test('every phase 5 tool has exactly one live fixture file', () => {
   }
 });
 
-test('every live fixture file belongs to phase 3, 4 or 5', () => {
-  // Strict equality: the sorted set of loaded ids equals the sorted union of
-  // the three phase lists (phase 5 completeness is now proven by the test
-  // above, so the earlier plans' membership-only check is restored to a
-  // full equality check, as this plan's own shared_procedure step T says).
-  const expected = [...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS, ...PHASE_5_TOOL_IDS].slice().sort();
-  const actual = LIVE_FIXTURE_IDS.slice().sort();
-  expect(actual).toEqual(expected);
+test('every live fixture file belongs to phase 3, 4, 5 or 6', () => {
+  // Membership only, not strict equality: phase 6 is still being built across
+  // several plans, so this checks every loaded id is in the union of the
+  // four phase lists and no id is declared twice, without requiring every
+  // phase 6 id to already have a fixture file. Plan 06-08 sets the count to
+  // 101, adds its own phase 6 completeness test and restores strict equality.
+  const allowed = new Set([...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS, ...PHASE_5_TOOL_IDS, ...PHASE_6_TOOL_IDS]);
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(allowed, `${id} is not in the union of the phase 3, 4, 5 or 6 tool id lists`).toContain(id);
+  }
+  const seen = new Set<string>();
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(seen.has(id), `${id} has more than one live fixture file`).toBe(false);
+    seen.add(id);
+  }
 });

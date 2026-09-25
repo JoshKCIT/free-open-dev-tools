@@ -1,0 +1,9 @@
+{
+  "id": "url-parser",
+  "label": "web-platform-tests urltestdata's own dot-segment removal example: http://example.com/foo/bar/../ton/../../a resolves to href http://example.com/a",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "url" },
+    { "action": "fill", "field": "input", "value": "http://example.com/foo/bar/../ton/../../a" }
+  ],
+  "expect": ["http://example.com/a"]
+}
