@@ -19,7 +19,7 @@ const MAX_INPUT_LENGTH = 1_000_000;
 const UNQUOTED_OPERATORS = new Set(['|', ';', '&', '<', '>', '(', ')']);
 
 class ShellTokenizer {
-  private readonly src: string;
+  private readonly text: string;
   private i = 0;
   private line = 1;
   private column = 1;
@@ -27,8 +27,8 @@ class ShellTokenizer {
   private current = '';
   private inWord = false;
 
-  constructor(src: string) {
-    this.src = src;
+  constructor(input: string) {
+    this.text = input;
   }
 
   private fail(message: string): never {
@@ -36,11 +36,11 @@ class ShellTokenizer {
   }
 
   private peek(offset = 0): string | undefined {
-    return this.src[this.i + offset];
+    return this.text[this.i + offset];
   }
 
   private advance(): string {
-    const ch = this.src[this.i]!;
+    const ch = this.text[this.i]!;
     this.i++;
     if (ch === '\n') {
       this.line++;
@@ -62,15 +62,15 @@ class ShellTokenizer {
   /** True when everything from here to the next newline (or end of input) is blank. */
   private restOfLineIsBlank(fromOffset: number): boolean {
     let j = this.i + fromOffset;
-    while (j < this.src.length && (this.src[j] === ' ' || this.src[j] === '\t' || this.src[j] === '\r')) j++;
-    return j >= this.src.length || this.src[j] === '\n';
+    while (j < this.text.length && (this.text[j] === ' ' || this.text[j] === '\t' || this.text[j] === '\r')) j++;
+    return j >= this.text.length || this.text[j] === '\n';
   }
 
   private readSingleQuoted(): void {
     this.advance(); // opening '
     this.inWord = true;
     for (;;) {
-      if (this.i >= this.src.length) this.fail('This single-quoted string is never closed.');
+      if (this.i >= this.text.length) this.fail('This single-quoted string is never closed.');
       const c = this.peek()!;
       if (c === "'") {
         this.advance();
@@ -84,7 +84,7 @@ class ShellTokenizer {
     this.advance(); // opening "
     this.inWord = true;
     for (;;) {
-      if (this.i >= this.src.length) this.fail('This double-quoted string is never closed.');
+      if (this.i >= this.text.length) this.fail('This double-quoted string is never closed.');
       const c = this.peek()!;
       if (c === '"') {
         this.advance();
@@ -194,7 +194,7 @@ class ShellTokenizer {
     this.advance(); // consume opening '
     this.inWord = true;
     for (;;) {
-      if (this.i >= this.src.length) this.fail("This $'...' ANSI-C quoted string is never closed.");
+      if (this.i >= this.text.length) this.fail("This $'...' ANSI-C quoted string is never closed.");
       const c = this.peek()!;
       if (c === "'") {
         this.advance();
@@ -210,11 +210,11 @@ class ShellTokenizer {
   }
 
   tokenize(): string[] {
-    if (this.src.length > MAX_INPUT_LENGTH) {
+    if (this.text.length > MAX_INPUT_LENGTH) {
       throw new CurlConverterError('This command is over 1 MB, so it was refused rather than risk freezing the tab.');
     }
 
-    while (this.i < this.src.length) {
+    while (this.i < this.text.length) {
       const ch = this.peek()!;
 
       if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
@@ -224,7 +224,7 @@ class ShellTokenizer {
       }
 
       if (ch === '#' && !this.inWord) {
-        while (this.i < this.src.length && this.peek() !== '\n') this.advance();
+        while (this.i < this.text.length && this.peek() !== '\n') this.advance();
         continue;
       }
 
