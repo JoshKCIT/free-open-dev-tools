@@ -1,0 +1,10 @@
+{
+  "id": "mock-data",
+  "label": "The demo seed with three fullName records starts with Niklaus Johnson",
+  "steps": [
+    { "action": "fill", "field": "seed", "value": "demo" },
+    { "action": "fill", "field": "count", "value": "3" },
+    { "action": "fill", "field": "fields", "value": "name: fullName" }
+  ],
+  "expect": ["Niklaus Johnson"]
+}
