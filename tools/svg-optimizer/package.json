@@ -1,0 +1,53 @@
+{
+  "name": "@fodt/svg-optimizer",
+  "version": "1.0.0",
+  "description": "Shrink SVGs and strip scripts, event handlers and external references.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "svg",
+    "optimize",
+    "optimise",
+    "sanitize",
+    "sanitise",
+    "xss",
+    "minify"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "dompurify": "3.4.16",
+    "svgo": "4.1.0",
+    "fast-xml-parser": "5.11.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "jsdom": "^29.1.1",
+    "@types/jsdom": "^30.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/svg-optimizer"
+  }
+}

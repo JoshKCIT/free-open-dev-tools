@@ -1,0 +1,50 @@
+{
+  "id": "svg-optimizer",
+  "name": "SVG Optimizer",
+  "summary": "Shrink SVGs and strip scripts, event handlers and external references.",
+  "about": "Sanitises a pasted SVG first, removing scripts, event handlers, foreignObject content, dangerous URL schemes and references to other addresses, then shrinks the result with a size optimiser. The sanitised markup is shown only in a sandboxed preview frame, never written into this page itself.",
+  "supports": [
+    "SVG 1.1 (Second Edition) shapes, paths, gradients, filters, masks and use references",
+    "Scripts, foreignObject content, event handler attributes and dangerous URL schemes removed before anything else runs",
+    "References to another address (an external image, filter, font or stylesheet) removed; same-document fragment references (#id) and small base64 data images are kept",
+    "Size optimisation with multipass, adjustable numeric precision and a pretty-printed option, run only after sanitising",
+    "A DOCTYPE declaring entities refused outright; a plain DOCTYPE removed with a warning",
+    "Malformed XML refused with a line and column",
+    "A live preview of the sanitised, optimised markup, rendered only inside a sandboxed frame"
+  ],
+  "limits": [
+    "External images, fonts and stylesheets are always removed, even a legitimate one on another origin: nothing this page renders ever makes a network request",
+    "CSS is checked for dangerous patterns (imports, expressions, binding hooks) but not otherwise validated; a stylesheet with unrelated errors passes through unchanged",
+    "Animation elements are kept only when they carry no script; SMIL event attributes that run script are removed the same as any other event handler",
+    "Comments and processing instructions are not preserved by the optimiser",
+    "This does not restore an SVG that was already broken before sanitising; malformed input is refused, not repaired"
+  ],
+  "ambiguities": [
+    "A reference such as href that could point at either a local fragment or a same-document element by id is only kept when it starts with '#'; anything else is treated as external and removed"
+  ],
+  "standards": [
+    { "label": "SVG 1.1 (Second Edition)", "url": "https://www.w3.org/TR/SVG11/" },
+    {
+      "label": "OWASP XSS Filter Evasion Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/XSS_Filter_Evasion_Cheat_Sheet.html"
+    },
+    {
+      "label": "GitHub Security Advisory GHSA-2p49-hgcm-8545 (SVGO removeScripts plugin)",
+      "url": "https://github.com/svg/svgo/security/advisories/GHSA-2p49-hgcm-8545"
+    }
+  ],
+  "keywords": ["svg", "optimize", "optimise", "sanitize", "sanitise", "xss", "minify"],
+  "primaryExport": "optimizeSvg",
+  "usage": "import { optimizeSvg } from '@fodt/svg-optimizer';\n\noptimizeSvg('<svg viewBox=\"0 0 10 10\"><rect width=\"10\" height=\"10\"/></svg>', window, { multipass: true, precision: 3 });\n// { output: '<svg viewBox=\"0 0 10 10\"><rect width=\"10\" height=\"10\"/></svg>', originalBytes: 55, optimisedBytes: 51, removed: {...}, warnings: [] }",
+  "apiNotes": "`optimizeSvg(input, win, options)` takes the `window` object it should sanitise with (never reads a DOM global on its own) and returns `{ output, originalBytes, optimisedBytes, removed, warnings }`, or throws `SvgOptimizerError` with `line`/`column` for malformed XML, or a plain message for a refused DOCTYPE or a non-svg root. Options default to `multipass: true`, `precision: 3`, `pretty: false`. `sanitiseMarkup`, `sanitiseToFragment`, `serialiseFragment`, `describeRemoved` and `SanitiserUnavailableError` are exported from the sibling sanitiser module for reuse.",
+  "testNotes": "Every payload extracted from a vendored copy of the OWASP XSS Filter Evasion Cheat Sheet is checked to leave no active content after sanitising, in both the HTML and the SVG profile. The advisory GHSA-2p49-hgcm-8545's own proof-of-concept vectors (a namespaced svg:script element and a case-varied javascript: URL) are checked directly. DOMPurify's own no-window behaviour was measured by test before writing the fail-closed wrapper.",
+  "dependencies": {
+    "dompurify": "3.4.16",
+    "svgo": "4.1.0",
+    "fast-xml-parser": "5.11.1"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "@types/jsdom": "^30.0.0"
+  }
+}

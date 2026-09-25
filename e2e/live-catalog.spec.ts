@@ -116,6 +116,30 @@ const PHASE_4_TOOL_IDS = [
   'mock-data',
 ];
 
+/** The 20 tools Phase 5 adds (CODE-01..20). */
+const PHASE_5_TOOL_IDS = [
+  'html-formatter',
+  'css-formatter',
+  'js-formatter',
+  'xml-formatter',
+  'yaml-formatter',
+  'sql-formatter',
+  'svg-optimizer',
+  'jsx-converter',
+  'ts-to-js',
+  'tailwind-css',
+  'markdown-html',
+  'table-builder',
+  'bbcode',
+  'code-complexity',
+  'xpath-tester',
+  'git-diff-viewer',
+  'graphql-to-typescript',
+  'json-to-graphql',
+  'openapi-validator',
+  'openapi-to-typescript',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -581,8 +605,15 @@ test('every phase 4 tool has exactly one live fixture file', () => {
   }
 });
 
-test('every live fixture file belongs to phase 3 or phase 4', () => {
-  const expected = [...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS].slice().sort();
-  const actual = LIVE_FIXTURE_IDS.slice().sort();
-  expect(actual).toEqual(expected);
+test('every live fixture file belongs to phase 3, 4 or 5', () => {
+  // Membership only (plan 05-12 restores strict equality once phase 5's own
+  // fixture-completeness test exists): every loaded id is in the union of
+  // the three phase lists, and no id is loaded twice.
+  const known = new Set([...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS, ...PHASE_5_TOOL_IDS]);
+  const seen = new Set();
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(known.has(id), `${id} is not a phase 3, 4 or 5 tool id`).toBe(true);
+    expect(seen.has(id), `${id} has more than one live fixture file`).toBe(false);
+    seen.add(id);
+  }
 });
