@@ -1,0 +1,48 @@
+{
+  "id": "openapi-to-typescript",
+  "name": "OpenAPI to TypeScript",
+  "summary": "Generate TypeScript types from an OpenAPI document.",
+  "about": "Reads a pasted Swagger 2.0 or OpenAPI 3.0, 3.1 or 3.2 document, in JSON or YAML, and generates plain TypeScript source text for its named schemas (components.schemas in 3.x, definitions in 2.0) and, on request, for each operation's path, query and header parameters, JSON request body and JSON responses by status. The generated types compile under the TypeScript compiler's strict mode and are checked, for every component schema, to be mutually assignable with an independent generator's own output for the same document.",
+  "supports": [
+    "Swagger 2.0 and OpenAPI 3.0, 3.1 and 3.2 documents in JSON or YAML",
+    "Named schemas from components.schemas (3.x) or definitions (2.0), as export interface or export type declarations",
+    "allOf as a TypeScript intersection, oneOf and anyOf as a union, enum and const as literal types",
+    "A 3.0 nullable: true schema and a 3.1 or 3.2 type array containing null both become a union with null",
+    "additionalProperties as an index signature, typed unknown alongside named properties so every property stays assignable",
+    "Operation path, query and header parameters, JSON request bodies and JSON responses by status, named from the operation's operationId or its method and path",
+    "Schema names that are not valid TypeScript identifiers, or that collide once turned into one, get distinct valid names",
+    "descriptions, deprecated, readOnly and writeOnly become a JSDoc comment above the generated property or type"
+  ],
+  "limits": [
+    "A $ref to another file or another address, or a local reference that is not a top-level named schema, becomes unknown with a warning; nothing is ever fetched",
+    "discriminator is not read; not becomes unknown with a warning",
+    "Only a JSON request body and JSON responses are read; other content types on an operation are not represented",
+    "A recursive inline schema with no name is not specially handled and may produce a very large or incorrect type",
+    "The document is not validated beyond what generating types needs; a separate structural check against the official schema is not performed here"
+  ],
+  "ambiguities": [
+    "declarationStyle chooses export interface vs export type for object-shaped named schemas; a schema that is not a plain object (a union, an array, a scalar) always emits export type, since TypeScript interfaces can only declare object types",
+    "Operation types are always named from operationId when present, falling back to the operation's method and path otherwise, and always follow the same PascalCase collision-avoidance rule as schema names"
+  ],
+  "standards": [
+    { "label": "OpenAPI Specification 2.0 (Swagger)", "url": "https://spec.openapis.org/oas/v2.0.html" },
+    { "label": "OpenAPI Specification 3.0.4", "url": "https://spec.openapis.org/oas/v3.0.4.html" },
+    { "label": "OpenAPI Specification 3.1.2", "url": "https://spec.openapis.org/oas/v3.1.2.html" },
+    { "label": "OpenAPI Specification 3.2.1", "url": "https://spec.openapis.org/oas/v3.2.1.html" },
+    {
+      "label": "TypeScript Handbook — Object Types",
+      "url": "https://www.typescriptlang.org/docs/handbook/2/objects.html"
+    }
+  ],
+  "keywords": ["openapi", "swagger", "typescript", "codegen", "types", "api specification"],
+  "primaryExport": "openApiToTypeScript",
+  "usage": "import { openApiToTypeScript } from '@fodt/openapi-to-typescript';\n\nconst result = openApiToTypeScript(\n  '{\"openapi\":\"3.0.4\",\"info\":{\"title\":\"t\",\"version\":\"1\"},\"paths\":{},\"components\":{\"schemas\":{\"Pet\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}}}}',\n);\nresult.output; // 'export interface Pet {\\n  name: string;\\n}\\n'",
+  "apiNotes": "openApiToTypeScript(text, { format, includeOperations, declarationStyle }) reads the document with this package's own canonical reader (readOpenApiDocument), then walks its named schemas and, when includeOperations is on (the default), its operations, emitting one export interface or export type declaration per schema and per operation artefact. Returns { output, types, operations, warnings }. A broken document throws OpenApiToTypeScriptError.",
+  "testNotes": "Every official OpenAPI Initiative example document is compiled in strict mode by the real TypeScript compiler as an in-memory oracle, and cross-checked for mutual assignability against the openapi-typescript package's own generated types for the same document, both devDependency-only oracles never bundled at runtime.",
+  "dependencies": {
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
+  }
+}
