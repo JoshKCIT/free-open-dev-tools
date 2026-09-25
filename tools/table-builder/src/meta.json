@@ -1,0 +1,50 @@
+{
+  "id": "table-builder",
+  "name": "Table Builder",
+  "summary": "Build a table visually and export it as Markdown, HTML, CSV or JSON.",
+  "about": "Builds a table cell by cell in an editable grid, then writes it out as a GitHub Flavored Markdown table, an HTML table, RFC 4180 CSV, or JSON. All four formats are generated from the same rectangular grid of cells, so switching format never loses a row, a column, or a character typed into a cell.",
+  "supports": [
+    "A GitHub Flavored Markdown table with a header row and a delimiter row, escaping a pipe as a backslash-pipe and a line break as an HTML line break, so the table's shape survives",
+    "An HTML table with thead and tbody, with every cell and attribute value escaped so markup typed into a cell stays text",
+    "Column alignment (left, center, right or none) rendered as GFM delimiter colons and as HTML align attributes",
+    "RFC 4180 CSV with a chosen delimiter (comma, semicolon, tab or pipe) and CRLF record separators",
+    "JSON keyed by the header row, with a blank header named column_N and a duplicate header suffixed _2, _3 and so on; without a header row, JSON is written as an array of arrays",
+    "Short rows padded with empty cells so the grid is always rectangular before it is written out",
+    "Fully empty trailing rows and fully empty trailing columns dropped before the table is written"
+  ],
+  "limits": [
+    "No merged cells and no cell formatting beyond plain text: bold, links, images and nested tables are not supported inside a cell",
+    "The grid holds at most 50 rows and 20 columns",
+    "JSON output never infers a type: every cell value is always a string, including numbers and true/false/null",
+    "CSV has no way to express column alignment or to mark a row as a header distinct from the data",
+    "A cell's own leading or trailing space is not kept in the Markdown or HTML export, because GFM trims the space between a table pipe and a cell's content; CSV and JSON keep it"
+  ],
+  "ambiguities": [
+    "A row typed shorter than the others is padded with empty cells rather than refused, since a partially filled row is a normal state while editing a grid",
+    "An alignment word that is not left, center, right or none (or their single-letter forms) is treated as no alignment, with a warning, rather than refused"
+  ],
+  "standards": [
+    {
+      "label": "GitHub Flavored Markdown Spec 0.29-gfm, section 4.10 Tables (extension)",
+      "url": "https://github.github.com/gfm/#tables-extension-"
+    },
+    {
+      "label": "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files",
+      "url": "https://www.rfc-editor.org/rfc/rfc4180"
+    },
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    },
+    { "label": "HTML Living Standard — Tables", "url": "https://html.spec.whatwg.org/multipage/tables.html" }
+  ],
+  "keywords": ["table", "markdown", "gfm", "csv", "json", "html", "grid"],
+  "primaryExport": "buildTable",
+  "usage": "import { buildTable } from '@fodt/table-builder';\n\nbuildTable([['foo', 'bar'], ['baz', 'bim']], { format: 'markdown' });\n// { output: '| foo | bar |\\n| --- | --- |\\n| baz | bim |', rows: 2, columns: 2, warnings: [] }\n\nbuildTable([['foo', 'bar'], ['baz', 'bim']], { format: 'json' });\n// { output: '[{\"foo\":\"baz\",\"bar\":\"bim\"}]', rows: 2, columns: 2, warnings: [] }",
+  "apiNotes": "buildTable(rows, options) takes a rectangular-or-not grid of strings and returns { output, rows, columns, warnings }. options.format selects markdown (default), html, csv or json. options.headerRow (default true) treats the first row as a header; when off, markdown and html still write a blank header row to stay valid, and json is written as an array of arrays instead of an array of objects. options.alignments is a comma list of left, center, right or none (or l, c, r, -), one per column. options.pad (markdown, default true) pads cell text to its column's width. options.csvDelimiter (csv, default a comma) and options.pretty (html and json, default true) control those two formats. Throws TableBuilderError when the grid has no cells left after trimming.",
+  "testNotes": "The Markdown output is proven against the GitHub Flavored Markdown spec's own worked table examples, and against 200 seeded random grids rendered through micromark with the GFM extension as an independent parsing oracle, asserting the parsed result equals this tool's own direct HTML output. CSV output is proven by parsing it back with this tool's own RFC 4180 reader. A header cell named __proto__ is proven to become an ordinary own property with Object.prototype left untouched.",
+  "devDependencies": {
+    "micromark": "4.0.2",
+    "micromark-extension-gfm": "3.0.0"
+  }
+}

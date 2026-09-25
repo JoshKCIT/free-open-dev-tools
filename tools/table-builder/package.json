@@ -1,0 +1,48 @@
+{
+  "name": "@fodt/table-builder",
+  "version": "1.0.0",
+  "description": "Build a table visually and export it as Markdown, HTML, CSV or JSON.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "table",
+    "markdown",
+    "gfm",
+    "csv",
+    "json",
+    "html",
+    "grid"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "micromark": "4.0.2",
+    "micromark-extension-gfm": "3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/table-builder"
+  }
+}
