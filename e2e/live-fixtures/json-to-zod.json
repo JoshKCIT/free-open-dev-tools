@@ -1,0 +1,9 @@
+{
+  "id": "json-to-zod",
+  "label": "A number and a string sample give Zod's integer and string checks (Zod API reference)",
+  "steps": [
+    { "action": "radio", "field": "source", "value": "sample" },
+    { "action": "fill", "field": "input", "value": "{\"id\":1,\"name\":\"Ada\"}" }
+  ],
+  "expect": ["z.number().int()", "z.string()"]
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "mode": { "field": "source", "value": "sample" },
+    "values": { "input": "{\"id\":1,\"name\":\"Ada\"}" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "source", "value": "schema" },
+    "values": {
+      "input": "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}},\"required\":[\"id\"]}"
+    },
+    "attachesFile": false
+  }
+]

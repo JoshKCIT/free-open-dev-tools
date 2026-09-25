@@ -1,0 +1,48 @@
+{
+  "id": "json-to-zod",
+  "name": "JSON to Zod Schema",
+  "summary": "Generate a Zod validation schema from a JSON sample or JSON Schema.",
+  "about": "Turns a pasted JSON sample or a JSON Schema document into Zod source text: source only, never bundled or executed by this tool. Sample mode infers the same simplified shape as the typed-code generator; schema mode converts a documented subset of JSON Schema draft-07 and 2020-12 keywords to the matching Zod calls, listing anything outside that subset instead of guessing at it.",
+  "supports": [
+    "Sample mode: an object, array, or scalar sample becomes a nested z.object/z.array/z.string/z.number/z.boolean/z.unknown expression",
+    "Schema mode: type (including a null-bearing list), properties with required, additionalProperties: false, items, prefixItems, enum, const, anyOf, oneOf, allOf, string length/pattern/format bounds, numeric bounds and multipleOf, array length bounds, description and default",
+    "A local $ref to #/definitions/... or #/$defs/... becomes a named constant, emitted before whatever first uses it",
+    "A $ref cycle is refused, naming the pointer that closes the loop",
+    "A keyword outside the supported subset is listed by its RFC 6901 path in warnings, never guessed at",
+    "The generated schema is checked with Zod itself: it accepts the sample or the schema's own valid instances, and rejects a wrongly typed value"
+  ],
+  "limits": [
+    "Zod is a devDependency-only test oracle; the shipped package never bundles or evaluates Zod, and the generated text is never executed by this tool",
+    "oneOf's exclusivity (exactly one branch matches) is not enforced; it converts to the same z.union as anyOf, with a warning",
+    "The generated source targets Zod 4 (tested against 4.6.5); it uses the chained string-format methods (.email(), .uuid(), .url()) that Zod 3 also has rather than Zod 4's newer top-level z.email() form, since Zod 4's own changelog marks the chained forms deprecated but still functional -- pasting the output into a Zod 3 project should still work",
+    "A recursive $ref is refused outright rather than emitting a self-referential lazy schema",
+    "Sample mode never infers a bound, pattern, enum or format; only schema mode does, and only from a keyword this tool understands"
+  ],
+  "ambiguities": [
+    "Sample mode's inference and another tool's own JSON-to-typed-code inference are two independent implementations of the same simplification rules (D-23 forbids importing between tool folders); a difference between them would be a bug in one, not an intentional divergence",
+    "A draft-07 array items as a list (tuple-typed items) and 2020-12's prefixItems both become z.tuple; draft-07's own items list historically forbids extra items by default, which this tool does not model separately"
+  ],
+  "standards": [
+    {
+      "label": "JSON Schema draft-07 (validation vocabulary)",
+      "url": "https://json-schema.org/draft-07/json-schema-validation"
+    },
+    {
+      "label": "JSON Schema 2020-12 (validation vocabulary)",
+      "url": "https://json-schema.org/draft/2020-12/json-schema-validation"
+    },
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    },
+    { "label": "RFC 6901 — JavaScript Object Notation (JSON) Pointer", "url": "https://www.rfc-editor.org/rfc/rfc6901" }
+  ],
+  "keywords": ["json", "zod", "schema", "validation", "json schema", "code generation", "typescript"],
+  "primaryExport": "jsonToZod",
+  "usage": "import { jsonToZod } from '@fodt/json-to-zod';\n\njsonToZod('{\"id\":1,\"name\":\"Ada\"}', { source: 'sample', exportName: 'userSchema' });\n// { output: \"import { z } from 'zod';\\n\\nexport const userSchema = z.object({ id: z.number().int(), name: z.string() });\\n\", warnings: [] }",
+  "apiNotes": "Sample mode's inference lives directly in index.ts, deliberately smaller than the type inference behind the eight-language code generator elsewhere on this site, and never imported from it (D-23). Schema mode walks the schema tree once, resolving $ref pointers with pointer.ts and collecting unsupported keywords by their RFC 6901 path as it goes.",
+  "testNotes": "No standards body defines JSON-to-Zod conversion itself; correctness is checked by evaluating the generated source in the test suite with Zod supplied and calling safeParse against the sample or the schema's own instances, both accepting the valid case and rejecting a wrongly typed one.",
+  "devDependencies": {
+    "zod": "4.6.5"
+  }
+}
