@@ -1,0 +1,11 @@
+{
+  "id": "utm-builder",
+  "label": "Google Analytics' own worked example (summer-mailer / email / summer-sale) builds the documented campaign URL",
+  "steps": [
+    { "action": "fill", "field": "url", "value": "https://www.example.com/" },
+    { "action": "fill", "field": "utm_source", "value": "summer-mailer" },
+    { "action": "fill", "field": "utm_medium", "value": "email" },
+    { "action": "fill", "field": "utm_campaign", "value": "summer-sale" }
+  ],
+  "expect": ["https://www.example.com/?utm_source=summer-mailer&utm_medium=email&utm_campaign=summer-sale"]
+}

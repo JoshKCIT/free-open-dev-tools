@@ -1,0 +1,11 @@
+[
+  {
+    "values": {
+      "url": "https://example.invalid/landing?ref=a%20b#top",
+      "utm_source": "newsletter",
+      "utm_medium": "email",
+      "utm_campaign": "spring sale"
+    },
+    "attachesFile": false
+  }
+]
