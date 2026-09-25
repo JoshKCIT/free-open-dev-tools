@@ -1,0 +1,9 @@
+{
+  "id": "bbcode",
+  "label": "phpBB's own bold example converts to CommonMark strong emphasis",
+  "steps": [
+    { "action": "select", "field": "to", "value": "markdown" },
+    { "action": "fill", "field": "input", "value": "[b]bold[/b]" }
+  ],
+  "expect": ["**bold**"]
+}

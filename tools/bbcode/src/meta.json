@@ -1,0 +1,48 @@
+{
+  "id": "bbcode",
+  "name": "BBCode Converter",
+  "summary": "Convert between BBCode, Markdown and sanitised HTML.",
+  "about": "Parses BBCode with a phpBB-style default tag set, Markdown with a CommonMark- and GitHub Flavored Markdown-conformant parser, or HTML with a script-free parser, into one shared document tree, then writes BBCode, Markdown or sanitised HTML from it. HTML output always passes the same sanitising policy used everywhere else on this site and previews only in a sandboxed frame.",
+  "supports": [
+    "BBCode to HTML, BBCode to Markdown, and HTML or Markdown to BBCode, over one shared document tree",
+    "phpBB's documented default tag set: b, i, u, s, url, url=, img, quote, quote=name, code, code=lang, list, list=1, list=a, *, color=, size=, center, left, right",
+    "CommonMark Markdown input and output, including emphasis, strong, strikethrough, links, images, blockquotes, code, lists and headings",
+    "HTML input and output without a DOM, including formatting elements, links, images, blockquotes, code, lists and colour or alignment styling",
+    "Sanitising all HTML output with the same policy every rendering page on this site uses; the preview always renders in a sandboxed frame",
+    "url, img and color values are checked against an allow list before being kept; anything unsafe is dropped with a warning",
+    "Round trips: BBCode to HTML to BBCode and Markdown to BBCode to Markdown keep the same content for the supported tag set"
+  ],
+  "limits": [
+    "No standards body defines BBCode; the tag set follows phpBB's own documented defaults, not a universal specification",
+    "Tables, spoilers, video embeds, attachments and other forum-specific BBCode tags are not converted",
+    "A BBCode tag outside the supported set, or left unclosed, is kept as literal text rather than converted",
+    "Underline, colour, size and text alignment have no CommonMark Markdown form and are dropped with a warning when converting to Markdown",
+    "HTML output never loads anything from another address: images and other references from outside addresses lose their source",
+    "Text that itself looks like a supported BBCode tag (for example a literal [b] in Markdown or HTML input) is read back as that tag"
+  ],
+  "ambiguities": [
+    "A tag written with mismatched case, such as [B], is read the same as its lower-case form, matching common forum software",
+    "Text that already contains BBCode-shaped syntax cannot be distinguished from an intended tag; it is always parsed as a tag"
+  ],
+  "standards": [
+    { "label": "CommonMark 0.31.2", "url": "https://spec.commonmark.org/0.31.2/" },
+    { "label": "HTML Living Standard", "url": "https://html.spec.whatwg.org/multipage/" },
+    {
+      "label": "OWASP XSS Filter Evasion Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/XSS_Filter_Evasion_Cheat_Sheet.html"
+    }
+  ],
+  "keywords": ["bbcode", "markdown", "html", "forum", "sanitise", "commonmark", "phpbb"],
+  "primaryExport": "convertMarkup",
+  "usage": "import { convertMarkup } from '@fodt/bbcode';\n\nconvertMarkup('[b]bold[/b]', { from: 'bbcode', to: 'html' }, window);\n// { output: '<strong>bold</strong>', preview: '<strong>bold</strong>', removed: {...}, warnings: [] }\n\nconvertMarkup('[b]bold[/b]', { from: 'bbcode', to: 'markdown' });\n// { output: '**bold**', warnings: [] }",
+  "apiNotes": "`convertMarkup(input, { from, to }, win)` returns `{ output, preview, removed, warnings }`. `from` and `to` are each one of `bbcode`, `markdown`, `html`. `win` is the caller's own `window`; it is read only when `to` is `html` (sanitising needs a DOM) and this package never reads a DOM global itself otherwise. `preview` equals `output` for an HTML target and is empty for the other two. Throws `BbcodeError` for input this package cannot parse at all; an unsupported feature during conversion is instead reported through `warnings`.",
+  "testNotes": "No standards body defines BBCode; tests follow phpBB's own documented default tag set (fetched from phpBB's community BBCode guide) rather than a specification. HTML output is tested against every payload in the vendored OWASP XSS Filter Evasion Cheat Sheet. Markdown output and input are tested for CommonMark 0.31.2 conformance on the supported construct subset.",
+  "dependencies": {
+    "@bbob/parser": "4.4.1",
+    "dompurify": "3.4.16"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "@types/jsdom": "^30.0.0"
+  }
+}
