@@ -1,0 +1,14 @@
+HTML Living Standard SVG tag-name adjustment table
+Source: https://html.spec.whatwg.org/multipage/parsing.html
+Section: "The 'in foreign content' insertion mode" (SVG tag-name adjustment table)
+Fetched: 2026-09-25
+
+This tool's src/svg-tag-names.ts is transcribed from the HTML Living
+Standard's own table of lower-cased SVG tag names to their camelCase
+element names, the same table a conforming HTML parser uses. The vendored
+table markup is kept unmodified under test/fixtures/whatwg-svg-tag-names/.
+
+The HTML Living Standard is (c) WHATWG (Apple, Google, Mozilla, Microsoft).
+Text is available under a Creative Commons Attribution 4.0 International
+License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+Full copyright notice: https://html.spec.whatwg.org/multipage/introduction.html#copyright

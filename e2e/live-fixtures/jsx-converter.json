@@ -1,0 +1,12 @@
+{
+  "id": "jsx-converter",
+  "label": "class, for and SVG attributes become the React DOM prop names React itself lists",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "<label for=\"x\" class=\"y\">A</label>"
+    }
+  ],
+  "expect": ["htmlFor=\"x\"", "className=\"y\""]
+}

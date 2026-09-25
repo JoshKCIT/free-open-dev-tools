@@ -1,0 +1,61 @@
+{
+  "id": "jsx-converter",
+  "name": "HTML & SVG to JSX",
+  "summary": "Convert markup to JSX or a typed React component.",
+  "about": "Parses pasted HTML or SVG markup into a syntax tree and writes JSX source text, with attribute and element names taken from React DOM's own attribute table and the HTML parser's own SVG tag-name table. Can wrap the result in a plain function component or a typed one. Nothing pasted is ever run: inline event handlers and script elements are dropped with a warning instead of being carried into the output.",
+  "supports": [
+    "class, for, style and SVG-only attribute names rewritten to the React DOM prop names React itself uses",
+    "SVG element names such as lineargradient rewritten to the camelCase the HTML Living Standard's own parser table gives, such as linearGradient",
+    "An inline style attribute rewritten to a style object with camel-cased properties, vendor-prefixed properties handled per React's own convention, and custom properties kept as quoted keys",
+    "Three output modes: bare JSX, a function component, or a typed function component with props typed from the root element",
+    "An option to rewrite value and checked on form controls to defaultValue and defaultChecked",
+    "Comments rewritten to JSX comments, text braces and angle brackets escaped, and multiple root elements wrapped in a fragment"
+  ],
+  "limits": [
+    "Inline event handler attributes and script elements are dropped with a warning; their text is never turned into code",
+    "Conditional comments and templates are written out as plain markup, with no special handling",
+    "Custom elements and unrecognised attribute names are kept exactly as written, since no published table names them",
+    "CSS values inside a style attribute are copied into the style object as written, never validated"
+  ],
+  "ambiguities": [
+    "A component name that is not a valid JavaScript identifier falls back to \"Markup\" with a warning, rather than refusing to convert"
+  ],
+  "standards": [
+    { "label": "HTML Living Standard — Parsing", "url": "https://html.spec.whatwg.org/multipage/parsing.html" },
+    { "label": "SVG 2", "url": "https://www.w3.org/TR/SVG2/" },
+    {
+      "label": "react.dev — Common components (e.g. div)",
+      "url": "https://react.dev/reference/react-dom/components/common"
+    }
+  ],
+  "keywords": ["jsx", "html", "svg", "react", "component", "convert"],
+  "primaryExport": "convertToJsx",
+  "usage": "import { convertToJsx } from '@fodt/jsx-converter';\n\nconvertToJsx('<label for=\"x\" class=\"y\">A</label>');\n// { output: '<label htmlFor=\"x\" className=\"y\">A</label>\\n', warnings: [] }",
+  "apiNotes": "`convertToJsx(markup, options)` returns `{ output, warnings }`. `options.output` is `'jsx'` (bare JSX, the default), `'component'` (wrapped in a named function component) or `'typescript'` (the same, typed with `ComponentProps<'<root tag>'>` on the root element; a fragment root takes no props and no type import is added). `options.componentName` defaults to `'Markup'`. `options.defaultValues` (default `true`) rewrites `value`/`checked` on form controls to `defaultValue`/`defaultChecked`. Throws `JsxConverterError` only when the markup cannot be parsed at all.",
+  "testNotes": "The React attribute table (`src/react-attribute-names.ts`) and the SVG tag-name table (`src/svg-tag-names.ts`) are each checked, pair by pair, against their own vendored upstream fixture under `test/fixtures/`, read by a line-pattern parser rather than imported. Every output mode is parsed back with the Babel parser (JSX/TSX plugins) and the typed component is additionally compiled with the TypeScript compiler in strict mode with `@types/react` installed, both devDependency-only oracles never bundled at runtime.",
+  "dependencies": {
+    "htmlparser2": "12.0.0"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.29.9",
+    "@types/react": "^19.3.0"
+  },
+  "bundledData": [
+    {
+      "name": "React possibleStandardNames (attribute names)",
+      "source": "https://github.com/facebook/react/blob/d083ec1da1e5252abd3ddfdde6dfbc09701a2c51/packages/react-dom-bindings/src/shared/possibleStandardNames.js",
+      "licence": "MIT",
+      "licenceUrl": "https://github.com/facebook/react/blob/d083ec1da1e5252abd3ddfdde6dfbc09701a2c51/LICENSE",
+      "attribution": "\"possibleStandardNames.js\", (c) Meta Platforms, Inc. and affiliates, from the React repository, licensed under the MIT License.",
+      "noticeFile": "src/react-NOTICE.txt"
+    },
+    {
+      "name": "HTML Living Standard SVG tag-name adjustment table",
+      "source": "https://html.spec.whatwg.org/multipage/parsing.html",
+      "licence": "CC-BY-4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "SVG tag-name adjustment table from the HTML Living Standard, (c) WHATWG, licensed under CC BY 4.0.",
+      "noticeFile": "src/whatwg-NOTICE.txt"
+    }
+  ]
+}
