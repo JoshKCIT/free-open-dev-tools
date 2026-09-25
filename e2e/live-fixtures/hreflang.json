@@ -1,0 +1,13 @@
+{
+  "id": "hreflang",
+  "label": "Google Search Central's own regional-variants example, its first line: en-GB links to the UK page",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "alternates",
+      "value": "en-GB https://en-gb.example.com/page.html\nen-US https://en-us.example.com/page.html\nen https://en.example.com/page.html\nde https://de.example.com/page.html"
+    },
+    { "action": "fill", "field": "xDefault", "value": "https://www.example.com/" }
+  ],
+  "expect": ["<link rel=\"alternate\" hreflang=\"en-GB\" href=\"https://en-gb.example.com/page.html\" />"]
+}

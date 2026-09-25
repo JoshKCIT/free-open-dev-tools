@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "alternates": "en https://example.invalid/en/\nde-DE https://example.invalid/de/",
+      "xDefault": "https://example.invalid/"
+    },
+    "attachesFile": false
+  }
+]
