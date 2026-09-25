@@ -328,3 +328,357 @@ export function isValidPythonIdentifier(key: string): boolean {
 export function escapePythonStringLiteral(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 }
+
+// --- Java --------------------------------------------------------------
+// Java Language Specification, section 3.9 (Keywords), fetched this
+// session (docs.oracle.com/javase/specs/jls/se21/html/jls-3.html): the
+// ReservedKeyword list, plus true/false/null, which are boolean and null
+// literals rather than keywords but are equally unusable as identifiers.
+export const JAVA_KEYWORDS = new Set([
+  'abstract',
+  'continue',
+  'for',
+  'new',
+  'switch',
+  'assert',
+  'default',
+  'if',
+  'package',
+  'synchronized',
+  'boolean',
+  'do',
+  'goto',
+  'private',
+  'this',
+  'break',
+  'double',
+  'implements',
+  'protected',
+  'throw',
+  'byte',
+  'else',
+  'import',
+  'public',
+  'throws',
+  'case',
+  'enum',
+  'instanceof',
+  'return',
+  'transient',
+  'catch',
+  'extends',
+  'int',
+  'short',
+  'try',
+  'char',
+  'final',
+  'interface',
+  'static',
+  'void',
+  'class',
+  'finally',
+  'long',
+  'strictfp',
+  'volatile',
+  'const',
+  'float',
+  'native',
+  'super',
+  'while',
+  '_',
+  'true',
+  'false',
+  'null',
+]);
+
+export const JAVA_SHADOW_TYPES = new Set([
+  'Object',
+  'String',
+  'Integer',
+  'Long',
+  'Double',
+  'Boolean',
+  'Float',
+  'List',
+  'Map',
+]);
+
+export interface EscapedName {
+  identifier: string;
+  needsAnnotation: boolean;
+}
+
+export function javaComponentName(key: string): EscapedName {
+  const base = camelCase(key, 'value');
+  const identifier = JAVA_KEYWORDS.has(base) ? `${base}_` : base;
+  return { identifier, needsAnnotation: identifier !== key };
+}
+
+// --- C# --------------------------------------------------------------------
+// learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/,
+// fetched this session: the reserved-keyword table (as through while).
+export const CSHARP_KEYWORDS = new Set([
+  'abstract',
+  'as',
+  'base',
+  'bool',
+  'break',
+  'byte',
+  'case',
+  'catch',
+  'char',
+  'checked',
+  'class',
+  'const',
+  'continue',
+  'decimal',
+  'default',
+  'delegate',
+  'do',
+  'double',
+  'else',
+  'enum',
+  'event',
+  'explicit',
+  'extern',
+  'false',
+  'finally',
+  'fixed',
+  'float',
+  'for',
+  'foreach',
+  'goto',
+  'if',
+  'implicit',
+  'in',
+  'int',
+  'interface',
+  'internal',
+  'is',
+  'lock',
+  'long',
+  'namespace',
+  'new',
+  'null',
+  'object',
+  'operator',
+  'out',
+  'override',
+  'params',
+  'private',
+  'protected',
+  'public',
+  'readonly',
+  'ref',
+  'return',
+  'sbyte',
+  'sealed',
+  'short',
+  'sizeof',
+  'stackalloc',
+  'static',
+  'string',
+  'struct',
+  'switch',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typeof',
+  'uint',
+  'ulong',
+  'unchecked',
+  'unsafe',
+  'ushort',
+  'using',
+  'virtual',
+  'void',
+  'volatile',
+  'while',
+]);
+
+export const CSHARP_SHADOW_TYPES = new Set([
+  'Object',
+  'String',
+  'Int32',
+  'Int64',
+  'Double',
+  'Boolean',
+  'List',
+  'Dictionary',
+]);
+
+/** C# escapes a keyword-named identifier with a literal `@` prefix, which is not part of the identifier's own text. */
+export function csharpPropertyName(key: string): string {
+  const base = pascalCase(key, 'Value');
+  return CSHARP_KEYWORDS.has(base) ? `@${base}` : base;
+}
+
+// --- Kotlin ------------------------------------------------------------
+// kotlinlang.org/docs/keyword-reference.html, fetched this session: the
+// hard-keyword list (always interpreted as keywords, cannot be identifiers).
+export const KOTLIN_KEYWORDS = new Set([
+  'as',
+  'break',
+  'class',
+  'continue',
+  'do',
+  'else',
+  'false',
+  'for',
+  'fun',
+  'if',
+  'in',
+  'interface',
+  'is',
+  'null',
+  'object',
+  'package',
+  'return',
+  'super',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'typealias',
+  'typeof',
+  'val',
+  'var',
+  'when',
+  'while',
+]);
+
+export const KOTLIN_SHADOW_TYPES = new Set(['Any', 'String', 'Int', 'Long', 'Double', 'Boolean', 'List', 'Map']);
+
+export interface KotlinField {
+  /** What to write at the property's declaration site -- backtick-quoted when it collides with a hard keyword. */
+  identifier: string;
+  needsSerialName: boolean;
+}
+
+export function kotlinField(key: string): KotlinField {
+  const base = camelCase(key, 'value');
+  const isKeyword = KOTLIN_KEYWORDS.has(base);
+  return {
+    identifier: isKeyword ? `\`${base}\`` : base,
+    needsSerialName: isKeyword || base !== key,
+  };
+}
+
+// --- PHP -------------------------------------------------------------------
+// php.net/manual/en/reserved.keywords.php, fetched this session: keywords
+// are allowed as property and variable names (only disallowed as constant,
+// class, or function names), so a PHP promoted-property variable name never
+// needs keyword escaping -- only the identifier SHAPE (a valid PHP variable
+// name) matters, handled by `camelCase`'s own fallback and digit-prefix
+// rules. php.net/manual/en/reserved.other-reserved-words.php, fetched this
+// session: the words that cannot name a class (parent, self, int, float,
+// bool, string, true, false, null, void, iterable, object, mixed, never,
+// array, callable), on top of the general keyword list. PHP matches both
+// lists case-insensitively (php.net's own notes on the keyword page).
+export const PHP_KEYWORDS = new Set([
+  '__halt_compiler',
+  'abstract',
+  'and',
+  'array',
+  'as',
+  'break',
+  'callable',
+  'case',
+  'catch',
+  'class',
+  'clone',
+  'const',
+  'continue',
+  'declare',
+  'default',
+  'die',
+  'do',
+  'echo',
+  'else',
+  'elseif',
+  'empty',
+  'enddeclare',
+  'endfor',
+  'endforeach',
+  'endif',
+  'endswitch',
+  'endwhile',
+  'eval',
+  'exit',
+  'extends',
+  'final',
+  'finally',
+  'fn',
+  'for',
+  'foreach',
+  'function',
+  'global',
+  'goto',
+  'if',
+  'implements',
+  'include',
+  'include_once',
+  'instanceof',
+  'insteadof',
+  'interface',
+  'isset',
+  'list',
+  'match',
+  'namespace',
+  'new',
+  'or',
+  'print',
+  'private',
+  'protected',
+  'public',
+  'readonly',
+  'require',
+  'require_once',
+  'return',
+  'static',
+  'switch',
+  'throw',
+  'trait',
+  'try',
+  'unset',
+  'use',
+  'var',
+  'while',
+  'xor',
+  'yield',
+]);
+
+export const PHP_OTHER_RESERVED = new Set([
+  'parent',
+  'self',
+  'int',
+  'float',
+  'bool',
+  'string',
+  'true',
+  'false',
+  'null',
+  'void',
+  'iterable',
+  'object',
+  'mixed',
+  'never',
+  'array',
+  'callable',
+]);
+
+/** A valid PHP variable name (without its leading `$`) for a JSON key, in camelCase. */
+export function phpVariableName(key: string): string {
+  return camelCase(key, 'value');
+}
+
+/** PHP matches keywords and other reserved class-name words case-insensitively. */
+export function isPhpReservedClassName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return [...PHP_KEYWORDS].some((k) => k.toLowerCase() === lower) || [...PHP_OTHER_RESERVED].some((k) => k === lower);
+}
+
+export function phpClassName(name: string): string {
+  return isPhpReservedClassName(name) ? `${name}Type` : name;
+}

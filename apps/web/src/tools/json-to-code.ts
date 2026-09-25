@@ -38,6 +38,8 @@ export default defineTool({
       values: { input: '{"id":1,"name":"Ada","tags":["x"],"manager":null}', language: 'typescript' },
     },
     { label: 'A key that is a keyword', values: { input: '{"type":"user","class":"admin"}', language: 'go' } },
+    { label: 'Java record with Jackson', values: { input: '{"class":"admin","score":9.5}', language: 'java' } },
+    { label: 'PHP readonly properties', values: { input: '{"weird key":"x"}', language: 'php' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');

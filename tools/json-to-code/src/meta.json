@@ -2,21 +2,23 @@
   "id": "json-to-code",
   "name": "JSON to Typed Code",
   "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP types from JSON.",
-  "about": "Infers a type model from a pasted JSON sample and renders typed source text: a TypeScript interface, a Go struct, a Rust struct or a Python TypedDict class so far, checked directly against each language's own naming rules; the TypeScript output is also checked with the real TypeScript compiler under strict mode.",
+  "about": "Infers a type model from a pasted JSON sample and renders typed source text in eight languages -- TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP -- checked directly against each language's own naming rules; the TypeScript output is also checked with the real TypeScript compiler under strict mode.",
   "supports": [
-    "TypeScript, Go, Rust and Python output from the same inferred model",
+    "TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP output from the same inferred model",
     "Nested objects become named types; an object seen inside an array becomes one merged item type",
     "A key missing from some merged instances becomes optional; a value that was ever null makes its field nullable",
     "An integer mixed with any other number widens to a floating number; any other mix of value kinds widens to the any-JSON type, listed in warnings",
-    "Keys that are not valid identifiers, or that collide with a keyword, get an escaped name per language, with the original key kept in a struct tag, a rename attribute or the key text itself",
-    "A generated type name that would shadow a language-provided type name gets a Type suffix"
+    "Keys that are not valid identifiers, or that collide with a keyword, get an escaped name per language, with the original key kept in a struct tag, a rename attribute, a docblock line or the key text itself",
+    "A generated type name that would shadow a language-provided type name gets a Type suffix",
+    "Java records and C# and Kotlin properties box or make optional numbers and booleans nullable rather than using an unboxed primitive"
   ],
   "limits": [
-    "Output is source text only; no compiler, formatter or package manager runs for Go, Rust or Python, and none of their output is executed by this tool",
+    "Output is source text only; no compiler, formatter or package manager runs for any target language, and none of their output is executed by this tool",
     "Unions beyond the integer/floating-number rule are not modelled; a key with genuinely mixed value kinds becomes the language's any-JSON type instead of a union",
     "A JSON key containing a quotation mark, backslash or comma cannot be written exactly into a Go struct tag; the tag still carries the key for reference, but Go's own decoder would fall back to the generated field name",
     "The inferred model comes from one sample only; a shape never seen in the sample is never inferred",
-    "A document nested deeper than 512 levels is refused outright rather than inferred from"
+    "A document nested deeper than 512 levels is refused outright rather than inferred from",
+    "Java targets records with Jackson, C# targets System.Text.Json with nullable reference types, Kotlin targets kotlinx.serialization, and PHP targets 8.1 or later"
   ],
   "ambiguities": [
     "An object whose keys are seen at two different locations with an identical shape still gets two separate named types; nothing here deduplicates by shape, only by name",
