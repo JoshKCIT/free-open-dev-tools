@@ -55,10 +55,16 @@ it('a syntax error is reported with its line and column', () => {
 });
 
 it('the chosen target, module format and JSX mode change the emitted JavaScript', () => {
-  const enumSource = 'enum Color { Red }';
-  const es2015 = stripTypes(enumSource, { target: 'ES2015' });
-  const esNext = stripTypes(enumSource, { target: 'ESNext' });
+  // Nullish coalescing (ES2020+) is downlevelled to a temporary-variable
+  // pattern for an ES2015 target, but passes through unchanged for ESNext --
+  // a real target-dependent rewrite, unlike an enum's IIFE shape which does
+  // not vary by target.
+  const nullishSource = 'const y: number = a ?? b;';
+  const es2015 = stripTypes(nullishSource, { target: 'ES2015' });
+  const esNext = stripTypes(nullishSource, { target: 'ESNext' });
   expect(es2015.output).not.toBe(esNext.output);
+  expect(esNext.output).toContain('??');
+  expect(es2015.output).not.toContain('??');
 
   const esmSource = 'export const x = 1;';
   const preserved = stripTypes(esmSource, { module: 'preserve' });
@@ -83,7 +89,7 @@ it('stripping types never runs the pasted code', async () => {
 it('the never-runs check itself catches code that does run the payload', async () => {
   await expect(
     assertNeverRan(() => {
-      // eslint-disable-next-line no-new-func -- deliberately proving assertNeverRan detects real execution; never done in package source.
+      // Deliberately proving assertNeverRan detects real execution; never done in package source.
       new Function(NEVER_RUN_JS)();
     }),
   ).rejects.toThrow();
