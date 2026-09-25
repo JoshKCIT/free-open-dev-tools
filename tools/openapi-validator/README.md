@@ -1,0 +1,103 @@
+# OpenAPI Validator
+
+Check an OpenAPI 3.x or Swagger 2.0 document for structural errors.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Checks a pasted Swagger 2.0 or OpenAPI 3.0, 3.1 or 3.2 document, in JSON or YAML, against that version's official published JSON Schema, bundled in this package rather than fetched. On top of what the schema can express, it also checks specification rules a JSON Schema cannot state: every local $ref must resolve, operationId values must be unique, and every path template parameter must be declared as a required parameter and appear in the template. Every error carries an RFC 6901 pointer to the offending location and the line and column of the value in the pasted text.
+
+## Supported
+
+- Swagger 2.0 and OpenAPI 3.0, 3.1 and 3.2 documents in JSON or YAML, version detected from the document's own swagger or openapi field
+- Validation against the official published JSON Schema for the detected version, bundled with this package (never fetched)
+- Every schema error reported with an RFC 6901 pointer, the failing keyword, a plain message and the line and column of the offending value
+- A oneOf, anyOf or if error whose path is a prefix of a more specific error's path is collapsed, so the table leads with the most specific problems
+- A local $ref that points nowhere, a duplicate operationId, and a path template parameter that is missing or does not match the template, each reported with its own path
+- A version this tool does not support, or a document missing both swagger and openapi, refused by name rather than guessed
+
+## Limits
+
+- A $ref to another file or another address is never followed; it is reported only as a warning that it was not resolved, and nothing is fetched
+- Example values inside the document are not validated against their own schemas
+- Vendor extensions (x- fields) are accepted wherever the official schema allows them, and are not otherwise checked
+- Security scheme semantics (scopes, flows, whether a referenced scheme actually exists) are not checked beyond what the official schema states
+- Only the four listed versions are supported; every other declared version, and a document declaring none, is refused by name
+
+## Ambiguous cases, and what this does about them
+
+- OpenAPI 3.1 and 3.2 compile their official schema together with the JSON Schema dialect and vocabulary documents the OpenAPI Initiative publishes alongside it, since the top-level schema-base document itself references them; all four documents for each version are bundled together, keyed by role, in one JSON file per version
+- Every error path is an RFC 6901 JSON Pointer into the document; the whole document itself is shown as (whole document) rather than an empty string
+
+## Defined by
+
+- [OpenAPI Specification 2.0 (Swagger)](https://spec.openapis.org/oas/v2.0.html)
+- [OpenAPI Specification 3.0.4](https://spec.openapis.org/oas/v3.0.4.html)
+- [OpenAPI Specification 3.1.2](https://spec.openapis.org/oas/v3.1.2.html)
+- [OpenAPI Specification 3.2.1](https://spec.openapis.org/oas/v3.2.1.html)
+- [JSON Schema draft-04](https://json-schema.org/specification-links#draft-4)
+- [JSON Schema 2020-12 (core and validation)](https://json-schema.org/specification-links#2020-12)
+- [RFC 6901 — JavaScript Object Notation (JSON) Pointer](https://www.rfc-editor.org/rfc/rfc6901)
+- [RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [YAML 1.2.2](https://yaml.org/spec/1.2.2/)
+
+## Bundled data
+
+This folder ships a data file that is not an npm dependency, so it travels with the folder when it is
+copied out on its own:
+
+- **Swagger 2.0 and OpenAPI 3.0, 3.1 and 3.2 official JSON Schema documents** (Apache-2.0) — [source](https://github.com/OAI/OpenAPI-Specification and https://spec.openapis.org/oas/). Swagger 2.0 schema from OAI/OpenAPI-Specification (commit 447c479c9c7136918e80a57a258fd6c84f369c7c); OpenAPI 3.0, 3.1 and 3.2 schema, schema-base, dialect and meta documents from spec.openapis.org's own dated releases. (c) The Linux Foundation, licensed under the Apache License, Version 2.0.
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/openapi-validator openapi-validator
+cd openapi-validator
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/openapi-validator
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { validateOpenApi } from '@fodt/openapi-validator';
+
+const result = validateOpenApi(
+  '{"openapi":"3.0.4","info":{"title":"t","version":"1"},"paths":{}}',
+  { format: 'auto', checkFormats: true },
+);
+result.valid; // true
+result.version; // 'openapi-3.0'
+```
+
+validateOpenApi(text, { format, checkFormats }) reads the document with this package's own canonical reader (readOpenApiDocument), builds a fresh Ajv (or ajv-draft-04) instance for the detected version, compiled once from the bundled schema, and returns { valid, version, errors, collapsed, warnings, counts }. Each error is { path, line, column, keyword, message }. A document with an unsupported or missing version throws OpenApiValidatorError naming the declared value and the four supported versions.
+
+## Dependencies
+
+- `ajv` 8.20.0
+- `ajv-formats` 3.0.1
+- `ajv-draft-04` 1.0.0
+- `yaml` 2.9.1
+
+## Tests
+
+```sh
+npm test
+```
+
+The bundled schemas are vendored byte for byte from spec.openapis.org's dated releases and, for Swagger 2.0, a pinned commit of OAI/OpenAPI-Specification (test/fixtures/openapi-schemas/UPSTREAM.md), and a required test asserts the src/ copies deep-equal those vendored originals. Every official example document published by the OpenAPI Initiative for these versions (OAI/learn.openapis.org, pinned commit, test/fixtures/openapi-examples/UPSTREAM.md) is checked to validate with no errors.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
