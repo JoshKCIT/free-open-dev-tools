@@ -1,0 +1,12 @@
+{
+  "id": "json-to-graphql",
+  "label": "id, name and a list of tags (GraphQL specification: String scalar, exclamation mark for non-null)",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "{\"id\":1,\"name\":\"Ada\",\"tags\":[\"a\"]}"
+    }
+  ],
+  "expect": ["type Root", "name: String!"]
+}

@@ -5,7 +5,7 @@
     {
       "action": "fill",
       "field": "sdl",
-      "value": "type Person { name: String age: Int! }"
+      "value": "type Person { name: String age: Int! } type Query { person: Person }"
     }
   ],
   "expect": ["name: string | null;", "age: number;"]

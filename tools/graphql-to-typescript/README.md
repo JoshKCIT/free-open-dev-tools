@@ -27,6 +27,10 @@ Parses a pasted GraphQL schema definition (SDL) with the official graphql-js ref
 - An interface's own fields are folded into each implementing type's TypeScript interface rather than expressed as a TypeScript extends clause
 - A scalar mapping that is not a plain TypeScript type expression (identifiers, |, [], null, string literals) is rejected and the scalar stays unknown, with a warning
 
+## Ambiguous cases, and what this does about them
+
+- A field's own arguments type name joins the parent type name and the field name in PascalCase (for example QueryHeroArgs); a schema whose two different fields produce the same joined name are disambiguated only by the same numeric-suffix rule ordinary type-name collisions use
+
 ## Defined by
 
 - [GraphQL Specification (September 2025 Edition)](https://spec.graphql.org/September2025/)

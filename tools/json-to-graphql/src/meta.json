@@ -1,0 +1,39 @@
+{
+  "id": "json-to-graphql",
+  "name": "JSON to GraphQL Schema",
+  "summary": "Infer GraphQL type definitions from sample JSON.",
+  "about": "Infers a GraphQL schema definition (SDL) from a sample JSON document or array of samples, so you have a starting schema for data you already have. Every inferred document is checked, in this project's own tests, against the official graphql-js reference implementation: it must build, validate, and let the sample resolve against it with no errors.",
+  "supports": [
+    "A single sample object, or an array of samples merged into one shape",
+    "Nested objects become named GraphQL object types; nested arrays become GraphQL lists",
+    "ID detection for a field named id, or ending in Id or _id",
+    "A field present and non-null in every sample becomes GraphQL non-null (!), optionally",
+    "An integer within GraphQL's signed 32-bit Int range stays Int; anything else becomes Float with a warning",
+    "A JSON key that is not a valid GraphQL Name, or that starts with two underscores, is renamed with a warning",
+    "An optional root Query field so the inferred schema is directly usable"
+  ],
+  "limits": [
+    "Every string becomes GraphQL's String scalar: no date, URL or enum detection from string shape",
+    "A key whose value kind changes between samples falls back to String with a warning",
+    "GraphQL unions and interfaces are never inferred, only object types",
+    "A renamed key needs its own resolver mapping back to the original JSON key"
+  ],
+  "ambiguities": [
+    "A key that sanitizes to the same GraphQL name as another key already seen on the same object is disambiguated by a numeric suffix in the order the keys were first encountered, which may not match a hand-written resolver's own preferred field order"
+  ],
+  "standards": [
+    { "label": "GraphQL Specification (September 2025 Edition)", "url": "https://spec.graphql.org/September2025/" },
+    {
+      "label": "RFC 8259 (The JavaScript Object Notation (JSON) Data Interchange Format)",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    }
+  ],
+  "keywords": ["json", "graphql", "sdl", "schema", "infer", "codegen"],
+  "primaryExport": "jsonToGraphql",
+  "usage": "import { jsonToGraphql } from '@fodt/json-to-graphql';\n\njsonToGraphql('{\"id\":1,\"name\":\"Ada\"}', { rootName: 'Root' });\n// { output: 'type Root {\\n  id: ID!\\n  name: String!\\n}\\n\\ntype Query {\\n  root: Root\\n}\\n', types: 1, warnings: [] }",
+  "apiNotes": "jsonToGraphql(text, { samplesAre = 'single' | 'array', rootName = 'Root', nonNullWhenAlwaysPresent = true, idFields = true, addQuery = true }) returns { output, types, warnings }, or throws JsonToGraphqlError (message, line, column, path) for text that cannot be parsed as JSON.",
+  "testNotes": "Every inferred schema is proven against the graphql package (a devDependency, used only in tests as a correctness oracle -- never a runtime dependency of this package): buildSchema and validateSchema over the output, and graphqlSync resolving the original samples through it with no errors, across 300 seeded random documents as well as the named cases below.",
+  "devDependencies": {
+    "graphql": "17.0.2"
+  }
+}
