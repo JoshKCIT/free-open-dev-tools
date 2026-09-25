@@ -1,0 +1,85 @@
+# JSON Diff
+
+Compare two JSON documents structurally and list added, removed and changed paths.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Compares two JSON documents structurally and lists every location that was added, removed or changed, as an RFC 6901 JSON Pointer. Key order never counts as a change, array elements are compared by position, and a change of type at one location is reported once there, not as a cascade of changes in every value beneath it.
+
+## Supported
+
+- Comparing two arbitrary JSON values and listing every added, removed and changed location as an RFC 6901 JSON Pointer
+- Keys containing a slash or tilde escaped correctly in every reported path (~ as ~0, / as ~1)
+- Object key order ignored; array elements compared by position
+- A change of type at a location (for example an object replaced by an array) reported as one change there, not as child changes
+- Reading own keys only, so a document with a key named __proto__ or constructor compares correctly and never touches Object.prototype
+- Refusing a document nested more than 512 levels deep before walking it, so a hostile document cannot freeze the tab
+
+## Limits
+
+- Paths are RFC 6901 JSON Pointers such as /a/b~1c, not the dollar-dot notation another JSON viewer on this site prints
+- Arrays are compared strictly by position: this does not detect that an element moved or was reordered
+- Numbers compare with strict equality, so 1.0 and 1 parse to the same number and are reported identical
+- Strings compare code unit by code unit with no Unicode normalisation
+- A repeated key in either document keeps only its last value, since RFC 8259 leaves a repeated name undefined
+- A number beyond double precision is compared after it has already been rounded by parsing
+
+## Ambiguous cases, and what this does about them
+
+- Every path this reports is an RFC 6901 JSON Pointer (/a/b, with ~ and / escaped), never a $.a.b dollar-dot path.
+- Arrays are positional: this never tries to detect that an element moved, only that a position's value changed.
+
+## Defined by
+
+- [RFC 6901 — JavaScript Object Notation (JSON) Pointer](https://www.rfc-editor.org/rfc/rfc6901)
+- [RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/json-diff json-diff
+cd json-diff
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/json-diff
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { diffJson, diffJsonText } from '@fodt/json-diff';
+
+diffJson({ a: 1 }, { a: 1, b: 2 });
+// { identical: false, changes: [{ kind: 'added', path: '/b', before: undefined, after: 2 }], stats: { added: 1, removed: 0, changed: 0 } }
+
+diffJsonText('{"a":1}', '{"a":2}');
+```
+
+`diffJson` compares two already-parsed JSON values. `diffJsonText` parses each document first (through the same RFC 8259 reader this tool bundles) and applies the same 512-level depth rule to both before diffing, throwing `JsonDiffError` naming which document (first or second) failed to parse, with `line` and `column`.
+
+## Dependencies
+
+None. This package has no runtime dependencies.
+
+## Tests
+
+```sh
+npm test
+```
+
+Every required behaviour is checked against a real call to diffJson or diffJsonText: RFC 6901 pointer escaping, key-order independence, positional array comparison, one change per type-changed location, own-key-only reads on a document with a __proto__ key, RFC 8259 parse-error reporting, and the 512-level depth refusal.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
