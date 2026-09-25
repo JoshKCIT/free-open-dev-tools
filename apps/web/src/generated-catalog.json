@@ -925,7 +925,7 @@
       "categoryLabel": "Network and web",
       "tier": 1,
       "summary": "Build in-addr.arpa and ip6.arpa reverse DNS names from an address.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "user-agent",
@@ -934,7 +934,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Parse a User-Agent string into browser, engine, OS and device, with confidence noted.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "curl-converter",
@@ -943,7 +943,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Build a request visually and emit cURL, fetch, Python, Go, PHP or HTTPie. It never sends the request.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "security-headers",
@@ -952,7 +952,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Compose Content-Security-Policy and the other security headers for common servers.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "url-parser",
@@ -961,7 +961,7 @@
       "categoryLabel": "Network and web",
       "tier": 1,
       "summary": "Split a URL into its parts and turn query strings into structured data.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "utm-builder",
@@ -970,7 +970,7 @@
       "categoryLabel": "Network and web",
       "tier": 1,
       "summary": "Attach campaign parameters to a URL correctly.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "meta-tags",
@@ -979,7 +979,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Generate SEO, Open Graph and Twitter Card tags and preview them locally.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "robots-txt",
@@ -988,7 +988,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Build a robots.txt file and check it against the REP specification.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "sitemap-generator",
@@ -997,7 +997,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Turn a URL list into a valid sitemap, with index splitting past the size limit.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "schema-markup",
@@ -1006,7 +1006,7 @@
       "categoryLabel": "Network and web",
       "tier": 3,
       "summary": "Build schema.org JSON-LD for the common content types.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "hreflang",
@@ -1015,7 +1015,7 @@
       "categoryLabel": "Network and web",
       "tier": 2,
       "summary": "Generate reciprocal hreflang tags and check the language and region codes.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "htaccess-generator",
@@ -1024,7 +1024,7 @@
       "categoryLabel": "Network and web",
       "tier": 3,
       "summary": "Generate Apache rules for redirects, HTTPS, caching and directory protection.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "nginx-config",
@@ -1033,7 +1033,7 @@
       "categoryLabel": "Network and web",
       "tier": 3,
       "summary": "Generate an nginx server block for common hosting patterns.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "http-status-codes",

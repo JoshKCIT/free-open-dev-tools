@@ -533,13 +533,15 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 88 links to built tool pages, not the 144-entry catalog size', async ({ page }) => {
+  test('the rendered catalog counts 101 links to built tool pages, not the 144-entry catalog size', async ({
+    page,
+  }) => {
     await page.goto(rel('/catalog'));
     // The catalog body is drawn by React after load (Catalog.tsx), not by
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(88);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(101);
   });
 });
 
@@ -629,16 +631,23 @@ test('every phase 5 tool has exactly one live fixture file', () => {
   }
 });
 
-test('every live fixture file belongs to phase 3, 4, 5 or 6', () => {
-  // Membership only, not strict equality: phase 6 is still being built across
-  // several plans, so this checks every loaded id is in the union of the
-  // four phase lists and no id is declared twice, without requiring every
-  // phase 6 id to already have a fixture file. Plan 06-08 sets the count to
-  // 101, adds its own phase 6 completeness test and restores strict equality.
-  const allowed = new Set([...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS, ...PHASE_5_TOOL_IDS, ...PHASE_6_TOOL_IDS]);
-  for (const id of LIVE_FIXTURE_IDS) {
-    expect(allowed, `${id} is not in the union of the phase 3, 4, 5 or 6 tool id lists`).toContain(id);
+test('every phase 6 tool has exactly one live fixture file', () => {
+  for (const id of PHASE_6_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
   }
+});
+
+test('every live fixture file belongs to phase 3, 4, 5 or 6', () => {
+  // Phase 6 is now complete (06-08), so this is strict equality again: the
+  // sorted LIVE_FIXTURE_IDS must equal the sorted union of all four phase id
+  // lists, with no id declared twice.
+  const expected = [...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS, ...PHASE_5_TOOL_IDS, ...PHASE_6_TOOL_IDS].slice().sort();
+  const actual = LIVE_FIXTURE_IDS.slice().sort();
+  expect(
+    actual,
+    'sorted LIVE_FIXTURE_IDS must equal the sorted union of the phase 3, 4, 5 and 6 tool id lists',
+  ).toEqual(expected);
   const seen = new Set<string>();
   for (const id of LIVE_FIXTURE_IDS) {
     expect(seen.has(id), `${id} has more than one live fixture file`).toBe(false);

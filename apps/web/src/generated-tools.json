@@ -263,6 +263,22 @@
       "rfc 4180"
     ]
   },
+  "curl-converter": {
+    "id": "curl-converter",
+    "name": "cURL Builder & Code Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "curl",
+      "http request builder",
+      "fetch",
+      "requests",
+      "code generator",
+      "httpie",
+      "api client"
+    ]
+  },
   "data-convert": {
     "id": "data-convert",
     "name": "JSON, YAML & TOML Converter",
@@ -474,6 +490,41 @@
       "mac"
     ]
   },
+  "hreflang": {
+    "id": "hreflang",
+    "name": "Hreflang Tag Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "hreflang",
+      "language tag",
+      "bcp 47",
+      "rfc 5646",
+      "iana registry",
+      "alternate",
+      "localization"
+    ]
+  },
+  "htaccess-generator": {
+    "id": "htaccess-generator",
+    "name": ".htaccess Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "bcrypt-ts": "^9.0.2"
+    },
+    "keywords": [
+      "htaccess",
+      "apache",
+      "mod_rewrite",
+      "redirect",
+      "htpasswd",
+      "bcrypt",
+      "basic auth",
+      "mod_expires"
+    ]
+  },
   "html-entities": {
     "id": "html-entities",
     "name": "HTML Entity Encoder & Decoder",
@@ -540,6 +591,22 @@
       "nan",
       "subnormal",
       "bit-pattern"
+    ]
+  },
+  "ip-ptr": {
+    "id": "ip-ptr",
+    "name": "IP to PTR Record",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "reverse dns",
+      "ptr record",
+      "in-addr.arpa",
+      "ip6.arpa",
+      "dns",
+      "rdns",
+      "zone file"
     ]
   },
   "ip-subnet": {
@@ -859,6 +926,23 @@
       "turndown"
     ]
   },
+  "meta-tags": {
+    "id": "meta-tags",
+    "name": "Meta Tags & Social Preview",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "dompurify": "3.4.16"
+    },
+    "keywords": [
+      "meta tags",
+      "open graph",
+      "twitter card",
+      "seo",
+      "social preview",
+      "canonical"
+    ]
+  },
   "mime-types": {
     "id": "mime-types",
     "name": "MIME Type Lookup",
@@ -919,6 +1003,24 @@
       "phonetic alphabet",
       "spelling alphabet",
       "alpha bravo charlie"
+    ]
+  },
+  "nginx-config": {
+    "id": "nginx-config",
+    "name": "Nginx Config Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "nginx",
+      "server block",
+      "reverse proxy",
+      "fastcgi",
+      "php-fpm",
+      "gzip",
+      "ssl",
+      "http2",
+      "basic auth"
     ]
   },
   "number-base": {
@@ -1084,6 +1186,22 @@
       "redos"
     ]
   },
+  "robots-txt": {
+    "id": "robots-txt",
+    "name": "robots.txt Generator & Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "robots.txt",
+      "rfc9309",
+      "crawler",
+      "product token",
+      "disallow",
+      "allow",
+      "sitemap"
+    ]
+  },
   "roman-numerals": {
     "id": "roman-numerals",
     "name": "Roman Numeral Converter",
@@ -1099,6 +1217,20 @@
       "roman to integer"
     ]
   },
+  "schema-markup": {
+    "id": "schema-markup",
+    "name": "JSON-LD Schema Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "schema.org",
+      "json-ld",
+      "structured data",
+      "rich results",
+      "microdata"
+    ]
+  },
   "scientific-notation": {
     "id": "scientific-notation",
     "name": "Scientific Notation Converter",
@@ -1111,6 +1243,37 @@
       "e-notation",
       "exponent",
       "significant-figures"
+    ]
+  },
+  "security-headers": {
+    "id": "security-headers",
+    "name": "Security Headers & CSP Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "csp",
+      "content-security-policy",
+      "hsts",
+      "security headers",
+      "permissions-policy",
+      "coop",
+      "coep",
+      "corp"
+    ]
+  },
+  "sitemap-generator": {
+    "id": "sitemap-generator",
+    "name": "XML Sitemap Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "sitemap",
+      "xml sitemap",
+      "sitemaps.org",
+      "seo",
+      "sitemap index"
     ]
   },
   "slug-generator": {
@@ -1337,6 +1500,51 @@
       "urlencode",
       "rfc3986",
       "form-urlencoded"
+    ]
+  },
+  "url-parser": {
+    "id": "url-parser",
+    "name": "URL & Query String Parser",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "url",
+      "query string",
+      "whatwg",
+      "urlsearchparams",
+      "parser"
+    ]
+  },
+  "user-agent": {
+    "id": "user-agent",
+    "name": "User Agent Parser",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "bowser": "2.14.1"
+    },
+    "keywords": [
+      "user agent",
+      "browser detection",
+      "bowser",
+      "client hints",
+      "http header"
+    ]
+  },
+  "utm-builder": {
+    "id": "utm-builder",
+    "name": "UTM Campaign Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "utm",
+      "campaign",
+      "url",
+      "marketing",
+      "analytics",
+      "query string"
     ]
   },
   "uuid": {

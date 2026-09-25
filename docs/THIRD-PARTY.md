@@ -31,7 +31,8 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [ajv-draft-04](https://github.com/ajv-validator/ajv-draft-04#readme) | 1.0.0 | MIT | direct | tools/openapi-validator |
 | [ajv-formats](https://github.com/ajv-validator/ajv-formats#readme) | 3.0.1 | MIT | direct | tools/json-schema-validator, tools/openapi-validator |
 | [argparse]() | 2.0.1 | Python-2.0 | transitive (via sql-formatter) | tools/sql-formatter |
-| [bcrypt-ts](git://github.com/Mister-Hope/bcrypt-ts) | 9.0.2 | MIT | direct | tools/bcrypt |
+| [bcrypt-ts](git://github.com/Mister-Hope/bcrypt-ts) | 9.0.2 | MIT | direct | tools/bcrypt, tools/htaccess-generator |
+| [bowser](https://github.com/bowser-js/bowser) | 2.14.1 | MIT | direct | tools/user-agent |
 | [camel-case](https://github.com/blakeembrey/change-case/tree/master/packages/camel-case#readme) | 4.1.2 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
 | [clean-css](https://github.com/clean-css/clean-css) | 5.3.3 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
 | [commander](https://github.com/tj/commander.js) | 10.0.1 | MIT | transitive (via html-minifier-terser, svgo, terser) | tools/html-formatter, tools/js-formatter, tools/svg-optimizer |
@@ -44,7 +45,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [devlop]() | 1.1.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html |
 | [domelementtype](git://github.com/fb55/domelementtype) | 2.3.0 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [domhandler](git://github.com/fb55/domhandler) | 5.0.3 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
-| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) | direct | tools/bbcode, tools/markdown-html, tools/svg-optimizer |
+| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) | direct | tools/bbcode, tools/markdown-html, tools/meta-tags, tools/svg-optimizer |
 | [domutils](git://github.com/fb55/domutils) | 3.2.2 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [entities](https://github.com/fb55/entities) | 8.1.0 | BSD-2-Clause | direct | tools/bbcode, tools/html-entities, tools/html-formatter, tools/jsx-converter |
 | [fast-deep-equal](https://github.com/epoberezkin/fast-deep-equal#readme) | 3.1.3 | MIT | transitive (via ajv) | tools/json-schema-validator, tools/openapi-validator |
@@ -1066,6 +1067,52 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### bowser 2.14.1
+
+Licence: MIT
+
+```text
+Copyright 2015, Dustin Diaz (the "Original Author")
+All rights reserved.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+Distributions of all or part of the Software intended to be used
+by the recipients as they would use the unmodified Software,
+containing modifications that substantially alter, remove, or
+disable functionality of the Software, outside of the documented
+configuration mechanisms provided by the Software, shall be
+modified such that the Original Author's bug reporting email
+addresses and urls are either replaced with the contact information
+of the parties responsible for the changes, or removed entirely.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
+Except where noted, this license applies to any and all software
+programs and associated documentation files created by the
+Original Author, when distributed with the Software.
 ```
 
 ### camel-case 4.1.2
@@ -3782,10 +3829,12 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | --- | --- | --- | --- |
 | FIGlet 2.2.5 fonts (15) | BSD-3-Clause | `tools/ascii-art` | [source](https://github.com/cmatsuoka/figlet/tree/master/fonts) |
 | Unicode emoji-test.txt 18.0 | Unicode-3.0 | `tools/emoji-picker` | [source](https://www.unicode.org/Public/emoji/latest/emoji-test.txt) |
+| IANA Language Subtag Registry | CC0-1.0 | `tools/hreflang` | [source](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry) |
 | HTML Living Standard SVG tag-name adjustment table | CC-BY-4.0 | `tools/jsx-converter` | [source](https://html.spec.whatwg.org/multipage/parsing.html) |
 | React possibleStandardNames (attribute names) | MIT | `tools/jsx-converter` | [source](https://github.com/facebook/react/blob/d083ec1da1e5252abd3ddfdde6dfbc09701a2c51/packages/react-dom-bindings/src/shared/possibleStandardNames.js) |
 | Swagger 2.0 and OpenAPI 3.0, 3.1 and 3.2 official JSON Schema documents | Apache-2.0 | `tools/openapi-validator` | [source](https://github.com/OAI/OpenAPI-Specification and https://spec.openapis.org/oas/) |
 | EFF Long Wordlist | CC BY 3.0 US | `tools/password-generator` | [source](https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases) |
+| schema.org vocabulary subset | CC-BY-SA-3.0 | `tools/schema-markup` | [source](https://github.com/schemaorg/schemaorg/blob/main/data/releases/30.1/schemaorg-current-https.jsonld) |
 | Tailwind CSS 4.3.3 default theme | MIT | `tools/tailwind-css` | [source](https://github.com/tailwindlabs/tailwindcss/blob/v4.3.3/packages/tailwindcss/theme.css) |
 
 ### FIGlet 2.2.5 fonts (15) (bundled into `tools/ascii-art`)
@@ -4137,6 +4186,49 @@ dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 ```
 
+### IANA Language Subtag Registry (bundled into `tools/hreflang`)
+
+Licence: CC0-1.0 ([full text](https://creativecommons.org/publicdomain/zero/1.0/legalcode))
+
+Attribution: IANA Language Subtag Registry, dedicated to the public domain by IANA and IETF under CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/legalcode).
+
+```text
+IANA Language Subtag Registry
+
+Source: https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+File-Date: 2026-09-17 (fetched 2026-09-25)
+
+Both IANA and IETF dedicate the Protocol Registries to the public domain
+under CC0 1.0. Quoted verbatim from https://www.iana.org/help/licensing-terms
+(fetched 2026-09-25):
+
+"IANA and IETF intend that the Protocol Registries may be freely used by any
+party for any purpose. Both IANA and IETF believe that the Protocol
+Registries consist primarily of factual information that is unlikely to be
+protectable as a matter of copyright law. However, for additional clarity,
+and to avoid any potential confusion about applicable rights, both IANA and
+IETF desire to (a) dedicate any applicable copyright rights that they may own
+in the Protocol Registries to the public domain, and (b) license any
+copyright or related rights for which they are a licensee (with a right to
+sublicense) to the broadest extent that they are permitted to do so.
+Accordingly, both IANA and IETF affirm that any applicable rights that they
+may have in the Protocol Registries are subject to the Creative Commons CC0
+1.0 dedication found at
+https://creativecommons.org/publicdomain/zero/1.0/legalcode."
+
+Bundled here as tools/hreflang/src/iana-language-subtag-registry.ts: a
+compact table per record type (language, extlang, script, region, variant,
+grandfathered, redundant) carrying each record's subtag or tag, its first
+Description, whether it is Deprecated, its Preferred-Value, every Prefix,
+Macrolanguage and Suppress-Script. No free-text Comments field is bundled.
+The registry's own File-Date (2026-09-17) is exported as REGISTRY_FILE_DATE
+and shown on the hreflang page.
+
+Attribution: IANA Language Subtag Registry, dedicated to the public domain
+by IANA and IETF under CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/legalcode).
+```
+
 ### HTML Living Standard SVG tag-name adjustment table (bundled into `tools/jsx-converter`)
 
 Licence: CC-BY-4.0 ([full text](https://creativecommons.org/licenses/by/4.0/))
@@ -4392,6 +4484,49 @@ and yo-yo.
 
 Attribution: "EFF Long Wordlist" by the Electronic Frontier Foundation,
 licensed under CC BY 3.0 US (https://creativecommons.org/licenses/by/3.0/us/).
+```
+
+### schema.org vocabulary subset (bundled into `tools/schema-markup`)
+
+Licence: CC-BY-SA-3.0 ([full text](https://creativecommons.org/licenses/by-sa/3.0/))
+
+Attribution: schema.org vocabulary, version 30.1, licensed under CC BY-SA 3.0 by Schema.org (https://creativecommons.org/licenses/by-sa/3.0/).
+
+```text
+schema.org vocabulary subset
+
+Source: https://github.com/schemaorg/schemaorg, data/releases/30.1/schemaorg-current-https.jsonld
+Version: 30.1 (released 2026-09-16), commit 5f2d8cdec99b7329459ef6584e94b6a840f88471 (fetched 2026-09-25)
+
+The Sponsors' copyrights in the schema are licensed to website publishers
+and other third parties under the Creative Commons Attribution-ShareAlike
+License (version 3.0) -- CC BY-SA 3.0. Quoted verbatim from
+https://schema.org/docs/terms.html:
+
+"The Sponsors' copyrights in the schema are licensed to website publishers
+and other third parties under the Creative Commons Attribution-ShareAlike
+License (version 3.0). To view a copy of this license, please visit
+http://creativecommons.org/licenses/by-sa/3.0/."
+
+Full licence text: http://creativecommons.org/licenses/by-sa/3.0/
+
+This notice, and the CC BY-SA 3.0 licence it describes, covers ONLY the one
+derived data file this notice is declared against
+(tools/schema-markup/src/schema-org-subset.ts). Everything else in this
+folder -- the package's own code, tests and documentation -- is licensed
+under the project's usual MIT licence (see ../LICENSE), unaffected by this
+notice.
+
+Bundled here as tools/schema-markup/src/schema-org-subset.ts: 36 schema.org
+types (the twelve common content types this tool builds JSON-LD for, plus
+every type their nested-object defaults reach, plus every ancestor of those
+reached by walking rdfs:subClassOf) with their parent chains and applicable
+property names, and 452 properties with their range type names. No free-text
+rdfs:comment (description) is bundled -- only type and property names and
+their structural relationships.
+
+Attribution: schema.org vocabulary, version 30.1, licensed under CC BY-SA 3.0
+by Schema.org (https://creativecommons.org/licenses/by-sa/3.0/).
 ```
 
 ### Tailwind CSS 4.3.3 default theme (bundled into `tools/tailwind-css`)
