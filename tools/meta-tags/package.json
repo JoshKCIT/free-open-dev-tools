@@ -1,0 +1,50 @@
+{
+  "name": "@fodt/meta-tags",
+  "version": "1.0.0",
+  "description": "Generate SEO, Open Graph and Twitter Card tags and preview them locally.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "meta tags",
+    "open graph",
+    "twitter card",
+    "seo",
+    "social preview",
+    "canonical"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "dompurify": "3.4.16"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "jsdom": "^29.1.1",
+    "@types/jsdom": "^30.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/meta-tags"
+  }
+}

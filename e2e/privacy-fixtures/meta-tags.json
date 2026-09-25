@@ -1,0 +1,12 @@
+[
+  {
+    "values": {
+      "title": "Example page",
+      "canonical": "https://example.invalid/page",
+      "imageUrl": "https://example.invalid/card.png",
+      "twitterSite": "@example",
+      "twitterCreator": "@example"
+    },
+    "attachesFile": false
+  }
+]

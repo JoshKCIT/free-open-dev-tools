@@ -1,0 +1,6 @@
+{
+  "id": "meta-tags",
+  "label": "ogp.me's own introduction example builds the documented og:title tag",
+  "steps": [{ "action": "fill", "field": "title", "value": "The Rock" }],
+  "expect": ["<meta property=\"og:title\" content=\"The Rock\" />"]
+}
