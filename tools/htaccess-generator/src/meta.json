@@ -1,0 +1,77 @@
+{
+  "id": "htaccess-generator",
+  "name": ".htaccess Generator",
+  "summary": "Generate Apache rules for redirects, HTTPS, caching and directory protection.",
+  "about": "Writes Apache 2.4 .htaccess text for forcing HTTPS, choosing the www or bare host, path redirects, caching static assets and turning off directory listings, using only directives quoted from Apache's own documentation. It can also make a bcrypt .htpasswd line for Basic authentication, hashed in a background worker so the password never leaves your browser and never appears in any output.",
+  "supports": [
+    "Forcing HTTPS and choosing the www or bare canonical host with mod_rewrite RewriteCond/RewriteRule",
+    "Path redirects with a chosen status (301, 302, 303, 307 or 308), regular-expression metacharacters and spaces escaped in the old path",
+    "Caching static assets with mod_expires ExpiresActive and ExpiresByType, using the documented \"access plus ...\" interval syntax",
+    "Turning off directory listings with Options -Indexes",
+    "Password-protecting a directory with AuthType Basic, AuthName, AuthUserFile and Require valid-user",
+    "Making one .htpasswd line, bcrypt-hashed at a cost from 4 to 15 and tagged $2y$ the way Apache's own htpasswd -B writes it, hashed in a background worker and never shown or sent as plaintext",
+    "A value carrying a line break or control character refused before any rule is written, naming the field"
+  ],
+  "limits": [
+    "These rules cannot be tested without a real Apache server; this tool does not run httpd, so it cannot tell whether your host enables mod_rewrite, mod_expires, or AllowOverride for .htaccess files at all",
+    "Basic authentication sends the password on every request in a format anyone on the network path can decode, so use it only over HTTPS",
+    "The .htpasswd line must still be tested on the target server: making it here means the password was typed into this page, never sent anywhere and never stored",
+    "A password longer than 72 bytes is only ever hashed on its first 72 bytes; bcrypt itself ignores the rest"
+  ],
+  "ambiguities": [
+    "Apache's own rewrite/avoid.html recommends a plain mod_alias Redirect for a simple path move instead of mod_rewrite. This tool still uses mod_rewrite only, because mixing mod_alias and mod_rewrite changes processing order (mod_rewrite runs first in server/virtual-host context, mod_alias runs first in per-directory .htaccess context, per Module Processing Order) -- combining both in one generated file would make the order depend on where the visitor pastes it"
+  ],
+  "standards": [
+    {
+      "label": "Apache HTTP Server 2.4 — mod_rewrite",
+      "url": "https://httpd.apache.org/docs/2.4/mod/mod_rewrite.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — RewriteRule flags",
+      "url": "https://httpd.apache.org/docs/2.4/rewrite/flags.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — Redirection and Remapping",
+      "url": "https://httpd.apache.org/docs/2.4/rewrite/remapping.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — When Not to Use mod_rewrite",
+      "url": "https://httpd.apache.org/docs/2.4/rewrite/avoid.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — mod_expires",
+      "url": "https://httpd.apache.org/docs/2.4/mod/mod_expires.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — mod_auth_basic",
+      "url": "https://httpd.apache.org/docs/2.4/mod/mod_auth_basic.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — mod_authn_file",
+      "url": "https://httpd.apache.org/docs/2.4/mod/mod_authn_file.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — mod_authz_core",
+      "url": "https://httpd.apache.org/docs/2.4/mod/mod_authz_core.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — core (Options, AuthName, AuthType)",
+      "url": "https://httpd.apache.org/docs/2.4/mod/core.html"
+    },
+    {
+      "label": "Apache HTTP Server 2.4 — htpasswd program",
+      "url": "https://httpd.apache.org/docs/2.4/programs/htpasswd.html"
+    },
+    { "label": "RFC 7617 — The 'Basic' HTTP Authentication Scheme", "url": "https://www.rfc-editor.org/rfc/rfc7617" },
+    {
+      "label": "RFC 9110 — HTTP Semantics, section 5.5 Field Values",
+      "url": "https://www.rfc-editor.org/rfc/rfc9110#section-5.5"
+    }
+  ],
+  "keywords": ["htaccess", "apache", "mod_rewrite", "redirect", "htpasswd", "bcrypt", "basic auth", "mod_expires"],
+  "primaryExport": "buildHtaccess",
+  "usage": "import { buildHtaccess, htpasswdLine } from '@fodt/htaccess-generator';\n\nconst { text } = buildHtaccess({ forceHttps: true, host: 'www', domain: 'example.com', noIndexes: true });\n\nconst { line } = await htpasswdLine('alice', 'correct horse battery staple', 5);\n// 'alice:$2y$05$...'",
+  "apiNotes": "buildHtaccess throws HtaccessError (fields field, line) for a value this tool refuses, an out-of-range redirect status, a malformed MIME type or an invalid host name; every value passes assertSingleLine first. htpasswdLine is async (bcrypt-ts hashing) and never includes the password in its result, warnings, or any thrown error.",
+  "testNotes": "mod_rewrite, mod_expires, mod_auth_basic, mod_authn_file, mod_authz_core, core and htpasswd directive syntax are checked against the official Apache 2.4 documentation, fetched live and quoted in test comments (D-98). No published known-answer-test vectors exist for an .htaccess file's own text; tests assert the generated lines match the fetched directive syntax exactly. The $2y$ relabel is checked two ways: byte comparison against the un-relabelled $2b$ hash (differing only in the tag) and a real bcrypt-ts compare() call against the relabelled hash with its tag swapped back.",
+  "dependencies": { "bcrypt-ts": "^9.0.2" }
+}
