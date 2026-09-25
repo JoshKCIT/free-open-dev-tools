@@ -3,7 +3,12 @@ import Ajv2020 from 'ajv/dist/2020';
 import AjvDraft04 from 'ajv-draft-04';
 import addFormats from 'ajv-formats';
 import type { Ajv, ErrorObject, ValidateFunction } from 'ajv';
-import { readOpenApiDocument, resolvePointerValue, OpenApiDocumentError, type OpenApiVersion } from './openapi-document';
+import {
+  readOpenApiDocument,
+  resolvePointerValue,
+  OpenApiDocumentError,
+  type OpenApiVersion,
+} from './openapi-document';
 import { hasOwn, getOwn } from './own-property';
 import { formatPointer, parsePointer } from './pointer';
 import schemaSwagger20 from './schema-swagger-2.0.json';
