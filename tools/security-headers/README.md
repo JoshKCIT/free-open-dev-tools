@@ -21,7 +21,7 @@ Composes a Content-Security-Policy per CSP Level 3, plus HSTS, X-Content-Type-Op
 
 ## Limits
 
-- This tool does not run Apache, nginx or Netlify itself, so it cannot tell whether the relevant module is enabled or whether another rule on the real server overrides these headers; the configuration cannot be verified without a real server
+- This tool does not run Apache, nginx or Netlify itself, so it cannot tell whether the relevant module is enabled or whether another rule on the real server overrides these headers; the configuration cannot be tested without a real server
 - A strict policy can break inline scripts, inline styles and third-party embeds on the visitor's own site; this tool checks the grammar, not whether the policy matches what the site actually needs
 - X-Frame-Options and Trusted Types headers are not generated; use the CSP frame-ancestors directive for frame embedding control instead
 - Apache values have every percent sign doubled and nginx values refuse a dollar sign outright, because each server's own config-file parser gives that character special meaning; this tool does not attempt every possible escaping trick beyond what each server's own documentation describes
