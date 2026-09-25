@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "input": "let greeting: string = 'hi';" },
+    "attachesFile": false
+  }
+]

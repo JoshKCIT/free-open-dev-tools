@@ -1,0 +1,40 @@
+{
+  "id": "ts-to-js",
+  "name": "TypeScript to JavaScript",
+  "summary": "Strip TypeScript types to plain JavaScript without running the code.",
+  "about": "Erases TypeScript's type-only syntax (annotations, interfaces, type aliases) and rewrites run-time-only syntax (enums, namespaces) into plain JavaScript, using the TypeScript compiler's own syntactic transform. The pasted code is never executed, only parsed and rewritten.",
+  "supports": [
+    "Type annotations, interfaces and type aliases erased, matching the TypeScript handbook's own Erased Types example",
+    "Enums and namespaces rewritten into the JavaScript that defines them at run time",
+    "A chosen ECMAScript target from ES2015 through ESNext",
+    "A chosen module format: kept as written, or rewritten to CommonJS",
+    "A chosen JSX mode: kept as written, rewritten to React.createElement calls, or rewritten to the automatic JSX runtime",
+    "An option to drop comments from the output",
+    "A syntax error reported with its line and column while the emitted output still shows"
+  ],
+  "limits": [
+    "No type checking is performed: a type error is never reported, only a syntax error",
+    "const enum values are not inlined across separate files, since only one file is ever transpiled at a time",
+    "Declaration merging across multiple files is not resolved",
+    "Decorators are emitted exactly as the TypeScript compiler's own transform emits them for the chosen target",
+    "Output is never minified; only types and comments (optionally) are removed"
+  ],
+  "ambiguities": [
+    "The output file name TypeScript's compiler is told to use ends in .tsx only when the JSX mode is not 'preserve' or the input source itself contains JSX; this only affects internal diagnostics, never the returned text"
+  ],
+  "standards": [
+    {
+      "label": "TypeScript Handbook — TypeScript for JavaScript Programmers (Erased Types)",
+      "url": "https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html"
+    },
+    { "label": "ECMAScript 2025 Language Specification (ECMA-262)", "url": "https://tc39.es/ecma262/" }
+  ],
+  "keywords": ["typescript", "javascript", "transpile", "strip types", "compile"],
+  "primaryExport": "stripTypes",
+  "usage": "import { stripTypes } from '@fodt/ts-to-js';\n\nstripTypes('function greet(person: string, date: Date) {}', { target: 'ES2022' });\n// { output: 'function greet(person, date) { }\\n', diagnostics: [] }",
+  "apiNotes": "`stripTypes(source, options)` returns `{ output, diagnostics }`; `diagnostics` is `{ message, line, column }[]` (1-based). Options default to `target: 'ES2022'`, `module: 'preserve'`, `jsx: 'preserve'`, `removeComments: false`. Calls `ts.transpileModule` only: it never creates a `Program`, never type-checks and never emits to disk, so the pasted code is only parsed and rewritten, never executed. Throws `TsToJsError` only for a completely unparsable input; an ordinary syntax error is reported in `diagnostics` alongside a best-effort output.",
+  "testNotes": "The `typescript` dependency is pinned to the 5.x line (D-80): the npm `latest` dist-tag is now TypeScript 7, a native compiler with no in-process transpile API, so a test asserts the installed major stays 5. A test proves stripping types never runs the pasted code, and a second test proves that same check would itself catch code that does run.",
+  "dependencies": {
+    "typescript": "^5.9.3"
+  }
+}

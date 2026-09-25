@@ -1,0 +1,12 @@
+{
+  "id": "ts-to-js",
+  "label": "The TypeScript handbook's own Erased Types example loses its type annotations",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "function greet(person: string, date: Date) {\n  console.log(`Hello ${person}, today is ${date.toDateString()}!`);\n}\n\ngreet(\"Maddison\", new Date());"
+    }
+  ],
+  "expect": ["function greet(person, date)"]
+}
