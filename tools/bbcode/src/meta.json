@@ -39,7 +39,11 @@
   "testNotes": "No standards body defines BBCode; tests follow phpBB's own documented default tag set (fetched from phpBB's community BBCode guide) rather than a specification. HTML output is tested against every payload in the vendored OWASP XSS Filter Evasion Cheat Sheet. Markdown output and input are tested for CommonMark 0.31.2 conformance on the supported construct subset.",
   "dependencies": {
     "@bbob/parser": "4.4.1",
-    "dompurify": "3.4.16"
+    "dompurify": "3.4.16",
+    "mdast-util-from-markdown": "2.0.3",
+    "mdast-util-gfm": "3.1.0",
+    "micromark-extension-gfm": "3.0.0",
+    "htmlparser2": "12.0.0"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",

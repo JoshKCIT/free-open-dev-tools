@@ -1,6 +1,8 @@
 import meta from './meta.json';
 import type { WindowLike } from 'dompurify';
 import { parseBbcode } from './parse-bbcode';
+import { parseMarkdown } from './parse-markdown';
+import { parseHtml } from './parse-html';
 import { emitBbcode } from './emit-bbcode';
 import { emitMarkdown } from './emit-markdown';
 import { emitHtml } from './emit-html';
@@ -42,8 +44,10 @@ function parseSource(input: string, from: MarkupFormat): { tree: BbNode[]; warni
   switch (from) {
     case 'bbcode':
       return parseBbcode(input);
-    default:
-      throw new BbcodeError(`Converting from "${from}" is not supported.`);
+    case 'markdown':
+      return parseMarkdown(input);
+    case 'html':
+      return parseHtml(input);
   }
 }
 

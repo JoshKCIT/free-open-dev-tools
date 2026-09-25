@@ -61,7 +61,6 @@ function renderNodes(nodes: BbNode[]): string {
     const node = nodes[i]!;
     parts.push(renderNode(node));
     if (node.type === 'element' && node.tag === 'paragraph' && i < nodes.length - 1) parts.push('\n\n');
-    if (node.type === 'element' && node.tag === 'item') parts.push('\n');
   }
   return parts.join('');
 }

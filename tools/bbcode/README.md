@@ -75,6 +75,10 @@ convertMarkup('[b]bold[/b]', { from: 'bbcode', to: 'markdown' });
 
 - `@bbob/parser` 4.4.1
 - `dompurify` 3.4.16
+- `mdast-util-from-markdown` 2.0.3
+- `mdast-util-gfm` 3.1.0
+- `micromark-extension-gfm` 3.0.0
+- `htmlparser2` 12.0.0
 
 ## Tests
 
