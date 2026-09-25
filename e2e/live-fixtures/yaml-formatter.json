@@ -1,0 +1,13 @@
+{
+  "id": "yaml-formatter",
+  "label": "Anchors and aliases keep their markers (YAML 1.2.2 Example 2.10)",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "format" },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "---\nhr:\n- Mark McGwire\n# Following node labeled SS\n- &SS Sammy Sosa\nrbi:\n- *SS # Subsequent occurrence\n- Ken Griffey\n"
+    }
+  ],
+  "expect": ["&SS Sammy Sosa", "*SS"]
+}

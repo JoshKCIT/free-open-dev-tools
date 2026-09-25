@@ -1,0 +1,34 @@
+{
+  "id": "yaml-formatter",
+  "name": "YAML Formatter & Validator",
+  "summary": "Validate and reformat YAML, reporting anchors, aliases and duplicate keys.",
+  "about": "Parses a pasted YAML 1.2 stream and either reports whether it is valid or reformats it, keeping comments and flow or block styles as written. Every anchor is listed with its alias count, every alias with the anchor it points at, and every duplicate mapping key with both the position it first appeared and the position of the repeat. A document whose aliases would expand into too much data is refused rather than resolved.",
+  "supports": [
+    "One or more YAML 1.2 documents in a single stream, separated by document markers",
+    "Reformatting with a chosen indent width and line width, keeping comments and each scalar's flow or block style",
+    "Every anchor listed with its line, its kind (scalar, mapping or sequence) and how many aliases point at it",
+    "Every alias listed with its own position, including one pointing at an anchor that is never defined",
+    "Every duplicate mapping key listed with the position it first appeared and the position of the repeat",
+    "An alias-expansion limit that refuses a document before a billion-laughs style alias bomb is resolved",
+    "A check mode that reports validity and the same anchor, alias and duplicate-key lists without rewriting the document"
+  ],
+  "limits": [
+    "Values resolve under the YAML 1.2 core schema: YAML 1.1 words such as yes, no, on and off are read as plain strings, not booleans",
+    "A custom tag (anything starting with a single !) is kept in the output as written but is never resolved to a JavaScript value",
+    "A document containing a duplicate mapping key is refused in format mode rather than guessing which occurrence to keep; check mode still reports it",
+    "Parsing a very large flat document runs in a background worker with a fixed time limit, so a pathological input is stopped rather than freezing the tab",
+    "Comments attached to a node survive reformatting, but a comment on its own line with nothing else in a since-removed part of the document has nowhere to reattach if the document is edited outside this tool first"
+  ],
+  "ambiguities": [
+    "When a mapping key is repeated, the first occurrence found while walking that mapping is reported as the first position, matching the order the YAML parser itself encounters them"
+  ],
+  "standards": [{ "label": "YAML Ain't Markup Language (YAML) Version 1.2.2", "url": "https://yaml.org/spec/1.2.2/" }],
+  "keywords": ["yaml", "yml", "format", "validate", "anchor", "alias", "duplicate key", "yaml 1.2"],
+  "primaryExport": "formatYaml",
+  "usage": "import { formatYaml } from '@fodt/yaml-formatter';\n\nformatYaml('hr:\\n- Mark McGwire\\nrbi:\\n- &SS Sammy Sosa\\n- *SS\\n', { mode: 'format', indent: 2, lineWidth: 80 });\n// { output: '...', documents: 1, anchors: [{ name: 'SS', line: 4, kind: 'scalar', aliasCount: 1 }], aliases: [{ name: 'SS', line: 5 }], duplicates: [], warnings: [] }",
+  "apiNotes": "`formatYaml(source, { mode, indent, lineWidth })` returns `{ output, documents, anchors, aliases, duplicates, warnings }` or throws `YamlFormatterError` with `line`/`column`. `mode` defaults to `format`; `indent` defaults to 2; `lineWidth` defaults to 80. In `check` mode `output` is an empty string. Formatting is refused (a `YamlFormatterError` is thrown) when the document contains a duplicate mapping key, since YAML 1.2 requires mapping keys to be unique and there is no safe way to choose which occurrence to keep.",
+  "testNotes": "Every quoted example is taken from YAML 1.2.2 chapter 2 and checked by parsing the exact quoted text and comparing the resolved value, not by re-typing the example by hand into an assertion.",
+  "dependencies": {
+    "yaml": "2.9.1"
+  }
+}
