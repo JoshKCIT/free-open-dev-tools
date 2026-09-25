@@ -1,0 +1,9 @@
+{
+  "id": "json-to-code",
+  "label": "A number and a string sample give TypeScript's number and string types (TypeScript handbook, Everyday Types)",
+  "steps": [
+    { "action": "fill", "field": "input", "value": "{\"id\":1,\"name\":\"Ada\"}" },
+    { "action": "select", "field": "language", "value": "typescript" }
+  ],
+  "expect": ["id: number;", "name: string;"]
+}
