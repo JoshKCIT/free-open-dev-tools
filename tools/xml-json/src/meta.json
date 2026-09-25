@@ -26,7 +26,10 @@
   ],
   "standards": [
     { "label": "Extensible Markup Language (XML) 1.0 (Fifth Edition)", "url": "https://www.w3.org/TR/xml/" },
-    { "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format", "url": "https://www.rfc-editor.org/rfc/rfc8259" }
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    }
   ],
   "keywords": ["xml", "json", "convert", "xml to json", "json to xml", "xxe"],
   "primaryExport": "xmlToJson",

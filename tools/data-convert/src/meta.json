@@ -28,7 +28,10 @@
     "Which quoting style the YAML writer picks for a given string (plain, single or double quoted) is decided by the yaml package's own rules, not by this tool"
   ],
   "standards": [
-    { "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format", "url": "https://www.rfc-editor.org/rfc/rfc8259" },
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    },
     { "label": "YAML 1.2.2", "url": "https://yaml.org/spec/1.2.2/" },
     { "label": "TOML 1.1.0", "url": "https://toml.io/en/v1.1.0" }
   ],
