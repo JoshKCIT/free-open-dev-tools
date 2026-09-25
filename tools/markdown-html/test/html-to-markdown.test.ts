@@ -107,6 +107,14 @@ it('nothing is written to the console while converting HTML', () => {
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
 
+it('a document with more than 6000 links is refused rather than risking a freeze', () => {
+  const under = '<p>' + '<a href="https://example.com/x">l</a> '.repeat(1000) + '</p>'; // 1000 links.
+  expect(() => htmlToMarkdown(under)).not.toThrow();
+
+  const over = '<p>' + '<a href="https://example.com/x">l</a> '.repeat(6500) + '</p>'; // 6500 links.
+  expect(() => htmlToMarkdown(over)).toThrow(/refused rather than risk freezing the tab/);
+});
+
 function normalizeForCompare(html: string): string {
   return html.replace(/\s+/g, ' ').trim();
 }

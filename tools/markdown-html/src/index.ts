@@ -15,6 +15,31 @@ export class MarkdownHtmlError extends Error {
   }
 }
 
+/**
+ * Refusal threshold for the count of `*`, `_` and `~` characters in one
+ * document (D-09/D-25, freeze risk). Measured directly against this
+ * package (not assumed): a dense run of small, separately-closed emphasis
+ * spans on one line shows super-linear growth in micromark's own delimiter
+ * resolution (20,000 `*` characters ~500ms, 30,000 ~1.1s, 40,000 ~1.7s), a
+ * genuinely different risk from mere document length -- a realistic 160KB
+ * technical document with normal prose measured well under 1s with far
+ * fewer than a hundred emphasis markers. A background worker cannot bound
+ * this instead (shared_procedure rule R's usual fix): confirmed directly,
+ * none of this project's four tested browser engines expose `document` or
+ * `DOMParser` inside a Worker's own global scope, and micromark's own
+ * entity-decoding dependency needs `document.createElement` the moment its
+ * module loads, so the parser cannot run off the main thread at all.
+ */
+const MAX_EMPHASIS_MARKERS = 20000;
+
+function countEmphasisMarkers(markdown: string): number {
+  let count = 0;
+  for (const ch of markdown) {
+    if (ch === '*' || ch === '_' || ch === '~') count++;
+  }
+  return count;
+}
+
 /** One heading found while building the table of contents. */
 export interface MarkdownHeading {
   /** 1 for h1 through 6 for h6. */
@@ -51,6 +76,12 @@ export interface MarkdownToHtmlResult {
  * `markdownToSafeHtml`'s sanitised result is.
  */
 export function renderCommonMark(markdown: string): string {
+  const markers = countEmphasisMarkers(markdown);
+  if (markers > MAX_EMPHASIS_MARKERS) {
+    throw new MarkdownHtmlError(
+      `This document has ${markers} emphasis markers (*, _ or ~), more than the ${MAX_EMPHASIS_MARKERS} limit, so it was refused rather than risk freezing the tab.`,
+    );
+  }
   return micromark(markdown, {
     extensions: [gfm()],
     htmlExtensions: [gfmHtml()],

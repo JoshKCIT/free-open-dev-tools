@@ -17,7 +17,8 @@
     "A table with merged cells (colspan or rowspan) or block content in a cell is kept as raw HTML inside the Markdown rather than as a GFM pipe table",
     "The table of contents heading-id rule follows GitHub's own observed convention, not a published standard",
     "Inline styles, CSS classes and HTML comments are dropped when converting HTML back to Markdown",
-    "Raw HTML inside Markdown is kept only as far as the sanitiser allows: no scripts, forms, embeds, style elements or event handlers"
+    "Raw HTML inside Markdown is kept only as far as the sanitiser allows: no scripts, forms, embeds, style elements or event handlers",
+    "A document with more than 20,000 emphasis markers (*, _ or ~) is refused rather than risking a freeze; the same is true converting HTML back to Markdown with more than 6,000 links"
   ],
   "ambiguities": [
     "GitHub-style heading ids are this project's own observed rule (lower-case; Unicode letters, marks, numbers, connector punctuation, spaces and hyphens kept; spaces become hyphens; a repeated id is suffixed -1, -2, ...), not a published specification",
@@ -35,7 +36,7 @@
   "keywords": ["markdown", "html", "commonmark", "gfm", "table of contents", "sanitise", "turndown"],
   "primaryExport": "markdownToSafeHtml",
   "usage": "import { markdownToSafeHtml, htmlToMarkdown } from '@fodt/markdown-html';\n\nmarkdownToSafeHtml('# Hi\\n\\n*there*', window, { toc: false });\n// { html: '<h1 id=\"hi\">Hi</h1>\\n<p><em>there</em></p>', headings: [...], removed: {...}, warnings: [] }\n\nhtmlToMarkdown('<h2>Title</h2><p><em>a</em> <strong>b</strong></p>');\n// { markdown: '## Title\\n\\n_a_ **b**', warnings: [] }",
-  "apiNotes": "`markdownToSafeHtml(markdown, win, { toc = false, tocDepth = 3 })` returns `{ html, headings, removed, warnings }`. `win` is the caller's own `window`; this package never reads a DOM global itself. `renderCommonMark(markdown)` is the parser stage's HTML before sanitising, exported only for the conformance tests -- its own doc comment says never to display it. `htmlToMarkdown(html)` returns `{ markdown, warnings }`. Both throw `MarkdownHtmlError` only for a genuinely unrecoverable input (sanitising without a usable window); an ordinary parse quirk is reported through `warnings` instead.",
+  "apiNotes": "`markdownToSafeHtml(markdown, win, { toc = false, tocDepth = 3 })` returns `{ html, headings, removed, warnings }`. `win` is the caller's own `window`; this package never reads a DOM global itself. `renderCommonMark(markdown)` is the parser stage's HTML before sanitising, exported only for the conformance tests -- its own doc comment says never to display it; it throws `MarkdownHtmlError` for a document over the emphasis-marker limit, or a genuinely unrecoverable input (sanitising without a usable window). `htmlToMarkdown(html)` returns `{ markdown, warnings }` and throws a plain `Error` for a document over the link-count limit. An ordinary parse quirk is reported through `warnings` instead of thrown.",
   "testNotes": "Tested against the CommonMark 0.31.2 specification's own example set and the GitHub Flavored Markdown spec's table, strikethrough, autolink, task list and tagfilter extension examples, both vendored at pinned commits. Every difference from the vendored expected HTML is listed by example number with its reason in KNOWN_DIFFERENCES, and the conformance test asserts the failing set equals that list exactly rather than expecting zero differences. Also tested against every payload in the vendored OWASP XSS Filter Evasion Cheat Sheet, in both directions, and against a round-trip corpus proving Markdown to HTML to Markdown to HTML gives the same HTML.",
   "dependencies": {
     "micromark": "4.0.2",

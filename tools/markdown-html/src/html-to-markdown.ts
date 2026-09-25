@@ -16,6 +16,26 @@ export interface HtmlToMarkdownResult {
   warnings: string[];
 }
 
+/**
+ * Refusal threshold for the count of `<a` opening tags in one document
+ * (D-09/D-25, freeze risk). Measured directly against this package (not
+ * assumed): a wide document of many separate inline links shows
+ * super-linear growth (5,000 links ~575ms, 8,000 ~1.4s, 12,000 ~2.8s), a
+ * genuinely different risk from a document's raw byte length -- the same
+ * package converts a 265KB, 2,000-row GFM table in ~530ms. A background
+ * worker cannot bound this instead (shared_procedure rule R's usual fix):
+ * confirmed directly, none of this project's four tested browser engines
+ * expose `DOMParser` inside a Worker's own global scope, and `turndown`'s
+ * browser build needs it the moment parsing starts, so this conversion
+ * cannot run off the main thread at all.
+ */
+const MAX_LINK_TAGS = 6000;
+
+function countLinkTags(html: string): number {
+  const matches = html.match(/<a[\s/>]/gi);
+  return matches ? matches.length : 0;
+}
+
 /** Link target schemes this tool keeps as a real Markdown link; anything else becomes plain text. */
 const SAFE_LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
 
@@ -119,6 +139,13 @@ function simpleTableToMarkdown(service: TurndownService, table: Element): string
  * text, with a warning.
  */
 export function htmlToMarkdown(html: string): HtmlToMarkdownResult {
+  const linkCount = countLinkTags(html);
+  if (linkCount > MAX_LINK_TAGS) {
+    throw new Error(
+      `This document has ${linkCount} links, more than the ${MAX_LINK_TAGS} limit, so it was refused rather than risk freezing the tab.`,
+    );
+  }
+
   const warnings: string[] = [];
   const service = new TurndownService({
     headingStyle: 'atx',

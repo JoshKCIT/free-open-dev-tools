@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { WindowLike } from 'dompurify';
-import { renderCommonMark, markdownToSafeHtml } from '../src/index';
+import { renderCommonMark, markdownToSafeHtml, MarkdownHtmlError } from '../src/index';
 import { readSpecExamples, type SpecExample } from './spec-examples';
 import { findActiveContent } from './active-content';
 import { loadXssVectors, EXPECTED_VECTOR_COUNT } from './xss-vectors';
@@ -275,6 +275,15 @@ it('images and other resources that load from an address are removed and data im
   // CM_KNOWN_DIFFERENCES for the conformance-test examples this affects.
   const dataImage = markdownToSafeHtml('<img src="data:image/png;base64,AAAA" alt="t">', win);
   expect(dataImage.html).toContain('data:image/png;base64,AAAA');
+});
+
+it('a document with more than 20000 emphasis markers is refused rather than risking a freeze', () => {
+  const pathological = '*a* '.repeat(6000); // 12000 '*' characters: under the limit, must still work.
+  expect(() => renderCommonMark(pathological)).not.toThrow();
+
+  const overLimit = '*a* '.repeat(11000); // 22000 '*' characters: over the limit.
+  expect(() => renderCommonMark(overLimit)).toThrow(MarkdownHtmlError);
+  expect(() => renderCommonMark(overLimit)).toThrow(/refused rather than risk freezing the tab/);
 });
 
 // --- Table of contents ------------------------------------------------

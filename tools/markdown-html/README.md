@@ -26,6 +26,7 @@ Parses Markdown with a CommonMark- and GitHub Flavored Markdown-conformant parse
 - The table of contents heading-id rule follows GitHub's own observed convention, not a published standard
 - Inline styles, CSS classes and HTML comments are dropped when converting HTML back to Markdown
 - Raw HTML inside Markdown is kept only as far as the sanitiser allows: no scripts, forms, embeds, style elements or event handlers
+- A document with more than 20,000 emphasis markers (*, _ or ~) is refused rather than risking a freeze; the same is true converting HTML back to Markdown with more than 6,000 links
 
 ## Ambiguous cases, and what this does about them
 
@@ -69,7 +70,7 @@ htmlToMarkdown('<h2>Title</h2><p><em>a</em> <strong>b</strong></p>');
 // { markdown: '## Title\n\n_a_ **b**', warnings: [] }
 ```
 
-`markdownToSafeHtml(markdown, win, { toc = false, tocDepth = 3 })` returns `{ html, headings, removed, warnings }`. `win` is the caller's own `window`; this package never reads a DOM global itself. `renderCommonMark(markdown)` is the parser stage's HTML before sanitising, exported only for the conformance tests -- its own doc comment says never to display it. `htmlToMarkdown(html)` returns `{ markdown, warnings }`. Both throw `MarkdownHtmlError` only for a genuinely unrecoverable input (sanitising without a usable window); an ordinary parse quirk is reported through `warnings` instead.
+`markdownToSafeHtml(markdown, win, { toc = false, tocDepth = 3 })` returns `{ html, headings, removed, warnings }`. `win` is the caller's own `window`; this package never reads a DOM global itself. `renderCommonMark(markdown)` is the parser stage's HTML before sanitising, exported only for the conformance tests -- its own doc comment says never to display it; it throws `MarkdownHtmlError` for a document over the emphasis-marker limit, or a genuinely unrecoverable input (sanitising without a usable window). `htmlToMarkdown(html)` returns `{ markdown, warnings }` and throws a plain `Error` for a document over the link-count limit. An ordinary parse quirk is reported through `warnings` instead of thrown.
 
 ## Dependencies
 
