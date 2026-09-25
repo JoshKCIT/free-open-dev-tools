@@ -1,0 +1,12 @@
+{
+  "id": "git-diff-viewer",
+  "label": "git diff documentation rename example shows both paths",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "diff --git a/file1 b/file2\nsimilarity index 90%\nrename from file1\nrename to file2\n"
+    }
+  ],
+  "expect": ["file1", "file2"]
+}

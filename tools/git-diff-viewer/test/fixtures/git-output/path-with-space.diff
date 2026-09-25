@@ -1,0 +1,8 @@
+diff --git a/file with space.txt b/file with space.txt
+new file mode 100644
+index 0000000..66a52ee
+--- /dev/null
++++ b/file with space.txt	
+@@ -0,0 +1,2 @@
++first
++second

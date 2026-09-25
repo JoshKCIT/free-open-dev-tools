@@ -1,0 +1,22 @@
+From fe7dc50bde755b0b0fedcd2e781f68342825f6b8 Mon Sep 17 00:00:00 2001
+From: Fixture Generator <fixture@example.com>
+Date: Fri, 25 Sep 2026 05:14:43 -0500
+Subject: [PATCH] edit no-final-newline.txt
+
+---
+ no-final-newline.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/no-final-newline.txt b/no-final-newline.txt
+index 4c00b39..c37d09c 100644
+--- a/no-final-newline.txt
++++ b/no-final-newline.txt
+@@ -1,2 +1,2 @@
+ line one
+-line two
+\ No newline at end of file
++line two CHANGED
+\ No newline at end of file
+-- 
+2.53.0.windows.1
+

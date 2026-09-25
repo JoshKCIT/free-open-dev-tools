@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "input": "--- a/f\n+++ b/f\n@@ -1 +1 @@\n-a\n+b\n" },
+    "attachesFile": false
+  }
+]
