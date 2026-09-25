@@ -1,0 +1,56 @@
+{
+  "id": "ip-ptr",
+  "name": "IP to PTR Record",
+  "summary": "Build in-addr.arpa and ip6.arpa reverse DNS names from an address.",
+  "about": "Turns IPv4 and IPv6 addresses, one per line, into their reverse DNS names exactly as RFC 1035 and RFC 3596 define them, and turns a block on a whole octet or nibble boundary into its reverse zone name. When a host name is given, each address row also gets an RFC 1035 master-file PTR record line pointing at it, ready to paste into a zone file.",
+  "supports": [
+    "Building the in-addr.arpa reverse name for an IPv4 address, reversing its four octets",
+    "Building the ip6.arpa reverse name for an IPv6 address, reversing all 32 nibbles",
+    "Accepting every RFC 4291 text form of an IPv6 address (full, compressed with double colon, and mixed with an embedded IPv4 tail) and reading them as the same address",
+    "Showing every parsed address in the RFC 5952 recommended canonical text form",
+    "Building the reverse zone name for a CIDR block that lands on a whole octet boundary (IPv4, prefix 0, 8, 16 or 24) or a whole nibble boundary (IPv6, prefix a multiple of 4)",
+    "Building an RFC 1035 section 5.1 master-file PTR record line for each address, with an optional TTL, once a host name is given",
+    "Noting the embedded IPv4 address's own reverse name for an IPv4-mapped IPv6 address",
+    "Converting up to 10,000 lines in one paste, reporting a malformed or unsupported line by its number while the rest still convert"
+  ],
+  "limits": [
+    "This cannot query a name server, so it cannot say whether a PTR record for an address is actually published anywhere or whether a forward name resolves back to it -- that needs a real request to a server",
+    "A CIDR block whose prefix does not land on a whole octet (IPv4) or nibble (IPv6) boundary is refused: classless reverse delegation inside an octet uses the scheme RFC 2317 defines, which this does not generate",
+    "A zone index such as %eth0 identifies a local network interface, not a globally meaningful address, so a line carrying one is reported and skipped rather than guessed at"
+  ],
+  "ambiguities": [
+    "Every name below is written in lower case; RFC 1035 and RFC 3596 print IN-ADDR.ARPA and IP6.ARPA in capitals in their own examples, but DNS names compare case-insensitively (RFC 4343), so this makes no difference to what a name server sees",
+    "An IPv4-mapped IPv6 address's embedded IPv4 address gets its own reverse name too, delivered as an extra entry alongside the line's other problems rather than as a new field, since it is worth knowing but is not itself a fault with the input line"
+  ],
+  "standards": [
+    {
+      "label": "RFC 1035 -- Domain Names, section 3.5 (the IN-ADDR.ARPA domain)",
+      "url": "https://www.rfc-editor.org/rfc/rfc1035"
+    },
+    {
+      "label": "RFC 1035 -- Domain Names, section 5.1 (master file format)",
+      "url": "https://www.rfc-editor.org/rfc/rfc1035"
+    },
+    {
+      "label": "RFC 3596 -- DNS Extensions to Support IP Version 6, section 2.5 (the IP6.ARPA domain)",
+      "url": "https://www.rfc-editor.org/rfc/rfc3596"
+    },
+    {
+      "label": "RFC 4291 -- IP Version 6 Addressing Architecture, section 2.2 (text representation of addresses)",
+      "url": "https://www.rfc-editor.org/rfc/rfc4291"
+    },
+    {
+      "label": "RFC 5952 -- A Recommendation for IPv6 Address Text Representation",
+      "url": "https://www.rfc-editor.org/rfc/rfc5952"
+    },
+    {
+      "label": "RFC 1123 -- Requirements for Internet Hosts, section 2.1 (host name syntax)",
+      "url": "https://www.rfc-editor.org/rfc/rfc1123"
+    }
+  ],
+  "keywords": ["reverse dns", "ptr record", "in-addr.arpa", "ip6.arpa", "dns", "rdns", "zone file"],
+  "primaryExport": "ptrNames",
+  "usage": "import { ptrNames } from '@fodt/ip-ptr';\n\nptrNames('192.0.2.1\\n2001:db8::1', { hostname: 'host.example.com', ttl: 3600 });",
+  "apiNotes": "`ptrNames(input, { hostname, ttl })` reads one non-empty line at a time (CRLF, LF or CR). A line holding a plain address gets a `reverseName`; a line holding a CIDR block gets a `zone` when its prefix lands on a whole octet or nibble boundary. `hostname`, when given, must be an RFC 1123 host name or the call throws `IpPtrError` before any row is built. `ttl` below 0 is clamped to 0 and noted in `problems` under line 0, meaning the whole run rather than one line. A malformed or unsupported line becomes a `problems` entry naming its own 1-based line number; the rest of the input still converts.",
+  "testNotes": "The RFC 1035 section 3.5 and RFC 3596 section 2.5 worked examples are asserted against the RFC text vendored into this folder's own test fixtures, not transcribed from memory. The copied address arithmetic in ip.ts is proven byte-identical to the already-tested implementation it was copied from."
+}

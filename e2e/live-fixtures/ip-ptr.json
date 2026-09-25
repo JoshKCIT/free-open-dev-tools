@@ -1,0 +1,6 @@
+{
+  "id": "ip-ptr",
+  "label": "RFC 3596 section 2.5's own example: 4321:0:1:2:3:4:567:89ab becomes its 32-nibble ip6.arpa name",
+  "steps": [{ "action": "fill", "field": "input", "value": "4321:0:1:2:3:4:567:89ab" }],
+  "expect": ["b.a.9.8.7.6.5.0.4.0.0.0.3.0.0.0.2.0.0.0.1.0.0.0.0.0.0.0.1.2.3.4.ip6.arpa"]
+}

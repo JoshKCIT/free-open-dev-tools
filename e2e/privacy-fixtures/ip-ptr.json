@@ -1,0 +1,10 @@
+[
+  {
+    "values": {
+      "input": "192.0.2.1\n2001:db8::1",
+      "hostname": "host.example.invalid",
+      "ttl": "3600"
+    },
+    "attachesFile": false
+  }
+]
