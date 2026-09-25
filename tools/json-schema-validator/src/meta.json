@@ -1,0 +1,52 @@
+{
+  "id": "json-schema-validator",
+  "name": "JSON Schema Validator",
+  "summary": "Validate data against JSON Schema draft-07 and 2020-12 with readable error paths.",
+  "about": "Validates a pasted JSON document against a pasted JSON Schema, for both draft-07 and 2020-12, and lists every violation with an RFC 6901 JSON Pointer path, the failing keyword and a plain message. Built on Ajv, checked case by case against the official JSON-Schema-Test-Suite.",
+  "supports": [
+    "JSON Schema draft-07 and 2020-12, detected automatically from the schema's own $schema declaration or chosen explicitly",
+    "Every violation reported with an RFC 6901 JSON Pointer to the offending location, the failing keyword, a plain message and the schema location that produced it",
+    "Format keywords (date-time, email, uri and the rest ajv-formats defines) checked when format checking is switched on",
+    "An invalid schema refused with a readable message before any data is checked",
+    "The official JSON-Schema-Test-Suite draft-07 and 2020-12 cases, vendored as test data, checked one by one against this tool's own answer",
+    "A runaway schema pattern stopped after 1.5 seconds instead of freezing the tab"
+  ],
+  "limits": [
+    "No remote $ref is ever fetched; a schema that references another document over the network is refused rather than resolved",
+    "Only draft-07 and 2020-12 are supported; a schema declaring another draft (draft-04, draft-06, 2019-09) is refused naming it",
+    "2020-12 treats format as an annotation by default; this tool asserts it as a validation keyword whenever format checking is on, in both drafts, so a visitor who wants format checked gets a straight answer either way",
+    "60 of the official test suite's cases are answered differently by this tool than the suite documents (6 of 900 in draft-07, 54 of 1244 in 2020-12), every one named in this package's own test file rather than silently skipped: 14 are this tool's own deliberate always-assert-format choice above; the rest are genuine Ajv 8.20.0 behaviour (an object's inherited constructor/toString read as present even with no such own property; a RangeError inside Ajv's own URI library refusing to compile one self-referencing relative-$id shape; several $dynamicRef/unevaluatedItems/unevaluatedProperties dynamic-scope edge cases)",
+    "A validation that runs longer than 1.5 seconds on the page is stopped rather than risking the tab, because a schema's own pattern or patternProperties keys are visitor-written regular expressions"
+  ],
+  "ambiguities": [
+    "Every error path is an RFC 6901 JSON Pointer (for example /a/b~1c), the same notation json-diff and json-flatten use on this site, not a dollar-dot path",
+    "format is asserted as a validation keyword when format checking is switched on, even under 2020-12, where the specification treats it as an annotation only by default"
+  ],
+  "standards": [
+    {
+      "label": "JSON Schema draft-07 (core and validation)",
+      "url": "https://json-schema.org/specification-links#draft-7"
+    },
+    {
+      "label": "JSON Schema 2020-12 (core and validation)",
+      "url": "https://json-schema.org/specification-links#2020-12"
+    },
+    {
+      "label": "RFC 6901 — JavaScript Object Notation (JSON) Pointer",
+      "url": "https://www.rfc-editor.org/rfc/rfc6901"
+    },
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    }
+  ],
+  "keywords": ["json schema", "validate", "draft-07", "2020-12", "ajv", "json pointer"],
+  "primaryExport": "validateJson",
+  "usage": "import { validateJson } from '@fodt/json-schema-validator';\n\nconst result = validateJson(\n  '{\"type\":\"object\",\"properties\":{\"age\":{\"type\":\"integer\",\"minimum\":0}},\"required\":[\"age\"]}',\n  '{\"age\":-1}',\n);\nresult.valid; // false\nresult.errors; // [{ path: '/age', keyword: 'minimum', message: '...', schemaPath: '#/properties/age/minimum' }]",
+  "apiNotes": "`validateJson(schemaText, dataText, { draft, checkFormats })` parses both texts through this package's own RFC 8259 reader, builds a fresh Ajv instance per call (never reused, so one schema's keywords never leak into the next call), and returns `{ valid, draft, errors }`. A broken schema or data document, or a schema declaring an unsupported draft, throws `SchemaValidatorError` with a `kind` of `schema-json`, `data-json`, `schema` or `draft`.",
+  "testNotes": "Checked against the vendored JSON-Schema-Test-Suite (json-schema-org/JSON-Schema-Test-Suite) for both drafts, case by case, with every answer that differs from the suite's own expectation named in KNOWN_DIFFERENCES. Ajv's error-object shape (instancePath, schemaPath, keyword, message) is checked directly against Ajv's own published API reference (ajv.js.org/api.html), quoted in this package's own test file.",
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1"
+  }
+}
