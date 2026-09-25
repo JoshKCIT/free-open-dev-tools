@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "beautify" },
+    "values": { "input": "const answer = 42;" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "minify" },
+    "values": { "input": "const answer = 42;" },
+    "attachesFile": false
+  }
+]

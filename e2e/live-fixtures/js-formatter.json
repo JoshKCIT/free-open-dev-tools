@@ -1,0 +1,6 @@
+{
+  "id": "js-formatter",
+  "label": "Prettier's default bracket spacing beautifies a compact object literal",
+  "steps": [{ "action": "fill", "field": "input", "value": "const a={b:1}" }],
+  "expect": ["const a = { b: 1 };"]
+}
