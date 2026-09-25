@@ -1,0 +1,34 @@
+schema.org vocabulary subset
+
+Source: https://github.com/schemaorg/schemaorg, data/releases/30.1/schemaorg-current-https.jsonld
+Version: 30.1 (released 2026-09-16), commit 5f2d8cdec99b7329459ef6584e94b6a840f88471 (fetched 2026-09-25)
+
+The Sponsors' copyrights in the schema are licensed to website publishers
+and other third parties under the Creative Commons Attribution-ShareAlike
+License (version 3.0) -- CC BY-SA 3.0. Quoted verbatim from
+https://schema.org/docs/terms.html:
+
+"The Sponsors' copyrights in the schema are licensed to website publishers
+and other third parties under the Creative Commons Attribution-ShareAlike
+License (version 3.0). To view a copy of this license, please visit
+http://creativecommons.org/licenses/by-sa/3.0/."
+
+Full licence text: http://creativecommons.org/licenses/by-sa/3.0/
+
+This notice, and the CC BY-SA 3.0 licence it describes, covers ONLY the one
+derived data file this notice is declared against
+(tools/schema-markup/src/schema-org-subset.ts). Everything else in this
+folder -- the package's own code, tests and documentation -- is licensed
+under the project's usual MIT licence (see ../LICENSE), unaffected by this
+notice.
+
+Bundled here as tools/schema-markup/src/schema-org-subset.ts: 36 schema.org
+types (the twelve common content types this tool builds JSON-LD for, plus
+every type their nested-object defaults reach, plus every ancestor of those
+reached by walking rdfs:subClassOf) with their parent chains and applicable
+property names, and 452 properties with their range type names. No free-text
+rdfs:comment (description) is bundled -- only type and property names and
+their structural relationships.
+
+Attribution: schema.org vocabulary, version 30.1, licensed under CC BY-SA 3.0
+by Schema.org (https://creativecommons.org/licenses/by-sa/3.0/).

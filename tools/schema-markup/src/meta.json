@@ -1,0 +1,44 @@
+{
+  "id": "schema-markup",
+  "name": "JSON-LD Schema Builder",
+  "summary": "Build schema.org JSON-LD for the common content types.",
+  "about": "Builds schema.org JSON-LD for twelve common content types (Article, BlogPosting, Product, Organization, LocalBusiness, Person, Event, Recipe, FAQPage, BreadcrumbList, WebSite, HowTo) from simple property lines, checking every property and nested type against a bundled, versioned subset of the official schema.org vocabulary. Generated JSON-LD is type-checked against schema-dts in this package's own tests, and every value is escaped so a closing script tag typed into a value can never end the script element early.",
+  "supports": [
+    "Building JSON-LD for the twelve common content types from name: value property lines, with dotted paths for nested objects and numbered list items",
+    "Checking every property against the bundled schema.org subset for the chosen type or a parent type, refusing one schema.org does not define",
+    "Nested objects taking a default type from the property's own schema.org range (for example offers becomes an Offer), or an explicit @type line that overrides the default and must itself be in the property's range or a subtype of it",
+    "Checking a value against the format schema.org names for its property: an absolute URL when the range is URL only, ISO 8601 when the range is Date or DateTime only",
+    "Repeating the same simple path to build a list of values",
+    "SearchAction's query-input shorthand text annotation on a WebSite's potentialAction"
+  ],
+  "limits": [
+    "This tool checks schema.org's own definitions only; it cannot fetch your page or tell whether a search engine will show a rich result for it, which a search engine decides by its own separate rules on its own servers, not something a browser tab can verify without a server",
+    "Pending and attic schema.org terms, and extension vocabularies (health-lifesci, bib, auto, meta), are not offered -- only the twelve content types and the types they reach through their properties' own schema.org ranges",
+    "Only the twelve named content types are covered, not the full schema.org vocabulary of over 800 types"
+  ],
+  "ambiguities": [
+    "Every simple value is written as a JSON string, even one that looks numeric; schema.org's own JSON-LD examples do the same",
+    "A nested object's default type is this tool's own reading of the property's schema.org range, chosen for being the type Google's and schema.org's own examples actually use in that position, not the only type the range technically allows"
+  ],
+  "standards": [
+    { "label": "schema.org vocabulary, release 30.1", "url": "https://schema.org/docs/releases.html" },
+    { "label": "JSON-LD 1.1 (W3C)", "url": "https://www.w3.org/TR/json-ld11/" },
+    { "label": "schema.org Date and DateTime data types (ISO 8601)", "url": "https://schema.org/DateTime" }
+  ],
+  "bundledData": [
+    {
+      "name": "schema.org vocabulary subset",
+      "source": "https://github.com/schemaorg/schemaorg/blob/main/data/releases/30.1/schemaorg-current-https.jsonld",
+      "licence": "CC-BY-SA-3.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "attribution": "schema.org vocabulary, version 30.1, licensed under CC BY-SA 3.0 by Schema.org (https://creativecommons.org/licenses/by-sa/3.0/).",
+      "noticeFile": "src/schema-org-subset-NOTICE.txt"
+    }
+  ],
+  "keywords": ["schema.org", "json-ld", "structured data", "rich results", "microdata"],
+  "primaryExport": "buildJsonLd",
+  "usage": "import { buildJsonLd, CONTENT_TYPES, NESTED_DEFAULTS } from '@fodt/schema-markup';\n\nbuildJsonLd('Organization', 'name: Example Corp\\nurl: https://www.example.com/');",
+  "apiNotes": "`buildJsonLd` throws `SchemaMarkupError` only for a type outside `CONTENT_TYPES` or input over the 2,000-line cap; every other problem (an undefined property, a bad nested type, a malformed URL or date) is reported in the `problems` array with its line number, and the rest of the input still builds.",
+  "testNotes": "Generated JSON-LD for a real schema.org example of every content type is type-checked against schema-dts (a devDependency-only TypeScript type oracle, never bundled to visitors) with the real TypeScript compiler API. The bundled schema.org subset is re-derived from the vendored release file at test time and asserted equal to what this tool's own extraction produces, so the bundle can never silently drift from its source.",
+  "devDependencies": { "schema-dts": "2.0.0" }
+}

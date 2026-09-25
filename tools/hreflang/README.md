@@ -21,7 +21,7 @@ Checks every language tag you type against the RFC 5646 grammar and a bundled, d
 ## Limits
 
 - This tool cannot fetch your pages, so it cannot confirm each URL actually responds, carries the same annotations back, or is indexed -- a search engine checks all of that on its own servers when it crawls, not something a browser tab can verify without a server
-- The registry snapshot is dated (its File-Date is shown on the page); IANA updates the live registry more often than this tool's bundled copy is refreshed
+- The registry snapshot is dated File-Date 2026-09-17 (shown on the page); IANA updates the live registry more often than this tool's bundled copy is refreshed
 - Extension subtags (the -u- and -t- forms) are checked for syntax only, not against a registry of their own contents
 - A variant's registered Prefix is a recommendation, not a hard requirement (RFC 5646 section 2.2.5), so a mismatch is reported as a warning, not refused
 

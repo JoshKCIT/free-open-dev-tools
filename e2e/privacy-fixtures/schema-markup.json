@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "type": "Organization",
+      "properties": "name: Example\nurl: https://example.invalid/\nlogo: https://example.invalid/logo.png"
+    },
+    "attachesFile": false
+  }
+]

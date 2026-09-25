@@ -1,0 +1,9 @@
+{
+  "id": "schema-markup",
+  "label": "schema.org's own Organization example JSON-LD (https://schema.org/Organization) names Google.org (GOOG)",
+  "steps": [
+    { "action": "select", "field": "type", "value": "Organization" },
+    { "action": "fill", "field": "properties", "value": "name: Google.org (GOOG)" }
+  ],
+  "expect": ["\"name\": \"Google.org (GOOG)\""]
+}
