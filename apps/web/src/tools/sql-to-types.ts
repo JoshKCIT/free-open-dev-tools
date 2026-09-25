@@ -1,4 +1,4 @@
-import { meta, sqlToTypes, SqlToTypesError, type Dialect } from '@fodt/sql-to-types';
+import { meta, sqlToTypes, SqlToTypesError, type Dialect, type Target } from '@fodt/sql-to-types';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const DIALECT_LABELS: Record<Dialect, string> = {
@@ -6,6 +6,18 @@ const DIALECT_LABELS: Record<Dialect, string> = {
   mysql: 'MySQL',
   sqlite: 'SQLite',
   sqlserver: 'SQL Server',
+};
+
+const TARGET_LABELS: Record<Target, string> = {
+  typescript: 'TypeScript',
+  prisma: 'Prisma',
+  drizzle: 'Drizzle',
+};
+
+const TARGET_LANGUAGE: Record<Target, string> = {
+  typescript: 'typescript',
+  prisma: 'prisma',
+  drizzle: 'typescript',
 };
 
 export default defineTool({
@@ -27,7 +39,7 @@ export default defineTool({
       label: 'Target',
       type: 'select',
       default: 'typescript',
-      options: [{ value: 'typescript', label: 'TypeScript' }],
+      options: (['typescript', 'prisma', 'drizzle'] as Target[]).map((t) => ({ value: t, label: TARGET_LABELS[t] })),
     },
     {
       name: 'input',
@@ -59,17 +71,35 @@ export default defineTool({
         dialect: 'postgresql',
       },
     },
+    {
+      label: 'Prisma schema',
+      values: {
+        input: 'CREATE TABLE users (id integer PRIMARY KEY, email text NOT NULL);',
+        dialect: 'postgresql',
+        target: 'prisma',
+      },
+    },
+    {
+      label: 'Drizzle table definition',
+      values: {
+        input: 'CREATE TABLE users (id integer PRIMARY KEY, email text NOT NULL);',
+        dialect: 'postgresql',
+        target: 'drizzle',
+      },
+    },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
 
     const dialect = str(values, 'dialect', 'postgresql') as Dialect;
-    const target = str(values, 'target', 'typescript') as 'typescript';
+    const target = str(values, 'target', 'typescript') as Target;
 
     try {
       const result = sqlToTypes(input, { dialect, target });
-      const outputs: OutputBlock[] = [{ kind: 'code', label: 'Output', language: 'typescript', value: result.output }];
+      const outputs: OutputBlock[] = [
+        { kind: 'code', label: 'Output', language: TARGET_LANGUAGE[target], value: result.output },
+      ];
       if (result.notConverted.length > 0) {
         outputs.push({
           kind: 'list',

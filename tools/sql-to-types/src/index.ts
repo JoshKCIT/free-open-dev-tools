@@ -2,11 +2,13 @@ import meta from './meta.json';
 import { SqlSyntaxError } from './tokenize';
 import { parseCreateTableStatements, type Dialect, type TableDef, type NotConverted } from './parse';
 import { emitTypeScript } from './emit-typescript';
+import { emitPrisma } from './emit-prisma';
+import { emitDrizzle, DrizzleUnsupportedDialectError } from './emit-drizzle';
 
 export { meta };
 export type { Dialect, TableDef, NotConverted };
 
-export type Target = 'typescript';
+export type Target = 'typescript' | 'prisma' | 'drizzle';
 
 export class SqlToTypesError extends Error {
   readonly line?: number;
@@ -57,6 +59,15 @@ export function sqlToTypes(sql: string, options: SqlToTypesOptions = {}): SqlToT
   let output: string;
   if (target === 'typescript') {
     output = emitTypeScript(parsed.tables, dialect);
+  } else if (target === 'prisma') {
+    output = emitPrisma(parsed.tables, dialect);
+  } else if (target === 'drizzle') {
+    try {
+      output = emitDrizzle(parsed.tables, dialect);
+    } catch (err) {
+      if (err instanceof DrizzleUnsupportedDialectError) throw new SqlToTypesError(err.message);
+      throw err;
+    }
   } else {
     throw new SqlToTypesError(`Unknown target "${target}".`);
   }

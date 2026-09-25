@@ -145,3 +145,52 @@ it('an unterminated string or identifier is refused with its line and column', (
 it('a document with no CREATE TABLE statement in the subset is refused', () => {
   expect(() => sqlToTypes('CREATE INDEX idx ON users (email);', { dialect: 'postgresql' })).toThrow(SqlToTypesError);
 });
+
+// Prisma Schema Reference (Prisma ORM v6), fetched this session (quoted):
+// "The following providers are available: sqlite postgresql mysql sqlserver
+// mongodb cockroachdb"; the datasource block example shows
+// `datasource db { provider = "postgresql" url = "..." }`; `@id`, `@@id`,
+// `@default(autoincrement())`, `@map` and `@@map` are the reference's own
+// documented attribute names.
+it('Prisma output uses the documented datasource, model, attribute and type syntax', () => {
+  const result = sqlToTypes(
+    'CREATE TABLE users (id integer PRIMARY KEY, email text NOT NULL, bio text, joined timestamp DEFAULT CURRENT_TIMESTAMP);',
+    { dialect: 'postgresql', target: 'prisma' },
+  );
+
+  expect(result.output).toContain('datasource db {');
+  expect(result.output).toContain('provider = "postgresql"');
+  expect(result.output).toContain('url      = env("DATABASE_URL")');
+  expect(result.output).toContain('model Users {');
+  expect(result.output).toContain('@@map("users")');
+  expect(result.output).toContain('id Int @id');
+  expect(result.output).toContain('email String');
+  expect(result.output).toContain('bio String?');
+  expect(result.output).toContain('@default(now())');
+
+  const mysql = sqlToTypes('CREATE TABLE users (id int PRIMARY KEY AUTO_INCREMENT, email varchar(255) NOT NULL);', {
+    dialect: 'mysql',
+    target: 'prisma',
+  });
+  expect(mysql.output).toContain('provider = "mysql"');
+  expect(mysql.output).toContain('@default(autoincrement())');
+});
+
+it('a composite table-level PRIMARY KEY becomes a Prisma @@id block, not a field-level @id', () => {
+  const result = sqlToTypes(
+    'CREATE TABLE order_items (order_id integer, product_id integer, PRIMARY KEY (order_id, product_id));',
+    { dialect: 'postgresql', target: 'prisma' },
+  );
+  expect(result.output).toContain('@@id([order_id, product_id])');
+  expect(result.output).not.toContain('@id\n');
+});
+
+it('a Prisma field name that is not a valid identifier is sanitized and kept recoverable with @map', () => {
+  const result = sqlToTypes('CREATE TABLE "Order Items" ("Item Name" text NOT NULL);', {
+    dialect: 'postgresql',
+    target: 'prisma',
+  });
+  expect(result.output).toContain('model OrderItems {');
+  expect(result.output).toContain('@map("Item Name")');
+  expect(result.output).toContain('@@map("Order Items")');
+});
