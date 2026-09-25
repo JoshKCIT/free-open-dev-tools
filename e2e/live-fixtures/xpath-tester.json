@@ -1,0 +1,9 @@
+{
+  "id": "xpath-tester",
+  "label": "XPath 1.0 section 4.2's own substring example gives the documented answer",
+  "steps": [
+    { "action": "fill", "field": "xml", "value": "<doc/>" },
+    { "action": "fill", "field": "expression", "value": "substring(\"12345\", 1.5, 2.6)" }
+  ],
+  "expect": ["234"]
+}

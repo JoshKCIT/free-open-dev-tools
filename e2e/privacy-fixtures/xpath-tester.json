@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "xml": "<a><b>1</b></a>", "expression": "/a/b" },
+    "attachesFile": false
+  }
+]
