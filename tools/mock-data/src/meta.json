@@ -1,0 +1,35 @@
+{
+  "id": "mock-data",
+  "name": "Mock Data Generator",
+  "summary": "Generate deterministic fake records from a seed, with no network calls.",
+  "about": "Generates fake records from a short field list and a seed. The same seed, field list and count always produce byte-identical output, on every run and in every browser, so a fixture built here stays stable forever. Nothing is fetched: every value is built from a small seeded generator and a handful of bundled word lists.",
+  "supports": [
+    "Twenty field kinds: id, uuid, firstName, lastName, fullName, email, username, company, city, street, word, sentence, boolean, integer, decimal, date, datetime, ipv4, url, color and oneOf",
+    "A field list written as one \"name: kind\" line per field, with arguments in parentheses where a kind needs them",
+    "Up to 1000 records per run",
+    "JSON, JSON Lines or CSV output",
+    "A record count that grows without changing any earlier record's values"
+  ],
+  "limits": [
+    "Values are drawn from a seeded generator; this tool never reads the system clock, calls the platform's own randomness source, or uses locale-aware formatting, so its output cannot be used where genuine unpredictability matters",
+    "Name, city and street lists are small and original to this tool, not representative of any real population or place",
+    "Generated emails, URLs and IPv4 addresses always use reserved example domains and documentation address ranges, never a real host",
+    "At most 1000 records per run"
+  ],
+  "ambiguities": [
+    "The same seed, field list and count always give the same output; changing any one of the three changes every later value, not just the field or record that changed"
+  ],
+  "standards": [
+    { "label": "RFC 2606 — Reserved Top and Second Level DNS Names", "url": "https://www.rfc-editor.org/rfc/rfc2606" },
+    {
+      "label": "RFC 5737 — IPv4 Address Blocks Reserved for Documentation",
+      "url": "https://www.rfc-editor.org/rfc/rfc5737"
+    },
+    { "label": "RFC 9562 — UUID, Version 4", "url": "https://www.rfc-editor.org/rfc/rfc9562" }
+  ],
+  "keywords": ["mock data", "fake data", "test data", "seeded", "deterministic", "fixtures", "faker"],
+  "primaryExport": "generateMockData",
+  "usage": "import { generateMockData } from '@fodt/mock-data';\n\ngenerateMockData({ seed: 'demo', count: 10, format: 'json', fields: 'id: id\\nname: fullName\\nemail: email' });",
+  "apiNotes": "`parseFieldSpec` is exported on its own for anything that only needs the parsed field list without generating records. `fnv1a32` and `mulberry32` are exported because they are this tool's own seeding primitives, proven against published test vectors in this package's tests.",
+  "testNotes": "Determinism is checked by generating the same input twice and by growing the record count and comparing the shared prefix. The reference seed's output digest is pinned and asserted in this package's tests and in the browser test suite from the same literal, so a change to output shape is caught in both places at once."
+}
