@@ -137,7 +137,13 @@ export function validateJson(
   const schema = schemaParsed.value;
   const draft = resolveDraft(schema, requestedDraft);
 
-  const ajvOptions = { allErrors: true, strict: false, logger: false as const, validateFormats: checkFormats };
+  const ajvOptions = {
+    allErrors: true,
+    strict: false,
+    logger: false as const,
+    validateFormats: checkFormats,
+    ownProperties: true,
+  };
   const ajv = draft === '2020-12' ? new Ajv2020(ajvOptions) : new Ajv(ajvOptions);
   if (checkFormats) addFormats(ajv);
 

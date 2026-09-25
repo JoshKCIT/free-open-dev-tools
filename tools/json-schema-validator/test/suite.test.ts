@@ -62,15 +62,18 @@ const FIXTURES_ROOT = join(__dirname, 'fixtures', 'json-schema-test-suite');
  * in the list below.)
  */
 const KNOWN_DIFFERENCES_DRAFT7: string[] = [
-  'properties.json | properties whose names are Javascript object property names | none of the properties mentioned',
+  // ownProperties: true makes Ajv count only the data object's own keys, so inherited
+  // Object.prototype members such as constructor and toString no longer read as present.
+  // The one remaining quirk: an own __proto__ key is still skipped by the property checks.
+  'properties.json | properties whose names are Javascript object property names | __proto__ not valid',
   'ref.json | ref overrides any sibling keywords | ref valid, maxItems ignored',
-  'required.json | required properties whose names are Javascript object property names | none of the properties mentioned',
-  'required.json | required properties whose names are Javascript object property names | __proto__ present',
-  'required.json | required properties whose names are Javascript object property names | toString present',
-  'required.json | required properties whose names are Javascript object property names | constructor present',
 ];
 
 const KNOWN_DIFFERENCES_2020_12: string[] = [
+  // ownProperties: true makes Ajv count only the data object's own keys, so inherited
+  // Object.prototype members such as constructor and toString no longer read as present.
+  // The one remaining quirk: an own __proto__ key is still skipped by the property checks.
+  'properties.json | properties whose names are Javascript object property names | __proto__ not valid',
   'dynamicRef.json | $dynamicRef avoids the root of each schema, but scopes are still registered | data is sufficient for schema at second#/$defs/length',
   'dynamicRef.json | $dynamicRef points to a boolean schema | follow $dynamicRef to a false schema',
   'dynamicRef.json | $dynamicRef skips over intermediate resources - direct reference | integer property passes',
@@ -102,14 +105,9 @@ const KNOWN_DIFFERENCES_2020_12: string[] = [
   'format.json | uri-reference format | invalid uri-reference string is only an annotation by default',
   'format.json | uri-template format | invalid uri-template string is only an annotation by default',
   'format.json | uuid format | invalid uuid string is only an annotation by default',
-  'properties.json | properties whose names are Javascript object property names | none of the properties mentioned',
   'ref.json | URN ref with nested pointer ref | a string is valid',
   'ref.json | refs with relative uris and defs | valid on both fields',
   'ref.json | relative refs with absolute uris and defs | valid on both fields',
-  'required.json | required properties whose names are Javascript object property names | __proto__ present',
-  'required.json | required properties whose names are Javascript object property names | constructor present',
-  'required.json | required properties whose names are Javascript object property names | none of the properties mentioned',
-  'required.json | required properties whose names are Javascript object property names | toString present',
   "unevaluatedItems.json | unevaluatedItems and contains interact to control item dependency relationship | only a's and c's are invalid",
   "unevaluatedItems.json | unevaluatedItems and contains interact to control item dependency relationship | only b's and c's are invalid",
   "unevaluatedItems.json | unevaluatedItems and contains interact to control item dependency relationship | only b's are invalid",

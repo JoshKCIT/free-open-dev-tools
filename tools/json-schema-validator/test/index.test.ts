@@ -176,3 +176,9 @@ it('RFC 8259 invalid JSON in the schema or the data box is refused naming which 
     expect((err as SchemaValidatorError).kind).toBe('data-json');
   }
 });
+
+it('a required property named like a built-in object member (constructor, toString) is missing from an empty object', () => {
+  const schema = '{"type":"object","required":["constructor","toString"]}';
+  expect(validateJson(schema, '{}').valid).toBe(false);
+  expect(validateJson(schema, '{"constructor":1,"toString":2}').valid).toBe(true);
+});
