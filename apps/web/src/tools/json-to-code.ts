@@ -6,6 +6,10 @@ const LANGUAGE_LABELS: Record<Language, string> = {
   go: 'Go',
   rust: 'Rust',
   python: 'Python',
+  java: 'Java',
+  csharp: 'C#',
+  kotlin: 'Kotlin',
+  php: 'PHP',
 };
 
 export default defineTool({
