@@ -1,0 +1,40 @@
+{
+  "id": "user-agent",
+  "name": "User Agent Parser",
+  "summary": "Parse a User-Agent string into browser, engine, OS and device, with confidence noted.",
+  "about": "Parses a pasted User-Agent string into its browser, engine, operating system and device, using bowser's reviewed rule set, and splits it into the RFC 9110 product tokens and comments it is actually built from. Every result carries a stated confidence level and the reasons behind it, and always notes that a User-Agent string can be spoofed and that Client Hints are never available from a pasted string alone.",
+  "supports": [
+    "Splitting a User-Agent string into its RFC 9110 section 10.1.5 product tokens (name and version) and comments, including nested comments and quoted pairs",
+    "Reporting the browser, rendering engine, operating system and device type bowser recognises",
+    "Recognising a reduced Chromium User-Agent (the Chromium User-Agent Reduction's frozen platform strings) and lowering confidence with a reason",
+    "A stated confidence level (low, medium or high) with the exact reasons for any downgrade",
+    "Refusing an input over 8192 characters rather than parsing it",
+    "Always stating that a User-Agent string can be spoofed by the client that sent it, and that Client Hints (the Sec-CH-UA headers) are not available from a pasted string"
+  ],
+  "limits": [
+    "This reads only the pasted string, so it cannot see the request headers a real server receives, including Client Hints, or check which client actually sent it -- that needs a real server",
+    "bowser's rule set describes browsers known at the version this was built with; a brand-new browser or an unusual User-Agent string may be reported with low confidence or not recognised at all",
+    "A reduced Chromium User-Agent always reports Windows NT 10.0 as the operating system version, because Chromium's own reduction freezes it there regardless of the real Windows version"
+  ],
+  "ambiguities": [
+    "Confidence is low when the input is empty, has no product token, or bowser recognises no browser; medium when the browser is recognised but the engine or the operating system is not, the string is a reduced Chromium User-Agent, the browser version is missing, or the product tokens are not well-formed RFC 9110 tokens; otherwise high"
+  ],
+  "standards": [
+    {
+      "label": "RFC 9110 -- HTTP Semantics, section 10.1.5 (the User-Agent field)",
+      "url": "https://www.rfc-editor.org/rfc/rfc9110#section-10.1.5"
+    },
+    {
+      "label": "RFC 9110 -- HTTP Semantics, section 5.6.2 (tokens) and 5.6.5 (comments)",
+      "url": "https://www.rfc-editor.org/rfc/rfc9110#section-5.6.2"
+    },
+    { "label": "Chromium User-Agent Reduction", "url": "https://www.chromium.org/updates/ua-reduction/" }
+  ],
+  "keywords": ["user agent", "browser detection", "bowser", "client hints", "http header"],
+  "primaryExport": "parseUserAgent",
+  "usage": "import { parseUserAgent } from '@fodt/user-agent';\n\nparseUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36');",
+  "apiNotes": "`parseUserAgent(ua)` trims the input; an input over `MAX_USER_AGENT_LENGTH` (8192) characters throws `UserAgentError`. It never throws for any other input, however malformed: an empty or unrecognised string simply gets low confidence. `browser`, `engine`, `os` and `device` fields are `undefined` wherever bowser itself does not know a value.",
+  "testNotes": "Every entry in bowser's own vendored acceptance fixture is asserted to map to the same browser, engine, operating system and device this report gives, with any genuine difference named in a KNOWN_DIFFERENCES list rather than silently ignored.",
+  "dependencies": { "bowser": "2.14.1" },
+  "devDependencies": { "yaml": "2.9.1" }
+}

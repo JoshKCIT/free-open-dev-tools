@@ -1,0 +1,6 @@
+{
+  "id": "user-agent",
+  "label": "RFC 9110 section 10.1.5's own example: CERN-LineMode/2.15 libwww/2.17b3 splits into its two product tokens",
+  "steps": [{ "action": "fill", "field": "input", "value": "CERN-LineMode/2.15 libwww/2.17b3" }],
+  "expect": ["CERN-LineMode", "2.17b3"]
+}
