@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "direction", "value": "json-to-csv" },
+    "values": { "input": "[{\"name\":\"Ada\",\"note\":\"a, b\"}]" },
+    "attachesFile": false
+  }
+]

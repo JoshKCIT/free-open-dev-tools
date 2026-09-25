@@ -23,8 +23,14 @@
     "A row shorter or longer than the header is refused rather than padded or truncated, since silently guessing which column is missing would be more surprising than an error naming the row."
   ],
   "standards": [
-    { "label": "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files", "url": "https://www.rfc-editor.org/rfc/rfc4180" },
-    { "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format", "url": "https://www.rfc-editor.org/rfc/rfc8259" }
+    {
+      "label": "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files",
+      "url": "https://www.rfc-editor.org/rfc/rfc4180"
+    },
+    {
+      "label": "RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format",
+      "url": "https://www.rfc-editor.org/rfc/rfc8259"
+    }
   ],
   "keywords": ["csv", "json", "rfc4180", "convert", "tsv", "delimiter"],
   "primaryExport": "csvToJson",

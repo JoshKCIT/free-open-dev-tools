@@ -66,5 +66,6 @@ it('numbers and booleans stay strings unless type inference is switched on', () 
 
 it('nested values in JSON input are written as JSON text in the cell', () => {
   const result = jsonToCsv('[{"name":"Ada","tags":["a","b"]}]');
-  expect(result.output).toContain('["a","b"]');
+  const back = JSON.parse(csvToJson(result.output).output) as Record<string, unknown>[];
+  expect(back[0]!.tags).toBe('["a","b"]');
 });

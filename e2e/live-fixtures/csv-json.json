@@ -1,0 +1,9 @@
+{
+  "id": "csv-json",
+  "label": "RFC 4180 rule 6: a quoted comma inside a field is data, not a new column",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "csv-to-json" },
+    { "action": "fill", "field": "input", "value": "name,quote\nAda,\"Hello, world\"" }
+  ],
+  "expect": ["\"quote\": \"Hello, world\""]
+}
