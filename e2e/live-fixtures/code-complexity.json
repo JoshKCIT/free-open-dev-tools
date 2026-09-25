@@ -1,0 +1,12 @@
+{
+  "id": "code-complexity",
+  "label": "the ESLint complexity documentation's own if / else if / else example scores a complexity of 3",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "function a(x) {\n  if (true) {\n    return x;\n  } else if (false) {\n    return x+1;\n  } else {\n    return 4;\n  }\n}"
+    }
+  ],
+  "expect": ["Highest 3"]
+}

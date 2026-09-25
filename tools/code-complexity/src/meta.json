@@ -1,0 +1,40 @@
+{
+  "id": "code-complexity",
+  "name": "Code Complexity Analyzer",
+  "summary": "Report cyclomatic complexity and function length for JavaScript and TypeScript.",
+  "about": "Parses pasted JavaScript or TypeScript to a syntax tree with Babel's parser and walks it with a hand-rolled, iterative counter, reporting cyclomatic complexity, physical length and code-line length for every function, method, class field initializer and static block. The code is never run. Complexity counting follows the ESLint complexity rule's own classic-variant rules, checked against that rule in tests.",
+  "supports": [
+    "Cyclomatic complexity for every function declaration, function expression, arrow function, object method, class method, class field initializer and class static block",
+    "A length in physical lines and a second length counting only lines holding code, excluding blank lines and comment-only lines",
+    "JavaScript, TypeScript, and TSX source, with generics, type assertions and non-null assertions adding no complexity",
+    "A configurable threshold (1 to 100) marking which functions are flagged as over it",
+    "A syntax error reported with its line and column"
+  ],
+  "limits": [
+    "Counts follow the ESLint complexity rule's classic variant: a switch statement itself adds nothing, but each case with its own test adds one",
+    "Top-level code outside any function, method, field initializer or static block is not reported",
+    "Flow syntax and decorators beyond what Babel's TypeScript plugin parses are not supported",
+    "The code is never run, so dynamic or generated code shape is not measured, only what is written"
+  ],
+  "ambiguities": [
+    "A class field initializer is reported both as its own unit and, when the assigned value is itself a function, as that function's own separate unit, matching how the ESLint rule's own code-path analysis treats the two as distinct paths"
+  ],
+  "standards": [
+    { "label": "ESLint — complexity rule documentation", "url": "https://eslint.org/docs/latest/rules/complexity" },
+    {
+      "label": "NIST SP 500-235 — Structured Testing: A Testing Methodology Using the Cyclomatic Complexity Metric",
+      "url": "https://www.mccabe.com/pdf/mccabe-nist235r.pdf"
+    }
+  ],
+  "keywords": ["complexity", "cyclomatic", "javascript", "typescript", "lint", "static analysis"],
+  "primaryExport": "analyseComplexity",
+  "usage": "import { analyseComplexity } from '@fodt/code-complexity';\n\nanalyseComplexity('function f(a) { if (a) { return 1; } return 2; }');\n// { functions: [{ name: 'f', kind: 'function declaration', line: 1, column: 1, complexity: 2, lines: 1, codeLines: 1 }], over: [], highest: 2, average: 2 }",
+  "apiNotes": "`analyseComplexity(source, options)` returns `{ functions, over, highest, average }`; `functions` is `{ name, kind, line, column, complexity, lines, codeLines }[]`, one row per reported unit, excluding top-level code. `options.language` is `'javascript'` (default), `'typescript'` or `'tsx'`; `options.threshold` (default 10) only affects `over`, a subset of `functions`. Throws `CodeComplexityError` (with `line`/`column`) only for a syntax error; the code is parsed with `@babel/parser` and walked with an explicit stack, never run and never recursively, so deeply nested input cannot overflow the call stack.",
+  "testNotes": "Complexity counting is ported from the installed eslint package's own `lib/rules/complexity.js` (classic variant), cited by file and version in a source comment, and checked against that same installed rule run through ESLint's `Linter` class over a hand-written corpus covering every counted construct. `eslint` is a devDependency-only oracle, never a runtime dependency. A second oracle strips a TypeScript corpus's types with the `typescript` compiler and asserts the same complexity numbers on the type-stripped JavaScript.",
+  "dependencies": {
+    "@babel/parser": "^7.29.9"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.0"
+  }
+}
