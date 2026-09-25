@@ -1,0 +1,9 @@
+{
+  "id": "list-compare",
+  "label": "Two three-line lists sharing two items: the counts follow directly from the two literal lists",
+  "steps": [
+    { "action": "fill", "field": "listA", "value": "apple\nbanana\ncherry" },
+    { "action": "fill", "field": "listB", "value": "banana\ncherry\ndate" }
+  ],
+  "expect": ["Only in A (1)", "Only in B (1)", "In both (2)"]
+}

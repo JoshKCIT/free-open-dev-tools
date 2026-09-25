@@ -5,8 +5,7 @@ import { parseJsonText, exceedsDepth, MAX_JSON_DEPTH } from './json-text';
 
 export { meta };
 
-const DEPTH_MESSAGE =
-  'A document nested more than 512 levels deep was refused rather than risk freezing the tab.';
+const DEPTH_MESSAGE = 'A document nested more than 512 levels deep was refused rather than risk freezing the tab.';
 
 export class JsonDiffError extends Error {
   readonly line?: number;
