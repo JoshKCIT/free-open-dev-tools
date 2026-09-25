@@ -24,6 +24,10 @@ Beautifies CSS with Prettier's own CSS printer, or minifies it with csso. Both m
 - Comments other than a leading /*! licence comment are removed when minifying
 - A vendor hack that is not valid CSS is refused rather than passed through
 
+## Ambiguous cases, and what this does about them
+
+- csso's value compression (e.g. rewriting a colour keyword to its shorter hex form) runs even with restructure off, since restructure only controls merging and reordering rules and declarations, not value shortening
+
 ## Defined by
 
 - [CSS Syntax Module Level 3](https://www.w3.org/TR/css-syntax-3/)

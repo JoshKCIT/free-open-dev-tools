@@ -53,7 +53,9 @@ it('minified CSS without restructuring keeps every declaration in order', async 
 
   const declProps = (css: string): string[] => {
     const props: string[] = [];
-    postcss.parse(css).walkDecls((decl) => props.push(decl.prop));
+    postcss.parse(css).walkDecls((decl) => {
+      props.push(decl.prop);
+    });
     return props;
   };
   expect(declProps(result.output)).toEqual(declProps(input));

@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/csso": "^5.0.5",
     "css-tree": "^3.2.1",
+    "@types/css-tree": "^3.2.0",
     "postcss": "^8.5.28"
   }
 }
