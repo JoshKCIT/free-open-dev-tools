@@ -1,0 +1,20 @@
+[
+  {
+    "mode": { "field": "mode", "value": "build" },
+    "values": {
+      "agents": "*",
+      "disallow": "/private/",
+      "sitemaps": "https://example.invalid/sitemap.xml"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "check" },
+    "values": {
+      "robots": "User-agent: *\nDisallow: /private/\nSitemap: https://example.invalid/sitemap.xml",
+      "agent": "ExampleBot",
+      "path": "https://example.invalid/private/page"
+    },
+    "attachesFile": false
+  }
+]

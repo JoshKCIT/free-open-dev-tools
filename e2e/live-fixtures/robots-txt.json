@@ -1,0 +1,15 @@
+{
+  "id": "robots-txt",
+  "label": "RFC 9309 section 5.2s longest-match example",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "check" },
+    {
+      "action": "fill",
+      "field": "robots",
+      "value": "User-Agent: foobot\nAllow: /example/page/\nDisallow: /example/page/disallowed.gif"
+    },
+    { "action": "fill", "field": "agent", "value": "foobot" },
+    { "action": "fill", "field": "path", "value": "/example/page/disallowed.gif" }
+  ],
+  "expect": ["Disallowed", "/example/page/disallowed.gif"]
+}
