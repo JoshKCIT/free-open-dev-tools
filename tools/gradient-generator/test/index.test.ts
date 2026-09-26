@@ -76,7 +76,7 @@ it('a stop placed before an earlier stop is warned about as the colour stop fix-
   });
   // Written exactly as given -- never reordered by this tool itself.
   expect(result.value).toBe('linear-gradient(90deg, #000000 50%, #ffffff 10%)');
-  expect(result.warnings.some((w) => /fix-up/i.test(w) && /Stop 2/.test(w) && /Stop 1/.test(w))).toBe(true);
+  expect(result.warnings.some((w) => /fix-up/i.test(w) && /stop 2/i.test(w) && /stop 1/i.test(w))).toBe(true);
 });
 
 it('repeating gradients use the repeating function of the chosen type', () => {

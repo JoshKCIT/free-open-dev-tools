@@ -1,0 +1,25 @@
+{
+  "id": "gradient-generator",
+  "drag": [{ "field": "position", "steps": [{ "action": "radio", "field": "type", "value": "radial" }] }],
+  "scenarios": [
+    { "label": "default linear", "steps": [], "pixels": true },
+    {
+      "label": "radial spotlight",
+      "steps": [
+        { "action": "radio", "field": "type", "value": "radial" },
+        { "action": "select", "field": "shape", "value": "circle" },
+        { "action": "fill", "field": "position-x", "value": "30" },
+        { "action": "fill", "field": "position-y", "value": "40" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "conic wheel",
+      "steps": [
+        { "action": "radio", "field": "type", "value": "conic" },
+        { "action": "fill", "field": "angle", "value": "90" }
+      ],
+      "pixels": true
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "gradient-generator",
+  "label": "CSS Images Level 3's own equivalent linear gradient example, in hex colours",
+  "steps": [
+    { "action": "fill", "field": "angle", "value": "180" },
+    { "action": "select", "field": "stops", "value": "2" },
+    { "action": "fill", "field": "color1", "value": "#ffff00" },
+    { "action": "fill", "field": "at1", "value": "0" },
+    { "action": "fill", "field": "color2", "value": "#0000ff" },
+    { "action": "fill", "field": "at2", "value": "100" }
+  ],
+  "expect": ["linear-gradient(180deg, #ffff00 0%, #0000ff 100%)"]
+}
