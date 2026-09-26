@@ -36,13 +36,26 @@ const LAYER_DEFAULTS: LayerDefault[] = [
   { offset: { x: 0, y: 0 }, blur: 4, spread: 0, opacity: 10, color: '#000000', inset: true },
 ];
 
+// Literal per-layer field names (not built with a template string): the
+// shared browser harness's own fixture-file check confirms a fixture's
+// "drag" entry names a real field by searching this page's own source text
+// for a quoted occurrence of that exact name, so the name must appear here
+// as a literal string somewhere, not only as an interpolated `offset${n}`.
+const LAYER_FIELD_NAMES = [
+  { offset: 'offset1', blur: 'blur1', spread: 'spread1', opacity: 'opacity1', color: 'color1', inset: 'inset1' },
+  { offset: 'offset2', blur: 'blur2', spread: 'spread2', opacity: 'opacity2', color: 'color2', inset: 'inset2' },
+  { offset: 'offset3', blur: 'blur3', spread: 'spread3', opacity: 'opacity3', color: 'color3', inset: 'inset3' },
+  { offset: 'offset4', blur: 'blur4', spread: 'spread4', opacity: 'opacity4', color: 'color4', inset: 'inset4' },
+] as const;
+
 function layerFields(i: number): Field[] {
   const n = i + 1;
+  const names = LAYER_FIELD_NAMES[i]!;
   const d = LAYER_DEFAULTS[i]!;
   const visible = (v: Values) => Number(v.editing ?? 1) === n && Number(v.layers ?? 2) >= n;
   return [
     {
-      name: `offset${n}`,
+      name: names.offset,
       label: `Layer ${n} offset`,
       type: 'point',
       axes: ['Horizontal', 'Vertical'],
@@ -53,7 +66,7 @@ function layerFields(i: number): Field[] {
       visible,
     },
     {
-      name: `blur${n}`,
+      name: names.blur,
       label: `Layer ${n} blur (px)`,
       type: 'number',
       default: d.blur,
@@ -63,7 +76,7 @@ function layerFields(i: number): Field[] {
       visible,
     },
     {
-      name: `spread${n}`,
+      name: names.spread,
       label: `Layer ${n} spread (px)`,
       type: 'number',
       default: d.spread,
@@ -73,7 +86,7 @@ function layerFields(i: number): Field[] {
       visible,
     },
     {
-      name: `opacity${n}`,
+      name: names.opacity,
       label: `Layer ${n} opacity (%)`,
       type: 'number',
       default: d.opacity,
@@ -82,8 +95,8 @@ function layerFields(i: number): Field[] {
       step: 1,
       visible,
     },
-    { name: `color${n}`, label: `Layer ${n} colour`, type: 'color', default: d.color, visible },
-    { name: `inset${n}`, label: `Layer ${n} is inset`, type: 'checkbox', default: d.inset, visible },
+    { name: names.color, label: `Layer ${n} colour`, type: 'color', default: d.color, visible },
+    { name: names.inset, label: `Layer ${n} is inset`, type: 'checkbox', default: d.inset, visible },
   ];
 }
 
@@ -157,15 +170,15 @@ export default defineTool({
   run(values): ToolResult {
     const layersCount = Math.min(4, Math.max(1, Math.round(num(values, 'layers', 2))));
     const layers = Array.from({ length: layersCount }, (_, i) => {
-      const n = i + 1;
+      const names = LAYER_FIELD_NAMES[i]!;
       const d = LAYER_DEFAULTS[i]!;
       return {
-        ...point(values, `offset${n}`, d.offset),
-        blur: num(values, `blur${n}`, d.blur),
-        spread: num(values, `spread${n}`, d.spread),
-        opacity: num(values, `opacity${n}`, d.opacity),
-        color: str(values, `color${n}`, d.color),
-        inset: bool(values, `inset${n}`, d.inset),
+        ...point(values, names.offset, d.offset),
+        blur: num(values, names.blur, d.blur),
+        spread: num(values, names.spread, d.spread),
+        opacity: num(values, names.opacity, d.opacity),
+        color: str(values, names.color, d.color),
+        inset: bool(values, names.inset, d.inset),
       };
     });
 

@@ -1,0 +1,11 @@
+{
+  "id": "text-shadow",
+  "label": "one layer offset 2, 2 px, blur 4 -- the grammar's own length order",
+  "steps": [
+    { "action": "select", "field": "layers", "value": "1" },
+    { "action": "fill", "field": "offset1-x", "value": "2" },
+    { "action": "fill", "field": "offset1-y", "value": "2" },
+    { "action": "fill", "field": "blur1", "value": "4" }
+  ],
+  "expect": ["2px 2px 4px"]
+}
