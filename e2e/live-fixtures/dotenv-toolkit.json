@@ -1,0 +1,9 @@
+{
+  "id": "dotenv-toolkit",
+  "label": "the dotenv README's own BASIC=basic example converts to JSON as \"BASIC\": \"basic\"",
+  "steps": [
+    { "action": "fill", "field": "input", "value": "BASIC=basic" },
+    { "action": "select", "field": "to", "value": "json" }
+  ],
+  "expect": ["\"BASIC\": \"basic\""]
+}

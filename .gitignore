@@ -12,6 +12,14 @@ blob-report/
 .env.*
 !.env.example
 
+# dotenv-toolkit's vendored upstream test fixtures (motdotla/dotenv's own
+# tests/.env and tests/.env.multiline, BSD-2-Clause) are public, non-secret
+# sample files this tool's own tests read and check against a recorded git
+# blob SHA; the blanket .env ignore above would otherwise silently drop them
+# from every fresh clone.
+!tools/dotenv-toolkit/test/fixtures/dotenv/.env
+!tools/dotenv-toolkit/test/fixtures/dotenv/.env.multiline
+
 # Holds the provenance gate's forbidden-name list. Must stay out of git; the
 # gate reads it from here locally and from a CI repository variable in CI.
 .provenance-denylist

@@ -1,0 +1,46 @@
+{
+  "id": "dotenv-toolkit",
+  "name": ".env Validator & Converter",
+  "summary": "Validate a .env file and convert it to Compose, Kubernetes, shell or JSON.",
+  "about": "Checks a pasted .env file the way dotenv itself reads it, naming every line it would ignore, every duplicate key and every invalid name with its line number. Converts the parsed values to a Compose environment block, a Kubernetes ConfigMap or Secret, shell export lines or JSON, and back, with every value unchanged: dollar signs, quotes, newlines and non-ASCII text all round-trip exactly, and a value no target can hold unchanged is listed with its key instead of being silently altered.",
+  "supports": [
+    "dotenv's own parsing rules: optional export prefix, single/double/backtick quoting, comments, and newline expansion only inside double quotes",
+    "Conversion to a Compose environment mapping, a Kubernetes ConfigMap, a Kubernetes Secret, POSIX/PowerShell shell export lines, and JSON",
+    "Reading each of those five formats back into .env text",
+    "A lossless round trip for values containing =, #, single/double/backtick quotes, a literal dollar sign, newlines and non-ASCII characters",
+    "Reporting lines dotenv ignores, duplicate keys and invalid key names with their line numbers"
+  ],
+  "limits": [
+    "This tool cannot tell which program will read the generated file, and other readers of a .env-shaped file (Docker Compose's own env_file support, python-dotenv, a shell sourcing the file directly) may expand a dollar sign differently -- only running that program can show that.",
+    "A Kubernetes Secret's data is base64, which is encoding, not encryption; anyone who can read the Secret manifest can read the value.",
+    "Variable expansion (${VAR}) is never performed, because dotenv itself does not perform it -- values are copied exactly as written.",
+    "A value none of the five target formats can hold unchanged (for example one mixing a newline and a double quote in a form the writer cannot escape) is listed as unrepresentable and left out, never silently altered."
+  ],
+  "ambiguities": [
+    "An inline comment needs no leading space before the # character (dotenv's own LINE regex excludes # from an unquoted value's character class entirely), so INLINE_COMMENTS_SPACE=a#b parses to just \"a\", not \"a#b\" -- confirmed directly against the vendored upstream test fixture rather than assumed."
+  ],
+  "standards": [
+    {
+      "label": "dotenv parsing rules (README and lib/main.js)",
+      "url": "https://github.com/motdotla/dotenv/blob/86804c0507aff98d3a82204759729af3bc2ce1a9/README.md"
+    },
+    {
+      "label": "Compose Specification (environment, interpolation)",
+      "url": "https://github.com/compose-spec/compose-spec/blob/914ec15d1fa498969c0df5c1d672306db3256089/spec.md"
+    },
+    { "label": "Kubernetes ConfigMap and Secret", "url": "https://kubernetes.io/docs/concepts/configuration/secret/" },
+    {
+      "label": "POSIX Shell Command Language 2.2.2",
+      "url": "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html"
+    },
+    { "label": "RFC 4648 (base64)", "url": "https://www.rfc-editor.org/rfc/rfc4648" },
+    { "label": "RFC 8259 (JSON)", "url": "https://www.rfc-editor.org/rfc/rfc8259" }
+  ],
+  "keywords": ["dotenv", "env", "environment variables", "compose", "kubernetes", "shell", "json", "devops"],
+  "primaryExport": "convertEnv",
+  "usage": "import { parseEnv, convertEnv } from '@fodt/dotenv-toolkit';\n\nconst { entries, problems } = parseEnv(text);\nconst { output, warnings, unrepresentable } = convertEnv(text, { to: 'json' });",
+  "apiNotes": "`parseEnv` never throws for a malformed line; every line dotenv would ignore, every duplicate key and every invalid name becomes a `problems` entry with its 1-based line. `convertEnv(text, { to, serviceName, resourceName })` composes `parseEnv` with a target writer and returns `{ output, warnings, unrepresentable }`. `readTarget(text, { from })` reads one of the five targets back into entries. At most 1 MB of input is accepted; more is refused rather than risk freezing the tab.",
+  "testNotes": "The upstream dotenv test fixtures (vendored at the pinned tag) are read and their own t.equal() assertions checked against this tool's parseEnv, not retyped by hand. The round trip for every target is proven over a battery of hostile values (=, #, quotes, backtick, dollar sign, backslash, CRLF/LF, accented letters, CJK text, an emoji).",
+  "dependencies": { "yaml": "2.9.1" },
+  "devDependencies": { "ajv": "8.20.0" }
+}
