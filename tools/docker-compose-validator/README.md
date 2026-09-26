@@ -26,6 +26,10 @@ Checks a Docker Compose file against the official Compose Specification JSON Sch
 - Variables inside ${...} are checked for syntax only, since their values come from the visitor's own environment, which this tool never has access to.
 - This tool cannot tell whether Docker Compose's own installed version accepts every field this schema allows; the two evolve somewhat independently.
 
+## Ambiguous cases, and what this does about them
+
+- The compose-spec schema does not require a service to declare image or build (neither is in any required list, and no anyOf enforces one), so a service with neither validates with no error here -- even though Docker Compose's own runtime refuses to start such a service. This tool follows the schema as published rather than adding an unwritten rule.
+
 ## Defined by
 
 - [Compose Specification](https://github.com/compose-spec/compose-spec/blob/914ec15d1fa498969c0df5c1d672306db3256089/spec.md)
