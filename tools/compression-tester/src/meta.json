@@ -1,0 +1,33 @@
+{
+  "id": "compression-tester",
+  "name": "Compression Size Tester",
+  "summary": "Compare gzip and deflate sizes for a payload using the browser compression API.",
+  "about": "Measures how small typed text or a chosen file gets under gzip, deflate and deflate-raw, using this browser's own CompressionStream on bytes that never leave the page. Sizes are checked in tests against Node's own zlib at its default level, and this page states how closely the browser you are using tracks that.",
+  "supports": [
+    "gzip, deflate and deflate-raw, each computed by the running browser's own platform CompressionStream (WHATWG Compression Standard)",
+    "Typed text (encoded as UTF-8) or a chosen file, streamed through in 64 KB chunks so a large input never freezes the tab",
+    "Cancelling a run between chunks",
+    "Downloading the compressed bytes for each selected format",
+    "An empty input, which reports each format's fixed container size rather than an error"
+  ],
+  "limits": [
+    "Compressed sizes can differ between compressor implementations and compression levels; the browser's own CompressionStream has no level setting, so this tool cannot reproduce another program's exact output or another level -- only running that program can show that.",
+    "Measured directly against real browser engines: Firefox and Chromium stay within a few percent of Node zlib's default level on every sample this project's own test measures, but WebKit's CompressionStream compresses phrase-repetitive text noticeably worse -- up to about 28% larger on a 100 KB varied-prose sample and about 15% larger on a non-ASCII sample -- a genuine engine difference, not a bug in this tool.",
+    "This tool cannot check what a server-side compressor or a different browser version would produce; it can only measure the engine actually running this page.",
+    "Only gzip, deflate and deflate-raw are measured; brotli is part of the same platform interface but is not requested here."
+  ],
+  "ambiguities": [
+    "For an empty input, output divided by input is mathematically undefined; this tool reports ratio as 0 for every format rather than Infinity or NaN, since the fixed container sizes are still shown separately in bytes."
+  ],
+  "standards": [
+    { "label": "Compression Streams (WHATWG)", "url": "https://compression.spec.whatwg.org/" },
+    { "label": "RFC 1950 (ZLIB Compressed Data Format)", "url": "https://www.rfc-editor.org/rfc/rfc1950" },
+    { "label": "RFC 1951 (DEFLATE Compressed Data Format)", "url": "https://www.rfc-editor.org/rfc/rfc1951" },
+    { "label": "RFC 1952 (GZIP file format specification)", "url": "https://www.rfc-editor.org/rfc/rfc1952" }
+  ],
+  "keywords": ["compression", "gzip", "deflate", "compressionstream", "devops", "file size"],
+  "primaryExport": "measureCompression",
+  "usage": "import { measureCompression } from '@fodt/compression-tester';\n\nconst result = await measureCompression(bytes);\nfor (const r of result.results) {\n  console.log(r.format, r.unsupported ? 'unsupported' : r.bytes);\n}",
+  "apiNotes": "`measureCompression` returns `{ inputBytes, results }`; each result carries `format`, `bytes`, `ratio`, `output` (the compressed bytes) and `unsupported` (true only when this engine's CompressionStream constructor rejects that format, never for a genuine zero-byte result). It throws `CompressionTesterError` only for input over 256 MB, and an `AbortError` DOMException when `signal` is aborted.",
+  "testNotes": "Sizes are checked two ways: exact equality with Node's own zlib (gzipSync/deflateSync/deflateRawSync) at its default level for the same bytes in Node, and, on four real browser engines, within the tolerance SIZE_TOLERANCE states, computed against the same zlib calls run on the same sample payloads in the end-to-end spec."
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "values": {
+      "text": "https://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payloadhttps://example.invalid/payload"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "source",
+      "value": "file"
+    },
+    "attachesFile": true
+  }
+]
