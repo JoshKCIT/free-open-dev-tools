@@ -1,0 +1,9 @@
+{
+  "id": "css-effects",
+  "label": "Filter Effects Module Level 2's own backdrop-filter function-list syntax",
+  "steps": [
+    { "action": "fill", "field": "blur", "value": "12" },
+    { "action": "fill", "field": "saturation", "value": "160" }
+  ],
+  "expect": ["backdrop-filter: blur(12px) saturate(160%);"]
+}

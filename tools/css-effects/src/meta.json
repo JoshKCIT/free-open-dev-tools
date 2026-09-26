@@ -1,0 +1,50 @@
+{
+  "id": "css-effects",
+  "name": "Glassmorphism & Neumorphism",
+  "summary": "Generate frosted glass and soft UI effects with a live preview.",
+  "about": "Generates a frosted-glass panel over a busy backdrop, or a soft UI surface in a flat, concave, convex or pressed shape, showing the result live next to the exact CSS. The soft UI shadow colours are derived from the surface's own base colour, and a warning appears when the softer of the two shadow edges falls below the WCAG 2.2 non-text contrast ratio.",
+  "supports": [
+    "A frosted glass panel with an adjustable blur and saturation, a tinted translucent background, a border line and corner rounding, shown over a decorative backdrop so the blur has something to act on",
+    "The webkit-prefixed copy of the backdrop blur declaration, for Safari versions before unprefixed support",
+    "Four soft UI surface shapes (flat, concave, convex and pressed), each with its own documented background and shadow form",
+    "Light and dark shadow colours mixed from the surface's own base colour toward white and black by a chosen intensity, per sRGB channel",
+    "A warning, and the measured ratio, when the darker shadow's edge falls below the WCAG 2.2 non-text contrast ratio of 3 to 1 against the base colour"
+  ],
+  "limits": [
+    "Backdrop blurring needs the visitor's browser to support it, and only shows over whatever sits behind the element in the page it is pasted into",
+    "Soft UI surfaces often fall below the 3 to 1 non-text contrast WCAG 2.2 asks of user interface components; this tool warns about a low-contrast edge but cannot fix it, since the softness is the effect itself",
+    "The light and dark shadow colours are mixed in sRGB, not a perceptual colour space, so the mix can look uneven across very light or very dark base colours",
+    "Heavy backdrop blur can be slow to render on a low-powered device"
+  ],
+  "ambiguities": [
+    "The soft UI shadow mix (each channel moved a percentage of the way toward white or black) is this tool's own construction of the widely used soft UI look, not a value defined by any CSS specification",
+    "A colour value that is not a valid hex colour falls back to the default with a warning, rather than being rejected outright"
+  ],
+  "standards": [
+    {
+      "label": "Filter Effects Module Level 2 — the backdrop-filter property",
+      "url": "https://drafts.csswg.org/filter-effects-2/#BackdropFilterProperty"
+    },
+    {
+      "label": "CSS Backgrounds and Borders Module Level 3 — box shadow and corner rounding",
+      "url": "https://www.w3.org/TR/css-backgrounds-3/"
+    },
+    {
+      "label": "CSS Color Module Level 4 — RGB Hexadecimal Notations",
+      "url": "https://www.w3.org/TR/css-color-4/#hex-notation"
+    },
+    {
+      "label": "WCAG 2.2 — Success Criterion 1.4.11 Non-text Contrast, and the relative luminance and contrast ratio definitions",
+      "url": "https://www.w3.org/TR/WCAG22/#non-text-contrast"
+    }
+  ],
+  "keywords": ["css", "glassmorphism", "neumorphism", "backdrop-filter", "soft ui", "generator", "preview"],
+  "primaryExport": "generateEffect",
+  "usage": "import { generateEffect, mixTowards } from '@fodt/css-effects';\n\ngenerateEffect({\n  mode: 'glass',\n  glass: { blur: 12, saturation: 160, tint: '#ffffff', tintOpacity: 20, borderOpacity: 40, rounding: 16 },\n});\n// { css: '.glass { ... backdrop-filter: blur(12px) saturate(160%); ... }', tree: { className: 'glass', ... }, backdrop: 'pattern', warnings: [] }",
+  "apiNotes": "generateEffect({ mode, glass, soft, width, height }) takes 'glass' or 'soft' mode. In glass mode, glass sets blur (px), saturation (percent), tint (a hex colour) with tintOpacity (percent, used as the tint's alpha), borderOpacity (percent, a white border line) and rounding (px); the result's backdrop is 'pattern' so the live preview has a decorative background for the blur to act on. In soft mode, soft sets base (a hex colour), distance (px), blur (px), intensity (percent, how far each shadow colour is mixed toward white or black) and shape (flat, concave, convex or pressed). mixTowards(color, target, amount) mixes an already-parsed colour's channels a percentage of the way toward '#ffffff' or '#000000', rounding to the nearest integer per channel, and is exported for direct use or testing. Returns { css, tree, backdrop, warnings, contrastRatio }: css is built entirely through the canonical stylesheetText writer; contrastRatio is the WCAG 2.2 contrast ratio between the darker shadow and the base colour in soft mode, or null in glass mode. Throws EffectsError only if the canonical safety writer itself refuses the finished CSS, which validated input never reaches.",
+  "testNotes": "The backdrop-filter grammar and its function order are quoted from a live fetch of Filter Effects Module Level 2 (moved to the CSSWG drafts repository; fetched from its current canonical address). The relative luminance formula and the contrast ratio formula are quoted from a live fetch of WCAG 2.2's own definitions. Confirmed directly against the installed css-tree 3.2.1 lexer that it recognises both backdrop-filter and its -webkit- prefixed copy, so no KNOWN_DIFFERENCES entry was needed for either declaration. Every declaration is checked against that lexer. Hostile field values are checked against the shared HOSTILE_VALUES battery.",
+  "devDependencies": {
+    "css-tree": "^3.2.1",
+    "@types/css-tree": "^3.2.0"
+  }
+}

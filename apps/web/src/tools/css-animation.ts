@@ -28,9 +28,8 @@ const EASING_OPTIONS = [
 // simply the pre-jump-* aliases for jump-start/jump-end): measured this
 // session, this page's own discoverable-state count needed trimming to
 // bring the shared privacy harness back under its own 120-second ceiling on
-// webkit, following flexbox-playground's own precedent (08-05-SUMMARY.md)
-// for dropping one field's own least-essential options rather than the
-// package's.
+// webkit, following an earlier phase 8 plan's own precedent for dropping
+// one field's own least-essential options rather than the package's.
 const STEP_POSITION_OPTIONS = ['jump-start', 'jump-end', 'jump-none', 'jump-both'].map((v) => ({
   value: v,
   label: v,

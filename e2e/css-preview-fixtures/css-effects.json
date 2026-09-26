@@ -1,0 +1,30 @@
+{
+  "id": "css-effects",
+  "scenarios": [
+    { "label": "default glass", "steps": [] },
+    {
+      "label": "strong blur",
+      "steps": [
+        { "action": "fill", "field": "blur", "value": "24" },
+        { "action": "fill", "field": "tintOpacity", "value": "35" }
+      ]
+    },
+    {
+      "label": "soft convex",
+      "steps": [
+        { "action": "radio", "field": "mode", "value": "soft" },
+        { "action": "select", "field": "shape", "value": "convex" },
+        { "action": "fill", "field": "intensity", "value": "6" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "soft pressed",
+      "steps": [
+        { "action": "radio", "field": "mode", "value": "soft" },
+        { "action": "select", "field": "shape", "value": "pressed" }
+      ],
+      "pixels": true
+    }
+  ]
+}
