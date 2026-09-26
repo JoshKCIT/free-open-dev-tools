@@ -1,0 +1,11 @@
+# Broken: an unrecognised top-level field on a Pod (the schema's own
+# additionalProperties: false rejects it).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: with-bogus
+bogusField: true
+spec:
+  containers:
+    - name: c
+      image: nginx

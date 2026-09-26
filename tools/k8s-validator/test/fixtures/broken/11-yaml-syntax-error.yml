@@ -1,0 +1,18 @@
+# Broken: a YAML syntax error (an unclosed flow sequence) in the second of
+# three --- separated documents.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: first
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: second
+spec:
+  containers: [name: c, image: nginx
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: third

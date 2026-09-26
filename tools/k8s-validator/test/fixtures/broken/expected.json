@@ -1,0 +1,51 @@
+[
+  {
+    "file": "01-missing-selector.yml",
+    "findings": [{ "line": 7, "column": 1, "path": "spec", "message": "missing the required key \"selector\"" }]
+  },
+  {
+    "file": "02-contianers-typo.yml",
+    "findings": [
+      { "line": 7, "column": 1, "path": "spec", "message": "missing the required key \"containers\"" },
+      { "line": 8, "column": 3, "path": "spec.contianers", "message": "\"contianers\" is not a recognised key here" }
+    ]
+  },
+  {
+    "file": "03-string-replicas.yml",
+    "findings": [{ "line": 8, "column": 13, "path": "spec.replicas", "message": "must be integer" }]
+  },
+  {
+    "file": "04-missing-apiversion.yml",
+    "findings": [{ "line": 2, "column": 1, "path": "", "message": "missing \"apiVersion\"" }]
+  },
+  {
+    "file": "05-unknown-top-level-field.yml",
+    "findings": [{ "line": 7, "column": 1, "path": "bogusField", "message": "\"bogusField\" is not a recognised key here" }]
+  },
+  {
+    "file": "06-wrong-type-service-port.yml",
+    "findings": [{ "line": 11, "column": 13, "path": "spec.ports[0].port", "message": "must be integer" }]
+  },
+  {
+    "file": "07-configmap-data-number.yml",
+    "findings": [{ "line": 8, "column": 10, "path": "data.count", "message": "must be string" }]
+  },
+  {
+    "file": "08-ingress-missing-pathtype.yml",
+    "findings": [
+      { "line": 12, "column": 13, "path": "spec.rules[0].http.paths[0]", "message": "missing the required key \"pathType\"" }
+    ]
+  },
+  {
+    "file": "09-cronjob-missing-schedule.yml",
+    "findings": [{ "line": 7, "column": 1, "path": "spec", "message": "missing the required key \"schedule\"" }]
+  },
+  {
+    "file": "10-duplicate-key.yml",
+    "findings": [{ "line": 6, "column": 3, "path": "", "message": "unique" }]
+  },
+  {
+    "file": "11-yaml-syntax-error.yml",
+    "findings": [{ "line": 14, "column": 1, "path": "", "message": "Flow sequence" }]
+  }
+]

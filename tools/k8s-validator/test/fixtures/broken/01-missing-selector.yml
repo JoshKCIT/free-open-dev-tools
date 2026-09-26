@@ -1,0 +1,16 @@
+# Broken: a Deployment with no spec.selector (Kubernetes API reference v1.35,
+# apps/v1 Deployment: selector and template are both required).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx

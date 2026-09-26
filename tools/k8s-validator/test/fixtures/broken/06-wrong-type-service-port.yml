@@ -1,0 +1,12 @@
+# Broken: a Service port given as a string instead of an integer
+# (Kubernetes API reference v1.35, ServicePort.port is format int32).
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: my-app
+  ports:
+    - port: "80"
+      targetPort: 9376

@@ -1,0 +1,15 @@
+# Broken: a CronJob with no spec.schedule (Kubernetes API reference v1.35,
+# batch/v1 CronJobSpec: schedule is required).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: hello
+              image: busybox
+          restartPolicy: OnFailure

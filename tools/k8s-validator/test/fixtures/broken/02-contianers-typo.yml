@@ -1,0 +1,10 @@
+# Broken: "contianers" instead of "containers" under a Pod spec (unknown
+# field; the schema's own PodSpec definition also requires containers).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: broken-containers
+spec:
+  contianers:
+    - name: c
+      image: nginx

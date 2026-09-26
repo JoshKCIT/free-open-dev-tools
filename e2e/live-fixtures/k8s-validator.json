@@ -1,0 +1,12 @@
+{
+  "id": "k8s-validator",
+  "label": "a Deployment with no spec.selector is reported by its key path and line, as apps/v1 Deployment requires selector",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  template:\n    metadata:\n      labels:\n        app: web\n    spec:\n      containers:\n        - name: web\n          image: nginx\n"
+    }
+  ],
+  "expect": ["selector", "Line 5"]
+}

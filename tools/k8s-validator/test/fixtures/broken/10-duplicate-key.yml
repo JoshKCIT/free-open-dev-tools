@@ -1,0 +1,10 @@
+# Broken: a duplicate mapping key (YAML 1.2.2 section 3.2.1.3, unique keys).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dup
+  name: dup-again
+spec:
+  containers:
+    - name: c
+      image: nginx

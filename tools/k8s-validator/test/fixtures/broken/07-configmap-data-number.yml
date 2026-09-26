@@ -1,0 +1,8 @@
+# Broken: a ConfigMap data value given as a number instead of a string
+# (Kubernetes API reference v1.35, ConfigMap.data is map[string]string).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+data:
+  count: 3

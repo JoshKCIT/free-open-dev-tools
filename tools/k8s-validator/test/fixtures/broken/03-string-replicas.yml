@@ -1,0 +1,19 @@
+# Broken: replicas as a quoted string instead of an integer (Kubernetes API
+# reference v1.35, apps/v1 DeploymentSpec.replicas is format int32).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: "3"
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx

@@ -1,0 +1,8 @@
+# Broken: no apiVersion at all, so this resource cannot be identified.
+kind: Pod
+metadata:
+  name: no-api-version
+spec:
+  containers:
+    - name: c
+      image: nginx
