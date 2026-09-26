@@ -166,7 +166,9 @@ export function generateGradient(options: GenerateGradientOptions): GenerateGrad
   const angle = angleResult.value;
 
   const shape: RadialShape = options.shape === 'circle' ? 'circle' : 'ellipse';
-  const size: RadialSize = RADIAL_SIZES.includes(options.size as RadialSize) ? (options.size as RadialSize) : 'farthest-corner';
+  const size: RadialSize = RADIAL_SIZES.includes(options.size as RadialSize)
+    ? (options.size as RadialSize)
+    : 'farthest-corner';
 
   const posXResult = clampNumber('Centre horizontal position', options.position?.x ?? 50, 0, 100, 50);
   const posYResult = clampNumber('Centre vertical position', options.position?.y ?? 50, 0, 100, 50);
@@ -181,7 +183,9 @@ export function generateGradient(options: GenerateGradientOptions): GenerateGrad
   const height = heightResult.value;
 
   const rawStops =
-    Array.isArray(options.stops) && options.stops.length >= MIN_STOPS ? options.stops.slice(0, MAX_STOPS) : DEFAULT_STOPS;
+    Array.isArray(options.stops) && options.stops.length >= MIN_STOPS
+      ? options.stops.slice(0, MAX_STOPS)
+      : DEFAULT_STOPS;
   const stops = rawStops.map((s, i) => resolveStop(s, i, warnings));
   warnAboutFixup(stops, warnings);
 

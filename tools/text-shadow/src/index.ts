@@ -86,7 +86,12 @@ interface ResolvedLayer {
   color: RgbaColor;
 }
 
-function safeLayerColor(text: string | undefined, opacity: number | undefined, field: string, warnings: string[]): RgbaColor {
+function safeLayerColor(
+  text: string | undefined,
+  opacity: number | undefined,
+  field: string,
+  warnings: string[],
+): RgbaColor {
   let base: RgbaColor;
   try {
     base = parseHexColor(text ?? DEFAULT_LAYER_COLOR, field);

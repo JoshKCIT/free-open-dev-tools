@@ -58,7 +58,16 @@ function stopFields(i: number): Field[] {
   const visible = (v: Values) => Number(v.stops ?? 3) >= n;
   return [
     { name: names.color, label: `Stop ${n} colour`, type: 'color', default: d.color, visible },
-    { name: names.at, label: `Stop ${n} position (%)`, type: 'number', default: d.at, min: 0, max: 100, step: 1, visible },
+    {
+      name: names.at,
+      label: `Stop ${n} position (%)`,
+      type: 'number',
+      default: d.at,
+      min: 0,
+      max: 100,
+      step: 1,
+      visible,
+    },
   ];
 }
 
@@ -179,7 +188,8 @@ export default defineTool({
       repeating: bool(values, 'repeating', false),
       angle: num(values, 'angle', 90),
       shape: str(values, 'shape', 'ellipse') as 'circle' | 'ellipse',
-      size: str(values, 'size', 'farthest-corner') as 'closest-side' | 'closest-corner' | 'farthest-side' | 'farthest-corner',
+      size: str(values, 'size', 'farthest-corner') as
+        'closest-side' | 'closest-corner' | 'farthest-side' | 'farthest-corner',
       position: point(values, 'position', { x: 50, y: 50 }),
       stops,
       width: num(values, 'width', 240),
