@@ -10,9 +10,18 @@ import {
   type YamlFinding,
 } from './yaml-source';
 import { GITHUB_WORKFLOW_SCHEMA, GITHUB_WORKFLOW_SCHEMA_COMMIT } from './github-workflow-schema';
+import { findExpressions, parseExpression } from './expressions';
 
 export { meta, YamlSourceError };
 export type { YamlFinding };
+export {
+  findExpressions,
+  findExpressionSpans,
+  parseExpression,
+  EXPRESSION_FUNCTIONS,
+  EXPRESSION_CONTEXTS,
+} from './expressions';
+export type { ExpressionContext, ExpressionProblem, ExpressionReference, ParseExpressionResult } from './expressions';
 
 export interface WorkflowValidateResult {
   valid: boolean;
@@ -280,6 +289,109 @@ function jobGraphFindings(value: unknown, docIndex: number, source: ReturnType<t
   return { findings };
 }
 
+/** Splits a pointer's own tokens back out (mirrors pointerFrom's own escaping). */
+function pointerTokens(pointer: string): string[] {
+  if (pointer === '') return [];
+  return pointer
+    .slice(1)
+    .split('/')
+    .map((t) => t.replace(/~1/g, '/').replace(/~0/g, '~'));
+}
+
+/**
+ * Every `${{ }}` expression in the document (found by `findExpressions`,
+ * which already handles a delimiter-less job/step `if`) is parsed with
+ * `parseExpression` and turned into a finding per problem, at the exact
+ * line and column inside the value, with the key path that holds it
+ * (D-100, success criterion 2). Two further checks read each expression's
+ * own context references, cited to the Contexts reference page
+ * (https://docs.github.com/en/actions/learn-github-actions/contexts,
+ * fetched 2026-09-26): a `steps.<id>` reference naming no step that runs
+ * earlier in the same job (a step's own outputs do not exist yet for any
+ * step before it, or for a job-level value, which runs before every step)
+ * becomes a warning, and a `needs.<job>` reference naming a job the current
+ * job does not itself list in `needs` (so that job's outputs were never
+ * guaranteed to exist when this one runs) becomes a warning too.
+ */
+function expressionFindings(
+  text: string,
+  source: ReturnType<typeof readYaml>,
+  docIndex: number,
+  value: unknown,
+): YamlFinding[] {
+  const findings: YamlFinding[] = [];
+  const entry = source.documents[docIndex];
+  if (!entry) return findings;
+
+  const jobs = isRecord(value) && isRecord(value.jobs) ? value.jobs : {};
+
+  for (const found of findExpressions(text, entry.doc)) {
+    const result = parseExpression(found.span.text);
+    const pos = entry ? source.lineCounter.linePos(found.absoluteStart) : { line: 1, col: 1 };
+
+    for (const problem of result.problems) {
+      const errorPos = source.lineCounter.linePos(found.absoluteStart + problem.offset);
+      findings.push({
+        line: errorPos.line,
+        column: errorPos.col,
+        path: pointerToPath(found.pointer),
+        pointer: found.pointer,
+        keyword: 'expression',
+        severity: 'error',
+        message: problem.message,
+      });
+    }
+
+    const tokens = pointerTokens(found.pointer);
+    const jobId = tokens[0] === 'jobs' ? tokens[1] : undefined;
+    const job = jobId !== undefined && isRecord(jobs[jobId]) ? (jobs[jobId] as Record<string, unknown>) : undefined;
+    if (!job) continue;
+
+    const stepIndex = tokens[2] === 'steps' && /^\d+$/.test(tokens[3] ?? '') ? Number(tokens[3]) : undefined;
+    const steps = Array.isArray(job.steps) ? job.steps : [];
+    const earlierStepIds = new Set(
+      steps
+        .slice(0, stepIndex ?? steps.length)
+        .filter((s): s is Record<string, unknown> => isRecord(s) && typeof s.id === 'string')
+        .map((s) => s.id as string),
+    );
+    const ownNeeds = new Set(needsList(job.needs));
+
+    for (const ref of result.references) {
+      if (ref.context === 'steps') {
+        const stepId = ref.path.split('.')[1];
+        if (stepId && !earlierStepIds.has(stepId)) {
+          findings.push({
+            line: pos.line,
+            column: pos.col,
+            path: pointerToPath(found.pointer),
+            pointer: found.pointer,
+            keyword: 'steps-context',
+            severity: 'warning',
+            message: `This references the output of step "${stepId}", which is not a step that has already run in this job.`,
+          });
+        }
+      }
+      if (ref.context === 'needs') {
+        const neededJob = ref.path.split('.')[1];
+        if (neededJob && !ownNeeds.has(neededJob)) {
+          findings.push({
+            line: pos.line,
+            column: pos.col,
+            path: pointerToPath(found.pointer),
+            pointer: found.pointer,
+            keyword: 'needs-context',
+            severity: 'warning',
+            message: `This references job "${neededJob}", which this job does not list in its own needs, so that job's outputs are not guaranteed to exist yet.`,
+          });
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
 /**
  * Several schema properties (`timeout-minutes`, `continue-on-error`,
  * `environment`, and others) accept EITHER a plain value OR
@@ -430,8 +542,9 @@ export function validateWorkflow(text: string): WorkflowValidateResult {
 
   const { findings: onFindings, events } = checkOn(value, 0, source);
   const { findings: jobFindings } = jobGraphFindings(value, 0, source);
+  const exprFindings = expressionFindings(text, source, 0, value);
 
-  const findings = [...schemaFindings, ...onFindings, ...jobFindings].sort(
+  const findings = [...schemaFindings, ...onFindings, ...jobFindings, ...exprFindings].sort(
     (a, b) => a.line - b.line || a.column - b.column,
   );
   const jobs = isRecord(value) && isRecord(value.jobs) ? Object.keys(value.jobs) : [];

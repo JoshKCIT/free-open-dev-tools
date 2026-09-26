@@ -1,0 +1,8 @@
+# Broken: "secret" is not a context; the correct name is "secrets".
+# https://docs.github.com/en/actions/learn-github-actions/contexts
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ${{ secret.TOKEN }}

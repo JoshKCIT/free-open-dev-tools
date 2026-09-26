@@ -1,0 +1,10 @@
+# Broken: format() takes at least two arguments (a format string and a value).
+# https://docs.github.com/en/actions/learn-github-actions/expressions
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        env:
+          X: ${{ format() }}

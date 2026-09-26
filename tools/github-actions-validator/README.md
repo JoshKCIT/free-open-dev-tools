@@ -7,7 +7,7 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Checks a GitHub Actions workflow file against the official SchemaStore workflow schema, reporting every problem at its line, column and key path -- an unknown key, a wrong type, an event name this schema does not accept, a needs entry naming a missing job, a needs cycle, or a step id repeated within one job. Nothing about the file is sent anywhere; validation runs entirely in this tab, in a background worker so a pathological file cannot freeze it.
+Checks a GitHub Actions workflow file against the official SchemaStore workflow schema, reporting every problem at its line, column and key path -- an unknown key, a wrong type, an event name this schema does not accept, a needs entry naming a missing job, a needs cycle, a step id repeated within one job, or a malformed ${{ }} expression. Nothing about the file is sent anywhere; validation runs entirely in this tab, in a background worker so a pathological file cannot freeze it.
 
 ## Supported
 
@@ -16,16 +16,21 @@ Checks a GitHub Actions workflow file against the official SchemaStore workflow 
 - A job's needs referring to another job in the same file, including a needs cycle spanning any number of jobs
 - A step id repeated within one job
 - YAML anchors and aliases, resolved as ordinary YAML
+- The documented ${{ }} expression grammar: literals, operators, property access, the * object filter, every documented function and its argument count, the twelve contexts, and the status check functions -- checked for syntax only, never evaluated
+- An if condition written without the ${{ }} delimiters, read as an expression the way GitHub documents
+- A warning when steps.<id> names a step that has not already run in the same job, or needs.<job> names a job the current job does not list in its own needs
 
 ## Limits
 
 - This tool cannot check that an action or reusable workflow named in uses actually exists at the given ref, that a runner label is available on the account running the workflow, or that a secret or variable referenced in the workflow is defined -- only a real run on GitHub can show that.
 - The bundled schema is a snapshot of SchemaStore's GitHub Actions workflow schema at one pinned commit; a change GitHub publishes afterwards is not reflected here until this tool is updated.
 - GitHub's own documentation does not state whether its workflow parser applies the YAML << merge key; this tool reads workflows without applying it (see the ambiguity below), so a workflow relying on one may be reported differently than GitHub reports it.
+- This tool never evaluates an expression, so it cannot tell whether a well-formed expression's context or property actually exists at run time (for example a step id that is spelled correctly but belongs to a step that was skipped) -- only a real run on GitHub can show that.
 
 ## Ambiguous cases, and what this does about them
 
 - GitHub's documentation does not address YAML anchors, aliases or the << merge key for workflow files directly, and no vendored SchemaStore or starter-workflow example uses a merge key. This tool resolves anchors and aliases (an ordinary part of reading any YAML document) but does not apply << merge keys, matching the yaml package's own conservative default rather than asserting untested behaviour.
+- GitHub's expressions page never states whether function names are case sensitive. This tool matches them case-insensitively (accepting fromJson as well as fromJSON) because SchemaStore's own accepted positive test fixture workflow_call_input_issue_2501.yaml spells it fromJson and GitHub accepts that file -- empirical evidence from GitHub's own accepted-workflow corpus, not a claim the fetched page itself makes.
 
 ## Defined by
 
@@ -33,6 +38,7 @@ Checks a GitHub Actions workflow file against the official SchemaStore workflow 
 - [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions)
 - [Events that trigger workflows](https://docs.github.com/en/actions/reference/events-that-trigger-workflows)
 - [Evaluate expressions in workflows and actions](https://docs.github.com/en/actions/learn-github-actions/expressions)
+- [Contexts reference](https://docs.github.com/en/actions/learn-github-actions/contexts)
 - [YAML 1.2.2](https://yaml.org/spec/1.2.2/)
 - [RFC 6901 (JSON Pointer)](https://www.rfc-editor.org/rfc/rfc6901)
 

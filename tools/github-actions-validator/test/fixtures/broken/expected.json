@@ -42,5 +42,21 @@
   {
     "file": "11-on-object-unknown-event.yml",
     "findings": [{ "line": 4, "path": "on.pushh", "message": "pushh" }]
+  },
+  {
+    "file": "12-expr-unbalanced-paren.yml",
+    "findings": [{ "line": 9, "path": "jobs.build.steps[0].if", "message": "closing \")\"" }]
+  },
+  {
+    "file": "13-expr-wrong-arg-count.yml",
+    "findings": [{ "line": 10, "path": "jobs.build.steps[0].env.X", "message": "format" }]
+  },
+  {
+    "file": "14-expr-unknown-context.yml",
+    "findings": [{ "line": 8, "path": "jobs.build.steps[0].run", "message": "secret" }]
+  },
+  {
+    "file": "15-expr-unknown-function.yml",
+    "findings": [{ "line": 9, "path": "jobs.build.steps[0].if", "message": "notAFunction" }]
   }
 ]

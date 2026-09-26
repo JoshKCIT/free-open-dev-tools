@@ -1,0 +1,9 @@
+# Broken: "notAFunction" is not a function this grammar defines.
+# https://docs.github.com/en/actions/learn-github-actions/expressions
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        if: ${{ notAFunction('x') }}

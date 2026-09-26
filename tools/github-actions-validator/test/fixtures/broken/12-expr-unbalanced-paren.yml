@@ -1,0 +1,9 @@
+# Broken: an unbalanced parenthesis inside a "${{ }}" expression.
+# https://docs.github.com/en/actions/learn-github-actions/expressions
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        if: ${{ contains(github.ref, 'main' }}
