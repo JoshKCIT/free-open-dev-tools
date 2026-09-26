@@ -1,0 +1,10 @@
+[
+  {
+    "values": {
+      "extraOptions": "outDir=dist",
+      "include": "src",
+      "extendsPath": "./tsconfig.base.json"
+    },
+    "attachesFile": false
+  }
+]

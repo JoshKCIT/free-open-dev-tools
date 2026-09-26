@@ -1,0 +1,6 @@
+{
+  "id": "tsconfig-builder",
+  "label": "the node-library preset gives module and moduleResolution nodenext, the handbook's own recommendation for a Node.js library",
+  "steps": [{ "action": "select", "field": "preset", "value": "node-library" }],
+  "expect": ["nodenext"]
+}
