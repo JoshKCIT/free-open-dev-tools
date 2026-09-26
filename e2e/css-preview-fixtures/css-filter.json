@@ -1,0 +1,30 @@
+{
+  "id": "css-filter",
+  "drag": [{ "field": "shadow1", "steps": [{ "action": "select", "field": "fn1", "value": "drop-shadow" }] }],
+  "scenarios": [
+    { "label": "default grayscale and blur", "steps": [], "pixels": true },
+    {
+      "label": "sepia then hue rotation",
+      "steps": [
+        { "action": "select", "field": "fn1", "value": "sepia" },
+        { "action": "fill", "field": "amount1", "value": "80" },
+        { "action": "select", "field": "fn2", "value": "hue-rotate" },
+        { "action": "fill", "field": "amount2", "value": "90" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "drop shadow",
+      "steps": [
+        { "action": "select", "field": "count", "value": "1" },
+        { "action": "select", "field": "fn1", "value": "drop-shadow" },
+        { "action": "fill", "field": "shadow1-x", "value": "6" },
+        { "action": "fill", "field": "shadow1-y", "value": "6" },
+        { "action": "fill", "field": "shadowBlur1", "value": "4" },
+        { "action": "fill", "field": "width", "value": "480" },
+        { "action": "fill", "field": "height", "value": "480" }
+      ],
+      "pixels": true
+    }
+  ]
+}

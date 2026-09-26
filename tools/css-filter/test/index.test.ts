@@ -93,7 +93,7 @@ it('every declaration is valid for its property according to the css-tree lexer'
         expect(match.matched, `${node.property} did not match: ${result.css}`).not.toBeNull();
       }
     });
-    expect(declarationCount).toBe(9); // 5 on .photo, 4 on .photo-label
+    expect(declarationCount).toBe(10); // 6 on .photo, 4 on .photo-label
   }
 });
 

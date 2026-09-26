@@ -1,0 +1,12 @@
+{
+  "id": "css-filter",
+  "label": "Filter Effects Level 1's own function syntax, blur then grayscale",
+  "steps": [
+    { "action": "select", "field": "count", "value": "2" },
+    { "action": "select", "field": "fn1", "value": "blur" },
+    { "action": "fill", "field": "amount1", "value": "4" },
+    { "action": "select", "field": "fn2", "value": "grayscale" },
+    { "action": "fill", "field": "amount2", "value": "50" }
+  ],
+  "expect": ["filter: blur(4px) grayscale(50%);"]
+}
