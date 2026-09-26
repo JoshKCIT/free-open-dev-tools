@@ -68,10 +68,18 @@ interface TemplateLiteralNode extends Node {
   quasis: { value: { cooked: string | null; raw: string } }[];
 }
 
-function position(node: Node): { line: number; column: number } {
+/** 1-based line and column of a node's start position (acorn's own `loc.column` is 0-based). */
+export function nodePosition(node: Node): { line: number; column: number } {
   const loc = node.loc;
   if (!loc) return { line: 1, column: 1 };
   return { line: loc.start.line, column: loc.start.column + 1 };
+}
+
+const position = nodePosition;
+
+/** A short, human-readable description of why a node is not a literal value -- shared with callers that walk a node shape this module does not itself recurse into (an array-like config's own top-level entries, for example). */
+export function describeUnreadableNode(node: Node): string {
+  return describe(node);
 }
 
 function describe(node: Node): string {

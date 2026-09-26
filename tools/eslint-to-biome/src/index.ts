@@ -2,7 +2,7 @@ import * as acorn from 'acorn';
 import metaJson from './meta.json';
 import { readYaml, YamlSourceError } from './yaml-source';
 import { hasOwn, setOwn } from './own-property';
-import { readLiteralConfig } from './literal-reader';
+import { readLiteralConfig, describeUnreadableNode, nodePosition } from './literal-reader';
 import { BIOME_RULE_MAP, BIOME_UNSUPPORTED_RULES, BIOME_VERSION, MAPPED_PLUGINS } from './biome-rule-map';
 
 export const meta = metaJson;
@@ -257,8 +257,209 @@ function collectGlobalNames(globalsValue: unknown, acc: Record<string, true>): v
   }
 }
 
-function parseFlatConfig(_text: string): never {
-  throw new EslintToBiomeError('Flat config file support is not available yet.');
+/** Package names this tool treats as "inside the bundled plugin set" for an import declaration's own report line -- a best-effort match on common real package names, not the rule-name prefixes `MAPPED_PLUGINS` itself lists. */
+const BUNDLED_IMPORT_HINTS = [
+  '@eslint/js',
+  '@typescript-eslint',
+  'typescript-eslint',
+  'eslint-plugin-react-hooks',
+  'eslint-plugin-react',
+  'eslint-plugin-jsx-a11y',
+  'eslint-plugin-import',
+  'eslint-plugin-unicorn',
+];
+
+function isBundledImportSource(source: string): boolean {
+  return BUNDLED_IMPORT_HINTS.some((hint) => source === hint || source.startsWith(`${hint}/`));
+}
+
+interface AcornProgram extends acorn.Node {
+  body: acorn.Node[];
+}
+
+interface ImportDeclarationNode extends acorn.Node {
+  type: 'ImportDeclaration';
+  source: { value: unknown };
+}
+
+interface ExportDefaultDeclarationNode extends acorn.Node {
+  type: 'ExportDefaultDeclaration';
+  declaration: acorn.Node;
+}
+
+interface AssignmentLike extends acorn.Node {
+  type: 'ExpressionStatement';
+  expression: { type: string; left?: acorn.Node; right?: acorn.Node };
+}
+
+interface MemberLike extends acorn.Node {
+  type: 'MemberExpression';
+  object: acorn.Node & { type: string; name?: string };
+  property: acorn.Node & { type: string; name?: string };
+  computed: boolean;
+}
+
+function isModuleExportsTarget(node: acorn.Node | undefined): boolean {
+  if (!node || node.type !== 'MemberExpression') return false;
+  const member = node as MemberLike;
+  return (
+    !member.computed &&
+    member.object.type === 'Identifier' &&
+    member.object.name === 'module' &&
+    member.property.type === 'Identifier' &&
+    member.property.name === 'exports'
+  );
+}
+
+interface ArrayLikeNode extends acorn.Node {
+  elements?: (acorn.Node | null)[];
+  arguments?: acorn.Node[];
+}
+
+/**
+ * Reads the flat config's exported value as a list of config entries. A
+ * real array literal (`export default [...]`) reads each element directly.
+ * A call expression (`export default tseslint.config(...)`, a common
+ * helper-function pattern) is reported as a helper call, but its own
+ * arguments are still walked exactly like array elements -- the same
+ * "read from inside, effect unknown" treatment `literal-reader.ts` gives a
+ * call's own object arguments. A bare single object is treated as a
+ * one-entry array. Anything else is reported as could-not-read and yields
+ * no entries.
+ */
+function extractConfigEntries(node: acorn.Node, couldNotRead: CouldNotReadReport[]): Record<string, unknown>[] {
+  if (node.type === 'ObjectExpression') {
+    const { value, couldNotRead: nested } = readLiteralConfig(node);
+    couldNotRead.push(...nested);
+    return isPlainObject(value) ? [value] : [];
+  }
+
+  let elements: (acorn.Node | null)[];
+  if (node.type === 'ArrayExpression') {
+    elements = (node as ArrayLikeNode).elements ?? [];
+  } else if (node.type === 'CallExpression' || node.type === 'NewExpression') {
+    couldNotRead.push({ ...nodePosition(node), what: 'a helper call building the config array' });
+    elements = (node as ArrayLikeNode).arguments ?? [];
+  } else {
+    couldNotRead.push({ ...nodePosition(node), what: describeUnreadableNode(node) });
+    return [];
+  }
+
+  const entries: Record<string, unknown>[] = [];
+  for (const el of elements) {
+    if (el === null) continue;
+    if (el.type === 'SpreadElement') {
+      couldNotRead.push({ ...nodePosition(el), what: 'a spread' });
+      continue;
+    }
+    if (el.type === 'ObjectExpression') {
+      const { value, couldNotRead: nested } = readLiteralConfig(el);
+      couldNotRead.push(...nested);
+      if (isPlainObject(value)) entries.push(value);
+      continue;
+    }
+    couldNotRead.push({ ...nodePosition(el), what: describeUnreadableNode(el) });
+  }
+  return entries;
+}
+
+interface FlatParseResult {
+  entries: Record<string, unknown>[];
+  couldNotRead: CouldNotReadReport[];
+  notCarried: string[];
+}
+
+/**
+ * Parses a flat `eslint.config.js`/`.mjs`/`.cjs` file's syntax tree only
+ * (D-107): `acorn.parse` builds the tree, nothing is ever evaluated,
+ * imported or required. Finds the default export (`export ... default`) or
+ * a `module.exports = ...` assignment, and reads it as a list of config
+ * entries. Each `import` declaration is listed under `notCarried` naming
+ * its source and whether that source is inside or outside the bundled
+ * plugin set.
+ */
+function parseFlatConfig(text: string): FlatParseResult {
+  let program: AcornProgram;
+  try {
+    program = acorn.parse(text, { ecmaVersion: 'latest', sourceType: 'module', locations: true }) as AcornProgram;
+  } catch (err) {
+    const parseError = err as { message?: string; loc?: { line: number; column: number } };
+    throw new EslintToBiomeError(parseError.message ?? 'This could not be parsed as JavaScript.', {
+      line: parseError.loc?.line,
+      column: parseError.loc ? parseError.loc.column + 1 : undefined,
+    });
+  }
+
+  const notCarried: string[] = [];
+  for (const stmt of program.body) {
+    if (stmt.type === 'ImportDeclaration') {
+      const source = String((stmt as ImportDeclarationNode).source.value);
+      notCarried.push(
+        isBundledImportSource(source)
+          ? `Import "${source}" is inside the bundled plugin set.`
+          : `Import "${source}" is outside the bundled plugin set.`,
+      );
+    }
+  }
+
+  let exportNode: acorn.Node | undefined;
+  for (const stmt of program.body) {
+    if (stmt.type === 'ExportDefaultDeclaration') {
+      exportNode = (stmt as ExportDefaultDeclarationNode).declaration;
+      break;
+    }
+    if (stmt.type === 'ExpressionStatement') {
+      const expr = (stmt as AssignmentLike).expression;
+      if (expr.type === 'AssignmentExpression' && isModuleExportsTarget(expr.left) && expr.right) {
+        exportNode = expr.right;
+        break;
+      }
+    }
+  }
+
+  if (!exportNode) {
+    throw new EslintToBiomeError('No default export or module.exports assignment was found.');
+  }
+
+  const couldNotRead: CouldNotReadReport[] = [];
+  const entries = extractConfigEntries(exportNode, couldNotRead);
+  return { entries, couldNotRead, notCarried };
+}
+
+const FLAT_HANDLED_KEYS = new Set(['rules', 'languageOptions', 'files', 'ignores', 'plugins', 'linterOptions', 'name']);
+
+/** Applies one flat config array entry's `rules` and `languageOptions.globals` into `state`/`globalNames`, and lists every other recognised key (`files`, `ignores`, `plugins`, `linterOptions`, and anything else) under `notCarried` -- `files` and `ignores` name their own patterns. */
+function applyFlatEntry(
+  entry: Record<string, unknown>,
+  options: TranslateEslintConfigOptions,
+  state: RuleTranslationState,
+  globalNames: Record<string, true>,
+): void {
+  applyRules(entry.rules, options, state);
+
+  if (isPlainObject(entry.languageOptions)) {
+    collectGlobalNames(entry.languageOptions.globals, globalNames);
+    if (Object.keys(entry.languageOptions).some((k) => k !== 'globals')) {
+      state.notCarried.push('"languageOptions" (apart from globals) is not carried over.');
+    }
+  }
+
+  if (hasOwn(entry, 'files')) {
+    state.notCarried.push(`A "files" pattern (${JSON.stringify(entry.files)}) is not carried over.`);
+  }
+  if (hasOwn(entry, 'ignores')) {
+    state.notCarried.push(`An "ignores" pattern (${JSON.stringify(entry.ignores)}) is not carried over.`);
+  }
+  if (hasOwn(entry, 'plugins')) {
+    state.notCarried.push('"plugins" is not carried over; it has no equivalent in a Biome configuration.');
+  }
+  if (hasOwn(entry, 'linterOptions')) {
+    state.notCarried.push('"linterOptions" is not carried over; it has no equivalent in a Biome configuration.');
+  }
+  for (const key of Object.keys(entry)) {
+    if (FLAT_HANDLED_KEYS.has(key)) continue;
+    state.notCarried.push(`"${key}" is not carried over; it has no equivalent in a Biome configuration.`);
+  }
 }
 
 /**
@@ -282,52 +483,51 @@ export function translateEslintConfig(
 
   const requestedFormat = options.format ?? 'auto';
   let formatUsed: Exclude<EslintConfigFormat, 'auto'>;
-  let rawConfig: unknown;
-  let couldNotRead: CouldNotReadReport[] = [];
 
-  if (requestedFormat === 'json') {
-    const parsed = tryParseJsonLike(text);
-    if (!parsed) throw new EslintToBiomeError('This does not look like a single JSON object.');
-    rawConfig = parsed.config;
-    couldNotRead = parsed.couldNotRead;
-    formatUsed = 'json';
-  } else if (requestedFormat === 'yaml') {
-    const parsed = tryParseYaml(text);
-    if (!parsed) throw new EslintToBiomeError('This could not be read as YAML.');
-    rawConfig = parsed.config;
-    formatUsed = 'yaml';
-  } else if (requestedFormat === 'flat') {
-    rawConfig = parseFlatConfig(text);
-    formatUsed = 'flat';
-  } else {
+  if (requestedFormat === 'json') formatUsed = 'json';
+  else if (requestedFormat === 'yaml') formatUsed = 'yaml';
+  else if (requestedFormat === 'flat') formatUsed = 'flat';
+  else {
     const asJson = tryParseJsonLike(text);
-    if (asJson) {
-      rawConfig = asJson.config;
-      couldNotRead = asJson.couldNotRead;
-      formatUsed = 'json';
-    } else {
-      const asYaml = tryParseYaml(text);
-      if (asYaml) {
-        rawConfig = asYaml.config;
-        formatUsed = 'yaml';
-      } else {
-        rawConfig = parseFlatConfig(text);
-        formatUsed = 'flat';
-      }
-    }
-  }
-
-  const config = unwrapPackageJson(rawConfig);
-  if (!isPlainObject(config)) {
-    throw new EslintToBiomeError('This does not look like an ESLint configuration object.');
+    if (asJson) formatUsed = 'json';
+    else if (tryParseYaml(text)) formatUsed = 'yaml';
+    else formatUsed = 'flat';
   }
 
   const state: RuleTranslationState = { biomeRules: {}, mapped: [], unmapped: [], notCarried: [] };
-  applyRules(config.rules, options, state);
-  applyNotCarriedTopLevelKeys(config, state.notCarried);
-
   const globalNames: Record<string, true> = {};
-  collectGlobalNames(config.globals, globalNames);
+  let couldNotRead: CouldNotReadReport[] = [];
+
+  if (formatUsed === 'flat') {
+    const parsed = parseFlatConfig(text);
+    couldNotRead = parsed.couldNotRead;
+    state.notCarried.push(...parsed.notCarried);
+    for (const entry of parsed.entries) {
+      applyFlatEntry(entry, options, state, globalNames);
+    }
+  } else {
+    let rawConfig: unknown;
+    if (formatUsed === 'json') {
+      const parsed = tryParseJsonLike(text);
+      if (!parsed) throw new EslintToBiomeError('This does not look like a single JSON object.');
+      rawConfig = parsed.config;
+      couldNotRead = parsed.couldNotRead;
+    } else {
+      const parsed = tryParseYaml(text);
+      if (!parsed) throw new EslintToBiomeError('This could not be read as YAML.');
+      rawConfig = parsed.config;
+    }
+
+    const config = unwrapPackageJson(rawConfig);
+    if (!isPlainObject(config)) {
+      throw new EslintToBiomeError('This does not look like an ESLint configuration object.');
+    }
+
+    applyRules(config.rules, options, state);
+    applyNotCarriedTopLevelKeys(config, state.notCarried);
+    collectGlobalNames(config.globals, globalNames);
+  }
+
   const globals = Object.keys(globalNames).sort();
 
   const biome: Record<string, unknown> = {
