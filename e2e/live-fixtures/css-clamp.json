@@ -1,0 +1,11 @@
+{
+  "id": "css-clamp",
+  "label": "The straight-line fluid-scaling construction Utopia's own blog credits to Pedro Rodriguez: 16 to 24px between 320 and 1280px viewports",
+  "steps": [
+    { "action": "fill", "field": "minSize", "value": "16" },
+    { "action": "fill", "field": "maxSize", "value": "24" },
+    { "action": "fill", "field": "minViewport", "value": "320" },
+    { "action": "fill", "field": "maxViewport", "value": "1280" }
+  ],
+  "expect": ["clamp(1rem, 0.8333rem + 0.8333vw, 1.5rem)"]
+}

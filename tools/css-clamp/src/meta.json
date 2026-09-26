@@ -1,0 +1,37 @@
+{
+  "id": "css-clamp",
+  "name": "CSS Clamp Generator",
+  "summary": "Produce a fluid clamp() value from a size range and a viewport range.",
+  "about": "Builds a fluid font-size declaration from a minimum and maximum size and the viewport widths they should apply at, using the widely documented straight-line ('CSS lock') construction: a slope and intercept computed from the two size/viewport pairs, written as clamp(min, intercept + slope*100vw, max). The result equals the minimum at and below the minimum viewport, the maximum at and above the maximum viewport, and scales linearly in between, exactly as CSS's own clamp() function is defined to behave.",
+  "supports": [
+    "Fluid clamp() generation from a minimum size, maximum size, minimum viewport and maximum viewport",
+    "Output in rem (default, so the value still follows the visitor's font size preference) or px",
+    "Evaluating the resulting value at common device widths (320, 375, 768, 1024, 1280, 1440, 1920px) and the two chosen viewports",
+    "A warning, grounded in WCAG 2.2 success criterion 1.4.4 Resize Text, when the maximum size is disproportionately larger than the minimum"
+  ],
+  "limits": [
+    "The straight-line fluid-scaling construction is a widely used community convention (credited to Utopia and Pedro Rodriguez's original slope/intercept derivation), not part of any W3C specification -- only the clamp() function itself is standardised",
+    "Text that scales with the browser's viewport width can fail WCAG 2.2 success criterion 1.4.4 (Resize Text) if a user cannot reach 200 percent of the original size by zooming, which depends on how the browser's own zoom affects the reported viewport width; this tool warns when the size range looks risky but cannot test a real browser's zoom behaviour",
+    "Results assume the stated root font size for the rem output; a real page's root font size can differ if the visitor has changed their browser's default",
+    "Below the minimum viewport the value stays at the minimum size, and above the maximum viewport it stays at the maximum size -- it does not keep scaling past either bound"
+  ],
+  "ambiguities": [
+    "No fetched source states a precise numeric ratio above which a fluid range is certain to fail WCAG 2.2 1.4.4 on zoom; Adrian Roselli's documented warning (quoted via Smashing Magazine's 'Modern Fluid Typography Using CSS Clamp') is qualitative ('there is a chance'). This tool uses 2.5 (maximum more than 2.5 times the minimum) as its own conservative heuristic threshold, disclosed here rather than presented as a specification value."
+  ],
+  "standards": [
+    {
+      "label": "CSS Values and Units Module Level 4 (the clamp() function)",
+      "url": "https://www.w3.org/TR/css-values-4/"
+    },
+    {
+      "label": "WCAG 2.2 Success Criterion 1.4.4 Resize Text",
+      "url": "https://www.w3.org/TR/WCAG22/#resize-text"
+    }
+  ],
+  "keywords": ["css", "clamp", "fluid", "typography", "responsive", "font-size"],
+  "devDependencies": { "css-tree": "^3.2.1", "@types/css-tree": "^3.2.0" },
+  "primaryExport": "fluidClamp",
+  "usage": "import { fluidClamp, evaluateClamp } from '@fodt/css-clamp';\n\nconst result = fluidClamp({ minSize: 16, maxSize: 24, minViewport: 320, maxViewport: 1280 });\nresult.value; // 'clamp(1rem, 0.8333rem + 0.8333vw, 1.5rem)'\nevaluateClamp(result, 320); // 16 (px)\nevaluateClamp(result, 1280); // 24 (px)",
+  "apiNotes": "`slope` and `intercept` are always returned in raw px-per-px and px terms, independent of the chosen output unit, so a caller can evaluate or chart the underlying straight line without re-parsing the generated CSS text.",
+  "testNotes": "The clamp() function's own min/preferred/max semantics are quoted from CSS Values and Units Module Level 4 ('clamp(MIN, VAL, MAX) ... represents exactly the same value as max(MIN, min(VAL, MAX))'), fetched this session. WCAG 2.2's Resize Text wording ('text can be resized without assistive technology up to 200 percent without loss of content or functionality') is quoted from the fetched specification. The slope/intercept construction is quoted from Utopia's own blog post 'Preparing clamp() for typographic scales' (utopia.fyi/blog/clamp/, crediting Pedro Rodriguez), fetched this session. Adrian Roselli's 1.4.4 warning is quoted via Smashing Magazine's 'Modern Fluid Typography Using CSS Clamp' (2022), fetched this session, since Roselli's own site could not be reached over TLS from this session."
+}
