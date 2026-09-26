@@ -108,6 +108,11 @@ it('the vendored starter workflows validate with no errors', () => {
  */
 const KNOWN_DIFFERENCES: Record<string, string> = {};
 
+// Compiling the schema plus validating 63 vendored files is real, non-trivial
+// work; the default 5s per-test budget is comfortable in isolation (~2.7s
+// measured) but can be exceeded when the whole repo's test suites run
+// concurrently under CPU contention (a documented, transient pattern in this
+// project's own SUMMARY history, not a product defect).
 it('every SchemaStore positive test workflow validates and every negative test workflow is rejected, apart from the listed differences', () => {
   const positiveFiles = readdirSync(POSITIVE_DIR).filter((f) => f.endsWith('.yaml'));
   const negativeFiles = readdirSync(NEGATIVE_DIR).filter((f) => f.endsWith('.yaml'));
@@ -137,7 +142,7 @@ it('every SchemaStore positive test workflow validates and every negative test w
     }
     expect(hasError, `negative/${file} should be rejected`).toBe(true);
   }
-});
+}, 20_000);
 
 /** The 34 events (definitions.event.enum) against GitHub's own events-that-trigger-workflows page, fetched 2026-09-26. */
 const GITHUB_EVENTS_PAGE_LIST = [

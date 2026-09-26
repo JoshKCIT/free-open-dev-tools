@@ -1,0 +1,11 @@
+[
+  {
+    "mode": { "field": "transport", "value": "http" },
+    "values": {
+      "client": "claude-code",
+      "url": "https://example.invalid/mcp",
+      "headers": "Authorization=Bearer example"
+    },
+    "attachesFile": false
+  }
+]

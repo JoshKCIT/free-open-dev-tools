@@ -1,0 +1,11 @@
+{
+  "id": "mcp-config-builder",
+  "label": "a stdio filesystem server for Claude Desktop matches the MCP local-server guide",
+  "steps": [
+    { "action": "select", "field": "client", "value": "claude-desktop" },
+    { "action": "fill", "field": "name", "value": "filesystem" },
+    { "action": "fill", "field": "command", "value": "npx" },
+    { "action": "fill", "field": "args", "value": "-y\n@modelcontextprotocol/server-filesystem\n/Users/me/Desktop" }
+  ],
+  "expect": ["mcpServers", "@modelcontextprotocol/server-filesystem"]
+}
