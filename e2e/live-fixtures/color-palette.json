@@ -1,0 +1,11 @@
+{
+  "id": "color-palette",
+  "label": "CSS Color 4's own hsl hue example: hue 180 at full saturation and 50 percent lightness is cyan",
+  "steps": [
+    { "action": "fill", "field": "base", "value": "#ff0000" },
+    { "action": "radio", "field": "mode", "value": "harmony" },
+    { "action": "select", "field": "harmonyName", "value": "complementary" },
+    { "action": "radio", "field": "space", "value": "hsl" }
+  ],
+  "expect": ["#00ffff"]
+}

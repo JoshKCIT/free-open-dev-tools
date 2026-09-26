@@ -23,6 +23,7 @@ Checks a foreground and background colour pair against the WCAG 2.2 contrast rat
 - This tool cannot account for the font weight, size or anti-aliasing of the visitor's own page, or for how their own browser and display render the same colours
 - "Large-scale" text is assumed at the WCAG 2.2 glossary's own 18-point (about 24px) size for the large text sample; the normal text sample is shown at 16px
 - A colour that cannot be parsed at all falls back to this tool's own default with a warning naming the field, rather than blocking the check
+- A translucent colour is composited over the other colour (and, when the background itself is translucent, over white first) before contrast is measured, in sRGB only -- this tool does not model a printed or otherwise non-sRGB compositing environment
 
 ## Ambiguous cases, and what this does about them
 
