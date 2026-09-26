@@ -1,0 +1,11 @@
+[
+  {
+    "values": {
+      "owner": "example",
+      "repo": "project",
+      "packageName": "example-lib",
+      "description": "See https://example.invalid/docs"
+    },
+    "attachesFile": false
+  }
+]

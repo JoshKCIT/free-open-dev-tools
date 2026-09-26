@@ -1,0 +1,10 @@
+{
+  "id": "readme-generator",
+  "label": "checking the npm badge gives the shields.io npm version badge for the typed package name",
+  "steps": [
+    { "action": "fill", "field": "name", "value": "my-lib" },
+    { "action": "fill", "field": "packageName", "value": "my-lib" },
+    { "action": "check", "field": "badgeNpm" }
+  ],
+  "expect": ["https://img.shields.io/npm/v/my-lib"]
+}
