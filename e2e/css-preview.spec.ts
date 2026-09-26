@@ -71,6 +71,29 @@ export const HOSTILE_TEXT = [
   '@media (min-width: 10px) { .box {} }',
 ];
 
+/**
+ * Hostile text typed directly into a generator's own text/textarea fields
+ * (Task 2's own hostile-value test), the same kinds as every generator's
+ * copy of `css-safe.ts`'s own `HOSTILE_VALUES` battery. Every host is
+ * `example.invalid`.
+ */
+export const HOSTILE_FIELD_VALUES = [
+  'url(https://example.invalid/x)',
+  'url(//example.invalid/x)',
+  'URL (https://example.invalid/x)',
+  'image-set(url(https://example.invalid/x) 1x)',
+  'cross-fade(url(https://example.invalid/x))',
+  '@import url(https://example.invalid/x);',
+  '@font-face { src: url(https://example.invalid/x); }',
+  'red; background: url(https://example.invalid/x)',
+  'red } .evil { background: url(https://example.invalid/x)',
+  '</style><script>top.__fodtXss=1</script>',
+  '/* */ red',
+  'red !important',
+  'expression(alert(1))',
+  '-moz-binding:url(https://example.invalid/x.xml#exploit)',
+];
+
 /** Numbers embedded in a computed style string are compared within this tolerance. */
 export const NUMERIC_TOLERANCE = 0.01;
 
@@ -773,3 +796,263 @@ for (const { data: fixture } of FIXTURES) {
     }
   });
 }
+
+// --- Task 2: keyboard, hostile-value, narrow-screen and engine-capability tests ---
+
+test('every phase 8 generator with a page has a css preview fixture file', () => {
+  const pageIds = new Set(
+    readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => f.replace(/\.ts$/, '')),
+  );
+  const fixtureIds = new Set(FIXTURES.map((f) => f.data.id));
+  for (const id of PHASE_8_GENERATOR_IDS) {
+    if (!pageIds.has(id)) continue; // not built by this plan; a later plan's own fixture covers it
+    expect(fixtureIds, `${id} has a page but no e2e/css-preview-fixtures/${id}.json`).toContain(id);
+  }
+});
+
+/** Every visible, enabled control in the Input panel, tagged with a probe index for locating it again. */
+async function tagInputPanelControls(
+  page: Page,
+): Promise<{ selector: string; named: boolean; hasValueText: boolean; isSlider: boolean; tabIndex: number }[]> {
+  return page.evaluate(() => {
+    const panel = document.querySelector('section[aria-label="Input and options"]');
+    if (!panel) return [];
+    const els = Array.from(panel.querySelectorAll('input, select, textarea, button, [role="slider"]')) as HTMLElement[];
+    const seenRadio = new Set<string>();
+    const out: { selector: string; named: boolean; hasValueText: boolean; isSlider: boolean; tabIndex: number }[] = [];
+    let i = 0;
+    for (const el of els) {
+      const style = getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if ((el as HTMLInputElement).disabled) continue;
+      if (el instanceof HTMLInputElement && el.type === 'radio') {
+        if (seenRadio.has(el.name)) continue;
+        seenRadio.add(el.name);
+      }
+      const id = el.getAttribute('id');
+      const hasLabel = id ? !!document.querySelector(`label[for="${CSS.escape(id)}"]`) : false;
+      const hasAria = el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby');
+      const wrapped = !!el.closest('label');
+      const isButtonWithText = el.tagName === 'BUTTON' && (el.textContent ?? '').trim().length > 0;
+      el.setAttribute('data-fodt-probe', String(i));
+      out.push({
+        selector: `[data-fodt-probe="${i}"]`,
+        named: hasLabel || hasAria || wrapped || isButtonWithText,
+        hasValueText: el.hasAttribute('aria-valuetext'),
+        isSlider: el.getAttribute('role') === 'slider',
+        tabIndex: el.tabIndex,
+      });
+      i++;
+    }
+    return out;
+  });
+}
+
+for (const { data: fixture } of FIXTURES) {
+  const pagePath = join(root, 'apps', 'web', 'src', 'tools', `${fixture.id}.ts`);
+  if (!existsSync(pagePath)) continue;
+
+  test(`${fixture.id}: every control is reachable from the keyboard with an accessible name and each handle moves with the arrow keys`, async ({
+    page,
+    browserName,
+  }) => {
+    await page.goto(rel(`/tools/${fixture.id}`));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+    const controls = await tagInputPanelControls(page);
+    expect(controls.length, `${fixture.id} has no controls in its Input panel`).toBeGreaterThan(0);
+    for (const c of controls) {
+      expect(c.named, `${fixture.id} has an unnamed control ${c.selector}`).toBe(true);
+      if (c.isSlider) expect(c.hasValueText, `${fixture.id}'s slider ${c.selector} has no aria-valuetext`).toBe(true);
+    }
+
+    if (browserName === 'webkit') {
+      // WebKit's default Tab order omits some control kinds by design; this
+      // is documented per-engine truth, not a defect (D-112's own reachable-
+      // by-keyboard requirement is satisfied here by tabIndex plus a direct
+      // focus() call instead of a real Tab walk).
+      for (const c of controls) {
+        expect(c.tabIndex, `${fixture.id}'s control ${c.selector} has a negative tabIndex`).toBeGreaterThanOrEqual(0);
+        const focused = await page.locator(c.selector).evaluate((el) => {
+          (el as HTMLElement).focus();
+          return document.activeElement === el;
+        });
+        expect(focused, `${fixture.id}'s control ${c.selector} did not take focus() on WebKit`).toBe(true);
+      }
+    } else {
+      await page.locator(controls[0]!.selector).first().focus();
+      const reached = new Set<string>();
+      const recordFocused = async () => {
+        const probe = await page.evaluate(() => document.activeElement?.getAttribute('data-fodt-probe') ?? null);
+        if (probe !== null) reached.add(probe);
+      };
+      await recordFocused();
+      for (let i = 0; i < controls.length * 2 + 5 && reached.size < controls.length; i++) {
+        await page.keyboard.press('Tab');
+        await recordFocused();
+      }
+      const missing = controls.filter((c) => !reached.has(c.selector.match(/"(\d+)"/)![1]!));
+      expect(
+        missing.map((c) => c.selector),
+        `${fixture.id}: these controls were never reached by Tab`,
+      ).toEqual([]);
+    }
+
+    // Every handle: arrow keys move it, clamped, and change the CSS.
+    const handles = page.locator('.point-field [role="slider"]');
+    const handleCount = await handles.count();
+    for (let h = 0; h < handleCount; h++) {
+      const handle = handles.nth(h);
+      const fieldGroup = handle.locator('xpath=ancestor::div[contains(@class,"point-field")]');
+      const inputX = fieldGroup.locator('input[type="number"]').first();
+      const inputY = fieldGroup.locator('input[type="number"]').nth(1);
+      const step = Number((await inputX.getAttribute('step')) || '1');
+
+      await handle.focus();
+      const beforeX = Number(await inputX.inputValue());
+      const beforeY = Number(await inputY.inputValue());
+      const beforeCss = (await page.locator('.css-preview pre.output').first().innerText()).trim();
+
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowDown');
+      await settle(page);
+      const afterX = Number(await inputX.inputValue());
+      const afterY = Number(await inputY.inputValue());
+      expect(afterX, `handle ${h} on ${fixture.id} did not respond to ArrowRight`).toBeCloseTo(
+        Math.min(beforeX + step, Number(await inputX.getAttribute('max')) || Infinity),
+        5,
+      );
+      expect(afterY, `handle ${h} on ${fixture.id} did not respond to ArrowDown`).toBeGreaterThan(beforeY);
+      const afterCss = (await page.locator('.css-preview pre.output').first().innerText()).trim();
+      expect(afterCss, `handle ${h} on ${fixture.id}: arrow keys did not change the CSS`).not.toBe(beforeCss);
+
+      await inputX.focus();
+      const beforeInputX = Number(await inputX.inputValue());
+      await page.keyboard.press('ArrowUp');
+      const afterInputX = Number(await inputX.inputValue());
+      expect(afterInputX, `${fixture.id}'s horizontal numeric input did not step up on ArrowUp`).toBeCloseTo(
+        beforeInputX + step,
+        5,
+      );
+    }
+  });
+}
+
+for (const { data: fixture } of FIXTURES) {
+  const pagePath = join(root, 'apps', 'web', 'src', 'tools', `${fixture.id}.ts`);
+  if (!existsSync(pagePath)) continue;
+
+  test(`${fixture.id}: hostile text typed into every field reaches neither the CSS nor the network`, async ({
+    page,
+  }) => {
+    await page.goto(rel(`/tools/${fixture.id}`));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+    const requests: string[] = [];
+    page.on('request', (r) => requests.push(r.url()));
+
+    const panel = 'section[aria-label="Input and options"]';
+    for (const hostile of HOSTILE_FIELD_VALUES) {
+      const textInputs = page.locator(`${panel} textarea, ${panel} input[type="text"]`);
+      const textCount = await textInputs.count();
+      for (let i = 0; i < textCount; i++) {
+        const el = textInputs.nth(i);
+        if (await el.isVisible()) await el.fill(hostile);
+      }
+      const numberInputs = page.locator(`${panel} input[type="number"]`);
+      const numberCount = await numberInputs.count();
+      for (let i = 0; i < numberCount; i++) {
+        const el = numberInputs.nth(i);
+        if (await el.isVisible()) await el.fill('1e999');
+      }
+      await settle(page);
+    }
+
+    const nonDataRequests = requests.filter((u) => !u.startsWith('data:') && !u.startsWith('blob:'));
+    expect(nonDataRequests, `${fixture.id}: hostile text reached the network: ${nonDataRequests.join(', ')}`).toEqual(
+      [],
+    );
+
+    const cssText = await page
+      .locator('.css-preview pre.output')
+      .first()
+      .innerText()
+      .catch(() => '');
+    for (const token of ['url(', '@import', 'image-set(', 'example.invalid']) {
+      expect(cssText.toLowerCase(), `${fixture.id}'s CSS contains "${token}"`).not.toContain(token.toLowerCase());
+    }
+
+    const outputText = await page.locator('section[aria-label="Output"]').innerText();
+    expect(outputText, `${fixture.id} crashed on hostile input`).not.toMatch(/This is a bug/);
+
+    const stageCount = await page.locator('.css-preview-stage').count();
+    expect(stageCount, `${fixture.id}'s preview block disappeared after hostile input`).toBeGreaterThan(0);
+  });
+}
+
+for (const { data: fixture } of FIXTURES) {
+  const pagePath = join(root, 'apps', 'web', 'src', 'tools', `${fixture.id}.ts`);
+  if (!existsSync(pagePath)) continue;
+
+  test(`${fixture.id}: the preview and its CSS fit a 360 pixel wide screen without horizontal scrolling`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.goto(rel(`/tools/${fixture.id}`));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    await settle(page);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+    expect(overflow, `${fixture.id} scrolls horizontally at 360px wide`).toBe(false);
+  });
+}
+
+/**
+ * Proves, on every browser project, what `CssPreview.tsx` relies on:
+ * constructed stylesheets adopted by a shadow root apply a `@keyframes`
+ * animation and a `:hover` rule exactly as they would in the light DOM.
+ * Real hover state is used (`locator.hover()`), not a simulated style
+ * change, since `:hover` cannot otherwise be forced on an element from
+ * script. A failure here is fixed in this plan's own shared files (BJ),
+ * never in a later plan.
+ */
+test('the preview surface applies keyframes and hover rules inside a shadow root on this engine', async ({ page }) => {
+  await page.goto(rel('/'));
+  await page.evaluate(() => {
+    const host = document.createElement('div');
+    host.id = 'fodt-shadow-probe-host';
+    host.style.cssText = 'position:fixed;top:0;left:0;width:24px;height:24px;z-index:99999;background:#fff;';
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(
+      '@keyframes fodtprobefade { from { opacity: 0; } to { opacity: 1; } }' +
+        '.subject { width: 20px; height: 20px; animation: fodtprobefade 30s linear infinite paused; outline: 1px solid #000; }' +
+        '.subject:hover { outline-width: 7px; }',
+    );
+    shadow.adoptedStyleSheets = [sheet];
+    const el = document.createElement('div');
+    el.className = 'subject';
+    shadow.appendChild(el);
+  });
+
+  const probe = page.locator('#fodt-shadow-probe-host .subject');
+  const animInfo = await probe.evaluate((el) => {
+    const anims = (el as Element).getAnimations();
+    const kf = anims[0]?.effect instanceof KeyframeEffect ? anims[0].effect.getKeyframes() : null;
+    return { count: anims.length, keyframeCount: kf?.length ?? 0 };
+  });
+  expect(animInfo.count, 'the shadow root did not run the adopted @keyframes animation').toBe(1);
+  expect(animInfo.keyframeCount, 'the animation reported the wrong keyframe count').toBe(2);
+
+  const before = await probe.evaluate((el) => getComputedStyle(el).outlineWidth);
+  await probe.hover();
+  const after = await probe.evaluate((el) => getComputedStyle(el).outlineWidth);
+  expect(after, 'the shadow root did not apply its own :hover rule on this engine').toBe('7px');
+  expect(after).not.toBe(before);
+
+  await page.evaluate(() => document.getElementById('fodt-shadow-probe-host')?.remove());
+});

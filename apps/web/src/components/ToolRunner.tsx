@@ -19,10 +19,12 @@ function initialValues(fields: Field[]): Values {
     // both axes when no default is given, so Reset always hands back a
     // finite { x, y } rather than an empty object PointField would have to
     // special-case.
-    else if (f.type === 'point') {
-      const d = f.default as { x?: number; y?: number } | undefined;
-      v[f.name] = { x: d?.x ?? f.min ?? 0, y: d?.y ?? f.min ?? 0 };
-    } else v[f.name] = f.default ?? '';
+    else if (f.type === 'point')
+      v[f.name] = {
+        x: (f.default as { x?: number } | undefined)?.x ?? f.min ?? 0,
+        y: (f.default as { y?: number } | undefined)?.y ?? f.min ?? 0,
+      };
+    else v[f.name] = f.default ?? '';
   }
   return v;
 }

@@ -1,4 +1,4 @@
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { useCallback, useRef } from 'react';
 import type { Field } from '../lib/tool-ui';
 
@@ -18,11 +18,25 @@ function roundToStep(v: number, step: number): number {
 
 /**
  * A draggable `{ x, y }` handle with paired numeric inputs (D-111, D-112).
- * The pad's own handle is pointer-only in this file's first form
- * (`aria-hidden`, not focusable): the two numeric inputs, each with its own
- * accessible name (the field label plus the axis name), are the keyboard
- * path. A later change makes the handle itself a keyboard-operable slider
- * as well.
+ * The handle is a keyboard-operable slider (WAI-ARIA 1.2's slider role,
+ * https://www.w3.org/TR/wai-aria-1.2/#slider: "An input where the user
+ * selects a value from within a given range... Authors MUST set the
+ * aria-valuenow attribute", accessible name required) representing the
+ * horizontal axis's own min/max/now, with `aria-valuetext` naming both
+ * axes' values (the two-axis colour-picker convention: one slider element,
+ * both values in its value text) -- and the two numeric inputs, each with
+ * its own accessible name, are a second, always-available keyboard path.
+ *
+ * Keyboard interaction on the handle follows the ARIA Authoring Practices
+ * Guide's own slider pattern (arrow keys step by one, Home/End jump to the
+ * bounds, Page Up/Down make a larger jump), adapted to two axes: ArrowLeft
+ * and ArrowRight change the horizontal value, ArrowUp and ArrowDown the
+ * vertical value with ArrowDown increasing it (matching the pad's own
+ * top-to-bottom, min-to-max layout -- the APG's own note that "reversing
+ * the direction... could create a more intuitive experience" applies
+ * exactly here), Shift multiplies the step by ten, Home and End set the
+ * horizontal minimum and maximum, and Page Up and Page Down set the
+ * vertical minimum and maximum.
  */
 export default function PointField({
   field,
@@ -74,6 +88,48 @@ export default function PointField({
     fromPointer(e.clientX, e.clientY);
   };
 
+  const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const s = step * (e.shiftKey ? 10 : 1);
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        write(x - s, y);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        write(x + s, y);
+        break;
+      case 'ArrowUp':
+        // Up moves the handle toward the pad's own top, which is the
+        // vertical minimum -- so it decreases y.
+        e.preventDefault();
+        write(x, y - s);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        write(x, y + s);
+        break;
+      case 'Home':
+        e.preventDefault();
+        write(min, y);
+        break;
+      case 'End':
+        e.preventDefault();
+        write(max, y);
+        break;
+      case 'PageUp':
+        e.preventDefault();
+        write(x, min);
+        break;
+      case 'PageDown':
+        e.preventDefault();
+        write(x, max);
+        break;
+      default:
+        break;
+    }
+  };
+
   const span = max - min || 1;
   const fx = ((x - min) / span) * 100;
   const fy = ((y - min) / span) * 100;
@@ -97,7 +153,18 @@ export default function PointField({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
       >
-        <div className="point-handle" aria-hidden="true" style={{ left: `${fx}%`, top: `${fy}%` }} />
+        <div
+          className="point-handle"
+          role="slider"
+          tabIndex={0}
+          aria-labelledby={labelId}
+          aria-valuemin={min}
+          aria-valuemax={max}
+          aria-valuenow={x}
+          aria-valuetext={`${axisX} ${x}, ${axisY} ${y}`}
+          onKeyDown={onHandleKeyDown}
+          style={{ left: `${fx}%`, top: `${fy}%` }}
+        />
       </div>
       <div className="point-inputs">
         <label htmlFor={`${id}-x`}>
