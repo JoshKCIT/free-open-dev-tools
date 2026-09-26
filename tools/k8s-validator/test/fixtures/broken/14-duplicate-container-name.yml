@@ -1,0 +1,13 @@
+# Broken: two containers named "app" in the same Pod template (container
+# names must be unique within a Pod, per the schema's own
+# x-kubernetes-list-map-keys: [name] marker on containers).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dup-containers
+spec:
+  containers:
+    - name: app
+      image: nginx
+    - name: app
+      image: redis

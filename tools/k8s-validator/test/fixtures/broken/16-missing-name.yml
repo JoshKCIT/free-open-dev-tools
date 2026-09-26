@@ -1,0 +1,7 @@
+# Broken: an object with neither metadata.name nor metadata.generateName
+# (Object Names and IDs page: every object needs a usable name).
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    team: platform

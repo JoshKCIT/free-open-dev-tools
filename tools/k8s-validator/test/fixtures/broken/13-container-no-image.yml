@@ -1,0 +1,10 @@
+# Broken: a container with no image (cannot run, even though the schema's
+# own Container.image description marks it optional for controller-injected
+# defaults this tool cannot see).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-image
+spec:
+  containers:
+    - name: c

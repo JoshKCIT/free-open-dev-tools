@@ -1,0 +1,12 @@
+# Broken: containerPort above 65535 (Kubernetes API reference v1.35,
+# ContainerPort.containerPort: "This must be a valid port number, 0 < x < 65536.").
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-port
+spec:
+  containers:
+    - name: c
+      image: nginx
+      ports:
+        - containerPort: 70000

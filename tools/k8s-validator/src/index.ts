@@ -11,7 +11,8 @@ import {
   type ReadYamlResult,
 } from './yaml-source';
 import { K8S_SCHEMA_SUBSET, K8S_SCHEMA_VERSION, K8S_SCHEMA_COMMIT } from './k8s-schema-subset';
-import { KINDS } from './kinds';
+import { KINDS, REMOVED_API_VERSIONS } from './kinds';
+import { semanticFindings } from './semantic-checks';
 
 export { meta, YamlSourceError };
 export type { YamlFinding };
@@ -120,6 +121,26 @@ function checkResource(
   const entry = KINDS.find((k) => k.apiVersion === apiVersion && k.kind === kind);
 
   if (!entry) {
+    // A known kind under a removed apiVersion gets a specific, actionable
+    // error instead of the generic not-checked note (this replaces it for
+    // exactly these pairs, per the Deprecated API Migration Guide).
+    const removed = REMOVED_API_VERSIONS.find((r) => r.kind === kind && r.removedApiVersion === apiVersion);
+    if (removed) {
+      const apiVersionPointer = `${pointerPrefix}/apiVersion`;
+      const apiVersionPos = locatePointer(source, docIndex, apiVersionPointer, { key: true });
+      findings.push({
+        line: apiVersionPos.line,
+        column: apiVersionPos.column,
+        path: pointerToPath(apiVersionPointer),
+        pointer: apiVersionPointer,
+        keyword: 'removed-api-version',
+        severity: 'error',
+        message: `Kubernetes ${removed.removedInRelease} stopped serving ${kind} ${removed.removedApiVersion}. Use ${removed.servedApiVersion} instead.`,
+      });
+      documents.push({ index: docIndex, line, apiVersion, kind, name, checked: false });
+      return;
+    }
+
     findings.push({
       line,
       column: pos.column,
@@ -140,6 +161,7 @@ function checkResource(
   const isValid = validateFn(value) as boolean;
   const rawErrors = prefixErrors((validateFn.errors ?? []) as ErrorObject[], pointerPrefix);
   findings.push(...findingsFromAjvErrors(source, docIndex, rawErrors));
+  findings.push(...semanticFindings(source, docIndex, pointerPrefix, value, entry));
 
   documents.push({ index: docIndex, line, apiVersion, kind, name, checked: true });
   void isValid; // errors array already carries every problem; the boolean itself is not needed beyond that.

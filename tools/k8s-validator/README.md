@@ -29,9 +29,9 @@ Checks one or more Kubernetes manifests, separated by --- , against a bundled su
 
 ## Ambiguous cases, and what this does about them
 
-- The bundled schema's own Container definition marks image optional ('This field is optional to allow higher level config management to default or override container images in workload controllers'), so a container with no image validates against the schema with no error. This tool still reports it as an obvious mistake (a container without an image cannot run), since it has no way to know whether the visitor's own tooling injects one later -- following the same 'schema says optional, this tool flags it anyway' precedent docker-compose-validator (07-01) already documents for a Compose service missing image and build.
+- The bundled schema's own Container definition marks image optional ('This field is optional to allow higher level config management to default or override container images in workload controllers'), so a container with no image validates against the schema with no error. This tool still reports it as an obvious mistake (a container without an image cannot run), since it has no way to know whether the visitor's own tooling injects one later.
 - Object naming rules are simplified to two buckets rather than modelling every kind's own fine print: the DNS Subdomain Name rule (RFC 1123, at most 253 characters) is applied to every bundled kind except Service, which Kubernetes documents separately under the RFC 1123 Label Name rule (at most 63 characters, conventionally starting with a letter); the RelaxedServiceNameValidation feature gate, which lets a Service name start with a digit on clusters that enable it, is not modelled.
-- YAML merge keys (<<) are not applied when reading a manifest, since no fetched Kubernetes documentation describes merge-key semantics for manifests the way the Compose Specification's own Fragments section does for Compose files; a manifest using << is read literally.
+- YAML merge keys (<<) are not applied when reading a manifest, since no fetched Kubernetes documentation describes merge-key semantics for a manifest the way some other formats' own specifications describe merge keys for themselves; a manifest using << is read literally.
 
 ## Defined by
 

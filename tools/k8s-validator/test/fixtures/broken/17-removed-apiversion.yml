@@ -1,0 +1,18 @@
+# Broken: extensions/v1beta1 Deployment, removed in Kubernetes v1.16 per the
+# Deprecated API Migration Guide (kubernetes.io/docs/reference/using-api/deprecation-guide/).
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx

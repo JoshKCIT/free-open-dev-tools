@@ -47,5 +47,38 @@
   {
     "file": "11-yaml-syntax-error.yml",
     "findings": [{ "line": 14, "column": 1, "path": "", "message": "Flow sequence" }]
+  },
+  {
+    "file": "12-selector-mismatch.yml",
+    "findings": [{ "line": 10, "column": 5, "path": "spec.selector", "message": "does not match its own Pod template labels" }]
+  },
+  {
+    "file": "13-container-no-image.yml",
+    "findings": [{ "line": 10, "column": 7, "path": "spec.containers[0].name", "message": "has no image" }]
+  },
+  {
+    "file": "14-duplicate-container-name.yml",
+    "findings": [
+      { "line": 12, "column": 7, "path": "spec.containers[1].name", "message": "already used earlier in this Pod template" }
+    ]
+  },
+  {
+    "file": "15-port-out-of-range.yml",
+    "findings": [
+      {
+        "line": 12,
+        "column": 26,
+        "path": "spec.containers[0].ports[0].containerPort",
+        "message": "must be between 1 and 65535"
+      }
+    ]
+  },
+  {
+    "file": "16-missing-name.yml",
+    "findings": [{ "line": 5, "column": 1, "path": "metadata", "message": "no usable name" }]
+  },
+  {
+    "file": "17-removed-apiversion.yml",
+    "findings": [{ "line": 3, "column": 1, "path": "apiVersion", "message": "Kubernetes v1.16 stopped serving Deployment extensions/v1beta1" }]
   }
 ]
