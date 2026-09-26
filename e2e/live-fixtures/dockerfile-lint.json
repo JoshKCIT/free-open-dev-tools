@@ -1,0 +1,6 @@
+{
+  "id": "dockerfile-lint",
+  "label": "a base image pinned to the latest tag is reported at its line",
+  "steps": [{ "action": "fill", "field": "input", "value": "FROM node:latest\n" }],
+  "expect": ["latest", "Line 1"]
+}

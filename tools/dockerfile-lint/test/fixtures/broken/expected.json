@@ -1,0 +1,302 @@
+[
+  {
+    "file": "add-local-path.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "ADD",
+        "message": "This ADD copies only local files; COPY is the more predictable instruction for that.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "apt-get-hygiene.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "RUN",
+        "message": "This apt-get install has no -y (or --yes), so it will wait on a prompt no build can answer.",
+        "severity": "warning"
+      },
+      {
+        "line": 3,
+        "column": 1,
+        "path": "RUN",
+        "message": "This apt-get install has no --no-install-recommends, so it pulls in every recommended package too.",
+        "severity": "warning"
+      },
+      {
+        "line": 3,
+        "column": 1,
+        "path": "RUN",
+        "message": "This RUN does not remove /var/lib/apt/lists afterwards, so the package index stays in this layer.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "apt-get-upgrade.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "RUN",
+        "message": "This RUN upgrades every installed package, which depends on whatever versions are current on the mirror at build time.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "cd-instead-of-workdir.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "RUN",
+        "message": "This RUN uses cd to change directory; that only affects this one RUN. Use WORKDIR to change it for every instruction that follows.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "copy-from-unknown-stage.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "COPY",
+        "message": "This COPY --from=\"build\" names no earlier stage in this file."
+      }
+    ]
+  },
+  {
+    "file": "duplicate-stage-name.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "FROM",
+        "message": "The stage name \"base\" is already used earlier in this file."
+      }
+    ]
+  },
+  {
+    "file": "expose-invalid-format.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "EXPOSE",
+        "message": "The EXPOSE port \"70000\" is not a number from 1 to 65535."
+      },
+      {
+        "line": 5,
+        "column": 1,
+        "path": "EXPOSE",
+        "message": "The EXPOSE protocol \"bogus\" is neither tcp nor udp."
+      }
+    ]
+  },
+  {
+    "file": "expose-proto-casing.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "EXPOSE",
+        "message": "The EXPOSE protocol \"TCP\" should be written lowercase.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "from-latest-tag.Dockerfile",
+    "findings": [
+      {
+        "line": 2,
+        "column": 1,
+        "path": "FROM",
+        "message": "The base image \"node:latest\" is pinned to the \"latest\" tag, which moves over time.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "from-missing-tag.Dockerfile",
+    "findings": [
+      {
+        "line": 2,
+        "column": 1,
+        "path": "FROM",
+        "message": "The base image \"node\" has no explicit tag, so it resolves to \"latest\" today and possibly something else tomorrow.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "instruction-before-from.Dockerfile",
+    "findings": [
+      {
+        "line": 2,
+        "column": 1,
+        "path": "RUN",
+        "message": "\"RUN\" appears before the first FROM instruction; the Dockerfile reference allows only ARG there."
+      }
+    ]
+  },
+  {
+    "file": "legacy-env-format.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "ENV",
+        "message": "This ENV uses the legacy \"key value\" form with no equals sign.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "maintainer-deprecated.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "MAINTAINER",
+        "message": "MAINTAINER is deprecated; use a LABEL to record an image author instead.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "malformed-exec-array.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "CMD",
+        "message": "This CMD instruction's JSON array form is malformed and could not be parsed: Expected ',' or ']' after array element in JSON at position 20 (line 1 column 21)."
+      }
+    ]
+  },
+  {
+    "file": "multiple-cmd.Dockerfile",
+    "findings": [
+      {
+        "line": 5,
+        "column": 1,
+        "path": "CMD",
+        "message": "This stage already has an earlier CMD; only the last one takes effect.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "root-user.Dockerfile",
+    "findings": [
+      {
+        "line": 2,
+        "column": 1,
+        "path": "FROM",
+        "message": "No USER instruction sets a non-root user in the final stage, so the image runs as root by default.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "secret-in-env.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "ENV",
+        "message": "The name \"API_TOKEN\" looks like it holds a secret; ENV is visible in the build history or the running container.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "shell-form-cmd.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "CMD",
+        "message": "This CMD uses shell form; the JSON array form avoids an intermediate shell that would not forward signals.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "stage-name-casing.Dockerfile",
+    "findings": [
+      {
+        "line": 2,
+        "column": 1,
+        "path": "FROM",
+        "message": "The stage name \"Base\" should be lowercase.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "sudo-in-run.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "RUN",
+        "message": "This RUN uses sudo, which has unpredictable behaviour inside a build and crosses no real privilege boundary here.",
+        "severity": "warning"
+      }
+    ]
+  },
+  {
+    "file": "undefined-arg-in-from.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "FROM",
+        "message": "This FROM instruction uses \"VERSION\", which was not declared with ARG and a default value before the first FROM instruction, so it would resolve to an empty, invalid image reference unless the build supplies one."
+      }
+    ]
+  },
+  {
+    "file": "unknown-instruction.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "FOOBAR",
+        "message": "\"FOOBAR\" is not an instruction the Dockerfile reference defines."
+      }
+    ]
+  },
+  {
+    "file": "unterminated-heredoc.Dockerfile",
+    "findings": [
+      {
+        "line": 4,
+        "column": 1,
+        "path": "RUN",
+        "message": "This here-document has no line containing only its terminator \"EOF\"."
+      }
+    ]
+  },
+  {
+    "file": "workdir-relative.Dockerfile",
+    "findings": [
+      {
+        "line": 3,
+        "column": 1,
+        "path": "WORKDIR",
+        "message": "This WORKDIR \"app\" is relative, and no earlier WORKDIR in this stage set an absolute starting point.",
+        "severity": "warning"
+      }
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "values": {
+      "input": "FROM example.invalid/base:1.0\nRUN curl -fsS https://example.invalid/setup.sh -o /tmp/s\n"
+    },
+    "attachesFile": false
+  }
+]

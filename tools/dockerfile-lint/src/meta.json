@@ -1,0 +1,35 @@
+{
+  "id": "dockerfile-lint",
+  "name": "Dockerfile Linter",
+  "summary": "Parse a Dockerfile and report syntax problems and common mistakes.",
+  "about": "Parses a Dockerfile with a hand-written parser (checked against an independent parser in tests) and reports both genuine syntax problems -- an instruction before the first FROM, an unrecognised instruction, a malformed exec-form JSON array, an unterminated here-document -- and common mistakes cited to Docker's own documentation, each at its line with the instruction at fault. Nothing about the file is sent anywhere; parsing and linting run entirely in this tab.",
+  "supports": [
+    "Parser directives (# syntax=, # escape=) recognised only at the very top of the file, as the Dockerfile reference describes",
+    "The escape parser directive, switching the continuation character from backslash to backtick",
+    "Backslash- or backtick-continued logical lines, with a comment or blank line inside a continuation skipped rather than ending it",
+    "Here-documents (<<WORD and <<-WORD) consumed to their terminator line",
+    "Exec (JSON array) and shell form for RUN, CMD, ENTRYPOINT and SHELL",
+    "Multi-stage builds: stage names, --from references by name or index, and per-stage state such as the last USER",
+    "21 rules cited to the Dockerfile reference, Docker's own build checks or its building best practices guide"
+  ],
+  "limits": [
+    "This tool cannot build the image, pull the base image or run any command, so it cannot tell whether a package or a referenced file actually exists -- only docker build can show that.",
+    "Shell commands inside RUN are checked only for the specific patterns the rules above name (apt-get, cd, sudo); anything else typed into a shell script is not inspected.",
+    "Rules are this project's own, written in the spirit of well-known linters and Docker's own build checks, never a copy of another tool's rule text.",
+    "A COPY --from value containing a slash, a dot or a colon is treated as an external image reference and is not checked against this file's stage names, since this tool cannot tell whether that image exists."
+  ],
+  "ambiguities": [
+    "A bare COPY --from value (no slash, dot or colon) could name either a stage in this file or a short, unqualified image name such as \"alpine\" on a public registry. This tool treats it as a stage reference and reports it when no stage in the file has that name or index, matching how a real build resolves --from -- stage names are tried first."
+  ],
+  "standards": [
+    { "label": "Dockerfile reference", "url": "https://docs.docker.com/reference/dockerfile/" },
+    { "label": "Docker build checks", "url": "https://docs.docker.com/reference/build-checks/" },
+    { "label": "Docker building best practices", "url": "https://docs.docker.com/build/building/best-practices/" }
+  ],
+  "keywords": ["docker", "dockerfile", "lint", "parser", "devops", "containers", "best practices"],
+  "primaryExport": "lintDockerfile",
+  "usage": "import { lintDockerfile } from '@fodt/dockerfile-lint';\n\nconst result = lintDockerfile(text);\nfor (const finding of result.findings) {\n  console.log(finding.line, finding.path, finding.message);\n}",
+  "apiNotes": "`lintDockerfile` always returns `{ findings, instructions, stages }`; it only throws `DockerfileLintError` for input over the 1 MB limit. Every finding carries a 1-based `line` and `endLine`, the instruction `path`, a `severity` of `error` or `warning`, and, for a rule finding, the rule's `ruleId` and `docsUrl`.",
+  "testNotes": "Correctness is checked two ways: a differential test against the independent dockerfile-ast package (devDependency-only, never shipped) confirms this hand-written parser agrees on every instruction's name and line range over ten real, vendored Dockerfiles; and 22 broken fixtures, one or more per rule plus each syntax-problem category, are asserted against this tool's own exact reported line, key and message.",
+  "devDependencies": { "dockerfile-ast": "0.7.1" }
+}
