@@ -1,0 +1,6 @@
+{
+  "id": "color-converter",
+  "label": "CSS Color 4 section 11.1's own worked example: oklch(65% 0.15 270) is the same colour as #6c88ea",
+  "steps": [{ "action": "fill", "field": "input", "value": "oklch(65% 0.15 270)" }],
+  "expect": ["#6c88ea"]
+}

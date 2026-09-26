@@ -1,0 +1,61 @@
+{
+  "id": "color-converter",
+  "name": "Colour Converter",
+  "summary": "Convert between HEX, RGB, HSL, HWB, LAB, LCH, OKLAB, OKLCH and CMYK.",
+  "about": "Types a colour in any of nine formats and shows it converted into all nine, alongside whether it falls inside the sRGB colour gamut and, when it does not, how it was mapped back into range. Built on a colour core checked digit for digit against the CSS Color 4 sample conversion code and cross-checked against two independent colour libraries.",
+  "supports": [
+    "HEX (3, 4, 6 and 8-digit), rgb()/rgba() (legacy comma and modern space syntax, numbers or percentages), hsl()/hsla() (legacy and modern, including a missing hue written as none), hwb(), lab(), lch(), oklab(), oklch() and device-cmyk() (legacy and modern), all as CSS Color Module Level 4 and 5 define them",
+    "Hue units deg, grad, rad and turn, and the none keyword for any missing component (treated as zero per the specification)",
+    "Out-of-gamut reporting and mapping into sRGB by the CSS Color 4 gamut mapping algorithm (Binary Search with Local MINDE), with the Oklab colour-difference distance to the mapped result",
+    "Adjustable output precision and an optional legacy comma syntax for the formats that define one"
+  ],
+  "limits": [
+    "device-cmyk() is the naive, uncalibrated conversion CSS Color 5 itself defines, not an ICC-profile-calibrated one, so it does not match what any particular printer produces",
+    "Colours outside the sRGB gamut are mapped for the sRGB-bound formats (HEX, RGB, HSL, HWB, CMYK) by the CSS Color 4 gamut mapping algorithm, which changes the colour; LAB, LCH, OKLAB and OKLCH always show the exact, unmapped value",
+    "Named colours (for example red or rebeccapurple) and the wider-gamut color() function spaces are not accepted",
+    "Float-to-float conversions round trip within 1e-6 per component; anything through 8-bit HEX or rounded RGB, and naive CMYK, round trip within one step of 255",
+    "The swatch shown is drawn by the visitor's own browser and display, which may render the same colour slightly differently"
+  ],
+  "ambiguities": [
+    "Lab and LCH lightness is serialised with a percent sign, matching the specification's own worked examples; Oklab and OKLCH lightness is serialised as a plain 0-1 number, matching widely observed browser serialisation -- CSS Color 4 permits either the percentage or the plain-number form for all of these, so this is a documented choice, not a specification requirement",
+    "A colour with a value the parser cannot make sense of (an unbalanced function, too few or too many components) is refused outright with a named error rather than partially interpreted"
+  ],
+  "standards": [
+    {
+      "label": "CSS Color Module Level 4 — colour syntaxes, gamut mapping, and Lab/LCH/Oklab/OKLCH",
+      "url": "https://www.w3.org/TR/css-color-4/"
+    },
+    {
+      "label": "CSS Color Module Level 5 — device-cmyk() and its naive conversion",
+      "url": "https://www.w3.org/TR/css-color-5/"
+    },
+    {
+      "label": "Björn Ottosson — A perceptual color space for image processing (the Oklab definition)",
+      "url": "https://bottosson.github.io/posts/oklab/"
+    }
+  ],
+  "keywords": [
+    "css",
+    "colour",
+    "color",
+    "converter",
+    "hex",
+    "rgb",
+    "hsl",
+    "hwb",
+    "lab",
+    "lch",
+    "oklab",
+    "oklch",
+    "cmyk"
+  ],
+  "primaryExport": "convertAll",
+  "usage": "import { convertAll } from '@fodt/color-converter';\n\nconvertAll('#3366ff');\n// { formats: [{ format: 'hex', value: '#3366ff' }, ...], inGamut: true, mapped: false, deltaE: 0, swatch: '#3366ff', warnings: [] }",
+  "apiNotes": "convertAll(text, { precision = 3, legacy = false }) parses one colour and returns { formats, inGamut, mapped, deltaE, swatch, warnings }: formats is one entry per supported format (see FORMATS); inGamut says whether the parsed colour falls inside sRGB; mapped is true when the sRGB-bound formats were gamut-mapped; deltaE is the Oklab colour-difference distance between the original and the mapped colour (0 when inGamut); swatch is a hex string built by this tool's own serialiser, never from the input text. Throws ColorConverterError only when the text cannot be parsed at all.",
+  "testNotes": "Parsing is checked against every CSS Color 4 syntax form (legacy comma, modern space, none, percentages, hue units) and against the specification's own worked examples (the hwb()/hsl()/rgb() equivalence in section 8, the oklch()/lab()/hex equivalence in section 11.1) and CSS Color 5's own device-cmyk() worked example. The Oklab implementation is cross-checked against Björn Ottosson's own published direct linear-sRGB-to-Oklab matrices, an independent route from the XYZ-pivoted one this tool implements. The conversion matrices are compared digit for digit against the CSS Color 4 sample code vendored at a pinned commit, and conversions are checked against culori and colorjs.io (devDependency-only oracles, never a runtime dependency) over 1,000 seeded colours.",
+  "devDependencies": {
+    "culori": "^4.0.2",
+    "colorjs.io": "^0.7.1",
+    "@types/culori": "^4.0.1"
+  }
+}
