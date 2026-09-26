@@ -1,0 +1,46 @@
+{
+  "id": "docker-compose-validator",
+  "name": "Docker Compose Validator",
+  "summary": "Validate a Compose file against the schema and report unknown keys.",
+  "about": "Checks a Docker Compose file against the official Compose Specification JSON Schema, reporting every problem at its line, column and key path -- an unknown key, a wrong type, a service that refers to a network, volume, secret or config nothing declares at the top level, a malformed interpolation, or the obsolete top-level version key. Nothing about the file is sent anywhere; validation runs entirely in this tab, in a background worker so a pathological file cannot freeze it.",
+  "supports": [
+    "The Compose Specification's JSON Schema (draft 2020-12), bundled at a pinned commit",
+    "YAML anchors, aliases and the << merge key, applied before validation",
+    "Extension keys starting with x- at every level the schema allows them",
+    "A service's references to top-level networks, volumes, secrets and configs",
+    "A service's depends_on references to other services in the same file",
+    "Interpolation syntax: ${VAR}, ${VAR:-default}, ${VAR-default}, ${VAR:?err}, ${VAR?err} and the $$ literal-dollar escape",
+    "A warning for the obsolete top-level version key"
+  ],
+  "limits": [
+    "This tool cannot check that referenced images exist, that host ports are free, or that files named by env_file, build or a bind mount actually exist on disk -- only running docker compose config against the real project can show that.",
+    "The bundled schema is a snapshot of the Compose Specification at one pinned commit; a change published upstream afterwards is not reflected here.",
+    "Variables inside ${...} are checked for syntax only, since their values come from the visitor's own environment, which this tool never has access to.",
+    "This tool cannot tell whether Docker Compose's own installed version accepts every field this schema allows; the two evolve somewhat independently."
+  ],
+  "ambiguities": [],
+  "standards": [
+    {
+      "label": "Compose Specification",
+      "url": "https://github.com/compose-spec/compose-spec/blob/914ec15d1fa498969c0df5c1d672306db3256089/spec.md"
+    },
+    { "label": "YAML 1.2.2", "url": "https://yaml.org/spec/1.2.2/" },
+    { "label": "RFC 6901 (JSON Pointer)", "url": "https://www.rfc-editor.org/rfc/rfc6901" }
+  ],
+  "keywords": ["docker", "compose", "yaml", "schema", "validator", "devops", "containers"],
+  "primaryExport": "validateCompose",
+  "usage": "import { validateCompose } from '@fodt/docker-compose-validator';\n\nconst result = validateCompose(text);\nif (!result.valid) {\n  for (const finding of result.findings) {\n    console.log(finding.line, finding.path, finding.message);\n  }\n}",
+  "apiNotes": "`validateCompose` always returns a `ComposeValidateResult` -- `valid`, `findings`, `services` and `schemaCommit` -- never throws for a structurally invalid document; it only throws `ComposeValidatorError`/`YamlSourceError` for a YAML syntax error or a document over the size, alias or depth limit, since those cannot be reported as ordinary findings. Every finding carries a 1-based `line` and `column`, a dotted `path`, an RFC 6901 `pointer`, and a `severity` of `error` or `warning`.",
+  "testNotes": "Correctness is checked two ways: schema conformance against the official compose-spec JSON Schema (bundled at a pinned commit, exercised over both broken fixtures and six real-world files from docker/awesome-compose), and this tool's own reference/interpolation/version checks, each cited to the compose-spec section it enforces. The bundled schema is proven identical to a fresh build from the vendored upstream file, and the vendored file itself is proven identical to its recorded git blob SHA.",
+  "dependencies": { "yaml": "2.9.1", "ajv": "8.20.0" },
+  "bundledData": [
+    {
+      "name": "Compose Specification JSON Schema",
+      "source": "https://github.com/compose-spec/compose-spec",
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "attribution": "\"Compose Specification\" schema by the Compose Specification project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 914ec15d1fa498969c0df5c1d672306db3256089.",
+      "noticeFile": "src/compose-spec-schema-NOTICE.txt"
+    }
+  ]
+}

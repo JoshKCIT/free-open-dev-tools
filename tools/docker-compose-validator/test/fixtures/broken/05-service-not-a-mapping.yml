@@ -1,0 +1,3 @@
+# Broken: a service definition must be a mapping, not a plain scalar (compose-spec services.<name> $ref)
+services:
+  web: nginx

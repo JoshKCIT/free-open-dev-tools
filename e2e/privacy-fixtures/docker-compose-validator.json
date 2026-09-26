@@ -1,0 +1,8 @@
+[
+  {
+    "values": {
+      "input": "services:\n  web:\n    image: example.invalid/app:1.0\n    depends_on:\n      - db\n  db:\n    image: example.invalid/db:1.0\n"
+    },
+    "attachesFile": false
+  }
+]

@@ -157,6 +157,23 @@ const PHASE_6_TOOL_IDS = [
   'nginx-config',
 ];
 
+/** The 13 tools Phase 7 adds (OPS-01..13); phase still in progress, so its own count/completeness tests are added by 07-08. */
+const PHASE_7_TOOL_IDS = [
+  'gitignore-generator',
+  'git-command-builder',
+  'dockerfile-lint',
+  'docker-compose-validator',
+  'k8s-validator',
+  'github-actions-validator',
+  'dotenv-toolkit',
+  'tsconfig-builder',
+  'package-json-generator',
+  'eslint-to-biome',
+  'mcp-config-builder',
+  'readme-generator',
+  'compression-tester',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -638,16 +655,22 @@ test('every phase 6 tool has exactly one live fixture file', () => {
   }
 });
 
-test('every live fixture file belongs to phase 3, 4, 5 or 6', () => {
-  // Phase 6 is now complete (06-08), so this is strict equality again: the
-  // sorted LIVE_FIXTURE_IDS must equal the sorted union of all four phase id
-  // lists, with no id declared twice.
-  const expected = [...PHASE_3_TOOL_IDS, ...PHASE_4_TOOL_IDS, ...PHASE_5_TOOL_IDS, ...PHASE_6_TOOL_IDS].slice().sort();
-  const actual = LIVE_FIXTURE_IDS.slice().sort();
-  expect(
-    actual,
-    'sorted LIVE_FIXTURE_IDS must equal the sorted union of the phase 3, 4, 5 and 6 tool id lists',
-  ).toEqual(expected);
+test('every live fixture file belongs to phase 3, 4, 5, 6 or 7', () => {
+  // Phase 7 is still in progress (only some of its tools have a live fixture
+  // file so far), so this is membership-only: every declared id must be in
+  // the union of the five phase lists, and none may be declared twice. 07-08
+  // sets the count to 114, adds the phase 7 completeness test and restores
+  // strict equality once every phase 7 tool has its own fixture.
+  const allowed = new Set([
+    ...PHASE_3_TOOL_IDS,
+    ...PHASE_4_TOOL_IDS,
+    ...PHASE_5_TOOL_IDS,
+    ...PHASE_6_TOOL_IDS,
+    ...PHASE_7_TOOL_IDS,
+  ]);
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(allowed.has(id), `${id} is not in the phase 3, 4, 5, 6 or 7 tool id lists`).toBe(true);
+  }
   const seen = new Set<string>();
   for (const id of LIVE_FIXTURE_IDS) {
     expect(seen.has(id), `${id} has more than one live fixture file`).toBe(false);

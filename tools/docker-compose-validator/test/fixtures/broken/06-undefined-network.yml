@@ -1,0 +1,6 @@
+# Broken: a service network must be declared at the top level (compose-spec services.<name>.networks / Networks top-level element)
+services:
+  web:
+    image: nginx
+    networks:
+      - backend

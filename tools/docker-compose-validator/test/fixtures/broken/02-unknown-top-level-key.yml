@@ -1,0 +1,5 @@
+# Broken: an unknown top-level key (compose-spec root schema, additionalProperties: false)
+services:
+  web:
+    image: nginx
+bogus: 1

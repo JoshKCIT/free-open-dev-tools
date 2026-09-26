@@ -1,0 +1,6 @@
+# Broken: a named volume source must be declared at the top level (compose-spec services.<name>.volumes / Volumes top-level element)
+services:
+  web:
+    image: nginx
+    volumes:
+      - data:/var/lib/data

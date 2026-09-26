@@ -1,0 +1,6 @@
+# Broken: depends_on must name a service defined in this file (compose-spec services.<name>.depends_on)
+services:
+  web:
+    image: nginx
+    depends_on:
+      - db

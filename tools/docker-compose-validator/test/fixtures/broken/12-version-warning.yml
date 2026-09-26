@@ -1,0 +1,5 @@
+# Broken (warning): the top-level version key is obsolete (compose-spec Version top-level element)
+version: "3.9"
+services:
+  web:
+    image: nginx

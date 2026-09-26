@@ -1,0 +1,6 @@
+{
+  "id": "docker-compose-validator",
+  "label": "an unknown service key is reported by its key path and line, as the compose-spec schema forbids additional properties",
+  "steps": [{ "action": "fill", "field": "input", "value": "services:\n  web:\n    imagee: nginx\n" }],
+  "expect": ["services.web.imagee", "Line 3"]
+}

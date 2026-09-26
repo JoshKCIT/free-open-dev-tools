@@ -1,0 +1,4 @@
+# Broken: an unknown key under a service (compose-spec services.<name> schema, additionalProperties: false)
+services:
+  web:
+    imagee: nginx

@@ -1,0 +1,50 @@
+[
+  {
+    "file": "01-unknown-service-key.yml",
+    "findings": [{ "line": 4, "column": 5, "path": "services.web.imagee", "message": "imagee" }]
+  },
+  {
+    "file": "02-unknown-top-level-key.yml",
+    "findings": [{ "line": 5, "column": 1, "path": "bogus", "message": "bogus" }]
+  },
+  {
+    "file": "03-wrong-type-ports.yml",
+    "findings": [{ "line": 5, "column": 12, "path": "services.web.ports", "message": "must be array" }]
+  },
+  {
+    "file": "04-cgroup-outside-enum.yml",
+    "findings": [{ "line": 5, "column": 13, "path": "services.web.cgroup", "message": "host" }]
+  },
+  {
+    "file": "05-service-not-a-mapping.yml",
+    "findings": [{ "line": 3, "column": 8, "path": "services.web", "message": "must be object" }]
+  },
+  {
+    "file": "06-undefined-network.yml",
+    "findings": [{ "line": 6, "column": 7, "path": "services.web.networks", "message": "backend" }]
+  },
+  {
+    "file": "07-undefined-volume.yml",
+    "findings": [{ "line": 6, "column": 7, "path": "services.web.volumes", "message": "data" }]
+  },
+  {
+    "file": "08-depends-on-unknown-service.yml",
+    "findings": [{ "line": 6, "column": 7, "path": "services.web.depends_on", "message": "db" }]
+  },
+  {
+    "file": "09-bad-interpolation.yml",
+    "findings": [{ "line": 6, "column": 9, "path": "services.web.environment[0]", "message": "closing" }]
+  },
+  {
+    "file": "10-duplicate-key.yml",
+    "findings": [{ "line": 5, "column": 3, "path": "", "message": "unique" }]
+  },
+  {
+    "file": "11-yaml-syntax-error.yml",
+    "findings": [{ "line": 5, "column": 1, "path": "", "message": "Flow sequence" }]
+  },
+  {
+    "file": "12-version-warning.yml",
+    "findings": [{ "line": 2, "column": 1, "path": "version", "message": "obsolete", "severity": "warning" }]
+  }
+]

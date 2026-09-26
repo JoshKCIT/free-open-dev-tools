@@ -1,0 +1,5 @@
+# Broken: ports must be an array (compose-spec services.<name>.ports)
+services:
+  web:
+    image: nginx
+    ports: "8080"

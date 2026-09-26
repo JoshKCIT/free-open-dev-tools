@@ -1,0 +1,6 @@
+# Broken: an unterminated interpolation (compose-spec Interpolation section)
+services:
+  web:
+    image: nginx
+    environment:
+      - A=${UNCLOSED
