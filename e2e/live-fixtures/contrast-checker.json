@@ -1,0 +1,9 @@
+{
+  "id": "contrast-checker",
+  "label": "WCAG 2.2's own relative luminance and contrast ratio definitions give 21:1 for black on white, the maximum",
+  "steps": [
+    { "action": "fill", "field": "foreground", "value": "#000000" },
+    { "action": "fill", "field": "background", "value": "#ffffff" }
+  ],
+  "expect": ["21.00:1", "not a WCAG 2.2 result"]
+}

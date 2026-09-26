@@ -1,0 +1,13 @@
+{
+  "id": "contrast-checker",
+  "scenarios": [
+    { "label": "default pair", "steps": [] },
+    {
+      "label": "low contrast pair",
+      "steps": [
+        { "action": "fill", "field": "foreground", "value": "#777777" },
+        { "action": "fill", "field": "background", "value": "#888888" }
+      ]
+    }
+  ]
+}
