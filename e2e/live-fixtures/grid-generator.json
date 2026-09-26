@@ -1,0 +1,10 @@
+{
+  "id": "grid-generator",
+  "label": "CSS Grid Layout Level 2: the grid-template-areas syntax names two rows of named cells",
+  "steps": [
+    { "action": "fill", "field": "areas", "value": "header header\nsidebar main" },
+    { "action": "fill", "field": "columns", "value": "1fr 1fr" },
+    { "action": "fill", "field": "rows", "value": "auto auto" }
+  ],
+  "expect": ["grid-template-areas: \"header header\" \"sidebar main\";"]
+}

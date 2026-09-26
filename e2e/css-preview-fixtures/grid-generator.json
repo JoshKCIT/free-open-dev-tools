@@ -1,0 +1,24 @@
+{
+  "id": "grid-generator",
+  "scenarios": [
+    { "label": "default tracks", "steps": [], "pixels": true },
+    {
+      "label": "page layout areas",
+      "steps": [
+        { "action": "fill", "field": "areas", "value": "header header\nsidebar main\nfooter footer" },
+        { "action": "fill", "field": "columns", "value": "200px 1fr" },
+        { "action": "fill", "field": "rows", "value": "auto 1fr auto" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "card grid",
+      "steps": [
+        { "action": "fill", "field": "areas", "value": "" },
+        { "action": "fill", "field": "columns", "value": "repeat(3, 1fr)" },
+        { "action": "fill", "field": "itemCount", "value": "6" }
+      ],
+      "pixels": true
+    }
+  ]
+}
