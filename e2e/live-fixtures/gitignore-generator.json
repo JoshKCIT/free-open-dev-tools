@@ -1,0 +1,6 @@
+{
+  "id": "gitignore-generator",
+  "label": "the Node template gives its upstream node_modules/ ignore pattern under a Node heading",
+  "steps": [{ "action": "fill", "field": "templates", "value": "Node" }],
+  "expect": ["### Node ###", "node_modules/"]
+}

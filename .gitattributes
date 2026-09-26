@@ -2,3 +2,9 @@
 *.png binary
 *.ico binary
 *.woff2 binary
+
+# Vendored upstream files whose bytes are proven identical to a recorded git
+# blob SHA (test/upstream.ts, AM.1): never let line-ending normalisation
+# touch them, or the pinned SHA in UPSTREAM.md/tree.json stops matching the
+# file git actually checks out (some github/gitignore templates ship CRLF).
+tools/gitignore-generator/test/fixtures/github-gitignore/** -text

@@ -1,0 +1,43 @@
+{
+  "id": "gitignore-generator",
+  "name": ".gitignore Generator",
+  "summary": "Compose a .gitignore from bundled templates for languages, tools and editors.",
+  "about": "Builds a .gitignore file by combining templates bundled from github/gitignore's own repository root and Global folder, each kept byte-for-byte identical to the upstream file at a pinned commit. Names are matched without regard to case, an unknown name is listed with the closest real names instead of being dropped, and a custom section for lines of your own can be appended underneath.",
+  "supports": [
+    "160 language and framework templates from the repository root, and 75 editor/tool templates from Global/, both from github/gitignore at a pinned commit",
+    "Case-insensitive template names, matched by name or by file name (for example Node or Node.gitignore)",
+    "Any number of templates in one file, each under its own ### <name> ### heading in the order chosen",
+    "A Custom section for extra lines typed by hand, appended under the templates",
+    "An optional header comment naming the source commit and licence",
+    "Listing every available template name when none is chosen yet"
+  ],
+  "limits": [
+    "This tool cannot see the visitor's own repository, so it cannot tell whether a pattern here would hide a file already meant to be committed, or whether a file matching a pattern is already tracked -- git itself keeps tracking a file it already knows about regardless of a later .gitignore rule. Only git, run against the real repository, can show that.",
+    "The community/ folder of the upstream repository is not bundled (D-108); only the repository root and Global/ folders are offered.",
+    "The bundled templates are a snapshot of github/gitignore at one pinned commit; a template added or changed upstream afterwards is not reflected here.",
+    "Duplicate lines across chosen templates are kept rather than merged, because removing one can change what is ignored when a negation pattern sits between two occurrences of the same line -- see the gitignore documentation's own precedence rule."
+  ],
+  "ambiguities": [
+    "The upstream repository publishes three templates as symlinks rather than real files: Clojure.gitignore (an alias for Leiningen.gitignore), Fortran.gitignore (an alias for C++.gitignore) and Global/Octave.gitignore (an alias for Global/MATLAB.gitignore). This tool does not follow symlinks when it bundles templates, so these three alias names are not offered separately -- ask for the underlying name (Leiningen, C++ or MATLAB) instead."
+  ],
+  "standards": [
+    { "label": "gitignore(5), Git 2.53.0", "url": "https://git-scm.com/docs/gitignore" },
+    { "label": "git-check-ignore(1), Git 2.53.0", "url": "https://git-scm.com/docs/git-check-ignore" },
+    { "label": "github/gitignore templates", "url": "https://github.com/github/gitignore" }
+  ],
+  "keywords": ["gitignore", "git", "ignore", "templates", "generator", "devops"],
+  "primaryExport": "composeGitignore",
+  "usage": "import { composeGitignore, listTemplates } from '@fodt/gitignore-generator';\n\nconst result = composeGitignore({ templates: ['Node', 'macOS'], extra: 'my-secret.env', header: true });\nconsole.log(result.output);",
+  "apiNotes": "`composeGitignore` never throws for an unknown template name -- it lists it under `unknown` with up to three close-name suggestions instead, so a visitor's near-miss is never silently dropped. `listTemplates` returns every bundled name and its folder, for a page to show when no template is chosen yet.",
+  "testNotes": "Correctness is checked three ways: every bundled template's content is proven byte-identical to its git blob SHA at the pinned commit (from the vendored tree listing), the bundled set is proven to be exactly the root and Global templates the generator itself would build fresh from the vendored files, and git itself (via git init and git check-ignore --no-index -v --stdin in a real temporary directory) is asked to agree with what this tool composes on a sample file tree. The local git version used for that check is recorded in the SUMMARY.",
+  "bundledData": [
+    {
+      "name": "github/gitignore templates",
+      "source": "https://github.com/github/gitignore",
+      "licence": "CC0-1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "\"gitignore\" templates by GitHub, Inc. and contributors, dedicated under CC0 1.0 Universal. Snapshot taken at commit b06d69d5a0b82a187180dac3d46a4ebe1e40bce5.",
+      "noticeFile": "src/gitignore-templates-NOTICE.txt"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+"gitignore" templates by GitHub, Inc. and contributors.
+
+Source: https://github.com/github/gitignore
+Licence: CC0 1.0 Universal (public domain dedication)
+Licence text: https://creativecommons.org/publicdomain/zero/1.0/
+Snapshot taken at commit b06d69d5a0b82a187180dac3d46a4ebe1e40bce5.
+
+What is bundled: every `*.gitignore` file directly in the repository root
+(160 files) and directly under the `Global/` folder (75 files) at that
+commit -- 235 templates, 137,996 bytes of upstream template text. The
+`community/` folder is not bundled. Three symlink aliases the repository
+publishes (`Clojure.gitignore` -> `Leiningen.gitignore`,
+`Fortran.gitignore` -> `C++.gitignore`, `Global/Octave.gitignore` ->
+`Global/MATLAB.gitignore`) are not bundled as separate template names; this
+tool does not follow symlinks, so a visitor who wants that content asks for
+the underlying name.
+
+What was changed: nothing. Every bundled template's content is byte-for-byte
+identical to its upstream file at the pinned commit, proven by comparing
+its git blob SHA-1 against the tree listing recorded in
+test/fixtures/github-gitignore/tree.json.
