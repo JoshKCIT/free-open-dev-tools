@@ -1,0 +1,9 @@
+{
+  "id": "css-unit",
+  "label": "CSS Values and Units Level 4's own absolute length table: 1in = 96px = 2.54cm",
+  "steps": [
+    { "action": "fill", "field": "value", "value": "1" },
+    { "action": "select", "field": "from", "value": "in" }
+  ],
+  "expect": ["96px", "2.54cm"]
+}
