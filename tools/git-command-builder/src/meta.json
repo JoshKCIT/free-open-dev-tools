@@ -1,0 +1,46 @@
+{
+  "id": "git-command-builder",
+  "name": "Git Command Builder",
+  "summary": "Assemble a git command from options, with an explanation of each flag.",
+  "about": "Pick a git command, fill in the options you want, and get back the exact command line for bash, zsh or PowerShell plus a plain-words explanation of every flag with a link to the git documentation for a pinned version. Every generated command splits back into exactly the intended arguments -- a branch name, path or message can never turn into an option by accident -- and destructive flags carry a warning before you run them.",
+  "supports": [
+    "16 everyday commands (clone, commit, log, diff, switch, restore, branch, merge, rebase, cherry-pick, stash, reset, push, fetch, tag, clean), each with its most commonly reached-for flags",
+    "An explanation and a documentation link for every flag, written in this project's own words",
+    "POSIX shell (bash, zsh and similar) and PowerShell output, both always quoting the whole argument",
+    "Branch and tag names checked against git's own check-ref-format rules before they are used",
+    "A value that could be mistaken for an option (starts with a hyphen) is placed after a separator or refused outright",
+    "A warning on every destructive flag this tool offers (--amend, --hard, --force, --delete, -D, clean's -x/-d/--force, stash drop)"
+  ],
+  "limits": [
+    "This tool cannot see the visitor's repository, so it cannot tell what a command will actually change there -- only running it (with --dry-run first, where a command offers one) can show that.",
+    "The options offered are those of git 2.55.0; an older installed git may not have every flag, and running an unrecognised flag will simply fail there.",
+    "Windows cmd.exe quoting is not produced -- only POSIX shells and PowerShell.",
+    "@{-1}-style shorthand (the previously checked-out branch) and other reflog-dependent shorthand are refused, because resolving them needs the visitor's own repository history."
+  ],
+  "ambiguities": [
+    "The scp-like git URL syntax ([user@]host:path, recognised only when there is no slash before the first colon) is genuinely ambiguous with a local path containing a colon before any slash, such as a Windows drive path -- git's own documentation names the same ambiguity and does not resolve it either; this tool does not try to be smarter than git here.",
+    "git diff's --staged flag is a real, accepted synonym of --cached, but git diff -h's own usage summary only lists --cached, never --staged -- confirmed directly by running both. diff and log are both excluded from the flag-appears-in-h check for this reason (see catalogue.ts): most of their flags come from the shared revision-walking and diff-output machinery, not each command's own parse-options table, so git's own -h summary for either command is a genuinely short, incomplete list."
+  ],
+  "standards": [
+    { "label": "git documentation, version 2.55.0", "url": "https://git-scm.com/docs/git/2.55.0" },
+    { "label": "gitcli(7): option conventions, --end-of-options", "url": "https://git-scm.com/docs/gitcli/2.55.0" },
+    {
+      "label": "git-check-ref-format(1): ref name rules",
+      "url": "https://git-scm.com/docs/git-check-ref-format/2.55.0"
+    },
+    {
+      "label": "POSIX Shell Command Language 2.2.2 (Single-Quotes)",
+      "url": "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html"
+    },
+    {
+      "label": "PowerShell about_Quoting_Rules",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_quoting_rules"
+    }
+  ],
+  "keywords": ["git", "command", "cli", "devops", "shell", "posix", "powershell"],
+  "primaryExport": "buildGitCommand",
+  "usage": "import { buildGitCommand } from '@fodt/git-command-builder';\n\nconst { text } = buildGitCommand({\n  command: 'commit',\n  flags: { '--message': 'fix: it is done' },\n  shell: 'posix',\n});",
+  "apiNotes": "buildGitCommand({ command, subcommand?, flags, positionals, shell }) returns { argv, text, explanations, warnings }. flags is keyed by a flag's own canonical long name (e.g. \"--message\"); a boolean flag is included when its value is true, a valued flag when its value is a non-empty string or finite number. positionals is one value per positional in the command's own declared order. subcommand is required only for stash (push, pop, list or drop).",
+  "testNotes": "The split-back test decodes POSIX output with the shell-quote package (a second, independent word splitter, test-only) and PowerShell output with a test-only decoder implementing PowerShell's own single-quote doubling rule. A separate oracle test runs the installed git (git <command> -h) to confirm every offered flag for a parse-options command is real, and git check-ref-format --branch to confirm this tool's own ref-name rules agree with git's, over a battery of names.",
+  "devDependencies": { "shell-quote": "1.10.0", "@types/shell-quote": "^1.7.5" }
+}

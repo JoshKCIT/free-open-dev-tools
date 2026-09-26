@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "command": "clone",
+      "clone-url": "https://example.invalid/repo.git"
+    },
+    "attachesFile": false
+  }
+]

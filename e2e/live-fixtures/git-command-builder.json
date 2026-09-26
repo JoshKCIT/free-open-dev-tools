@@ -1,0 +1,9 @@
+{
+  "id": "git-command-builder",
+  "label": "committing with a message builds git commit '--message=first commit' in the gitcli stuck form, POSIX single-quoted",
+  "steps": [
+    { "action": "select", "field": "command", "value": "commit" },
+    { "action": "fill", "field": "commit-message", "value": "first commit" }
+  ],
+  "expect": ["git commit '--message=first commit'"]
+}
