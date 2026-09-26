@@ -64,7 +64,7 @@ it('every flag offered for a parse-options command appears in the installed git 
     const { stdout } = runGit([command.name, '-h']);
     expect(stdout.length, `git ${command.name} -h produced no output at all`).toBeGreaterThan(0);
 
-    const flagLists: readonly GitFlagSpec[][] = command.subcommands
+    const flagLists: readonly (readonly GitFlagSpec[])[] = command.subcommands
       ? command.subcommands.map((s) => s.flags)
       : [command.flags];
 
