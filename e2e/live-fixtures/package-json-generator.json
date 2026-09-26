@@ -1,0 +1,6 @@
+{
+  "id": "package-json-generator",
+  "label": "a name with capital letters is refused exactly as validate-npm-package-name's own source decides",
+  "steps": [{ "action": "fill", "field": "name", "value": "My-Lib" }],
+  "expect": ["name can no longer contain capital letters"]
+}

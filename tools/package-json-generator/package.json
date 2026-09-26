@@ -1,0 +1,50 @@
+{
+  "name": "@fodt/package-json-generator",
+  "version": "1.0.0",
+  "description": "Build a valid package.json with the fields npm actually reads.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "npm",
+    "package.json",
+    "config generator",
+    "semver",
+    "devops"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "normalize-package-data": "^9.0.0",
+    "validate-npm-package-name": "^8.0.0",
+    "semver": "^7.8.5",
+    "@types/normalize-package-data": "^2.4.4",
+    "@types/validate-npm-package-name": "^4.0.2",
+    "@types/semver": "^7.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/package-json-generator"
+  }
+}

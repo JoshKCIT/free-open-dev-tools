@@ -1,0 +1,10 @@
+[
+  {
+    "values": {
+      "name": "example-lib",
+      "homepage": "https://example.invalid/",
+      "repository": "https://example.invalid/repo.git"
+    },
+    "attachesFile": false
+  }
+]
