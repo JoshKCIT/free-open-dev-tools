@@ -1,0 +1,14 @@
+{
+  "id": "clip-path",
+  "label": "CSS Shapes Level 1's own polygon() basic shape syntax",
+  "steps": [
+    { "action": "select", "field": "vertices", "value": "3" },
+    { "action": "fill", "field": "p1-x", "value": "50" },
+    { "action": "fill", "field": "p1-y", "value": "0" },
+    { "action": "fill", "field": "p2-x", "value": "100" },
+    { "action": "fill", "field": "p2-y", "value": "100" },
+    { "action": "fill", "field": "p3-x", "value": "0" },
+    { "action": "fill", "field": "p3-y", "value": "100" }
+  ],
+  "expect": ["polygon(50% 0%, 100% 100%, 0% 100%)"]
+}

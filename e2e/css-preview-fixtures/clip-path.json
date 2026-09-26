@@ -1,0 +1,40 @@
+{
+  "id": "clip-path",
+  "drag": ["p1", { "field": "center", "steps": [{ "action": "radio", "field": "shape", "value": "circle" }] }],
+  "scenarios": [
+    { "label": "default pentagon", "steps": [], "pixels": true },
+    {
+      "label": "triangle",
+      "steps": [
+        { "action": "select", "field": "vertices", "value": "3" },
+        { "action": "fill", "field": "p1-x", "value": "50" },
+        { "action": "fill", "field": "p1-y", "value": "0" },
+        { "action": "fill", "field": "p2-x", "value": "100" },
+        { "action": "fill", "field": "p2-y", "value": "100" },
+        { "action": "fill", "field": "p3-x", "value": "0" },
+        { "action": "fill", "field": "p3-y", "value": "100" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "circle",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "circle" },
+        { "action": "fill", "field": "radius", "value": "40" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "rounded inset",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "inset" },
+        { "action": "fill", "field": "top", "value": "10" },
+        { "action": "fill", "field": "right", "value": "20" },
+        { "action": "fill", "field": "bottom", "value": "10" },
+        { "action": "fill", "field": "left", "value": "20" },
+        { "action": "fill", "field": "round", "value": "12" }
+      ],
+      "pixels": true
+    }
+  ]
+}
