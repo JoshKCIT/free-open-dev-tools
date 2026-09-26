@@ -1,0 +1,12 @@
+{
+  "id": "box-shadow",
+  "label": "CSS Backgrounds and Borders Level 3's own box shadow example lengths, in its own order",
+  "steps": [
+    { "action": "select", "field": "layers", "value": "1" },
+    { "action": "fill", "field": "offset1-x", "value": "64" },
+    { "action": "fill", "field": "offset1-y", "value": "64" },
+    { "action": "fill", "field": "blur1", "value": "12" },
+    { "action": "fill", "field": "spread1", "value": "40" }
+  ],
+  "expect": ["64px 64px 12px 40px"]
+}

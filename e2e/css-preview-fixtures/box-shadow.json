@@ -1,0 +1,18 @@
+{
+  "id": "box-shadow",
+  "drag": ["offset1"],
+  "scenarios": [
+    { "label": "default two layers", "steps": [], "pixels": true },
+    {
+      "label": "one inset layer",
+      "steps": [
+        { "action": "select", "field": "layers", "value": "1" },
+        { "action": "check", "field": "inset1" },
+        { "action": "fill", "field": "offset1-x", "value": "6" },
+        { "action": "fill", "field": "offset1-y", "value": "6" },
+        { "action": "fill", "field": "blur1", "value": "10" }
+      ],
+      "pixels": true
+    }
+  ]
+}
