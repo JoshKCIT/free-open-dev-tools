@@ -1,0 +1,42 @@
+{
+  "id": "css-specificity",
+  "name": "CSS Specificity Calculator",
+  "summary": "Score a selector and explain which parts contribute.",
+  "about": "Paste one or more CSS selectors (one selector list per line) and see each selector's Selectors Level 4 specificity as three numbers, exactly which of its own parts contribute to that score, and every selector ordered from strongest to weakest. A hand-written parser tokenizes the selector list itself, including :is(), :not(), :has(), :where() and nth-child()/nth-last-child() with an of clause, and is cross-checked against an independent parser (css-tree) over 500 seeded random selectors.",
+  "supports": [
+    "Type selectors, the universal selector, and both forms with an optional namespace prefix (ns|div, *|div, |div, ns|*)",
+    "#id and .class selectors",
+    "Attribute selectors with every operator (=, ~=, |=, ^=, $=, *=) and the i/s case-sensitivity flag",
+    "Pseudo-classes and pseudo-elements, including the legacy single-colon forms of :before, :after, :first-line and :first-letter",
+    ":is(), :not(), :has() and :where(), each recursively parsed as a nested selector list, and :nth-child()/:nth-last-child() with an of <selector-list> clause",
+    "Combinators: descendant (whitespace), >, +, ~ and the column combinator ||",
+    "CSS escapes (a backslash plus up to six hex digits, or a backslash plus one literal character) inside identifiers and strings",
+    "A comma-separated selector list on each line, and multiple independent lines in one paste"
+  ],
+  "limits": [
+    "This tool scores syntax, not browser support: it does not check whether a visitor's browser actually implements a given pseudo-class or pseudo-element",
+    "Specificity is only one step of the cascade: CSS Cascading and Inheritance Level 5 sorts declarations first by origin and importance, then by encapsulation context, then by whether a declaration is attached directly to an element, then by cascade layer, then by specificity, and only then by order of appearance -- so the highest specificity does not always win",
+    "CSS Nesting's & selector, shadow-tree pseudo-elements (::slotted(), ::part()) and the shadow-host pseudo-classes (:host(), :host-context()) are refused by name rather than scored, since this tool has no notion of an outer rule or a shadow tree to resolve them against",
+    "!important and a selector's own inline style attribute are outside a selector and are not considered here (see CSS Style Attributes for the inline-style specificity rule)",
+    "Selector text is capped at 100,000 characters and nesting inside :is()/:not()/:has()/:where()/an of clause at 32 levels; either limit refuses the input outright rather than risk freezing the tab"
+  ],
+  "ambiguities": [
+    "The pseudo-class argument list of a pseudo-class this tool does not need to look inside (for example :lang(en) or :nth-of-type(2)) is skipped as balanced, unparsed text rather than validated against that pseudo-class's own grammar, since only :is(), :not(), :has(), :where(), :nth-child() and :nth-last-child() affect specificity"
+  ],
+  "standards": [
+    {
+      "label": "Selectors Level 4 (Calculating a selector's specificity)",
+      "url": "https://www.w3.org/TR/selectors-4/#specificity-rules"
+    },
+    {
+      "label": "CSS Cascading and Inheritance Level 5 (Cascade Sorting Order)",
+      "url": "https://www.w3.org/TR/css-cascade-5/#cascade-sort"
+    }
+  ],
+  "keywords": ["css", "selector", "specificity", "cascade", "is", "not", "has", "where", "nth-child"],
+  "devDependencies": { "css-tree": "^3.2.1", "@types/css-tree": "^3.2.0" },
+  "primaryExport": "computeSpecificity",
+  "usage": "import { computeSpecificity, compareSpecificity } from '@fodt/css-specificity';\n\nconst report = computeSpecificity('#s12:not(FOO)\\n.foo :is(.bar, #baz)');\nreport.selectors[0].specificity; // [1, 0, 1] -- whichever line scored higher sorts first\ncompareSpecificity([1, 0, 0], [0, 1, 0]); // > 0, since a=1 beats a=0",
+  "apiNotes": "`computeSpecificity` throws `CssSpecificityError` (with `line` and `column`) on the first selector it cannot parse, or when the whole input is over the length limit; it never returns a partial result mixed with an error. `parseSelectorList` and `SelectorSyntaxError` are re-exported from the tokenizer for anything that wants the parsed tree directly rather than just the specificity numbers.",
+  "testNotes": "Every specificity rule this tool asserts is quoted from Selectors Level 4's own 'Calculating a selector's specificity' section (https://www.w3.org/TR/selectors-4/#specificity-rules), fetched this session, including its own example table and its four worked :is()/:where()/:nth-child()/:not() examples. The cascade's own sort order, used only for this tool's own 'limits' caveat, is quoted from CSS Cascading and Inheritance Level 5's 'Cascade Sorting Order' section (https://www.w3.org/TR/css-cascade-5/#cascade-sort), fetched this session. The independent cross-check parses the same 500 seeded selectors with the installed css-tree 3.2.1 parser (context: 'selectorList') and walks its own AST (TypeSelector, IdSelector, ClassSelector, AttributeSelector, PseudoClassSelector, PseudoElementSelector, and the Nth node's own 'selector' field for an of clause) with a second, independently written specificity calculator, confirmed directly against css-tree's installed AST shape before the differential test was written."
+}

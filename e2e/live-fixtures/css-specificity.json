@@ -1,0 +1,6 @@
+{
+  "id": "css-specificity",
+  "label": "Selectors Level 4's own example: #s12:not(FOO) has a specificity of (1,0,1)",
+  "steps": [{ "action": "fill", "field": "selectors", "value": "#s12:not(FOO)" }],
+  "expect": ["1, 0, 1"]
+}
