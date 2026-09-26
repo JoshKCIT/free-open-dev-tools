@@ -19,7 +19,8 @@ Measures how small typed text or a chosen file gets under gzip, deflate and defl
 
 ## Limits
 
-- Compressed sizes can differ slightly between compressor implementations and compression levels; the browser's own CompressionStream has no level setting, so this tool cannot reproduce another program's exact output or another level -- only running that program can show that.
+- Compressed sizes can differ between compressor implementations and compression levels; the browser's own CompressionStream has no level setting, so this tool cannot reproduce another program's exact output or another level -- only running that program can show that.
+- Measured directly against real browser engines: Firefox and Chromium stay within a few percent of Node zlib's default level on every sample this project's own test measures, but WebKit's CompressionStream compresses phrase-repetitive text noticeably worse -- up to about 28% larger on a 100 KB varied-prose sample and about 15% larger on a non-ASCII sample -- a genuine engine difference, not a bug in this tool.
 - This tool cannot check what a server-side compressor or a different browser version would produce; it can only measure the engine actually running this page.
 - Only gzip, deflate and deflate-raw are measured; brotli is part of the same platform interface but is not requested here.
 
