@@ -1,0 +1,49 @@
+{
+  "id": "text-shadow",
+  "name": "CSS Text Shadow Generator",
+  "summary": "Design layered text shadows with a live preview.",
+  "about": "Stacks up to four independent text shadows on the visitor's own sample text, each with its own offset, blur radius, colour and opacity, showing the live result next to the exact text-shadow CSS. Built for a soft glow, a hard drop shadow, or an outline built from several offset shadows.",
+  "supports": [
+    "Up to four independently configured shadow layers on the visitor's own sample text, each with its own horizontal and vertical offset, blur radius, colour and opacity",
+    "The CSS Text Decoration Level 3 text-shadow grammar's own front-to-back painting order, so the first layer listed is the one shown on top",
+    "The closed set of generic font families CSS Fonts Level 4 defines that every browser must provide: sans-serif, serif, monospace and system UI",
+    "A colour box for the sample text, each shadow layer and the previewed background, each accepting a 3, 4, 6 or 8-digit hex colour"
+  ],
+  "limits": [
+    "The visitor's own browser picks the actual font behind a generic family, so the same shadow can look different across systems",
+    "Browsers may render a very large blur radius differently from one another",
+    "The sample text is a preview only: it is drawn as plain text inside the preview and is never part of the generated CSS",
+    "Only the offsets, blur radius and colour the text-shadow grammar allows are offered; spread distance and an inset keyword do not exist for this property"
+  ],
+  "ambiguities": [
+    "A zero length is written without a unit ('0', not '0px') everywhere this tool's own output uses one, one of the two forms CSS itself allows",
+    "The sample text is capped at 80 characters, with a warning, rather than refused outright, since a preview only needs to show the shadow's shape"
+  ],
+  "standards": [
+    {
+      "label": "CSS Text Decoration Module Level 3 — Text Shadows: the text-shadow property",
+      "url": "https://www.w3.org/TR/css-text-decor-3/#text-shadow-property"
+    },
+    {
+      "label": "CSS Fonts Module Level 4 — Generic font families",
+      "url": "https://www.w3.org/TR/css-fonts-4/#generic-font-families"
+    },
+    {
+      "label": "CSS Color Module Level 4 — RGB Hexadecimal Notations",
+      "url": "https://www.w3.org/TR/css-color-4/#hex-notation"
+    },
+    {
+      "label": "CSS Syntax Module Level 3 — Escaping and comments",
+      "url": "https://www.w3.org/TR/css-syntax-3/#escaping"
+    }
+  ],
+  "keywords": ["css", "text-shadow", "shadow", "generator", "preview", "glow", "typography"],
+  "primaryExport": "generateTextShadow",
+  "usage": "import { generateTextShadow } from '@fodt/text-shadow';\n\ngenerateTextShadow({\n  layers: [\n    { x: 2, y: 2, blur: 4, color: '#000000', opacity: 50 },\n  ],\n});\n// { css: '.text {\\n  display: grid;\\n  ...\\n  text-shadow: 2px 2px 4px #00000080;\\n}', value: '2px 2px 4px #00000080', ... }",
+  "apiNotes": "generateTextShadow({ layers, sample, fontFamily, fontSize, fontWeight, textColor, background, width, height }) takes one to four shadow layers (offset x/y, blur radius, a hex colour and opacity 0-100 percent), an optional sample string (default 'Shadow', trimmed and capped at 80 characters), an optional generic font family ('sans-serif' default, 'serif', 'monospace' or 'system-ui'), an optional font size (default 64, clamped to 12-160px), an optional font weight (400 default, 700 or 900), optional text and background hex colours, and an optional preview box width and height (default 360x160, clamped to 120-720px by 40-400px). Returns { css, tree, value, warnings }: css is one .text rule built through the canonical stylesheetText writer; value is the text-shadow value alone; the sample text lives only in tree, never in css; warnings names any field a value was clamped or replaced in. Throws TextShadowError only if the canonical safety writer itself refuses the finished CSS, which validated input never reaches.",
+  "testNotes": "The text-shadow grammar's own lack of a spread distance and inset keyword is checked directly against a layer that is written with only three lengths and a colour. Every declaration is checked against the css-tree 3.2.1 lexer. Hostile field values, including the sample text itself, are checked against the shared HOSTILE_VALUES battery.",
+  "devDependencies": {
+    "css-tree": "^3.2.1",
+    "@types/css-tree": "^3.2.0"
+  }
+}
