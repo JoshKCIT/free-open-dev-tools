@@ -21,7 +21,8 @@
         { "action": "radio", "field": "mode", "value": "transition" },
         { "action": "fill", "field": "hoverMove-y", "value": "-12" }
       ],
-      "hover": true
+      "hover": true,
+      "pixels": true
     }
   ]
 }
