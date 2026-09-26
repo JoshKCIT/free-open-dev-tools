@@ -1,0 +1,5 @@
+# Broken: a YAML syntax error (YAML 1.2.2 section 7.4.2, flow sequences must be closed)
+on: push
+jobs:
+  build:
+    steps: [

@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../schemas/json/github-workflow.json
+name: inputs
+on:
+  workflow_dispatch:
+    inputs:
+      string:
+        required: false
+        type: string
+        description: string
+        default: true
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2

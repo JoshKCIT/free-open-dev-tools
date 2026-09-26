@@ -1,0 +1,8 @@
+# Broken: "pushh" is not one of the 34 events the schema's on property accepts.
+# https://docs.github.com/en/actions/reference/events-that-trigger-workflows
+on: pushh
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

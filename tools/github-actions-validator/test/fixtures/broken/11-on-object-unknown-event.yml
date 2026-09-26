@@ -1,0 +1,10 @@
+# Broken: "pushh" is not a recognised key of the on object form either.
+# https://docs.github.com/en/actions/reference/events-that-trigger-workflows
+on:
+  pushh:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

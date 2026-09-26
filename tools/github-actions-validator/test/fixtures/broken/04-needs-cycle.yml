@@ -1,0 +1,14 @@
+# Broken: job "a" needs "b" and job "b" needs "a" -- a needs cycle.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idneeds
+on: push
+jobs:
+  a:
+    needs: b
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo a
+  b:
+    needs: a
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo b

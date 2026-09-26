@@ -1,0 +1,11 @@
+# Broken: two steps in the same job both use id "build".
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsid
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - id: build
+        run: echo one
+      - id: build
+        run: echo two

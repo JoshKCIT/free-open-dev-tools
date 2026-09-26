@@ -1,0 +1,6 @@
+{
+  "id": "github-actions-validator",
+  "label": "an unknown trigger event is reported by name and line, as the schema's event enum forbids it",
+  "steps": [{ "action": "fill", "field": "input", "value": "on: pushh\njobs: {}\n" }],
+  "expect": ["pushh", "Line 1"]
+}

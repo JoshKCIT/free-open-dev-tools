@@ -1,0 +1,57 @@
+{
+  "id": "github-actions-validator",
+  "name": "GitHub Actions Validator",
+  "summary": "Validate a workflow file and report invalid keys, triggers and expressions.",
+  "about": "Checks a GitHub Actions workflow file against the official SchemaStore workflow schema, reporting every problem at its line, column and key path -- an unknown key, a wrong type, an event name this schema does not accept, a needs entry naming a missing job, a needs cycle, or a step id repeated within one job. Nothing about the file is sent anywhere; validation runs entirely in this tab, in a background worker so a pathological file cannot freeze it.",
+  "supports": [
+    "The GitHub Actions workflow JSON Schema (draft-07), bundled from SchemaStore at a pinned commit",
+    "Every trigger event the schema's on property accepts, given as a string, an array, or an object mapping, with a close-match suggestion for a misspelled event name",
+    "A job's needs referring to another job in the same file, including a needs cycle spanning any number of jobs",
+    "A step id repeated within one job",
+    "YAML anchors and aliases, resolved as ordinary YAML"
+  ],
+  "limits": [
+    "This tool cannot check that an action or reusable workflow named in uses actually exists at the given ref, that a runner label is available on the account running the workflow, or that a secret or variable referenced in the workflow is defined -- only a real run on GitHub can show that.",
+    "The bundled schema is a snapshot of SchemaStore's GitHub Actions workflow schema at one pinned commit; a change GitHub publishes afterwards is not reflected here until this tool is updated.",
+    "GitHub's own documentation does not state whether its workflow parser applies the YAML << merge key; this tool reads workflows without applying it (see the ambiguity below), so a workflow relying on one may be reported differently than GitHub reports it."
+  ],
+  "ambiguities": [
+    "GitHub's documentation does not address YAML anchors, aliases or the << merge key for workflow files directly, and no vendored SchemaStore or starter-workflow example uses a merge key. This tool resolves anchors and aliases (an ordinary part of reading any YAML document) but does not apply << merge keys, matching the yaml package's own conservative default rather than asserting untested behaviour."
+  ],
+  "standards": [
+    {
+      "label": "GitHub Actions workflow schema (SchemaStore)",
+      "url": "https://github.com/SchemaStore/schemastore/blob/314154a4c71665df725986ad334f6f0846d486d3/src/schemas/json/github-workflow.json"
+    },
+    {
+      "label": "Workflow syntax for GitHub Actions",
+      "url": "https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions"
+    },
+    {
+      "label": "Events that trigger workflows",
+      "url": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows"
+    },
+    {
+      "label": "Evaluate expressions in workflows and actions",
+      "url": "https://docs.github.com/en/actions/learn-github-actions/expressions"
+    },
+    { "label": "YAML 1.2.2", "url": "https://yaml.org/spec/1.2.2/" },
+    { "label": "RFC 6901 (JSON Pointer)", "url": "https://www.rfc-editor.org/rfc/rfc6901" }
+  ],
+  "keywords": ["github-actions", "workflow", "yaml", "schema", "validator", "devops", "ci", "expressions"],
+  "primaryExport": "validateWorkflow",
+  "usage": "import { validateWorkflow } from '@fodt/github-actions-validator';\n\nconst result = validateWorkflow(text);\nif (!result.valid) {\n  for (const finding of result.findings) {\n    console.log(finding.line, finding.path, finding.message);\n  }\n}",
+  "apiNotes": "`validateWorkflow` always returns a `WorkflowValidateResult` -- `valid`, `findings`, `jobs`, `events` and `schemaCommit` -- never throws for a structurally invalid document; it only throws `WorkflowValidatorError`/`YamlSourceError` for a YAML syntax error or a document over the size, alias or depth limit, since those cannot be reported as ordinary findings. Every finding carries a 1-based `line` and `column`, a dotted `path`, an RFC 6901 `pointer`, and a `severity` of `error` or `warning`.",
+  "testNotes": "Correctness is checked two ways: schema conformance against the official SchemaStore workflow schema (bundled at a pinned commit, exercised over SchemaStore's own positive and negative test fixtures and fourteen real starter workflows from actions/starter-workflows), and this tool's own event/needs-graph/step-id/expression checks, each cited to the GitHub documentation page it enforces. The bundled schema is proven identical to a fresh build from the vendored upstream file, and every vendored upstream file is proven identical to its recorded git blob SHA.",
+  "dependencies": { "yaml": "2.9.1", "ajv": "8.20.0" },
+  "bundledData": [
+    {
+      "name": "GitHub Actions Workflow JSON Schema",
+      "source": "https://github.com/SchemaStore/schemastore",
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "attribution": "\"GitHub Actions Workflow\" schema by the SchemaStore project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 314154a4c71665df725986ad334f6f0846d486d3.",
+      "noticeFile": "src/github-workflow-schema-NOTICE.txt"
+    }
+  ]
+}

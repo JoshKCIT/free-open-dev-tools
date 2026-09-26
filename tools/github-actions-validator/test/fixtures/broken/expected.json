@@ -1,0 +1,46 @@
+[
+  {
+    "file": "01-unknown-trigger-event.yml",
+    "findings": [{ "line": 3, "path": "on", "message": "pushh" }]
+  },
+  {
+    "file": "02-unknown-job-key.yml",
+    "findings": [{ "line": 7, "path": "jobs.build.step", "message": "step" }]
+  },
+  {
+    "file": "03-needs-missing-job.yml",
+    "findings": [{ "line": 6, "path": "jobs.build.needs", "message": "deploy" }]
+  },
+  {
+    "file": "04-needs-cycle.yml",
+    "findings": [{ "line": 11, "path": "jobs.b.needs", "message": "cycle" }]
+  },
+  {
+    "file": "05-duplicate-step-id.yml",
+    "findings": [{ "line": 10, "path": "jobs.build.steps[1].id", "message": "build" }]
+  },
+  {
+    "file": "06-wrong-type-timeout-minutes.yml",
+    "findings": [{ "line": 7, "path": "jobs.build.timeout-minutes", "message": "oneOf" }]
+  },
+  {
+    "file": "07-unknown-top-level-key.yml",
+    "findings": [{ "line": 4, "column": 1, "path": "bogus", "message": "bogus" }]
+  },
+  {
+    "file": "08-duplicate-key.yml",
+    "findings": [{ "line": 6, "column": 5, "path": "", "message": "unique" }]
+  },
+  {
+    "file": "09-yaml-syntax-error.yml",
+    "findings": [{ "line": 6, "column": 1, "path": "", "message": "Flow sequence" }]
+  },
+  {
+    "file": "10-invalid-job-id.yml",
+    "findings": [{ "line": 5, "path": "jobs.\"my job\"", "message": "my job" }]
+  },
+  {
+    "file": "11-on-object-unknown-event.yml",
+    "findings": [{ "line": 4, "path": "on.pushh", "message": "pushh" }]
+  }
+]

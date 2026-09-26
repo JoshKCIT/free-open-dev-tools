@@ -1,0 +1,8 @@
+# Broken: a job id must start with a letter or _ and contain only alphanumeric, - or _.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_id
+on: push
+jobs:
+  "my job":
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

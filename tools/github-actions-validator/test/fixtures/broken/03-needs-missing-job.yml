@@ -1,0 +1,9 @@
+# Broken: job "build" needs "deploy", which names no job in this file.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idneeds
+on: push
+jobs:
+  build:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

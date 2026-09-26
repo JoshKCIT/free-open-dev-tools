@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../schemas/json/github-workflow.json
+name: Test environment
+on:
+  - push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: http://www.example.com
+  test:
+    runs-on: ubuntu-latest
+    environment: staging

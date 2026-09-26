@@ -1,0 +1,9 @@
+# Broken: timeout-minutes must be a number (or an expression), not a bare word.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: banana
+    steps:
+      - run: echo hi

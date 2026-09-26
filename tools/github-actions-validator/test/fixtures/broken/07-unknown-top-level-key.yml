@@ -1,0 +1,9 @@
+# Broken: "bogus" is not a recognised top-level workflow key.
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+on: push
+bogus: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi

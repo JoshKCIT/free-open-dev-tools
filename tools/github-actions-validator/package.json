@@ -1,0 +1,51 @@
+{
+  "name": "@fodt/github-actions-validator",
+  "version": "1.0.0",
+  "description": "Validate a workflow file and report invalid keys, triggers and expressions.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "github-actions",
+    "workflow",
+    "yaml",
+    "schema",
+    "validator",
+    "devops",
+    "ci",
+    "expressions"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/github-actions-validator"
+  }
+}

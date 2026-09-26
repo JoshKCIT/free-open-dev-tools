@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/json/github-workflow.json
+on:
+  workflow_call:
+    secrets:
+      api_token:
+        required: true
+    inputs:
+      constraints:
+        required: false
+        default: ''
+jobs:
+  build-and-publish:
+    name: build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5
+      - name: satisfy constraings
+        env:
+          CONSTRAINTS: ${{ inputs.constraints }}
+        run: echo "constraints=$CONSTRAINTS"
+      - name: build
+        run: echo 'do build step'
+      - name: publish
+        uses: example/example-publisher-action@ee0669bd1cc54295c223e0bb666b733df41de1c5
+        with:
+          token: ${{ secrets.api_token }}
