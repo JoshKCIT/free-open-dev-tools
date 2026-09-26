@@ -232,6 +232,18 @@ it('nothing is written to the console while building', () => {
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
 
+it('a README with more list items than the preview limit still builds its Markdown, but the preview is refused rather than risk freezing the tab', () => {
+  const manyFeatures = Array.from({ length: 900 }, (_, i) => `Feature ${i}`).join('\n');
+  const { markdown } = buildReadme({ name: 'x', packageName: 'x', sections: { features: manyFeatures } });
+  expect(markdown).toContain('- Feature 899');
+  expect(() => renderPreview(markdown, win)).toThrow(ReadmeError);
+  expect(() => renderPreview(markdown, win)).toThrow(/list items/);
+
+  const fewFeatures = Array.from({ length: 10 }, (_, i) => `Feature ${i}`).join('\n');
+  const { markdown: smallMarkdown } = buildReadme({ name: 'x', packageName: 'x', sections: { features: fewFeatures } });
+  expect(() => renderPreview(smallMarkdown, win)).not.toThrow();
+});
+
 it('other required behaviour', () => {
   expect(() => buildReadme({ name: '' })).toThrow(ReadmeError);
 

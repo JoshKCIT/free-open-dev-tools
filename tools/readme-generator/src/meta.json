@@ -14,7 +14,8 @@
     "This tool cannot check that a badge URL actually resolves or shows what it claims -- loading it would be a network request, and only viewing the rendered README on the hosting site (or a browser tab pointed at the badge URL directly) can show that.",
     "GitHub's own Markdown renderer may differ from the preview in small ways (for example its exact heading-anchor generation for non-Latin letters, see markdown-text.ts); this preview is a close approximation, not a guarantee of pixel-identical rendering.",
     "Badges always appear as their own text, never an image, inside the preview -- by design (D-105), not a limitation the visitor can turn off.",
-    "The description and free-text sections are rendered as the visitor typed them; this tool does not check that the Markdown they contain is well-formed CommonMark beyond what the preview itself shows."
+    "The description and free-text sections are rendered as the visitor typed them; this tool does not check that the Markdown they contain is well-formed CommonMark beyond what the preview itself shows.",
+    "A README with more than 800 list items refuses only the preview (measured directly: rendering and sanitising a flat list grows super-linearly past roughly a thousand items in a real browser) -- the Markdown itself has no such limit and still downloads."
   ],
   "ambiguities": [
     "GitHub's own section-link documentation says heading letters are lower-cased, but that same page's worked example keeps a Greek capital letter unlowercased in the generated anchor -- a real self-contradiction in GitHub's own current docs (see markdown-text.ts's githubSlug). This tool follows the stated rule (lower-case) since that is also what the widely used github-slugger reference implementation does.",

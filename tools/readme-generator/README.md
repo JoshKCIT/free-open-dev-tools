@@ -23,6 +23,7 @@ Fills in a project name, description, badges and sections (installation, usage, 
 - GitHub's own Markdown renderer may differ from the preview in small ways (for example its exact heading-anchor generation for non-Latin letters, see markdown-text.ts); this preview is a close approximation, not a guarantee of pixel-identical rendering.
 - Badges always appear as their own text, never an image, inside the preview -- by design (D-105), not a limitation the visitor can turn off.
 - The description and free-text sections are rendered as the visitor typed them; this tool does not check that the Markdown they contain is well-formed CommonMark beyond what the preview itself shows.
+- A README with more than 800 list items refuses only the preview (measured directly: rendering and sanitising a flat list grows super-linearly past roughly a thousand items in a real browser) -- the Markdown itself has no such limit and still downloads.
 
 ## Ambiguous cases, and what this does about them
 

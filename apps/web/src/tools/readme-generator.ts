@@ -100,12 +100,20 @@ export default defineTool({
         license: licenseValue === '(none)' ? undefined : licenseValue,
       });
 
-      const { html } = renderPreview(markdown, window);
-
       const outputs: OutputBlock[] = [
         { kind: 'code', label: 'README.md', language: 'markdown', value: markdown, download: 'README.md' },
-        { kind: 'sandboxed-html', label: 'Preview', html },
       ];
+
+      // The Markdown itself has no size limit; only the sanitised preview
+      // does (freeze risk, see renderPreview's own MAX_LIST_ITEMS). A README
+      // over that limit still downloads fine -- it just skips the preview.
+      try {
+        const { html } = renderPreview(markdown, window);
+        outputs.push({ kind: 'sandboxed-html', label: 'Preview', html });
+      } catch (previewErr) {
+        if (!(previewErr instanceof ReadmeError)) throw previewErr;
+        outputs.push({ kind: 'note', tone: 'warn', value: previewErr.message });
+      }
 
       return { outputs, stats: [['Sections', String(headings.length)]] };
     } catch (err) {
