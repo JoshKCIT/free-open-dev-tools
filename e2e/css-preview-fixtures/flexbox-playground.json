@@ -1,0 +1,24 @@
+{
+  "id": "flexbox-playground",
+  "scenarios": [
+    { "label": "default row", "steps": [], "pixels": true },
+    {
+      "label": "column space-between",
+      "steps": [
+        { "action": "select", "field": "items", "value": "2" },
+        { "action": "select", "field": "direction", "value": "column" },
+        { "action": "select", "field": "justifyContent", "value": "space-between" },
+        { "action": "fill", "field": "gap", "value": "12" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "growing second item",
+      "steps": [
+        { "action": "select", "field": "editing", "value": "2" },
+        { "action": "fill", "field": "grow2", "value": "1" }
+      ],
+      "pixels": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "flexbox-playground",
+  "label": "CSS Flexible Box Layout Level 1: flex-direction and justify-content keywords are written on .container",
+  "steps": [
+    { "action": "select", "field": "direction", "value": "column" },
+    { "action": "select", "field": "justifyContent", "value": "space-between" }
+  ],
+  "expect": ["flex-direction: column;", "justify-content: space-between;"]
+}
