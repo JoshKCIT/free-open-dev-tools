@@ -1,0 +1,11 @@
+{
+  "id": "aspect-ratio",
+  "label": "1920 wide at 16:9 is 1080 tall, ITU-R BT.709's own Full HD format",
+  "steps": [
+    { "action": "radio", "field": "solveFor", "value": "height" },
+    { "action": "fill", "field": "width", "value": "1920" },
+    { "action": "fill", "field": "ratioW", "value": "16" },
+    { "action": "fill", "field": "ratioH", "value": "9" }
+  ],
+  "expect": ["1080"]
+}

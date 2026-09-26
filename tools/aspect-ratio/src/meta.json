@@ -1,0 +1,38 @@
+{
+  "id": "aspect-ratio",
+  "name": "Aspect Ratio Calculator",
+  "summary": "Solve for a missing dimension, and list common ratios and resolutions.",
+  "about": "Solves a missing width, height or ratio from the other two, simplifies a width and height to the simplest whole-number ratio, and shows a decimal ratio (such as 2.39:1) alongside the nearest simple whole-number ratio. Also lists common aspect ratios and resolutions, each named for what it is used for and cited to the standard that defines or popularised it -- ITU-R BT.709 and BT.2020 for HD and UHD television, DCI's Digital Cinema System Specification for 2K/4K cinema, and VESA's display timing standards for common PC resolutions.",
+  "supports": [
+    "Solving a missing width or height from the other size and a ratio, rounded to whole pixels with the rounding error shown",
+    "Solving the ratio from a width and height, reduced to the simplest whole-number form by the greatest common divisor",
+    "Decimal ratios (such as 2.39:1) kept exactly as written, alongside the nearest ratio expressible with two whole numbers each at most 100",
+    "A CSS aspect-ratio declaration in the form the property accepts",
+    "A table of common ratios and common resolutions, each cited to the standard body that defines or popularised it"
+  ],
+  "limits": [
+    "The common ratios and resolutions are a selection, not an exhaustive list, and reflect this project's own research rather than one single official table -- see testNotes and common-sizes-NOTICE.txt for what was fetched and what is established industry convention",
+    "Marketing and colloquial names for resolutions vary by vendor and region; this tool uses the names commonly associated with each standard",
+    "Solved sizes are rounded to whole pixels; the exact, unrounded value is available as the rounding error",
+    "A decimal ratio's nearest whole-number match is approximate by construction and is shown alongside, never in place of, the exact value"
+  ],
+  "ambiguities": [
+    "DCI's own specification website returned no readable text this session (a JavaScript-rendered page); its title, resolutions and aspect ratios are cited from established, publicly documented industry convention rather than the specification's own fetched text.",
+    "VESA's Display Monitor Timing and Coordinated Video Timings standards were confirmed to exist and be named on VESA's own site this session; their full timing tables are a members-oriented PDF this session could not fetch as text, so the common 16:10 resolution names (WXGA, WXGA+, WSXGA+, WUXGA) are cited from established industry convention."
+  ],
+  "standards": [
+    {
+      "label": "CSS Box Sizing Module Level 4 (the aspect-ratio property)",
+      "url": "https://www.w3.org/TR/css-sizing-4/"
+    },
+    { "label": "CSS Values and Units Module Level 4 (the <ratio> type)", "url": "https://www.w3.org/TR/css-values-4/" },
+    { "label": "ITU-R BT.709-6 (HDTV parameter values)", "url": "https://www.itu.int/rec/R-REC-BT.709/en" },
+    { "label": "ITU-R BT.2020-2 (UHDTV parameter values)", "url": "https://www.itu.int/rec/R-REC-BT.2020/en" }
+  ],
+  "keywords": ["css", "aspect-ratio", "resolution", "ratio", "calculator"],
+  "primaryExport": "solveAspect",
+  "devDependencies": { "css-tree": "^3.2.1", "@types/css-tree": "^3.2.0" },
+  "usage": "import { solveAspect, simplifyRatio } from '@fodt/aspect-ratio';\n\nsolveAspect({ solveFor: 'height', width: 1920, ratio: { w: 16, h: 9 } }).height; // 1080\nsimplifyRatio(1920, 1080); // { w: 16, h: 9 }\nsimplifyRatio(2.39, 1); // { w: 2.39, h: 1, nearestWhole: { w: 98, h: 41, error: ... } }",
+  "apiNotes": "`simplifyRatio` only reduces by the greatest common divisor when both inputs are already whole numbers; a decimal ratio is kept exactly as given, with the nearest whole-number match (both terms at most 100) offered alongside it, never substituted for it.",
+  "testNotes": "aspect-ratio's property definition is quoted from CSS Box Sizing Module Level 4 (fetched this session, https://www.w3.org/TR/css-sizing-4/), and the <ratio> type's grammar and serialization rule are quoted from CSS Values and Units Module Level 4 (fetched this session). D-121/D-122: the common ratio and resolution table is not vendored from any single third-party source (per the orchestrator amendment overriding this plan's original Wikipedia-table step); it is compiled in this project's own words, each row cited to the standard that defines it. ITU-R BT.709 and BT.2020's own recommendation index pages were fetched this session (2026-09-26) and confirm each recommendation's title, number and scope; the full recommendation text sits behind a PDF this session did not fetch. DCI's and VESA's exact timing tables likewise sit behind pages this session could not read as text; see ambiguities."
+}

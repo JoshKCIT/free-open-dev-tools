@@ -1,0 +1,20 @@
+Common ratios and resolutions -- sources
+
+Per D-122 (an orchestrator amendment to this phase's plan, 2026-09-25): this
+file does NOT accompany a bundled third-party data table and carries no
+share-alike or copyleft licence obligation. `common-sizes.ts` lists common
+aspect ratios and resolutions as plain facts, written in this project's own
+words, each cited to the standard that defines or popularised it:
+
+- ITU-R BT.709-6 ("Parameter values for the HDTV standards for production
+  and international programme exchange") -- https://www.itu.int/rec/R-REC-BT.709/en
+- ITU-R BT.2020-2 ("Parameter values for ultra-high-definition television
+  systems...") -- https://www.itu.int/rec/R-REC-BT.2020/en
+- Digital Cinema Initiatives (DCI), Digital Cinema System Specification --
+  https://dcimovies.com/
+- VESA Display Monitor Timing (DMT) and Coordinated Video Timings (CVT)
+  standards -- https://vesa.org/vesa-standards/
+
+The original Wikipedia "List of common resolutions" page this phase's plan
+named before D-122 (CC BY-SA 4.0) was never fetched, vendored or read for
+this file's content.

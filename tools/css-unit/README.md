@@ -23,6 +23,10 @@ Converts a CSS length between eleven units by routing every value through px, th
 - Percentages have a different reference value for almost every CSS property that accepts one; this tool only offers the parent font size or a container width as the reference
 - Results are shown to the chosen precision and are not the exact binary value a browser keeps internally
 
+## Ambiguous cases, and what this does about them
+
+- CSS Values and Units Level 4 does not name a default container width for a percentage relative to a container; this tool uses 600px as a reasonable starting value, disclosed here rather than presented as a specification default.
+
 ## Defined by
 
 - [CSS Values and Units Module Level 4](https://www.w3.org/TR/css-values-4/)
