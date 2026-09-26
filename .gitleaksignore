@@ -20,3 +20,25 @@ e053df95bbe407385cfefac2b41eb2663bba9ed9:apps/web/src/tools/bcrypt.ts:generic-ap
 # A fabricated Basic-auth credential (alice:s3cret) used to test curl-converter's own -u flag
 # parsing against an example.invalid URL; not a real account anywhere.
 ba9a57e2efcbf305f3ad325b0ec94be93772bc9e:tools/curl-converter/test/parse.test.ts:curl-auth-user:18
+# A vendored git blob SHA-1 provenance record (not a secret) naming the pinned
+# upstream file "secret-v1.json" (the Kubernetes Secret kind schema) in
+# UPSTREAM.md; the filename's own "secret" substring plus a 40-hex-char SHA
+# next to it is what the generic-api-key rule matches.
+2db1840753125d8fd1aae7ceef5f1203ce9368d2:tools/k8s-validator/test/fixtures/k8s-schema-source/UPSTREAM.md:generic-api-key:35
+# kubernetes.io's own published "dotfile-secret" documentation example
+# (Configure a Pod to Use a Secret), vendored verbatim; the base64 value
+# decodes to "value-2\r\n\r\n", a placeholder from the public doc, not a
+# real credential.
+2db1840753125d8fd1aae7ceef5f1203ce9368d2:tools/k8s-validator/test/fixtures/k8s-examples/Secret.yaml:kubernetes-secret-yaml:2
+2db1840753125d8fd1aae7ceef5f1203ce9368d2:tools/k8s-validator/test/fixtures/k8s-examples/Secret.yaml:generic-api-key:6
+# Five vendored git blob SHA-1 provenance records (not secrets) in
+# UPSTREAM.md, naming pinned SchemaStore test fixture files whose own
+# filenames contain "secrets"/"id-token" (permissions-event-has-wrong-property-keys.yaml,
+# permissions-id-token-read.yaml, permissions-job-id-token-read.yaml,
+# call-reusable-workflow-inherit-secrets.yaml, permissions-id-token.yaml),
+# which is what the generic-api-key rule matches next to a 40-hex-char SHA.
+3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:27
+3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:28
+3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:29
+3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:48
+3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:71
