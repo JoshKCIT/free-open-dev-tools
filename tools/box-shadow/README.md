@@ -62,7 +62,7 @@ generateBoxShadow({
     { x: 0, y: 4, blur: 12, spread: 0, color: '#000000', opacity: 30, inset: false },
   ],
 });
-// { css: '.box {\n  width: 240px;\n  height: 160px;\n  background-color: #ffffff;\n  border-radius: 12px;\n  box-shadow: 0 4px 12px 0 #0000004d;\n}', value: '0 4px 12px 0 #0000004d', ... }
+// { css: '.box {\n  width: 240px;\n  height: 160px;\n  ...\n  box-shadow: 0 4px 12px 0 #0000004d;\n}', value: '0 4px 12px 0 #0000004d', ... }
 ```
 
 generateBoxShadow({ layers, width, height, radius, background }) takes one to four shadow layers (offset x/y, blur radius, spread distance, a hex colour, opacity 0-100 percent, and an inset flag), an optional preview box width and height (default 240x160, clamped to 40-480px), an optional corner rounding (default 12, clamped to 0-120px) and an optional background hex colour (default #ffffff). Returns { css, tree, value, warnings }: css is one .box rule built through the canonical stylesheetText writer; value is the box-shadow value alone; warnings names any field a value was clamped or replaced in. Throws BoxShadowError only if the canonical safety writer itself refuses the finished CSS, which validated input never reaches.
