@@ -1,0 +1,29 @@
+{
+  // A legacy .eslintrc.json written for this tool's own tests, covering
+  // core rules, one rule from each of the six bundled plugins, one rule
+  // outside the bundled plugin set, an unsupported (formatter-covered)
+  // rule, options that are not carried over, and every top-level key this
+  // tool lists as not carried over.
+  "extends": ["eslint:recommended"],
+  "plugins": ["@typescript-eslint", "react", "react-hooks", "jsx-a11y", "import", "unicorn"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" },
+  "env": { "browser": true, "node": true },
+  "settings": { "react": { "version": "detect" } },
+  "overrides": [{ "files": ["*.test.ts"], "rules": { "no-debugger": "off" } }],
+  "ignorePatterns": ["dist/**"],
+  "root": true,
+  "globals": { "myGlobal": "readonly", "__proto__": "readonly" },
+  "rules": {
+    "no-debugger": "error",
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "indent": ["error", 2],
+    "@typescript-eslint/no-unused-vars": "warn",
+    "react/jsx-key": "error",
+    "react-hooks/rules-of-hooks": "error",
+    "jsx-a11y/alt-text": "warn",
+    "import/no-cycle": "error",
+    "unicorn/error-message": "error",
+    "vue/no-unused-vars": "warn"
+  }
+}

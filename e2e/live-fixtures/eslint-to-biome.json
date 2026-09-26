@@ -1,0 +1,6 @@
+{
+  "id": "eslint-to-biome",
+  "label": "no-debugger maps to Biome's noDebugger, as the vendored migrate table maps it",
+  "steps": [{ "action": "fill", "field": "input", "value": "{\"rules\":{\"no-debugger\":\"error\"}}" }],
+  "expect": ["noDebugger"]
+}

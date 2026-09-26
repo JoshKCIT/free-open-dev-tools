@@ -1,0 +1,9 @@
+# A legacy .eslintrc.yaml written for this tool's own tests.
+extends:
+  - eslint:recommended
+rules:
+  no-debugger: error
+  eqeqeq:
+    - error
+    - always
+  "@typescript-eslint/no-unused-vars": warn

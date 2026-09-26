@@ -1,0 +1,8 @@
+[
+  {
+    "values": {
+      "input": "{ \"settings\": { \"link\": \"https://example.invalid/\" }, \"rules\": { \"no-debugger\": \"error\" } }"
+    },
+    "attachesFile": false
+  }
+]

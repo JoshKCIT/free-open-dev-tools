@@ -1,0 +1,23 @@
+Biome, by the Biome contributors.
+
+Source: https://github.com/biomejs/biome
+Licence: MIT OR Apache-2.0 (dual licensed; this bundle elects MIT)
+Licence text: https://github.com/biomejs/biome/blob/main/LICENSE-MIT
+Snapshot taken at tag @biomejs/biome@2.5.14, commit
+af4365d2b80177d0e0434c0ed4fd2c9171afc56c.
+
+What is bundled: a rule-mapping table built from Biome's own generated
+ESLint-migrate match arms (crates/biome_cli/src/execute/migrate/eslint_any_rule_to_biome.rs)
+and unsupported-rule metadata (crates/biome_cli/src/execute/migrate/unsupported_rules.rs),
+scoped to ESLint core plus six commonly used plugins: @typescript-eslint, react,
+react-hooks, jsx-a11y, import and unicorn (D-108). 350 mapped rules, 107
+unsupported-rule entries within that scope, at this snapshot.
+
+What was changed: the generated match-arm and unsupported-rule source is
+parsed into a plain data table (rule name, Biome group and rule, whether a
+mapping needs --include-nursery or --include-inspired, or the unsupported
+reason). No rule mapping decision was altered -- every target and reason
+comes directly from Biome's own generated source, proven identical to a
+fresh parse of the vendored file by a required test. Biome's own migrate
+documentation and configuration reference (fetched separately) are quoted,
+never copied wholesale, in this package's own test comments.
