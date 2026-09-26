@@ -3,7 +3,20 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', 'test-results/**', 'playwright-report/**'],
+    // Vendored fixtures under tools/*/test/fixtures/** are third-party
+    // snapshots (AM1: never edited), so this project's own lint rules never
+    // apply to them -- linting the same rule set on a foreign CommonJS test
+    // file (motdotla/dotenv's own upstream tap tests, for example) would
+    // otherwise fail on `require`/`Buffer`, which this repo's own source
+    // never uses but a vendored Node script legitimately does.
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/coverage/**',
+      'test-results/**',
+      'playwright-report/**',
+      'tools/*/test/fixtures/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
