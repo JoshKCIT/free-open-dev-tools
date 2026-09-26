@@ -20,8 +20,9 @@ Chains up to four filter functions (blur, brightness, contrast, a drop shadow, g
 
 - Filters are applied by the visitor's own browser and GPU, so results can differ slightly between browsers, especially for a large blur radius
 - Applying any filter function makes the element a containing block for fixed-position descendants and creates a stacking context (Filter Effects Module Level 1, section 2)
-- SVG reference filters (the url() form of the filter property) are not offered; only the ten closed filter functions this specification defines
+- SVG reference filters (the in-page-fragment form of the filter property) are not offered; only the ten closed filter functions this specification defines
 - At most four filter functions are offered, applied in the fixed order this tool lists them in
+- The starting blur amount is kept deliberately small: a blur re-rasterises the whole subject rather than drawing a separate layer, so it is not pixel-snapped the way a solid fill is, and a stronger starting value can differ visibly, pixel for pixel, between browsers even though the CSS itself is identical
 
 ## Ambiguous cases, and what this does about them
 
