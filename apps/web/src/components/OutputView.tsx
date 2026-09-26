@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputBlock, DownloadableFile } from '../lib/tool-ui';
+import CssPreview from './CssPreview';
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle');
@@ -225,6 +226,23 @@ export default function OutputView({ block }: { block: OutputBlock }) {
           <SandboxedHtml html={block.html} />
         </div>
       );
+
+    case 'preview': {
+      const actions = (
+        <>
+          <CopyButton text={block.css} />
+          {block.download ? (
+            <DownloadButton file={{ name: block.download, mime: 'text/css;charset=utf-8', content: block.css }} />
+          ) : null}
+        </>
+      );
+      return (
+        <div className="output-block">
+          {head(actions)}
+          <CssPreview block={block} />
+        </div>
+      );
+    }
 
     case 'image':
       return (

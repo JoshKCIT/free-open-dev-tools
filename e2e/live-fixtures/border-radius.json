@@ -1,0 +1,15 @@
+{
+  "id": "border-radius",
+  "label": "CSS Backgrounds and Borders Level 3: the four values are top-left, top-right, bottom-right, bottom-left",
+  "steps": [
+    { "action": "fill", "field": "topLeft-x", "value": "10" },
+    { "action": "fill", "field": "topLeft-y", "value": "10" },
+    { "action": "fill", "field": "topRight-x", "value": "20" },
+    { "action": "fill", "field": "topRight-y", "value": "20" },
+    { "action": "fill", "field": "bottomRight-x", "value": "30" },
+    { "action": "fill", "field": "bottomRight-y", "value": "30" },
+    { "action": "fill", "field": "bottomLeft-x", "value": "40" },
+    { "action": "fill", "field": "bottomLeft-y", "value": "40" }
+  ],
+  "expect": ["border-radius: 10px 20px 30px 40px;"]
+}

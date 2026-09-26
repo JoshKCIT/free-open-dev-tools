@@ -1011,3 +1011,85 @@ dl.kv {
   font-size: 0.83rem;
   padding: 5px 7px;
 }
+
+/* Phase 8 preview surface (D-110, D-111): the effect and its exact CSS,
+   side by side on wide containers, stacked below about 560px. */
+.css-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 560px) {
+  .css-preview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.css-preview-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.css-preview-stage {
+  all: initial;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.css-preview-stage[data-backdrop='pattern'] {
+  background:
+    linear-gradient(45deg, #d8dce2 25%, transparent 25%) -10px 0 / 20px 20px,
+    linear-gradient(-45deg, #d8dce2 25%, transparent 25%) -10px 0 / 20px 20px,
+    linear-gradient(45deg, transparent 75%, #d8dce2 75%) -10px 0 / 20px 20px,
+    linear-gradient(-45deg, transparent 75%, #d8dce2 75%) -10px 0 / 20px 20px,
+    #ffffff;
+}
+
+/* Phase 8 additive field type: a draggable point with paired numeric
+   inputs (D-112). */
+.point-pad {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  max-width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  cursor: crosshair;
+}
+.point-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+.point-handle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.point-inputs {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.point-inputs label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.point-inputs input {
+  width: 72px;
+}

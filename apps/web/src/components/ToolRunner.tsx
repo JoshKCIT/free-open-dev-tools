@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { Field, ToolPage, ToolResult, Values } from '../lib/tool-ui';
 import { formatBytes } from '../lib/tool-ui';
 import GridField from './GridField';
+import PointField from './PointField';
 import OutputView from './OutputView';
 
 function initialValues(fields: Field[]): Values {
@@ -14,7 +15,14 @@ function initialValues(fields: Field[]): Values {
     // grid the visitor had already changed.
     else if (f.type === 'grid')
       v[f.name] = Array.isArray(f.default) ? (f.default as string[][]).map((row) => row.slice()) : [['']];
-    else v[f.name] = f.default ?? '';
+    // A copy of the field's own default point, or the field's minimum on
+    // both axes when no default is given, so Reset always hands back a
+    // finite { x, y } rather than an empty object PointField would have to
+    // special-case.
+    else if (f.type === 'point') {
+      const d = f.default as { x?: number; y?: number } | undefined;
+      v[f.name] = { x: d?.x ?? f.min ?? 0, y: d?.y ?? f.min ?? 0 };
+    } else v[f.name] = f.default ?? '';
   }
   return v;
 }
@@ -229,6 +237,9 @@ function FieldControl({ field, value, onChange }: { field: Field; value: unknown
     case 'grid':
       return <GridField field={field} value={value} onChange={onChange} />;
 
+    case 'point':
+      return <PointField field={field} value={value} onChange={onChange} />;
+
     default:
       return null;
   }
@@ -438,7 +449,15 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
               className="button"
               onClick={() => {
                 if (tool.cancellable && running) abandonRun('reset');
-                setValues(base);
+                // A shallow copy, not `base` itself: when a visitor presses
+                // Reset without ever having changed a field, `values` is
+                // already the exact `base` reference (its own initial
+                // state), so `setValues(base)` would be a no-op React
+                // bails out on -- the debounced auto-run effect below
+                // never re-fires because its own `values` dependency
+                // never changed identity, leaving the output panel empty
+                // after `setResult(null)` with nothing to ever refill it.
+                setValues({ ...base });
                 setResult(null);
                 setCrashed(null);
               }}

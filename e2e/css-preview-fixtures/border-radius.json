@@ -1,0 +1,18 @@
+{
+  "id": "border-radius",
+  "drag": ["topLeft"],
+  "scenarios": [
+    { "label": "default corners", "steps": [], "pixels": true },
+    {
+      "label": "elliptical corners in percent",
+      "steps": [
+        { "action": "radio", "field": "unit", "value": "%" },
+        { "action": "fill", "field": "topLeft-x", "value": "50" },
+        { "action": "fill", "field": "topLeft-y", "value": "30" },
+        { "action": "fill", "field": "bottomRight-x", "value": "10" },
+        { "action": "fill", "field": "bottomRight-y", "value": "40" }
+      ],
+      "pixels": true
+    }
+  ]
+}

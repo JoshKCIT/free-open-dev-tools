@@ -1,0 +1,46 @@
+{
+  "id": "border-radius",
+  "name": "CSS Border Radius Generator",
+  "summary": "Set each corner independently with a live preview.",
+  "about": "Shapes a box's four corners independently by dragging a handle or typing horizontal and vertical radii for each one, showing the live result next to the exact border-radius CSS. Built for a rounded button, a pill shape, a leaf or blob, or any box whose corners are not all the same.",
+  "supports": [
+    "Independent horizontal and vertical radii for each of the four corners, in pixels or percent",
+    "The shortest border-radius shorthand the CSS Backgrounds and Borders Level 3 value order and one-to-four value expansion rules give back exactly, including the slash form when horizontal and vertical radii differ",
+    "The four border-*-radius longhand values shown separately",
+    "The Overlapping Curves scale factor a real browser would apply when adjacent corner radii add up to more than a side's length",
+    "A colour box for the previewed element's background, accepting a 3, 4, 6 or 8-digit hex colour"
+  ],
+  "limits": [
+    "When two adjacent corner radii add up to more than the side between them, browsers automatically scale every radius down (the Overlapping Curves rule); this tool reports the scale factor it computed but never rewrites the pasted CSS to apply it, since a real browser already applies the rule itself",
+    "Percentages are resolved against the previewed box's own width and height; the same CSS pasted onto a differently sized element gives different curves",
+    "Only one element is previewed; a design combining border radius with other shapes or overlapping elements is not modelled here",
+    "A colour value that is not a valid hex colour falls back to the default background colour with a warning, rather than being rejected outright"
+  ],
+  "ambiguities": [
+    "A corner radius above the tool's own 400px (or 100%) ceiling is clamped rather than refused, since a value that large has no visual difference from the ceiling on any realistic box size",
+    "Width and height are clamped to 40-480px, a range chosen to keep the live preview legible; the generated CSS itself has no such limit"
+  ],
+  "standards": [
+    {
+      "label": "CSS Backgrounds and Borders Module Level 3 — the border-radius properties and Overlapping Curves",
+      "url": "https://www.w3.org/TR/css-backgrounds-3/#border-radius"
+    },
+    {
+      "label": "CSS Color Module Level 4 — RGB Hexadecimal Notations",
+      "url": "https://www.w3.org/TR/css-color-4/#hex-notation"
+    },
+    {
+      "label": "CSS Syntax Module Level 3 — Escaping and comments",
+      "url": "https://www.w3.org/TR/css-syntax-3/#escaping"
+    }
+  ],
+  "keywords": ["css", "border-radius", "rounded corners", "generator", "preview", "corners"],
+  "primaryExport": "generateBorderRadius",
+  "usage": "import { generateBorderRadius } from '@fodt/border-radius';\n\ngenerateBorderRadius({\n  corners: {\n    topLeft: { x: 24, y: 24 },\n    topRight: { x: 24, y: 24 },\n    bottomRight: { x: 24, y: 24 },\n    bottomLeft: { x: 24, y: 24 },\n  },\n});\n// { css: '.box {\\n  width: 240px;\\n  height: 160px;\\n  background-color: #2563eb;\\n  border-radius: 24px;\\n}', shorthand: '24px', ... }",
+  "apiNotes": "generateBorderRadius({ corners, unit, width, height, background }) takes four { x, y } corner radii (horizontal and vertical, in that order), an optional unit ('px' default or '%'), an optional preview box width and height (default 240x160, clamped to 40-480px), and an optional background hex colour (default #2563eb). Returns { css, tree, shorthand, longhands, overlapScale, warnings }: css is one .box rule built through the canonical stylesheetText writer; shorthand is the shortest border-radius value; longhands are the four border-*-radius values; overlapScale is the Overlapping Curves scale factor when corners overlap, or null; warnings names any field a value was clamped or replaced in. Throws BorderRadiusError only if the canonical safety writer itself refuses the finished CSS, which validated input never reaches.",
+  "testNotes": "The shorthand's one-to-four value collapsing is checked against the CSS Backgrounds and Borders Level 3 spec's own worked examples, then against 500 seeded random corner sets compared with an independent expander written in the test. The overlap scale factor is checked against the spec's own worked example (a 6em by 2em box with border-radius 0.5em 2em 0.5em 2em scales by 0.8). Every declaration is checked against the css-tree 3.2.1 lexer. Hostile field values are checked against the shared HOSTILE_VALUES battery.",
+  "devDependencies": {
+    "css-tree": "^3.2.1",
+    "@types/css-tree": "^3.2.0"
+  }
+}

@@ -157,7 +157,7 @@ const PHASE_6_TOOL_IDS = [
   'nginx-config',
 ];
 
-/** The 13 tools Phase 7 adds (OPS-01..13); phase still in progress, so its own count/completeness tests are added by 07-08. */
+/** The 13 tools Phase 7 adds (OPS-01..13). */
 const PHASE_7_TOOL_IDS = [
   'gitignore-generator',
   'git-command-builder',
@@ -172,6 +172,32 @@ const PHASE_7_TOOL_IDS = [
   'mcp-config-builder',
   'readme-generator',
   'compression-tester',
+];
+
+/**
+ * The 19 tools Phase 8 adds (CSS-01..15, COLR-01..04); phase still in
+ * progress, so its own count/completeness tests are added by 08-10.
+ */
+const PHASE_8_TOOL_IDS = [
+  'css-unit',
+  'css-clamp',
+  'css-specificity',
+  'gradient-generator',
+  'box-shadow',
+  'text-shadow',
+  'border-radius',
+  'flexbox-playground',
+  'grid-generator',
+  'css-animation',
+  'css-transform',
+  'css-filter',
+  'clip-path',
+  'css-effects',
+  'aspect-ratio',
+  'color-converter',
+  'color-palette',
+  'contrast-checker',
+  'image-color-extractor',
 ];
 
 // --- Small, deliberately unabstracted field helpers -------------------------
@@ -662,16 +688,26 @@ test('every phase 7 tool has exactly one live fixture file', () => {
   }
 });
 
-test('every live fixture file belongs to phase 3, 4, 5, 6 or 7', () => {
-  const union = [
+/**
+ * Membership only (not strict equality against the fixture count): while
+ * phase 8 is still in progress, only some of its 19 ids have a live fixture
+ * file yet. Plan 08-10 sets the count to 133 and restores strict equality,
+ * once every id in this phase has a fixture. Every id here is in the union
+ * of the six phase lists, and no id appears twice.
+ */
+test('every live fixture file belongs to phase 3, 4, 5, 6, 7 or 8', () => {
+  const union = new Set([
     ...PHASE_3_TOOL_IDS,
     ...PHASE_4_TOOL_IDS,
     ...PHASE_5_TOOL_IDS,
     ...PHASE_6_TOOL_IDS,
     ...PHASE_7_TOOL_IDS,
-  ]
-    .slice()
-    .sort();
-  const sortedFixtureIds = LIVE_FIXTURE_IDS.slice().sort();
-  expect(sortedFixtureIds).toEqual(union);
+    ...PHASE_8_TOOL_IDS,
+  ]);
+  const seen = new Set<string>();
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(union, `${id} is not in the union of phase 3-8 tool ids`).toContain(id);
+    expect(seen.has(id), `${id} has more than one live fixture file`).toBe(false);
+    seen.add(id);
+  }
 });

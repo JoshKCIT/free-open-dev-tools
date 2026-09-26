@@ -10,7 +10,7 @@
 export type Values = Record<string, unknown>;
 
 export type FieldType =
-  'textarea' | 'text' | 'number' | 'select' | 'checkbox' | 'radio' | 'file' | 'color' | 'range' | 'grid';
+  'textarea' | 'text' | 'number' | 'select' | 'checkbox' | 'radio' | 'file' | 'color' | 'range' | 'point' | 'grid';
 
 export interface Field {
   name: string;
@@ -38,9 +38,23 @@ export interface Field {
   maxRows?: number;
   /** Grid field only. Caps how many columns Add column can reach. Default 20. */
   maxColumns?: number;
+  /** Point field only. Names the two axes shown beside the numeric inputs. Default ['X', 'Y']. */
+  axes?: [string, string];
 }
 
 export type Tone = 'info' | 'warn' | 'error' | 'success';
+
+/**
+ * One element of the tree a `preview` output block draws inside its own
+ * shadow root. `className` holds one or more space-separated class names;
+ * the element carries no other attribute and no inline style -- the CSS
+ * text the block ships is the only thing that ever styles it.
+ */
+export interface PreviewNode {
+  className: string;
+  text?: string;
+  children?: PreviewNode[];
+}
 
 export interface OutputTable {
   headers: string[];
@@ -68,6 +82,22 @@ export type OutputBlock =
   | { kind: 'image'; label?: string; src: string; alt: string; width?: number; height?: number; download?: string }
   | { kind: 'files'; label?: string; files: DownloadableFile[] }
   | { kind: 'note'; label?: string; tone: Tone; value: string }
+  /**
+   * A live preview stage shown beside its own exact CSS text. `tree` is the
+   * element tree that `css` styles; `css` is applied inside the stage's own
+   * shadow root as one constructed stylesheet, adopted there and nowhere
+   * else, so the preview is styled by exactly what a visitor would paste
+   * and by nothing from this site. `download` names the file a Download
+   * button next to the CSS text saves it as.
+   */
+  | {
+      kind: 'preview';
+      label?: string;
+      css: string;
+      tree: PreviewNode;
+      backdrop?: 'plain' | 'pattern';
+      download?: string;
+    }
   | { kind: 'diff'; label?: string; lines: { type: 'add' | 'del' | 'ctx' | 'meta'; text: string }[] };
 
 export interface ToolIssue {
@@ -234,4 +264,16 @@ export function grid(values: Values, field: string): string[][] {
     while (padded.length < width) padded.push('');
     return padded;
   });
+}
+
+/**
+ * Reads a point field's value as `{ x, y }`, falling back to `fallback`
+ * (whole or per-axis) when the stored value is missing or either axis is
+ * not a finite number.
+ */
+export function point(values: Values, field: string, fallback: { x: number; y: number }): { x: number; y: number } {
+  const v = values[field] as { x?: unknown; y?: unknown } | undefined;
+  const x = typeof v?.x === 'number' && Number.isFinite(v.x) ? v.x : fallback.x;
+  const y = typeof v?.y === 'number' && Number.isFinite(v.y) ? v.y : fallback.y;
+  return { x, y };
 }
