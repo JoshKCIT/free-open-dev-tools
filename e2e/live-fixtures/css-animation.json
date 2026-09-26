@@ -1,0 +1,9 @@
+{
+  "id": "css-animation",
+  "label": "CSS Animations Level 1's own at-rule and longhand syntax",
+  "steps": [
+    { "action": "fill", "field": "name", "value": "slide-in" },
+    { "action": "select", "field": "frames", "value": "2" }
+  ],
+  "expect": ["@keyframes slide-in", "animation-name: slide-in;"]
+}

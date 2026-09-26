@@ -1,0 +1,55 @@
+{
+  "id": "css-animation",
+  "name": "CSS Animation & Transition",
+  "summary": "Build keyframe animations and transitions with a live preview.",
+  "about": "Builds a keyframe animation of movement, rotation, scale and opacity over two to four frames, or a hover transition between a resting and a target state, with a chosen duration, easing, repetition, direction and fill mode, showing the result playing live next to the exact CSS. A reduced-motion rule that turns the motion off is included by default.",
+  "supports": [
+    "Two to four keyframes, each with its own horizontal and vertical movement, rotation, scale and opacity, written as one transform declaration and an opacity declaration per keyframe",
+    "A keyframes name validated as an identifier the CSS Animations Level 1 grammar allows, refusing a CSS-wide keyword, none, or anything that is not a valid identifier",
+    "Every animation longhand (name, duration, timing function, delay, iteration count, direction, fill mode, play state), written as longhands rather than the shorthand so a keyframes name can never be misread as a keyword",
+    "A hover transition mode with its own resting and target state (movement, scale, opacity and colour) and the four transition longhands",
+    "Easing as a keyword, a cubic-bezier curve with its horizontal control points kept between 0 and 1, or a stepped curve with a named step position",
+    "A reduced-motion rule (on by default) that turns the animation or transition off for a visitor whose system asks for less motion"
+  ],
+  "limits": [
+    "A keyframes name is shared by the whole page it is pasted into, so a name already used elsewhere in a visitor's own stylesheet will clash with this one",
+    "Only movement, rotation, scale, opacity and background colour are animated; no other property is offered",
+    "Animation smoothness and timing precision depend on the visitor's own browser and device",
+    "The reduced-motion rule only helps a visitor whose system itself asks for less motion; it cannot detect a preference no operating system reports"
+  ],
+  "ambiguities": [
+    "A keyframes name that fails validation falls back to the tool's own default name with a warning, rather than being rejected outright",
+    "Two frames sharing the same position are not both kept: the later one is nudged forward with a warning, since two keyframe selectors at the same percentage would silently overwrite each other in a real browser"
+  ],
+  "standards": [
+    {
+      "label": "CSS Animations Level 1 — the @keyframes rule, the keyframes name and every animation longhand",
+      "url": "https://www.w3.org/TR/css-animations-1/"
+    },
+    {
+      "label": "CSS Transitions Level 1 — the transition longhands",
+      "url": "https://www.w3.org/TR/css-transitions-1/"
+    },
+    {
+      "label": "CSS Easing Functions Level 1 — easing keywords, cubic-bezier and steps",
+      "url": "https://www.w3.org/TR/css-easing-1/"
+    },
+    {
+      "label": "Media Queries Level 5 — the prefers-reduced-motion feature",
+      "url": "https://www.w3.org/TR/mediaqueries-5/"
+    },
+    {
+      "label": "CSS Color Module Level 4 — RGB Hexadecimal Notations",
+      "url": "https://www.w3.org/TR/css-color-4/#hex-notation"
+    }
+  ],
+  "keywords": ["css", "animation", "keyframes", "transition", "easing", "generator", "preview"],
+  "primaryExport": "generateAnimation",
+  "usage": "import { generateAnimation } from '@fodt/css-animation';\n\ngenerateAnimation({\n  mode: 'keyframes',\n  name: 'slide-in',\n  frames: [\n    { at: 0, x: 0, y: 0, rotate: 0, scale: 1, opacity: 100 },\n    { at: 100, x: 100, y: 0, rotate: 0, scale: 1, opacity: 0 },\n  ],\n  timing: { duration: 600, easing: 'ease', delay: 0, iterations: 1, infinite: false, direction: 'normal', fillMode: 'none', playState: 'running' },\n  reducedMotion: true,\n});\n// { css: '@keyframes slide-in { ... }\\n\\n.box { ... }\\n\\n@media (prefers-reduced-motion: reduce) { ... }', tree: { className: 'box' }, warnings: [] }",
+  "apiNotes": "generateAnimation({ mode, name, frames, timing, transition, reducedMotion, width, height, background }) takes 'keyframes' or 'transition' mode. In keyframes mode, frames is an array of two to four { at, x, y, rotate, scale, opacity } objects (at is a percent position, the rest are the movement, rotation, scale and opacity at that position); timing sets duration, easing (a keyword from EASING_KEYWORDS, or 'cubic-bezier' with a bezier control-point object, or 'steps' with a step count and step position), delay, iterations, infinite, direction, fillMode and playState. In transition mode, transition sets the target hover state (x, y, scale, opacity, color) and timing's duration/easing/delay govern the transition longhands. reducedMotion (default true) adds a reduced-motion media rule turning the motion off. Returns { css, tree, warnings }: css is built entirely through the canonical stylesheetText writer; tree is the element the CSS styles. Throws AnimationError only if the canonical safety writer itself refuses the finished CSS, which validated input never reaches.",
+  "testNotes": "The keyframes-name grammar, the animation longhands and the shorthand-versus-name ambiguity note are all quoted directly from a live fetch of CSS Animations Level 1. The cubic-bezier control-point range and the steps() step-position keywords are quoted from a live fetch of CSS Easing Functions Level 1. The reduced-motion feature is quoted from a live fetch of Media Queries Level 5. Every declaration is checked against the css-tree 3.2.1 lexer. Hostile field values are checked against the shared HOSTILE_VALUES battery.",
+  "devDependencies": {
+    "css-tree": "^3.2.1",
+    "@types/css-tree": "^3.2.0"
+  }
+}

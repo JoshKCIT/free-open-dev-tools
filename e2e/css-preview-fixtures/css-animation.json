@@ -1,0 +1,27 @@
+{
+  "id": "css-animation",
+  "drag": [
+    "move1",
+    { "field": "move2", "steps": [{ "action": "select", "field": "editFrame", "value": "2" }] },
+    { "field": "hoverMove", "steps": [{ "action": "radio", "field": "mode", "value": "transition" }] }
+  ],
+  "scenarios": [
+    { "label": "default slide in", "steps": [], "pixels": true },
+    {
+      "label": "steps easing",
+      "steps": [
+        { "action": "select", "field": "easing", "value": "steps" },
+        { "action": "fill", "field": "stepCount", "value": "4" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "hover lift",
+      "steps": [
+        { "action": "radio", "field": "mode", "value": "transition" },
+        { "action": "fill", "field": "hoverMove-y", "value": "-12" }
+      ],
+      "hover": true
+    }
+  ]
+}
