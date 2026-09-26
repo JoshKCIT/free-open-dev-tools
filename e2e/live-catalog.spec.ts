@@ -550,7 +550,7 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 101 links to built tool pages, not the 144-entry catalog size', async ({
+  test('the rendered catalog counts 114 links to built tool pages, not the 144-entry catalog size', async ({
     page,
   }) => {
     await page.goto(rel('/catalog'));
@@ -558,7 +558,7 @@ test.describe('the live catalog shows exactly the built tools', () => {
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(101);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(114);
   });
 });
 
@@ -655,25 +655,23 @@ test('every phase 6 tool has exactly one live fixture file', () => {
   }
 });
 
+test('every phase 7 tool has exactly one live fixture file', () => {
+  for (const id of PHASE_7_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
+  }
+});
+
 test('every live fixture file belongs to phase 3, 4, 5, 6 or 7', () => {
-  // Phase 7 is still in progress (only some of its tools have a live fixture
-  // file so far), so this is membership-only: every declared id must be in
-  // the union of the five phase lists, and none may be declared twice. 07-08
-  // sets the count to 114, adds the phase 7 completeness test and restores
-  // strict equality once every phase 7 tool has its own fixture.
-  const allowed = new Set([
+  const union = [
     ...PHASE_3_TOOL_IDS,
     ...PHASE_4_TOOL_IDS,
     ...PHASE_5_TOOL_IDS,
     ...PHASE_6_TOOL_IDS,
     ...PHASE_7_TOOL_IDS,
-  ]);
-  for (const id of LIVE_FIXTURE_IDS) {
-    expect(allowed.has(id), `${id} is not in the phase 3, 4, 5, 6 or 7 tool id lists`).toBe(true);
-  }
-  const seen = new Set<string>();
-  for (const id of LIVE_FIXTURE_IDS) {
-    expect(seen.has(id), `${id} has more than one live fixture file`).toBe(false);
-    seen.add(id);
-  }
+  ]
+    .slice()
+    .sort();
+  const sortedFixtureIds = LIVE_FIXTURE_IDS.slice().sort();
+  expect(sortedFixtureIds).toEqual(union);
 });

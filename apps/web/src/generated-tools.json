@@ -199,6 +199,21 @@
       "static analysis"
     ]
   },
+  "compression-tester": {
+    "id": "compression-tester",
+    "name": "Compression Size Tester",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "compression",
+      "gzip",
+      "deflate",
+      "compressionstream",
+      "devops",
+      "file size"
+    ]
+  },
   "cron-expression": {
     "id": "cron-expression",
     "name": "Cron Expression Parser & Builder",
@@ -362,6 +377,60 @@
       "unicode"
     ]
   },
+  "docker-compose-validator": {
+    "id": "docker-compose-validator",
+    "name": "Docker Compose Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1",
+      "ajv": "8.20.0"
+    },
+    "keywords": [
+      "docker",
+      "compose",
+      "yaml",
+      "schema",
+      "validator",
+      "devops",
+      "containers"
+    ]
+  },
+  "dockerfile-lint": {
+    "id": "dockerfile-lint",
+    "name": "Dockerfile Linter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "docker",
+      "dockerfile",
+      "lint",
+      "parser",
+      "devops",
+      "containers",
+      "best practices"
+    ]
+  },
+  "dotenv-toolkit": {
+    "id": "dotenv-toolkit",
+    "name": ".env Validator & Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1"
+    },
+    "keywords": [
+      "dotenv",
+      "env",
+      "environment variables",
+      "compose",
+      "kubernetes",
+      "shell",
+      "json",
+      "devops"
+    ]
+  },
   "email-extractor": {
     "id": "email-extractor",
     "name": "Pattern Extractor",
@@ -392,6 +461,24 @@
       "uts 51"
     ]
   },
+  "eslint-to-biome": {
+    "id": "eslint-to-biome",
+    "name": "ESLint to Biome",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1",
+      "acorn": "8.18.0"
+    },
+    "keywords": [
+      "eslint",
+      "biome",
+      "lint",
+      "migrate",
+      "config",
+      "devops"
+    ]
+  },
   "find-replace": {
     "id": "find-replace",
     "name": "Find and Replace",
@@ -403,6 +490,22 @@
       "replace",
       "text",
       "search"
+    ]
+  },
+  "git-command-builder": {
+    "id": "git-command-builder",
+    "name": "Git Command Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "git",
+      "command",
+      "cli",
+      "devops",
+      "shell",
+      "posix",
+      "powershell"
     ]
   },
   "git-diff-viewer": {
@@ -417,6 +520,41 @@
       "patch",
       "unified diff",
       "code review"
+    ]
+  },
+  "github-actions-validator": {
+    "id": "github-actions-validator",
+    "name": "GitHub Actions Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1",
+      "ajv": "8.20.0"
+    },
+    "keywords": [
+      "github-actions",
+      "workflow",
+      "yaml",
+      "schema",
+      "validator",
+      "devops",
+      "ci",
+      "expressions"
+    ]
+  },
+  "gitignore-generator": {
+    "id": "gitignore-generator",
+    "name": ".gitignore Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "gitignore",
+      "git",
+      "ignore",
+      "templates",
+      "generator",
+      "devops"
     ]
   },
   "graphql-to-typescript": {
@@ -859,6 +997,27 @@
       "rfc7518"
     ]
   },
+  "k8s-validator": {
+    "id": "k8s-validator",
+    "name": "Kubernetes Manifest Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1",
+      "ajv": "8.20.0"
+    },
+    "keywords": [
+      "kubernetes",
+      "k8s",
+      "yaml",
+      "schema",
+      "validator",
+      "devops",
+      "manifest",
+      "deployment",
+      "pod"
+    ]
+  },
   "list-compare": {
     "id": "list-compare",
     "name": "List Comparison",
@@ -924,6 +1083,22 @@
       "table of contents",
       "sanitise",
       "turndown"
+    ]
+  },
+  "mcp-config-builder": {
+    "id": "mcp-config-builder",
+    "name": "MCP Config Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "mcp",
+      "model-context-protocol",
+      "config",
+      "claude",
+      "cursor",
+      "vscode",
+      "devops"
     ]
   },
   "meta-tags": {
@@ -1091,6 +1266,20 @@
       "validate"
     ]
   },
+  "package-json-generator": {
+    "id": "package-json-generator",
+    "name": "package.json Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "npm",
+      "package.json",
+      "config generator",
+      "semver",
+      "devops"
+    ]
+  },
   "password-generator": {
     "id": "password-generator",
     "name": "Password Generator",
@@ -1167,6 +1356,26 @@
       "nano id",
       "entropy",
       "generator"
+    ]
+  },
+  "readme-generator": {
+    "id": "readme-generator",
+    "name": "README Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "micromark": "4.0.2",
+      "micromark-extension-gfm": "3.0.0",
+      "dompurify": "3.4.16"
+    },
+    "keywords": [
+      "readme",
+      "markdown",
+      "badges",
+      "documentation",
+      "devops",
+      "gfm",
+      "commonmark"
     ]
   },
   "regex-tester": {
@@ -1455,6 +1664,20 @@
       "transpile",
       "strip types",
       "compile"
+    ]
+  },
+  "tsconfig-builder": {
+    "id": "tsconfig-builder",
+    "name": "tsconfig.json Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "typescript",
+      "tsconfig",
+      "compiler options",
+      "config generator",
+      "devops"
     ]
   },
   "unicode-inspector": {

@@ -18,7 +18,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@mixmark-io/domino](https://github.com/mixmark-io/domino) | 2.2.0 | BSD-2-Clause | transitive (via turndown) | tools/markdown-html |
 | [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/base58, tools/hash-file, tools/hash-text, tools/hmac, tools/uuid |
 | [@nodable/entities](https://github.com/nodable/val-parsers) | 3.0.0 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
-| [@types/debug](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/debug) | 4.1.13 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
+| [@types/debug](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/debug) | 4.1.13 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [@types/mdast](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mdast) | 4.0.4 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
 | [@types/unist](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/unist) | 3.0.3 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
 | [@xmldom/xmldom](https://github.com/xmldom/xmldom) | 0.9.12 | MIT | direct | tools/xpath-tester |
@@ -26,8 +26,8 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@zxcvbn-ts/dictionary-compression](https://github.com/zxcvbn-ts/dictionary-compression) | 3.0.1 | MIT | transitive (via @zxcvbn-ts/language-common, @zxcvbn-ts/language-en) | tools/password-strength |
 | [@zxcvbn-ts/language-common](https://github.com/zxcvbn-ts/zxcvbn) | 4.1.3 | MIT | direct | tools/password-strength |
 | [@zxcvbn-ts/language-en](https://github.com/zxcvbn-ts/zxcvbn) | 4.1.1 | MIT | direct | tools/password-strength |
-| [acorn](https://github.com/acornjs/acorn) | 8.18.0 | MIT | transitive (via terser) | tools/html-formatter, tools/js-formatter |
-| [ajv](https://ajv.js.org) | 8.20.0 | MIT | direct | tools/json-schema-validator, tools/openapi-validator |
+| [acorn](https://github.com/acornjs/acorn) | 8.18.0 | MIT | direct | tools/eslint-to-biome, tools/html-formatter, tools/js-formatter |
+| [ajv](https://ajv.js.org) | 8.20.0 | MIT | direct | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [ajv-draft-04](https://github.com/ajv-validator/ajv-draft-04#readme) | 1.0.0 | MIT | direct | tools/openapi-validator |
 | [ajv-formats](https://github.com/ajv-validator/ajv-formats#readme) | 3.0.1 | MIT | direct | tools/json-schema-validator, tools/openapi-validator |
 | [argparse]() | 2.0.1 | Python-2.0 | transitive (via sql-formatter) | tools/sql-formatter |
@@ -40,16 +40,16 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [css-tree]() | 3.2.1 | MIT | transitive (via csso, svgo) | tools/css-formatter, tools/html-formatter, tools/svg-optimizer |
 | [css-what](https://github.com/fb55/css-what) | 7.0.0 | BSD-2-Clause | transitive (via svgo) | tools/svg-optimizer |
 | [csso]() | 5.0.5 | MIT | direct | tools/css-formatter, tools/html-formatter, tools/svg-optimizer |
-| [debug](git://github.com/debug-js/debug) | 4.4.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [decode-named-character-reference]() | 1.3.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html |
-| [devlop]() | 1.1.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html |
+| [debug](git://github.com/debug-js/debug) | 4.4.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [decode-named-character-reference]() | 1.3.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [devlop]() | 1.1.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [domelementtype](git://github.com/fb55/domelementtype) | 2.3.0 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [domhandler](git://github.com/fb55/domhandler) | 5.0.3 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
-| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) | direct | tools/bbcode, tools/markdown-html, tools/meta-tags, tools/svg-optimizer |
+| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) | direct | tools/bbcode, tools/markdown-html, tools/meta-tags, tools/readme-generator, tools/svg-optimizer |
 | [domutils](git://github.com/fb55/domutils) | 3.2.2 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [entities](https://github.com/fb55/entities) | 8.1.0 | BSD-2-Clause | direct | tools/bbcode, tools/html-entities, tools/html-formatter, tools/jsx-converter |
-| [fast-deep-equal](https://github.com/epoberezkin/fast-deep-equal#readme) | 3.1.3 | MIT | transitive (via ajv) | tools/json-schema-validator, tools/openapi-validator |
-| [fast-uri](https://github.com/fastify/fast-uri) | 3.1.8 | BSD-3-Clause | transitive (via ajv) | tools/json-schema-validator, tools/openapi-validator |
+| [fast-deep-equal](https://github.com/epoberezkin/fast-deep-equal#readme) | 3.1.3 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
+| [fast-uri](https://github.com/fastify/fast-uri) | 3.1.8 | BSD-3-Clause | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
@@ -57,7 +57,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
 | [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
-| [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 0.4.1 | MIT | transitive (via ajv) | tools/json-schema-validator, tools/openapi-validator |
+| [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 0.4.1 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [jsonpath-rfc9535](https://github.com/P0lip/jsonpath-rfc9535) | 1.3.0 | Apache-2.0 | direct | tools/jsonpath |
 | [mdast-util-from-markdown]() | 2.0.3 | MIT | direct | tools/bbcode |
 | [mdast-util-gfm]() | 3.1.0 | MIT | direct | tools/bbcode |
@@ -68,28 +68,28 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [mdast-util-gfm-task-list-item]() | 2.0.0 | MIT | transitive (via mdast-util-gfm) | tools/bbcode |
 | [mdast-util-to-markdown]() | 2.1.2 | MIT | transitive (via mdast-util-gfm) | tools/bbcode |
 | [mdast-util-to-string]() | 4.0.0 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
-| [micromark]() | 4.0.2 | MIT | direct | tools/bbcode, tools/markdown-html |
-| [micromark-core-commonmark]() | 2.0.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm]() | 3.0.0 | MIT | direct | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm-autolink-literal]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm-footnote]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm-strikethrough]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm-table]() | 2.1.2 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm-tagfilter]() | 2.0.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-extension-gfm-task-list-item]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-factory-space]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-character]() | 2.1.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-chunked]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-combine-extensions]() | 2.0.1 | MIT | transitive (via micromark, micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
-| [micromark-util-decode-numeric-character-reference]() | 2.0.2 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html |
+| [micromark]() | 4.0.2 | MIT | direct | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-core-commonmark]() | 2.0.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm]() | 3.0.0 | MIT | direct | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm-autolink-literal]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm-footnote]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm-strikethrough]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm-table]() | 2.1.2 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm-tagfilter]() | 2.0.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-extension-gfm-task-list-item]() | 2.1.0 | MIT | transitive (via micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-factory-space]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-character]() | 2.1.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-chunked]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-combine-extensions]() | 2.0.1 | MIT | transitive (via micromark, micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-decode-numeric-character-reference]() | 2.0.2 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [micromark-util-decode-string]() | 2.0.1 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
-| [micromark-util-encode]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-normalize-identifier]() | 2.0.1 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-resolve-all]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-sanitize-uri]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-subtokenize]() | 2.1.0 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-symbol]() | 2.0.1 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html |
-| [micromark-util-types]() | 2.0.2 | MIT | transitive (via mdast-util-from-markdown, micromark, micromark-extension-gfm) | tools/bbcode, tools/markdown-html |
+| [micromark-util-encode]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-normalize-identifier]() | 2.0.1 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-resolve-all]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-sanitize-uri]() | 2.0.1 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-subtokenize]() | 2.1.0 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-symbol]() | 2.0.1 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [micromark-util-types]() | 2.0.2 | MIT | transitive (via mdast-util-from-markdown, micromark, micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [mime-db]() | 1.54.0 | MIT | direct | tools/mime-types |
 | [nearley](https://github.com/hardmath123/nearley) | 2.20.1 | MIT | transitive (via sql-formatter) | tools/sql-formatter |
 | [param-case](https://github.com/blakeembrey/change-case/tree/master/packages/param-case#readme) | 3.0.4 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
@@ -101,7 +101,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [react-router](https://github.com/remix-run/react-router) | 7.18.4 | MIT | transitive (via react-router-dom) | apps/web |
 | [react-router-dom](https://github.com/remix-run/react-router) | 7.18.4 | MIT | direct | apps/web |
 | [relateurl](https://github.com/stevenvachon/relateurl) | 0.2.7 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
-| [require-from-string]() | 2.0.2 | MIT | transitive (via ajv) | tools/json-schema-validator, tools/openapi-validator |
+| [require-from-string]() | 2.0.2 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [sax](ssh://git@github.com/isaacs/sax-js) | 1.6.1 | BlueOak-1.0.0 | transitive (via svgo) | tools/svg-optimizer |
 | [scheduler](https://react.dev/) | 0.28.0 | MIT | transitive (via react-dom) | apps/web |
 | [smol-toml](github:squirrelchat/smol-toml) | 1.9.0 | BSD-3-Clause | direct | tools/data-convert |
@@ -115,7 +115,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [unist-util-stringify-position]() | 4.0.0 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
 | [xml-naming](https://github.com/NaturalIntelligence/xml-naming) | 0.3.0 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [xpath](https://github.com/goto100/xpath) | 0.0.34 | MIT | direct | tools/xpath-tester |
-| [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
+| [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/docker-compose-validator, tools/dotenv-toolkit, tools/eslint-to-biome, tools/github-actions-validator, tools/k8s-validator, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
 
 ## Full notices
 
@@ -3828,10 +3828,15 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | Data | Licence | Bundled into | Source |
 | --- | --- | --- | --- |
 | FIGlet 2.2.5 fonts (15) | BSD-3-Clause | `tools/ascii-art` | [source](https://github.com/cmatsuoka/figlet/tree/master/fonts) |
+| Compose Specification JSON Schema | Apache-2.0 | `tools/docker-compose-validator` | [source](https://github.com/compose-spec/compose-spec) |
 | Unicode emoji-test.txt 18.0 | Unicode-3.0 | `tools/emoji-picker` | [source](https://www.unicode.org/Public/emoji/latest/emoji-test.txt) |
+| Biome ESLint-migrate rule map | MIT | `tools/eslint-to-biome` | [source](https://github.com/biomejs/biome) |
+| GitHub Actions Workflow JSON Schema | Apache-2.0 | `tools/github-actions-validator` | [source](https://github.com/SchemaStore/schemastore) |
+| github/gitignore templates | CC0-1.0 | `tools/gitignore-generator` | [source](https://github.com/github/gitignore) |
 | IANA Language Subtag Registry | CC0-1.0 | `tools/hreflang` | [source](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry) |
 | HTML Living Standard SVG tag-name adjustment table | CC-BY-4.0 | `tools/jsx-converter` | [source](https://html.spec.whatwg.org/multipage/parsing.html) |
 | React possibleStandardNames (attribute names) | MIT | `tools/jsx-converter` | [source](https://github.com/facebook/react/blob/d083ec1da1e5252abd3ddfdde6dfbc09701a2c51/packages/react-dom-bindings/src/shared/possibleStandardNames.js) |
+| Kubernetes OpenAPI-derived JSON Schema subset (twelve kinds, v1.35.0) | Apache-2.0 | `tools/k8s-validator` | [source](https://github.com/yannh/kubernetes-json-schema) |
 | Swagger 2.0 and OpenAPI 3.0, 3.1 and 3.2 official JSON Schema documents | Apache-2.0 | `tools/openapi-validator` | [source](https://github.com/OAI/OpenAPI-Specification and https://spec.openapis.org/oas/) |
 | EFF Long Wordlist | CC BY 3.0 US | `tools/password-generator` | [source](https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases) |
 | schema.org vocabulary subset | CC-BY-SA-3.0 | `tools/schema-markup` | [source](https://github.com/schemaorg/schemaorg/blob/main/data/releases/30.1/schemaorg-current-https.jsonld) |
@@ -4122,6 +4127,26 @@ is intended to produce output exactly the same as the input unless a control
 file is used.  Therefore it produces the SAME output for smush, kern or fit.
 ```
 
+### Compose Specification JSON Schema (bundled into `tools/docker-compose-validator`)
+
+Licence: Apache-2.0 ([full text](https://www.apache.org/licenses/LICENSE-2.0))
+
+Attribution: "Compose Specification" schema by the Compose Specification project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 914ec15d1fa498969c0df5c1d672306db3256089.
+
+```text
+Compose Specification JSON Schema
+Source: https://github.com/compose-spec/compose-spec
+Commit: 914ec15d1fa498969c0df5c1d672306db3256089 (schema/compose-spec.json)
+Fetched: 2026-09-25
+Licence: Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+This file is a byte-for-byte copy of schema/compose-spec.json from the
+compose-spec/compose-spec repository at the commit above, wrapped in a
+TypeScript module with an explicit wide type annotation. No content was
+changed. The full Apache-2.0 licence text is vendored alongside the schema
+at tools/docker-compose-validator/test/fixtures/compose-spec/LICENSE.
+```
+
 ### Unicode emoji-test.txt 18.0 (bundled into `tools/emoji-picker`)
 
 Licence: Unicode-3.0 ([full text](https://www.unicode.org/license.txt))
@@ -4184,6 +4209,88 @@ Except as contained in this notice, the name of a copyright holder shall
 not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
+```
+
+### Biome ESLint-migrate rule map (bundled into `tools/eslint-to-biome`)
+
+Licence: MIT ([full text](https://github.com/biomejs/biome/blob/main/LICENSE-MIT))
+
+Attribution: Rule mapping data built from Biome's own generated ESLint-migrate source, by the Biome contributors, dual-licensed MIT OR Apache-2.0 (MIT elected here). Snapshot taken at tag @biomejs/biome@2.5.14, commit af4365d2b80177d0e0434c0ed4fd2c9171afc56c.
+
+```text
+Biome, by the Biome contributors.
+
+Source: https://github.com/biomejs/biome
+Licence: MIT OR Apache-2.0 (dual licensed; this bundle elects MIT)
+Licence text: https://github.com/biomejs/biome/blob/main/LICENSE-MIT
+Snapshot taken at tag @biomejs/biome@2.5.14, commit
+af4365d2b80177d0e0434c0ed4fd2c9171afc56c.
+
+What is bundled: a rule-mapping table built from Biome's own generated
+ESLint-migrate match arms (crates/biome_cli/src/execute/migrate/eslint_any_rule_to_biome.rs)
+and unsupported-rule metadata (crates/biome_cli/src/execute/migrate/unsupported_rules.rs),
+scoped to ESLint core plus six commonly used plugins: @typescript-eslint, react,
+react-hooks, jsx-a11y, import and unicorn (D-108). 350 mapped rules, 107
+unsupported-rule entries within that scope, at this snapshot.
+
+What was changed: the generated match-arm and unsupported-rule source is
+parsed into a plain data table (rule name, Biome group and rule, whether a
+mapping needs --include-nursery or --include-inspired, or the unsupported
+reason). No rule mapping decision was altered -- every target and reason
+comes directly from Biome's own generated source, proven identical to a
+fresh parse of the vendored file by a required test. Biome's own migrate
+documentation and configuration reference (fetched separately) are quoted,
+never copied wholesale, in this package's own test comments.
+```
+
+### GitHub Actions Workflow JSON Schema (bundled into `tools/github-actions-validator`)
+
+Licence: Apache-2.0 ([full text](https://www.apache.org/licenses/LICENSE-2.0))
+
+Attribution: "GitHub Actions Workflow" schema by the SchemaStore project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 314154a4c71665df725986ad334f6f0846d486d3.
+
+```text
+GitHub Actions Workflow JSON Schema
+Source: https://github.com/SchemaStore/schemastore
+Commit: 314154a4c71665df725986ad334f6f0846d486d3 (src/schemas/json/github-workflow.json)
+Fetched: 2026-09-26
+Licence: Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+This file is a byte-for-byte copy of src/schemas/json/github-workflow.json from the
+SchemaStore/schemastore repository at the commit above, wrapped in a TypeScript module with an
+explicit wide type annotation. No content was changed. The full Apache-2.0 licence text is
+vendored alongside the schema at
+tools/github-actions-validator/test/fixtures/schemastore/LICENSE.
+```
+
+### github/gitignore templates (bundled into `tools/gitignore-generator`)
+
+Licence: CC0-1.0 ([full text](https://creativecommons.org/publicdomain/zero/1.0/))
+
+Attribution: "gitignore" templates by GitHub, Inc. and contributors, dedicated under CC0 1.0 Universal. Snapshot taken at commit b06d69d5a0b82a187180dac3d46a4ebe1e40bce5.
+
+```text
+"gitignore" templates by GitHub, Inc. and contributors.
+
+Source: https://github.com/github/gitignore
+Licence: CC0 1.0 Universal (public domain dedication)
+Licence text: https://creativecommons.org/publicdomain/zero/1.0/
+Snapshot taken at commit b06d69d5a0b82a187180dac3d46a4ebe1e40bce5.
+
+What is bundled: every `*.gitignore` file directly in the repository root
+(160 files) and directly under the `Global/` folder (75 files) at that
+commit -- 235 templates, 137,996 bytes of upstream template text. The
+`community/` folder is not bundled. Three symlink aliases the repository
+publishes (`Clojure.gitignore` -> `Leiningen.gitignore`,
+`Fortran.gitignore` -> `C++.gitignore`, `Global/Octave.gitignore` ->
+`Global/MATLAB.gitignore`) are not bundled as separate template names; this
+tool does not follow symlinks, so a visitor who wants that content asks for
+the underlying name.
+
+What was changed: nothing. Every bundled template's content is byte-for-byte
+identical to its upstream file at the pinned commit, proven by comparing
+its git blob SHA-1 against the tree listing recorded in
+test/fixtures/github-gitignore/tree.json.
 ```
 
 ### IANA Language Subtag Registry (bundled into `tools/hreflang`)
@@ -4291,6 +4398,90 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### Kubernetes OpenAPI-derived JSON Schema subset (twelve kinds, v1.35.0) (bundled into `tools/k8s-validator`)
+
+Licence: Apache-2.0 ([full text](https://www.apache.org/licenses/LICENSE-2.0))
+
+Attribution: "Kubernetes JSON Schema" by Gareth Rushgrove and Yann Hamon, licensed under the Apache License, Version 2.0. Snapshot taken at commit a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18, Kubernetes v1.35.0, rewritten to a self-contained local-reference subset by this project's own committed generator (see src/k8s-schema-subset-NOTICE.txt).
+
+```text
+Kubernetes JSON Schema (bundled subset)
+========================================
+
+Source: yannh/kubernetes-json-schema
+https://github.com/yannh/kubernetes-json-schema
+Commit: a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18
+Pinned Kubernetes version: v1.35.0
+Fetch date: 2026-09-26
+
+Licence: Apache License, Version 2.0
+https://www.apache.org/licenses/LICENSE-2.0
+
+  Kubernetes JSON Schema
+  Copyright (C) 2017 Gareth Rushgrove
+  Copyright (C) 2017 Yann Hamon
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+This project vendors twelve per-kind OpenAPI-derived JSON Schema files (Pod,
+Deployment, StatefulSet, DaemonSet, Job, CronJob, Service, Ingress, ConfigMap,
+Secret, PersistentVolumeClaim, Namespace) and the shared `_definitions.json`
+file they reference, all from the path above, unmodified, under
+test/fixtures/k8s-schema-source/. `src/k8s-schema-subset.ts` is generated from
+those files by the committed generator `test/build-schema-subset.ts`, which
+applies the following transformations:
+
+1. Computes the transitive closure of every `$ref` reachable from the twelve
+   kind files (190 of the 735 definitions in `_definitions.json` at this
+   pinned version) -- only the definitions the twelve kinds actually need are
+   bundled.
+2. Rewrites every `$ref` from an absolute
+   `https://raw.githubusercontent.com/yannh/kubernetes-json-schema/...` URL to
+   a local `#/definitions/<name>` pointer. Nothing in the bundled file is ever
+   fetched over the network.
+3. Drops the `$schema` key each kind file declares
+   (`http://json-schema.org/schema#`, a non-standard, ambiguous meta-schema
+   URI). Confirmed directly this session: the project's pinned `ajv@8.20.0`
+   silently tolerates this value in every mode tried and never needs
+   `ajv-draft-04` to compile the rewritten subset -- the value is simply
+   pointless to keep.
+4. Removes `description` annotations. These have no effect on JSON Schema
+   validation and are the single largest source of bytes in the upstream
+   files.
+5. Applies the upstream generator's own documented strict-mode rule: from
+   `yannh/openapi2jsonschema` (a fork of `garethr/openapi2jsonschema`, also
+   Apache License, Version 2.0), commit
+   09bbcef0ed5f0f70ee033834637e10e7035b6787,
+   `openapi2jsonschema/util.py`'s `additional_properties()` function sets
+   `additionalProperties: false` on "any dict that has a 'properties' key and
+   no existing 'additionalProperties' key" (quoted from its own docstring,
+   which credits kubectl's pre-`kubectl apply` client-side schema validation,
+   `pkg/kubectl/validation/schema.go`, as the behaviour it recreates). This
+   generator applies that identical rule, with one disclosed extension beyond
+   upstream's literal code: a definition marked
+   `x-kubernetes-preserve-unknown-fields: true` is left alone, since forcing
+   `additionalProperties: false` there would reject fields Kubernetes' own API
+   server accepts by design. None of the twelve bundled kinds carry that
+   marker themselves; it only affects definitions reachable through their
+   reference closure.
+
+None of these transformations change what a valid, schema-conformant
+Kubernetes manifest looks like for the twelve bundled kinds -- they only
+remove documentation text, make every reference local, and make explicit an
+unknown-field rule the upstream project's own generator already applies when
+run with its `--strict` flag.
 ```
 
 ### Swagger 2.0 and OpenAPI 3.0, 3.1 and 3.2 official JSON Schema documents (bundled into `tools/openapi-validator`)

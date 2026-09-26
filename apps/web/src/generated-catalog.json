@@ -1087,7 +1087,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 2,
       "summary": "Compose a .gitignore from bundled templates for languages, tools and editors.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "git-command-builder",
@@ -1096,7 +1096,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Assemble a git command from options, with an explanation of each flag.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "dockerfile-lint",
@@ -1105,7 +1105,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 2,
       "summary": "Parse a Dockerfile and report syntax problems and common mistakes.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "docker-compose-validator",
@@ -1114,7 +1114,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 2,
       "summary": "Validate a Compose file against the schema and report unknown keys.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "k8s-validator",
@@ -1123,7 +1123,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Check Kubernetes manifests for required fields and obvious errors.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "github-actions-validator",
@@ -1132,7 +1132,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 2,
       "summary": "Validate a workflow file and report invalid keys, triggers and expressions.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "dotenv-toolkit",
@@ -1141,7 +1141,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 1,
       "summary": "Validate a .env file and convert it to Compose, Kubernetes, shell or JSON.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "tsconfig-builder",
@@ -1150,7 +1150,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Assemble a tsconfig with explanations of each option.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "package-json-generator",
@@ -1159,7 +1159,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Build a valid package.json with the fields npm actually reads.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "eslint-to-biome",
@@ -1168,7 +1168,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Translate an ESLint config to the closest Biome equivalent, flagging gaps.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "mcp-config-builder",
@@ -1177,7 +1177,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Build a Model Context Protocol server configuration file.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "readme-generator",
@@ -1186,7 +1186,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 3,
       "summary": "Assemble a project README from sections and badges.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "compression-tester",
@@ -1195,7 +1195,7 @@
       "categoryLabel": "Build, config and CI",
       "tier": 2,
       "summary": "Compare gzip and deflate sizes for a payload using the browser compression API.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "qr-generator",
