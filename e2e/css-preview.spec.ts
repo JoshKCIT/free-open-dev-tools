@@ -263,7 +263,17 @@ interface StageSnapshot {
   css: string;
   tree: TreeSnapshotNode;
   hostRect: { width: number; height: number };
-  hostBg: { color: string; image: string; border: string };
+  hostBg: {
+    color: string;
+    image: string;
+    position: string;
+    size: string;
+    repeat: string;
+    origin: string;
+    clip: string;
+    attachment: string;
+    border: string;
+  };
   usesFallbackStyleElement: boolean;
 }
 
@@ -314,7 +324,26 @@ async function extractPreviewSnapshot(page: Page): Promise<StageSnapshot> {
       // below is given the identical border rather than leaving a
       // border-width ring of guaranteed pixel difference around every
       // scenario's screenshot.
-      hostBg: { color: hostStyle.backgroundColor, image: hostStyle.backgroundImage, border: hostStyle.border },
+      //
+      // Every longhand `background` (CSS Backgrounds and Borders Level 3
+      // section 3.11) can expand to, not just color/image: a decorative
+      // stage backdrop (`data-backdrop="pattern"`, styles.css's repeating
+      // checkerboard behind css-effects' glass mode) is a multi-layer
+      // `background` shorthand whose tiling depends on
+      // background-position/-size/-repeat too. Reading only color/image
+      // loses that tiling and reconstructs one giant untiled gradient
+      // instead of a small repeating pattern (WINDOWS.md 18).
+      hostBg: {
+        color: hostStyle.backgroundColor,
+        image: hostStyle.backgroundImage,
+        position: hostStyle.backgroundPosition,
+        size: hostStyle.backgroundSize,
+        repeat: hostStyle.backgroundRepeat,
+        origin: hostStyle.backgroundOrigin,
+        clip: hostStyle.backgroundClip,
+        attachment: hostStyle.backgroundAttachment,
+        border: hostStyle.border,
+      },
       usesFallbackStyleElement,
     };
   });
@@ -336,7 +365,14 @@ async function buildBlankPage(page: Page, snapshot: StageSnapshot): Promise<void
     '<body style="margin:0">' +
     `<div id="fodt-stage" style="all:initial;box-sizing:border-box;display:grid;place-items:center;overflow:hidden;` +
     `width:${snapshot.hostRect.width}px;height:${snapshot.hostRect.height}px;` +
-    `background-color:${snapshot.hostBg.color};background-image:${snapshot.hostBg.image};border:${snapshot.hostBg.border}">` +
+    // Every `background` longhand, not just color/image, so a multi-layer
+    // decorative backdrop (e.g. a tiled pattern) tiles here exactly as it
+    // does on the stage instead of reconstructing as one untiled layer.
+    `background-color:${snapshot.hostBg.color};background-image:${snapshot.hostBg.image};` +
+    `background-position:${snapshot.hostBg.position};background-size:${snapshot.hostBg.size};` +
+    `background-repeat:${snapshot.hostBg.repeat};background-origin:${snapshot.hostBg.origin};` +
+    `background-clip:${snapshot.hostBg.clip};background-attachment:${snapshot.hostBg.attachment};` +
+    `border:${snapshot.hostBg.border}">` +
     `${renderNodeHtml(snapshot.tree)}</div></body></html>`;
   await page.setContent(html, { waitUntil: 'load' });
 }
@@ -714,9 +750,32 @@ for (const { data: fixture } of FIXTURES) {
           // the stage's.
           const previewStage = page.locator('.css-preview-stage');
           await previewStage.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+          if (scenario.hover) {
+            // Scrolling moves the page under a stationary pointer, so the
+            // element the earlier `.hover()` call landed on is no longer
+            // the one under the pointer; the browser then drops `:hover`
+            // (confirmed directly: the preview reverted to its resting
+            // colour/transform here before this fix, WINDOWS.md 18).
+            // Re-hovering at the post-scroll position, then finishing the
+            // transition that re-hover restarts, restores the exact hover
+            // state the rule/animation checks above already proved equal.
+            await page
+              .locator('.css-preview-stage')
+              .locator(`.${snapshot.tree.className.split(' ')[0]}`)
+              .first()
+              .hover();
+            await finishAnimations(page, true);
+          }
           const previewShot = await previewStage.screenshot();
           const blankStage = blank.locator('#fodt-stage');
           await blankStage.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+          if (scenario.hover) {
+            await blank
+              .locator(`.${snapshot.tree.className.split(' ')[0]}`)
+              .first()
+              .hover();
+            await finishAnimations(blank, false);
+          }
           const blankShot = await blankStage.screenshot();
           const result = await comparePixels(blank, previewShot, blankShot, PIXEL_CHANNEL_THRESHOLD);
           // Measured this session: the live page's own layout above the
