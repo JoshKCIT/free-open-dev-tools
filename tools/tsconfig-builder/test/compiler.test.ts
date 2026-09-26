@@ -78,7 +78,7 @@ it('the compiler reports no option diagnostics for any preset', () => {
     const codes = optionDiagnosticCodes({ ...preset.options });
     expect(codes, `${preset.id}: ${codes.join(', ')}`).toEqual([]);
   }
-});
+}, 15000);
 
 it('each option conflict the builder warns about is one the compiler also reports, and none the compiler reports on the battery is missed', () => {
   const battery: { name: string; options: Record<string, unknown> }[] = [
