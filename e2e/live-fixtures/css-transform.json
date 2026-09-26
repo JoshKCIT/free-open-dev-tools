@@ -1,0 +1,9 @@
+{
+  "id": "css-transform",
+  "label": "CSS Transforms Module Level 1's own translate() syntax",
+  "steps": [
+    { "action": "fill", "field": "translate-x", "value": "10" },
+    { "action": "fill", "field": "translate-y", "value": "20" }
+  ],
+  "expect": ["translate(10px, 20px)"]
+}

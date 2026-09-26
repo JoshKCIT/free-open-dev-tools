@@ -1,0 +1,34 @@
+{
+  "id": "css-transform",
+  "drag": [
+    "translate",
+    { "field": "skew", "steps": [{ "action": "fill", "field": "skew-x", "value": "0" }] },
+    {
+      "field": "origin",
+      "steps": [
+        { "action": "check", "field": "uniformScale" },
+        { "action": "uncheck", "field": "uniformScale" }
+      ]
+    }
+  ],
+  "scenarios": [
+    { "label": "default", "steps": [], "pixels": true },
+    {
+      "label": "rotate then translate",
+      "steps": [
+        { "action": "select", "field": "order", "value": "rotate-translate-scale-skew" },
+        { "action": "fill", "field": "rotate", "value": "30" },
+        { "action": "fill", "field": "translate-x", "value": "40" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "individual properties",
+      "steps": [
+        { "action": "check", "field": "individual" },
+        { "action": "fill", "field": "scaleX", "value": "1.5" }
+      ],
+      "pixels": true
+    }
+  ]
+}
