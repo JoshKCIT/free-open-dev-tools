@@ -1,0 +1,45 @@
+{
+  "id": "box-shadow",
+  "name": "CSS Box Shadow Generator",
+  "summary": "Design layered box shadows with a live preview.",
+  "about": "Stacks up to four independent box shadows on a preview box, each with its own offset, blur radius, spread distance, colour, opacity and inset flag, showing the live result next to the exact box-shadow CSS. Built for card elevation, layered depth, or a cut-out inset look.",
+  "supports": [
+    "Up to four independently configured shadow layers, each with its own horizontal and vertical offset, blur radius, spread distance, colour, opacity and inset flag",
+    "The CSS Backgrounds and Borders Level 3 box-shadow grammar's own front-to-back painting order, so the first layer listed is the one shown on top",
+    "A colour box for each layer and for the previewed element's background, each accepting a 3, 4, 6 or 8-digit hex colour",
+    "Independent corner rounding on the previewed box"
+  ],
+  "limits": [
+    "Shadows do not affect layout, so a large shadow can overlap a neighbouring element on the visitor's own page without pushing it aside",
+    "Browsers may render a very large blur radius differently from one another",
+    "Only the offsets, blur radius, spread distance and inset keyword this specification allows are offered; nothing beyond the box-shadow grammar itself",
+    "The preview shows one element on a plain background; a design stacking a shadow over other overlapping shapes is not modelled here"
+  ],
+  "ambiguities": [
+    "A zero length is written without a unit ('0', not '0px') everywhere this tool's own output uses one, one of the two forms CSS itself allows",
+    "A negative blur radius is clamped to zero rather than refused, since the specification states outright that a negative blur radius is invalid"
+  ],
+  "standards": [
+    {
+      "label": "CSS Backgrounds and Borders Module Level 3 — Drop Shadows: the box-shadow property",
+      "url": "https://www.w3.org/TR/css-backgrounds-3/#box-shadow"
+    },
+    {
+      "label": "CSS Color Module Level 4 — RGB Hexadecimal Notations",
+      "url": "https://www.w3.org/TR/css-color-4/#hex-notation"
+    },
+    {
+      "label": "CSS Syntax Module Level 3 — Escaping and comments",
+      "url": "https://www.w3.org/TR/css-syntax-3/#escaping"
+    }
+  ],
+  "keywords": ["css", "box-shadow", "shadow", "generator", "preview", "elevation", "inset"],
+  "primaryExport": "generateBoxShadow",
+  "usage": "import { generateBoxShadow } from '@fodt/box-shadow';\n\ngenerateBoxShadow({\n  layers: [\n    { x: 0, y: 4, blur: 12, spread: 0, color: '#000000', opacity: 30, inset: false },\n  ],\n});\n// { css: '.box {\\n  width: 240px;\\n  height: 160px;\\n  background-color: #ffffff;\\n  border-radius: 12px;\\n  box-shadow: 0 4px 12px 0 #0000004d;\\n}', value: '0 4px 12px 0 #0000004d', ... }",
+  "apiNotes": "generateBoxShadow({ layers, width, height, radius, background }) takes one to four shadow layers (offset x/y, blur radius, spread distance, a hex colour, opacity 0-100 percent, and an inset flag), an optional preview box width and height (default 240x160, clamped to 40-480px), an optional corner rounding (default 12, clamped to 0-120px) and an optional background hex colour (default #ffffff). Returns { css, tree, value, warnings }: css is one .box rule built through the canonical stylesheetText writer; value is the box-shadow value alone; warnings names any field a value was clamped or replaced in. Throws BoxShadowError only if the canonical safety writer itself refuses the finished CSS, which validated input never reaches.",
+  "testNotes": "The CSS Backgrounds and Borders Level 3 specification's own two-layer box-shadow example is rebuilt from its own offsets, blur radius, spread distance, colour and inset flag and compared to the generated value length by length and flag by flag using the css-tree parser (colour text itself is not compared, since this tool always writes a hex colour and the specification's own example uses rgba()). Every declaration is checked against the css-tree 3.2.1 lexer. Hostile field values are checked against the shared HOSTILE_VALUES battery.",
+  "devDependencies": {
+    "css-tree": "^3.2.1",
+    "@types/css-tree": "^3.2.0"
+  }
+}
