@@ -1,0 +1,6 @@
+{
+  "id": "pdf-merge",
+  "label": "one page plus three pages merged gives four pages, from the fixture kinds' own definitions",
+  "steps": [{ "action": "attach", "field": "files", "value": "pdf,pdf-3" }, { "action": "run" }],
+  "expect": ["4"]
+}

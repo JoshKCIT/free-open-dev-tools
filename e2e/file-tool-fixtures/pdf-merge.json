@@ -1,0 +1,11 @@
+{
+  "id": "pdf-merge",
+  "scenarios": [
+    {
+      "label": "two PDFs merged",
+      "steps": [{ "action": "attach", "field": "files", "value": "pdf,pdf-3" }, { "action": "run" }],
+      "expect": ["4"],
+      "downloads": [{ "name": "merged[.]pdf", "magic": "255044462d" }]
+    }
+  ]
+}
