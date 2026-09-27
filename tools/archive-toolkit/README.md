@@ -7,21 +7,25 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Opens a ZIP file you pick and lists every entry with its path, type, size and date, so you can download the parts you need. A hostile entry name that would climb out of the archive is refused rather than followed, a link or device entry is only ever listed, and a run that would produce far more data than it consumed is stopped before it fills up your browser tab.
+Opens a ZIP, TAR, tar.gz or gzip file you pick and lists every entry with its path, type, size and date, so you can download the parts you need. It can also build a ZIP from files you pick, stored or compressed. A hostile entry name that would climb out of the archive is refused rather than followed, a link or device entry is only ever listed, and a run that would produce far more data than it consumed is stopped before it fills up your browser tab.
 
 ## Supported
 
 - Extract ZIP (stored and deflated entries, ZIP64 archives, UTF-8 and code page 437 names)
+- Extract TAR (ustar, POSIX pax and GNU long-name headers)
+- Extract gzip, including several concatenated members in one file, and tar.gz
+- Create a ZIP from picked files, stored or deflated at a chosen level, with names and modification times kept
 - Every listed entry shows its path, type, size, packed size and modification date
 
 ## Limits
 
-- Picked files up to 2 GB, above which this tool refuses rather than risk freezing the browser tab.
-- Extraction stops once it has produced 256 MB of decompressed data in one run, or once a single entry expands more than 250 times its own packed size, which is how decompression bombs work.
+- Picked files up to 2 GB; a created ZIP stops at 10,000 files or 2 GB of input, above which this tool refuses rather than risk freezing the browser tab.
+- Extraction stops once it has produced 256 MB of decompressed data in one run, or once a single entry's own compression ratio expands more than 250 times its packed size, which is how decompression bombs work.
 - An entry whose path climbs out of the archive with a parent segment is never extracted; absolute paths and drive letters are made relative instead.
 - Symbolic links, hard links, devices and FIFOs are listed with their target only and are never followed or extracted.
-- An entry with the encryption flag set is listed but never extracted, since this tool never asks for a password.
+- An entry that is encrypted is listed but never extracted, since this tool never asks for a password.
 - Compression methods other than stored and deflate — for example bzip2, LZMA or Zstandard — are listed but not extracted.
+- GNU tar's sparse file extension is not supported; a sparse entry is listed rather than extracted.
 - How many files a browser lets a page download to disk at once depends on the browser.
 
 ## Ambiguous cases, and what this does about them
@@ -32,6 +36,9 @@ Opens a ZIP file you pick and lists every entry with its path, type, size and da
 ## Defined by
 
 - [PKWARE .ZIP File Format Specification (APPNOTE.TXT)](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)
+- [The Open Group Base Specifications Issue 7 — pax utility (ustar header block)](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/pax.html)
+- [RFC 1952 — GZIP file format specification version 4.3](https://www.rfc-editor.org/rfc/rfc1952)
+- [RFC 1951 — DEFLATE Compressed Data Format Specification version 1.3](https://www.rfc-editor.org/rfc/rfc1951)
 - [Unicode.org code page 437 to Unicode mapping table](https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC/CP437.TXT)
 
 ## Bundled data
@@ -62,13 +69,15 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { extractArchive } from '@fodt/archive-toolkit';
+import { extractArchive, createZip } from '@fodt/archive-toolkit';
 
 const result = await extractArchive(reader, 'photos.zip', {}, {
   onProgress: (fraction, detail) => {},
   signal: controller.signal,
 });
 // result.entries lists every entry; result.files holds the extracted bytes.
+
+const zip = await createZip([{ name: 'a.txt', bytes }], { method: 'deflate', level: 6, keepTimes: true });
 ```
 
 This package takes only a RandomAccessReader over bytes already resident somewhere the caller controls (a picked File's own slices, or an in-memory Uint8Array in tests) and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Every byte this package produces is charged to a shared output budget before it is kept, so a hostile archive is stopped mid-stream rather than after it has already been fully expanded in memory.
@@ -83,7 +92,7 @@ This package takes only a RandomAccessReader over bytes already resident somewhe
 npm test
 ```
 
-The ZIP reader is proven against hand-built fixtures covering the hostile cases (path traversal, overlapping entries, decompression bombs, encrypted and unsupported-method entries, damaged checksums) and against a small set of the Go programming language's own archive/zip test files, vendored under test/fixtures/go-archive, whose expected names, sizes and types are transcribed from that project's own reader tests.
+Every reader is proven against hand-built fixtures covering the hostile cases (path traversal, overlapping entries, decompression bombs, encrypted and unsupported-method entries, damaged checksums) and against a small set of the Go programming language's own archive/zip and archive/tar test files, vendored under test/fixtures/go-archive, whose expected names, sizes and types are transcribed from that project's own reader tests. A created ZIP is proven to extract correctly both with this package's own reader and with Node's built-in zlib as a second, independent opinion.
 
 ## Licence
 

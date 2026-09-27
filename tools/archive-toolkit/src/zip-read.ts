@@ -81,7 +81,6 @@ const ENCRYPTED_FLAG = 0x0001;
 const S_IFMT = 0xf000;
 const S_IFSOCK = 0xc000;
 const S_IFLNK = 0xa000;
-const S_IFREG = 0x8000;
 const S_IFDIR = 0x4000;
 const S_IFBLK = 0x6000;
 const S_IFCHR = 0x2000;
@@ -486,7 +485,9 @@ export async function readZip(
     }
 
     budget.startEntry();
-    const producedBytes = await readEntryBytes(reader, range.dataStart, entry, budget, hooks);
+    const producedBytes = await readEntryBytes(reader, range.dataStart, entry, budget, hooks, (withinEntry) => {
+      hooks.onProgress?.((i + withinEntry) / cdEntries.length, `Entry ${i + 1} of ${cdEntries.length}`);
+    });
 
     const actualCrc = crc32(producedBytes);
     if (actualCrc !== entry.crc32 >>> 0) {
@@ -537,14 +538,17 @@ async function readEntryBytes(
   entry: Pick<CentralDirEntry, 'method' | 'compressedSize'>,
   budget: OutputBudget,
   hooks: ZipReadHooks,
+  onChunk?: (consumedFraction: number) => void,
 ): Promise<Uint8Array> {
   const feedChunkBytes = ARCHIVE_LIMITS.feedChunkBytes;
   const chunks: Uint8Array[] = [];
   let producedTotal = 0;
+  const totalToConsume = entry.compressedSize || 1;
 
   if (entry.method === 0) {
     let offset = dataStart;
     let remaining = entry.compressedSize;
+    let consumed = 0;
     while (remaining > 0) {
       if (hooks.signal?.aborted) throw new DOMException('The run was cancelled.', 'AbortError');
       const take = Math.min(feedChunkBytes, remaining);
@@ -554,6 +558,8 @@ async function readEntryBytes(
       producedTotal += chunk.length;
       offset += chunk.length;
       remaining -= chunk.length;
+      consumed += chunk.length;
+      onChunk?.(consumed / totalToConsume);
     }
     return concatChunks(chunks, producedTotal);
   }
@@ -569,6 +575,7 @@ async function readEntryBytes(
 
   let offset = dataStart;
   let remaining = entry.compressedSize;
+  let consumed = 0;
   while (remaining > 0) {
     if (hooks.signal?.aborted) throw new DOMException('The run was cancelled.', 'AbortError');
     const take = Math.min(feedChunkBytes, remaining);
@@ -588,6 +595,8 @@ async function readEntryBytes(
     budget.charge(0, chunk.length);
     offset += chunk.length;
     remaining -= chunk.length;
+    consumed += chunk.length;
+    onChunk?.(consumed / totalToConsume);
   }
   if (inflateError) {
     throw inflateError instanceof Error ? inflateError : new Error('this entry could not be decompressed');

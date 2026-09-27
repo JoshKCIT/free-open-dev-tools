@@ -1,0 +1,34 @@
+{
+  "id": "archive-toolkit",
+  "scenarios": [
+    {
+      "label": "extract a ZIP",
+      "steps": [
+        { "action": "radio", "field": "mode", "value": "extract" },
+        { "action": "attach", "field": "archive", "value": "zip" },
+        { "action": "run" }
+      ],
+      "expect": ["readme.txt"],
+      "downloads": [{ "name": "readme\\.txt", "magic": "464f4454" }]
+    },
+    {
+      "label": "extract a tar.gz",
+      "steps": [
+        { "action": "radio", "field": "mode", "value": "extract" },
+        { "action": "attach", "field": "archive", "value": "tar.gz" },
+        { "action": "run" }
+      ],
+      "expect": ["notes.txt"]
+    },
+    {
+      "label": "create a ZIP",
+      "steps": [
+        { "action": "radio", "field": "mode", "value": "create" },
+        { "action": "attach", "field": "files", "value": "png,pdf" },
+        { "action": "run" }
+      ],
+      "expect": ["archive.zip"],
+      "downloads": [{ "name": "archive\\.zip", "magic": "504b0304" }]
+    }
+  ]
+}

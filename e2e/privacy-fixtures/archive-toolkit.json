@@ -1,0 +1,5 @@
+[
+  { "mode": { "field": "mode", "value": "extract" }, "attachesFile": true, "file": "zip" },
+  { "mode": { "field": "mode", "value": "extract" }, "attachesFile": true, "file": "tar.gz" },
+  { "mode": { "field": "mode", "value": "create" }, "attachesFile": true, "file": "png,pdf" }
+]

@@ -1,0 +1,10 @@
+{
+  "id": "archive-toolkit",
+  "label": "extracting the ZIP fixture lists its own deflated entry by its full path",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "extract" },
+    { "action": "attach", "field": "archive", "value": "zip" },
+    { "action": "run" }
+  ],
+  "expect": ["folder/data.txt"]
+}
