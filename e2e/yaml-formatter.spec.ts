@@ -34,10 +34,17 @@ async function setLargeValue(page: Page, selector: string, value: string): Promi
   }, value);
 }
 
-/** A flat mapping with 20,000 keys: reliably exceeds the 1.5s time limit (measured ~1.75s directly against the installed package). */
+/**
+ * A flat mapping with 40,000 keys. 20,000 keys (~1.75s on this project's own
+ * Windows laptop) sat too close to the 1.5s limit: a faster machine parsed it
+ * inside the limit and the test failed (GitHub CI run 36293794257 attempt 1,
+ * and locally, .planning/WINDOWS.md id 16). Parse time grows with the square
+ * of the key count, so 40,000 keys costs roughly four times as long (~7s here)
+ * and stays well past the limit on any plausibly faster runner.
+ */
 function pathologicalSource(): string {
   const lines: string[] = [];
-  for (let i = 0; i < 20_000; i++) lines.push(`k${i}: ${i}`);
+  for (let i = 0; i < 40_000; i++) lines.push(`k${i}: ${i}`);
   return lines.join('\n') + '\n';
 }
 
