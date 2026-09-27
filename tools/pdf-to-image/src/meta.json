@@ -24,6 +24,10 @@
     "Rendering runs in your browser, so fonts and exact pixels can differ slightly between browsers.",
     "Requires a browser recent enough to run Node 22.13-class JavaScript features that pdfjs-dist 6.x depends on."
   ],
+  "ambiguities": [
+    "A document with only an owner password (no user password needed to open it) still renders here, matching how most viewers treat that case; a document needing a user password is always refused, even to a caller that already knows the password, since this page never asks for one.",
+    "PDF.js's own useSystemFonts option, when off, is what makes the ten bundled Foxit files actually get requested; the Liberation Sans files the Helvetica family maps to are refused on purpose rather than treated as a bug, since bundling them is a licence choice, not a defect."
+  ],
   "standards": [
     {
       "label": "ISO 32000-1:2008 — Document management — Portable document format — Part 1: PDF 1.7",

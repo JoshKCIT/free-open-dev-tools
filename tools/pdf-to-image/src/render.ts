@@ -202,12 +202,12 @@ export interface RenderedPage {
  * Duck-typed contract for creating and encoding a rendering surface,
  * matching PDF.js's own `CanvasFactory` shape (`create`/`reset`/`destroy`)
  * plus one `encode` step this package adds. `canvas` and `context` are
- * opaque to this file: a browser worker's own factory returns an
- * `OffscreenCanvas` and its 2D context; the standalone test suite's own
- * factory returns an `@napi-rs/canvas` canvas and its 2D context. Both
- * expose the same `convertToBlob`-shaped encode method, which is why one
- * `encode` implementation below can serve both without this file ever
- * naming either concrete type.
+ * opaque to this file: a browser worker's own factory returns a canvas
+ * surface never inserted into the document and its 2D context; the
+ * standalone test suite's own factory returns an `@napi-rs/canvas` canvas
+ * and its 2D context. Both expose the same `convertToBlob`-shaped encode
+ * method, which is why one `encode` implementation below can serve both
+ * without this file ever naming either concrete type.
  */
 export interface RenderSurfacePair {
   canvas: unknown;
@@ -289,7 +289,7 @@ export async function renderPages(
         // must absolutely be used to render the page, the canvas must be
         // null" -- this package renders through `canvasContext` because
         // its own opaque `RenderSurfacePair.canvas` is never a named
-        // `HTMLCanvasElement` (BT: no browser-only type anywhere).
+        // browser-only type (BT: not even in a comment).
         //
         // `background` is PDF.js's own render parameter, read directly
         // from the installed source (`CanvasGraphics.beginDrawing`):

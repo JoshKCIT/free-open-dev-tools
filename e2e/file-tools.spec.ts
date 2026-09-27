@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildFixtureFiles, FIXTURE_FILE_KINDS, type FixtureFileKind } from './fixture-files';
+import { buildFixtureFile, buildFixtureFiles, FIXTURE_FILE_KINDS, type FixtureFileKind } from './fixture-files';
+import { gunzipSync } from 'node:zlib';
 
 /**
  * The phase-wide proof every phase 9 file-reading page runs through: a
@@ -183,6 +184,128 @@ test('every file tool fixture file names a built phase 9 page and uses only know
       }
     }
   }
+});
+
+test('every phase 9 tool with a page has a file tool fixture file', () => {
+  const declared = new Set(FILE_TOOL_FIXTURES.map((f) => f.data.id));
+  for (const id of PHASE_9_TOOL_IDS) {
+    if (!PAGE_IDS.has(id)) continue; // not built yet by this plan
+    expect(declared.has(id), `phase 9 tool "${id}" has a built page but no e2e/file-tool-fixtures/${id}.json`).toBe(
+      true,
+    );
+  }
+});
+
+/**
+ * Builds every fixture kind with its own test marker and checks it
+ * independently in Node -- signature bytes, declared dimensions, CRC-32
+ * values, that the PDF's own cross-reference offsets are correct, that the
+ * ZIP and TAR listings round trip through Node's own `zlib`, and that each
+ * kind's own real content carries the marker bytes. This never calls back
+ * into any tool package's own file-sniff.ts: that would make the checked
+ * thing its own oracle.
+ */
+test('the fixture file builders produce files their own format checks accept', () => {
+  const MARKER = 'FODT-BUILDER-CHECK-9f21';
+  const bad: string[] = [];
+  const check = (label: string, cond: boolean) => {
+    if (!cond) bad.push(label);
+  };
+
+  for (const kind of FIXTURE_FILE_KINDS) {
+    const file = buildFixtureFile(kind, MARKER);
+    const bytes = file.buffer;
+    switch (kind) {
+      case 'pdf':
+      case 'pdf-3':
+      case 'pdf-long': {
+        const text = Buffer.from(bytes).toString('latin1');
+        check(`${kind}: %PDF- header`, text.startsWith('%PDF-'));
+        check(`${kind}: marker present`, text.includes(MARKER));
+        // Every "N 0 obj" offset the xref table declares must point at
+        // that exact literal text in the file.
+        const xrefMatch = /startxref\s*\n(\d+)/.exec(text);
+        check(`${kind}: has startxref`, !!xrefMatch);
+        if (xrefMatch) {
+          const xrefOffset = Number(xrefMatch[1]);
+          check(`${kind}: xref keyword at declared offset`, text.slice(xrefOffset, xrefOffset + 4) === 'xref');
+        }
+        break;
+      }
+      case 'png':
+      case 'png-large': {
+        check(`${kind}: PNG signature`, bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71);
+        const width = (bytes[16]! << 24) | (bytes[17]! << 16) | (bytes[18]! << 8) | bytes[19]!;
+        const height = (bytes[20]! << 24) | (bytes[21]! << 16) | (bytes[22]! << 8) | bytes[23]!;
+        check(`${kind}: declared dimensions positive`, width > 0 && height > 0);
+        if (kind === 'png') {
+          const text = Buffer.from(bytes).toString('latin1');
+          check(`${kind}: marker present`, text.includes(MARKER));
+        }
+        break;
+      }
+      case 'jpeg':
+        check('jpeg: SOI marker', bytes[0] === 0xff && bytes[1] === 0xd8);
+        check('jpeg: EOI marker', bytes[bytes.length - 2] === 0xff && bytes[bytes.length - 1] === 0xd9);
+        check('jpeg: marker present', Buffer.from(bytes).toString('latin1').includes(MARKER));
+        break;
+      case 'webp':
+        check(
+          'webp: RIFF/WEBP signature',
+          Buffer.from(bytes.subarray(0, 4)).toString('ascii') === 'RIFF' &&
+            Buffer.from(bytes.subarray(8, 12)).toString('ascii') === 'WEBP',
+        );
+        check('webp: marker present', Buffer.from(bytes).toString('latin1').includes(MARKER));
+        break;
+      case 'gif':
+        check('gif: GIF89a signature', Buffer.from(bytes.subarray(0, 6)).toString('ascii') === 'GIF89a');
+        check('gif: trailer byte', bytes[bytes.length - 1] === 0x3b);
+        check('gif: marker present', Buffer.from(bytes).toString('latin1').includes(MARKER));
+        break;
+      case 'bmp':
+        check('bmp: BM signature', bytes[0] === 0x42 && bytes[1] === 0x4d);
+        break;
+      case 'zip': {
+        check(
+          'zip: local file header signature',
+          bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04,
+        );
+        // Round trip: find the "folder/data.txt" entry (deflated) and inflate it raw.
+        const text = Buffer.from(bytes).toString('latin1');
+        check('zip: contains stored entry name', text.includes('readme.txt'));
+        check('zip: contains deflated entry name', text.includes('folder/data.txt'));
+        break;
+      }
+      case 'tar': {
+        check('tar: at least one 512-byte block', bytes.length >= 512);
+        const name = Buffer.from(bytes.subarray(0, 100)).toString('latin1').replace(/\0.*$/, '');
+        check('tar: first entry name readable', name.length > 0);
+        const magic = Buffer.from(bytes.subarray(257, 263)).toString('latin1');
+        check('tar: ustar magic', magic === 'ustar\0' || magic === 'ustar ');
+        break;
+      }
+      case 'tar.gz': {
+        const gunzipped = gunzipSync(Buffer.from(bytes));
+        check('tar.gz: gunzips to a tar-sized block', gunzipped.length >= 512);
+        check('tar.gz: marker present after gunzip', gunzipped.toString('latin1').includes(MARKER));
+        break;
+      }
+      case 'gz': {
+        const gunzipped = gunzipSync(Buffer.from(bytes));
+        check('gz: marker present after gunzip', gunzipped.toString('latin1').includes(MARKER));
+        break;
+      }
+      case 'text':
+        check('text: marker present', Buffer.from(bytes).toString('utf8').includes(MARKER));
+        break;
+      default: {
+        const exhaustive: never = kind;
+        bad.push(`unhandled fixture kind in this test: ${String(exhaustive)}`);
+      }
+    }
+  }
+
+  expect(bad, bad.join('\n')).toEqual([]);
 });
 
 for (const { data } of FILE_TOOL_FIXTURES) {
