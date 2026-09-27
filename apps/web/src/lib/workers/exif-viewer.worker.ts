@@ -55,8 +55,7 @@ export type ExifViewerWorkerMessage = ExifViewerProgressMessage | ExifViewerDone
  * browser types tool pages need) but not the worker library, so
  * TypeScript resolves the ambient global in this file to a window-shaped
  * global rather than the worker's own global scope it actually is at
- * runtime (the same narrowing `hash-file.worker.ts` and every other
- * worker in this project uses).
+ * runtime (the same narrowing every worker in this project uses).
  */
 interface WorkerGlobal {
   postMessage(message: ExifViewerWorkerMessage, transfer?: Transferable[]): void;
@@ -73,8 +72,8 @@ const FALLBACK_CHUNK_SIZE = 4 * 1024 * 1024;
  * in chunks"), reporting progress after each slice. Slicing before
  * streaming -- rather than streaming the whole file in one call -- is what
  * lets a test shrink the read granularity to something small enough to
- * observe an in-flight run and click Cancel, the same purpose `hash-file`'s
- * own chunk size test hook serves for its slice-and-`arrayBuffer()` reader.
+ * observe an in-flight run and click Cancel, the same purpose this
+ * project's other chunk-size test hooks serve for their own readers.
  */
 async function readFileInSlices(
   file: File,

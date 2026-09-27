@@ -50,9 +50,8 @@ export default defineTool({
       );
     } catch (err) {
       // An abort rejection is let through rather than swallowed, matching
-      // every other worker-backed page in this project (hash-file's own
-      // precedent): the runner's own catch path already owns the single
-      // cancellation note.
+      // every other worker-backed page in this project: the runner's own
+      // catch path already owns the single cancellation note.
       if (ctx.signal.aborted) throw err;
       return {
         outputs: [],

@@ -3,9 +3,9 @@
  * forwards its progress to the run context, enforces a stall limit and
  * turns an abort into a real stop.
  *
- * A close copy of `run-in-worker.ts`'s settle contract (this project's
- * first worker page, `hash-file`), plus the stall-limit reset on every
- * progress message this phase's shared worker procedure (BQ) adds: a large
+ * A close copy of `run-in-worker.ts`'s own settle contract, plus the
+ * stall-limit reset on every progress message this phase's shared worker
+ * procedure (BQ) adds: a large
  * legitimate photo can take real time to read, so this is a
  * no-progress-for-20-seconds stall limit, not a fixed total time limit.
  *
@@ -32,9 +32,9 @@ export const EXIF_VIEWER_STALL_LIMIT_MS = 20_000;
 
 /**
  * Test-only affordances, read only when the browser test suite sets them
- * before the page loads, exactly like `hash-file`'s own
- * `__FODT_HASH_FILE_TEST_CHUNK_SIZE__`. Absent -- every real visit -- these
- * change nothing.
+ * before the page loads, following this project's own established
+ * per-tool test-hook pattern. Absent -- every real visit -- these change
+ * nothing.
  */
 declare global {
   interface Window {
@@ -170,8 +170,8 @@ export function runExifViewerInWorker(
       });
     } catch {
       // postMessage throws synchronously when its argument cannot be
-      // structured-cloned. The same fixed message as every other native
-      // startup failure path, matching hash-file's own precedent.
+      // structured-cloned. The same fixed message every other native
+      // startup failure path in this project uses.
       settle({ ok: false, error: new Error('The background task could not start.') });
     }
   });

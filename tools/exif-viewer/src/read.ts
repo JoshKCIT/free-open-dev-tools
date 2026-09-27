@@ -90,8 +90,12 @@ const BLOCK_LABELS: Record<string, string> = {
 const KNOWN_BLOCK_KEYS = new Set(Object.keys(BLOCK_LABELS));
 
 function valueToText(value: unknown): string {
-  if (value instanceof Uint8Array || (typeof Buffer !== 'undefined' && value instanceof Buffer)) {
-    return `${(value as Uint8Array).length} bytes`;
+  // Buffer (Node's own subclass, which this package's tests read values
+  // through) is already a Uint8Array, so this one check covers both without
+  // naming Buffer itself -- a global this package's own standalone build has
+  // no type declarations for.
+  if (value instanceof Uint8Array) {
+    return `${value.length} bytes`;
   }
   if (Array.isArray(value)) return value.map(valueToText).join(', ');
   if (value instanceof Date) return value.toISOString();

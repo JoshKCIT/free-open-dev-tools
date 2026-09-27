@@ -2,8 +2,7 @@
  * One place every visitor-facing sentence this tool uses to describe a
  * removed metadata segment or chunk lives, so `strip-jpeg.ts`, `strip-png.ts`
  * and `strip-webp.ts` never each invent their own wording for the same kind
- * of removal (the `describeSource` precedent in `apps/web/src/tools/data-uri.ts`).
- * Nothing here names a container format's own segment or chunk names --
+ * of removal. Nothing here names a container format's own segment or chunk names --
  * those already appear in the `list` output block's own labelled entries;
  * this file only says, in plain words, what kind of information left the
  * file.
