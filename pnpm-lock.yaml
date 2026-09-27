@@ -82,6 +82,21 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/aspect-ratio:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/base32:
     devDependencies:
       typescript:
@@ -169,6 +184,36 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/border-radius:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/box-shadow:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/case-converter:
     devDependencies:
       typescript:
@@ -196,6 +241,21 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/clip-path:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/code-complexity:
     dependencies:
       '@babel/parser':
@@ -212,8 +272,56 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/color-converter:
+    devDependencies:
+      '@types/culori':
+        specifier: ^4.0.1
+        version: 4.0.1
+      colorjs.io:
+        specifier: ^0.7.1
+        version: 0.7.1
+      culori:
+        specifier: ^4.0.2
+        version: 4.0.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/color-palette:
+    devDependencies:
+      colorjs.io:
+        specifier: ^0.7.1
+        version: 0.7.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/compression-tester:
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/contrast-checker:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      colorjs.io:
+        specifier: ^0.7.1
+        version: 0.7.1
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -226,6 +334,66 @@ importers:
       cron-parser:
         specifier: 5.10.1
         version: 5.10.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-animation:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-clamp:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-effects:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-filter:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -254,6 +422,45 @@ importers:
       postcss:
         specifier: ^8.5.28
         version: 8.5.28
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-specificity:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-transform:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/css-unit:
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -442,6 +649,21 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/flexbox-playground:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/git-command-builder:
     devDependencies:
       '@types/shell-quote':
@@ -491,12 +713,42 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/gradient-generator:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/graphql-to-typescript:
     dependencies:
       graphql:
         specifier: 17.0.2
         version: 17.0.2
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/grid-generator:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -622,6 +874,15 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/ieee754:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/image-color-extractor:
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -1313,6 +1574,21 @@ importers:
 
   tools/text-radix:
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/text-shadow:
+    devDependencies:
+      '@types/css-tree':
+        specifier: ^3.2.0
+        version: 3.2.0
+      css-tree:
+        specifier: ^3.2.1
+        version: 3.2.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -2080,6 +2356,9 @@ packages:
   '@types/csso@5.0.5':
     resolution: {integrity: sha512-Et/B3W1/1XMjG9SxwitiokWDabA9N8otVoTBJF2RmZ8itU0c5h7qmuZcTpp17BqfAnsdfkGQ3hwizff3nJvWSQ==}
 
+  '@types/culori@4.0.1':
+    resolution: {integrity: sha512-43M51r/22CjhbOXyGT361GZ9vncSVQ39u62x5eJdBQFviI8zWp2X5jzqg7k4M6PVgDQAClpy2bUe2dtwEgEDVQ==}
+
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
 
@@ -2425,6 +2704,9 @@ packages:
   colorette@1.4.0:
     resolution: {integrity: sha512-Y2oEozpomLn7Q3HFP7dpww7AtMJplbM9lGZP6RDfHqmbeRjiwRg4n6VM6j4KLmRke85uWEI7JqF17f3pqdRA0g==}
 
+  colorjs.io@0.7.1:
+    resolution: {integrity: sha512-LY7OHnJZxHwT5UlzNa9bbhHHDbzB6yE5+3MIPwJEQKRvSCt/T4G7epsj+9j2BExUIIfXFIJGsIXUKdfrK9Q5tA==}
+
   commander@10.0.1:
     resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
     engines: {node: '>=14'}
@@ -2479,6 +2761,10 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  culori@4.0.2:
+    resolution: {integrity: sha512-1+BhOB8ahCn4O0cep0Sh2l9KCOfOdY+BXJnKMHFFzDEouSr/el18QwXEMRlOj9UY5nCeA8UN3a/82rUWRBeyBw==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   data-urls@7.0.0:
     resolution: {integrity: sha512-23XHcCF+coGYevirZceTVD7NdJOqVn+49IHyxgszm+JIiHLoB2TkmPtsYkNWT1pvRSGkc35L6NHs0yHkN2SumA==}
@@ -4287,6 +4573,8 @@ snapshots:
     dependencies:
       '@types/css-tree': 2.3.11
 
+  '@types/culori@4.0.1': {}
+
   '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
@@ -4665,6 +4953,8 @@ snapshots:
 
   colorette@1.4.0: {}
 
+  colorjs.io@0.7.1: {}
+
   commander@10.0.1: {}
 
   commander@11.1.0: {}
@@ -4714,6 +5004,8 @@ snapshots:
       css-tree: 2.2.1
 
   csstype@3.2.3: {}
+
+  culori@4.0.2: {}
 
   data-urls@7.0.0(@noble/hashes@2.4.0):
     dependencies:

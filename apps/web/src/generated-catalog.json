@@ -700,7 +700,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 1,
       "summary": "Convert between px, rem, em, pt, pc, in, cm, mm, vw, vh and percent.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-clamp",
@@ -709,7 +709,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 1,
       "summary": "Produce a fluid clamp() value from a size range and a viewport range.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-specificity",
@@ -718,7 +718,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 2,
       "summary": "Score a selector and explain which parts contribute.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "gradient-generator",
@@ -727,7 +727,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Build linear, radial and conic gradients with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "box-shadow",
@@ -736,7 +736,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Design layered box shadows with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "text-shadow",
@@ -745,7 +745,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Design layered text shadows with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "border-radius",
@@ -754,7 +754,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Set each corner independently with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "flexbox-playground",
@@ -763,7 +763,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Experiment with flex container and item properties against a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "grid-generator",
@@ -772,7 +772,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Lay out grid tracks and areas with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-animation",
@@ -781,7 +781,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Build keyframe animations and transitions with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-transform",
@@ -790,7 +790,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Compose translate, rotate, scale and skew with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-filter",
@@ -799,7 +799,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Compose filter functions with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "clip-path",
@@ -808,7 +808,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Draw polygon, circle, ellipse and inset shapes with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "css-effects",
@@ -817,7 +817,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 3,
       "summary": "Generate frosted glass and soft UI effects with a live preview.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "aspect-ratio",
@@ -826,7 +826,7 @@
       "categoryLabel": "CSS and layout",
       "tier": 1,
       "summary": "Solve for a missing dimension, and list common ratios and resolutions.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "color-converter",
@@ -835,7 +835,7 @@
       "categoryLabel": "Colour",
       "tier": 1,
       "summary": "Convert between HEX, RGB, HSL, HWB, LAB, LCH, OKLAB, OKLCH and CMYK.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "color-palette",
@@ -844,7 +844,7 @@
       "categoryLabel": "Colour",
       "tier": 2,
       "summary": "Build harmonies, tints, shades, tones and blends from a base colour.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "contrast-checker",
@@ -853,7 +853,7 @@
       "categoryLabel": "Colour",
       "tier": 1,
       "summary": "Check WCAG 2.2 contrast ratios and report the APCA lightness contrast.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "image-color-extractor",
@@ -862,7 +862,7 @@
       "categoryLabel": "Colour",
       "tier": 3,
       "summary": "Extract a dominant palette from an image entirely in the browser.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "unix-timestamp",

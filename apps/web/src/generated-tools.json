@@ -31,6 +31,20 @@
       "rfc 20"
     ]
   },
+  "aspect-ratio": {
+    "id": "aspect-ratio",
+    "name": "Aspect Ratio Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "aspect-ratio",
+      "resolution",
+      "ratio",
+      "calculator"
+    ]
+  },
   "base32": {
     "id": "base32",
     "name": "Base32 Encoder & Decoder",
@@ -135,6 +149,37 @@
       "crypt"
     ]
   },
+  "border-radius": {
+    "id": "border-radius",
+    "name": "CSS Border Radius Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "border-radius",
+      "rounded corners",
+      "generator",
+      "preview",
+      "corners"
+    ]
+  },
+  "box-shadow": {
+    "id": "box-shadow",
+    "name": "CSS Box Shadow Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "box-shadow",
+      "shadow",
+      "generator",
+      "preview",
+      "elevation",
+      "inset"
+    ]
+  },
   "case-converter": {
     "id": "case-converter",
     "name": "Case Converter",
@@ -182,6 +227,21 @@
       "substitution cipher"
     ]
   },
+  "clip-path": {
+    "id": "clip-path",
+    "name": "CSS Clip-path Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "clip-path",
+      "polygon",
+      "shape",
+      "generator",
+      "preview"
+    ]
+  },
   "code-complexity": {
     "id": "code-complexity",
     "name": "Code Complexity Analyzer",
@@ -199,6 +259,46 @@
       "static analysis"
     ]
   },
+  "color-converter": {
+    "id": "color-converter",
+    "name": "Colour Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "colour",
+      "color",
+      "converter",
+      "hex",
+      "rgb",
+      "hsl",
+      "hwb",
+      "lab",
+      "lch",
+      "oklab",
+      "oklch",
+      "cmyk"
+    ]
+  },
+  "color-palette": {
+    "id": "color-palette",
+    "name": "Colour Palette & Shades",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "colour",
+      "color",
+      "palette",
+      "harmony",
+      "tints",
+      "shades",
+      "tones",
+      "blend"
+    ]
+  },
   "compression-tester": {
     "id": "compression-tester",
     "name": "Compression Size Tester",
@@ -214,6 +314,23 @@
       "file size"
     ]
   },
+  "contrast-checker": {
+    "id": "contrast-checker",
+    "name": "Colour Contrast Checker",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "colour",
+      "color",
+      "contrast",
+      "wcag",
+      "apca",
+      "accessibility",
+      "a11y"
+    ]
+  },
   "cron-expression": {
     "id": "cron-expression",
     "name": "Cron Expression Parser & Builder",
@@ -227,6 +344,70 @@
       "schedule",
       "next-run",
       "vixie"
+    ]
+  },
+  "css-animation": {
+    "id": "css-animation",
+    "name": "CSS Animation & Transition",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "animation",
+      "keyframes",
+      "transition",
+      "easing",
+      "generator",
+      "preview"
+    ]
+  },
+  "css-clamp": {
+    "id": "css-clamp",
+    "name": "CSS Clamp Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "clamp",
+      "fluid",
+      "typography",
+      "responsive",
+      "font-size"
+    ]
+  },
+  "css-effects": {
+    "id": "css-effects",
+    "name": "Glassmorphism & Neumorphism",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "glassmorphism",
+      "neumorphism",
+      "backdrop-filter",
+      "soft ui",
+      "generator",
+      "preview"
+    ]
+  },
+  "css-filter": {
+    "id": "css-filter",
+    "name": "CSS Filter Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "filter",
+      "blur",
+      "grayscale",
+      "drop-shadow",
+      "generator",
+      "preview",
+      "duotone"
     ]
   },
   "css-formatter": {
@@ -245,6 +426,59 @@
       "minify",
       "prettier",
       "csso"
+    ]
+  },
+  "css-specificity": {
+    "id": "css-specificity",
+    "name": "CSS Specificity Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "selector",
+      "specificity",
+      "cascade",
+      "is",
+      "not",
+      "has",
+      "where",
+      "nth-child"
+    ]
+  },
+  "css-transform": {
+    "id": "css-transform",
+    "name": "CSS Transform Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "transform",
+      "matrix",
+      "translate",
+      "rotate",
+      "scale",
+      "skew",
+      "generator",
+      "preview"
+    ]
+  },
+  "css-unit": {
+    "id": "css-unit",
+    "name": "CSS Unit Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "unit",
+      "converter",
+      "px",
+      "rem",
+      "em",
+      "viewport",
+      "percent"
     ]
   },
   "csv-json": {
@@ -492,6 +726,21 @@
       "search"
     ]
   },
+  "flexbox-playground": {
+    "id": "flexbox-playground",
+    "name": "Flexbox Playground",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "flexbox",
+      "flex",
+      "generator",
+      "preview",
+      "layout"
+    ]
+  },
   "git-command-builder": {
     "id": "git-command-builder",
     "name": "Git Command Builder",
@@ -557,6 +806,23 @@
       "devops"
     ]
   },
+  "gradient-generator": {
+    "id": "gradient-generator",
+    "name": "CSS Gradient Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "gradient",
+      "linear-gradient",
+      "radial-gradient",
+      "conic-gradient",
+      "generator",
+      "preview",
+      "background"
+    ]
+  },
   "graphql-to-typescript": {
     "id": "graphql-to-typescript",
     "name": "GraphQL SDL to TypeScript",
@@ -572,6 +838,21 @@
       "schema",
       "codegen",
       "types"
+    ]
+  },
+  "grid-generator": {
+    "id": "grid-generator",
+    "name": "CSS Grid Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "grid",
+      "grid-template-areas",
+      "generator",
+      "preview",
+      "layout"
     ]
   },
   "hash-file": {
@@ -729,6 +1010,26 @@
       "nan",
       "subnormal",
       "bit-pattern"
+    ]
+  },
+  "image-color-extractor": {
+    "id": "image-color-extractor",
+    "name": "Image Colour Extractor",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "color",
+      "colour",
+      "image",
+      "palette",
+      "extractor",
+      "png",
+      "jpeg",
+      "gif",
+      "webp",
+      "bmp",
+      "median-cut"
     ]
   },
   "ip-ptr": {
@@ -1632,6 +1933,22 @@
       "windows-1252",
       "utf-16",
       "byte grouping"
+    ]
+  },
+  "text-shadow": {
+    "id": "text-shadow",
+    "name": "CSS Text Shadow Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "css",
+      "text-shadow",
+      "shadow",
+      "generator",
+      "preview",
+      "glow",
+      "typography"
     ]
   },
   "timezone-converter": {
