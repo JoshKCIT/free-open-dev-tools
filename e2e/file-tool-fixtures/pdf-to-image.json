@@ -10,6 +10,18 @@
       ],
       "expect": ["612 × 792"],
       "downloads": [{ "name": "sample-page-[1-3][.]png", "magic": "89504e470d0a1a0a" }]
+    },
+    {
+      "label": "first page to JPEG",
+      "steps": [
+        { "action": "attach", "field": "file", "value": "pdf-3" },
+        { "action": "fill", "field": "pages", "value": "1" },
+        { "action": "select", "field": "format", "value": "jpeg" },
+        { "action": "fill", "field": "dpi", "value": "72" },
+        { "action": "run" }
+      ],
+      "expect": ["612 × 792"],
+      "downloads": [{ "name": "sample-page-1[.]jpg", "magic": "ffd8ff" }]
     }
   ]
 }

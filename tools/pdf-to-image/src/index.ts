@@ -6,6 +6,7 @@ export { BUNDLED_BINARY_DATA };
 
 export * from './file-sniff';
 export * from './render';
+export * from './page-range';
 
 // The PDF.js entry points the page and worker need. Re-exported from here
 // (not imported directly by apps/web) so this package stays the only place

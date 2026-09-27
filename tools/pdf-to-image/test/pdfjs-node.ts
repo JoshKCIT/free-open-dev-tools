@@ -74,13 +74,22 @@ export function createTestBinaryDataFactory(): {
 
 /**
  * A `SurfaceFactory` (tools/pdf-to-image/src/render.ts) built on
- * @napi-rs/canvas, whose canvas object exposes the identical
- * `convertToBlob({ type, quality })` shape OffscreenCanvas does (confirmed
- * directly against the installed package this session), so the same
- * `encode` implementation this file writes matches what the browser
- * worker calls in production.
+ * @napi-rs/canvas. `encode` uses the canvas's own `toBuffer(mime, quality)`
+ * method, not `convertToBlob`: measured directly this session, the
+ * installed @napi-rs/canvas version's own `convertToBlob({ type:
+ * 'image/jpeg' })` silently returns a PNG blob (the exact D-139
+ * silent-substitution shape this package's own `renderPages` is built to
+ * catch and refuse), while its `toBuffer('image/jpeg', quality)` encodes a
+ * real JPEG correctly. `toBuffer` is this test double's own path to a
+ * genuinely correct encoded byte string; `convertToBlob`'s real behaviour,
+ * including this D-139 case, is what the browser worker's own dedicated
+ * spec proves.
  */
 export function createTestSurfaceFactory(): SurfaceFactory {
+  const MIME_TO_EXT: Record<string, 'image/png' | 'image/jpeg'> = {
+    'image/png': 'image/png',
+    'image/jpeg': 'image/jpeg',
+  };
   return {
     create(width, height): RenderSurfacePair {
       const canvas = createCanvas(width, height);
@@ -98,10 +107,14 @@ export function createTestSurfaceFactory(): SurfaceFactory {
       canvas.height = 0;
     },
     async encode(canvas, mimeType, quality) {
-      const napiCanvas = canvas as { convertToBlob(opts: { type: string; quality?: number }): Promise<Blob> };
-      const blob = await napiCanvas.convertToBlob({ type: mimeType, quality });
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      return { type: blob.type, bytes };
+      const napiCanvas = canvas as {
+        toBuffer(mime: 'image/png'): Buffer;
+        toBuffer(mime: 'image/jpeg', quality?: number): Buffer;
+      };
+      const ext = MIME_TO_EXT[mimeType] ?? 'image/png';
+      const buffer =
+        ext === 'image/jpeg' ? napiCanvas.toBuffer('image/jpeg', quality) : napiCanvas.toBuffer('image/png');
+      return { type: ext, bytes: new Uint8Array(buffer) };
     },
   };
 }

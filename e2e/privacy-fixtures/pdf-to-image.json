@@ -1,1 +1,4 @@
-[{ "values": { "dpi": "72" }, "attachesFile": true, "file": "pdf" }]
+[
+  { "values": { "dpi": "72" }, "attachesFile": true, "file": "pdf" },
+  { "values": { "pages": "1", "format": "jpeg", "quality": "90" }, "attachesFile": true, "file": "pdf-3" }
+]

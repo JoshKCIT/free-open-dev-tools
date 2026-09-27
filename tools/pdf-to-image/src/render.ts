@@ -18,6 +18,7 @@ import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
 // finish a document's own lifecycle correctly under plain Node).
 import { AnnotationMode } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { assertFileKind, type FileKind } from './file-sniff';
+import { parsePageList } from './page-range';
 
 /** The two output raster formats this tool ever produces. */
 export type RenderFormat = 'png' | 'jpeg';
@@ -109,6 +110,8 @@ export interface RenderOptions {
 export interface RenderPlan {
   /** 1-based page numbers in written order, or undefined for "every page" (resolved once pageCount is known). */
   pages: number[] | undefined;
+  /** The raw page-list text, held until `resolvePages` can parse it against a real page count. */
+  pagesText: string | undefined;
   format: RenderFormat;
   dpi: number;
   quality: number;
@@ -145,12 +148,37 @@ export function planRender(bytes: Uint8Array, fileName: string, options: RenderO
   assertFileKind(bytes, ACCEPTED_KINDS, { maxBytes: MAX_PDF_BYTES });
   return {
     pages: undefined,
+    pagesText: options.pages,
     format: options.format === 'jpeg' ? 'jpeg' : 'png',
     dpi: clampDpi(options.dpi),
     quality: clampQuality(options.quality),
     transparent: options.transparent === true,
     baseName: baseNameFrom(fileName),
   };
+}
+
+/**
+ * Resolves a plan's page-list text against a document's real page count,
+ * returning a new plan with `pages` set. Called once `document.numPages`
+ * is known, after the document has loaded. An absent or blank page-list
+ * text means every page, in order (`pages` stays `undefined`, and
+ * `renderPages` falls back to the full page range itself). Refuses a
+ * list naming more than `MAX_PAGES_PER_RUN` pages -- a plain, separate
+ * limit from `page-range.ts`'s own `MAX_PAGE_LIST_LENGTH`, which exists to
+ * stop the parser itself from ever building an unbounded array.
+ */
+export function resolvePages(plan: RenderPlan, pageCount: number): RenderPlan {
+  if (!plan.pagesText || plan.pagesText.trim() === '') {
+    return plan;
+  }
+  const list = parsePageList(plan.pagesText, pageCount);
+  if (list.length > MAX_PAGES_PER_RUN) {
+    throw new PdfToImageError(
+      `This page list asks for ${list.length} pages, above this tool's ${MAX_PAGES_PER_RUN}-page limit for one run. Try a shorter list.`,
+      'too-many-pages',
+    );
+  }
+  return { ...plan, pages: list };
 }
 
 /** `<base>-page-<n>.<ext>`, with `n` zero-padded to the width of `pageCount`. */
@@ -195,7 +223,12 @@ export interface SurfaceFactory {
 }
 
 export interface RenderHooks {
-  /** Aborted between (never during) a page's own render. */
+  /**
+   * Checked between pages, and wired to PDF.js's own `RenderTask.cancel()`
+   * while a page is actually rendering, so a cancel during a slow page
+   * stops that page's own work immediately rather than waiting for it to
+   * finish.
+   */
   signal?: AbortSignal;
   onProgress?(done: number, total: number, detail?: string): void;
   /**
@@ -209,10 +242,11 @@ export interface RenderHooks {
 /**
  * Renders every page in `plan.pages` (or every page of the document when
  * `pages` is undefined) in page order, encoding each to `plan.format` at
- * `plan.dpi`. Checks `hooks.signal` between pages (never during one, so a
- * page already in flight always finishes or is cancelled by PDF.js's own
- * `RenderTask.cancel`, never left in an undefined state) and reports
- * progress after each page completes.
+ * `plan.dpi`. Checks `hooks.signal` between pages, and cancels the current
+ * page's own `RenderTask` immediately when it aborts mid-render, so a
+ * cancel during a large page's own render stops promptly rather than
+ * waiting for that page to finish. Reports progress after each page
+ * completes.
  */
 export async function renderPages(
   document: PDFDocumentProxy,
@@ -244,19 +278,6 @@ export async function renderPages(
 
       const pair = surfaces.create(width, height);
       try {
-        if (!plan.transparent) {
-          const ctx = pair.context as {
-            save(): void;
-            restore(): void;
-            fillStyle: string;
-            fillRect(x: number, y: number, w: number, h: number): void;
-          };
-          ctx.save();
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, width, height);
-          ctx.restore();
-        }
-
         // No `canvasFactory` field belongs here: PDF.js binds a page's own
         // canvas factory once, at `getDocument`'s own `CanvasFactory`
         // option, for any internal canvas it needs (soft masks, patterns)
@@ -269,13 +290,36 @@ export async function renderPages(
         // null" -- this package renders through `canvasContext` because
         // its own opaque `RenderSurfacePair.canvas` is never a named
         // `HTMLCanvasElement` (BT: no browser-only type anywhere).
+        //
+        // `background` is PDF.js's own render parameter, read directly
+        // from the installed source (`CanvasGraphics.beginDrawing`):
+        // `this.ctx.fillStyle = background || "#ffffff"; this.ctx.fillRect(...)`
+        // unconditionally paints the whole surface before drawing the page,
+        // regardless of anything this package might have painted first --
+        // measured directly this session, a page-side pre-fill (this
+        // file's own earlier approach) is silently overwritten by this
+        // internal fill. Passing `background` here is the only way to
+        // control it: an explicit fully-transparent fill colour for
+        // `plan.transparent`, opaque white otherwise.
         const renderTask = page.render({
           canvas: null,
           canvasContext: pair.context as never,
           viewport,
           annotationMode: AnnotationMode.ENABLE,
+          background: plan.transparent ? 'rgba(0,0,0,0)' : '#ffffff',
         });
-        await renderTask.promise;
+        const onAbort = () => renderTask.cancel();
+        hooks.signal?.addEventListener('abort', onAbort, { once: true });
+        try {
+          await renderTask.promise;
+        } catch (err) {
+          if (hooks.signal?.aborted) {
+            throw new PdfToImageError('The run was cancelled.', 'cancelled');
+          }
+          throw err;
+        } finally {
+          hooks.signal?.removeEventListener('abort', onAbort);
+        }
 
         const encoded = await surfaces.encode(
           pair.canvas,

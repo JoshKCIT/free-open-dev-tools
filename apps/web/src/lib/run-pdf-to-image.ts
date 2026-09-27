@@ -23,6 +23,7 @@ import {
   PasswordException,
   PdfToImageError,
   planRender,
+  resolvePages,
   renderPages,
   bundledBinaryData,
   type RenderOptions,
@@ -39,16 +40,34 @@ export interface BinaryDataRequestLog {
 }
 
 /**
- * Test-only affordance, read only when the browser test suite sets it
- * before the page loads. Lets a spec assert on exactly which binary-data
- * requests PDF.js made and whether each was served from the bundle.
- * Assigning this costs a real visitor nothing -- nobody reads it outside a
- * test.
+ * No progress message for this long stops the run rather than leaving it to
+ * run indefinitely (BQ). This is a stall limit, not a total time limit: a
+ * large legitimate document can take minutes, as long as it keeps reporting
+ * progress between pages.
+ */
+export const PDF_STALL_LIMIT_MS = 20_000;
+
+/**
+ * Test-only affordances, read only when the browser test suite sets them
+ * before the page loads. `TEST_HOOKS` lets a spec assert on exactly which
+ * binary-data requests PDF.js made and whether each was served from the
+ * bundle. `TEST_STALL_MS` shortens the real stall wait without changing
+ * the fixed message text a real visitor would see. Assigning these costs a
+ * real visitor nothing -- nobody reads them outside a test.
  */
 declare global {
   interface Window {
     __FODT_PDF_TO_IMAGE_TEST_HOOKS__?: { requests: BinaryDataRequestLog[] };
+    __FODT_PDF_TO_IMAGE_TEST_STALL_MS__?: number;
   }
+}
+
+export interface RenderPdfResult {
+  pages: RenderedPage[];
+  /** True when the document asked for a built-in CMap this tool does not bundle (D-138). */
+  cjkNoteNeeded: boolean;
+  /** The document's own total page count, independent of how many pages this run actually rendered. */
+  documentPageCount: number;
 }
 
 /**
@@ -56,11 +75,17 @@ declare global {
  * tool's bundled bytes (`bundledBinaryData`, generated from the installed
  * pdfjs-dist package). Never reads a URL, never touches the network: a
  * request for anything not bundled (every Liberation Sans file the
- * Helvetica standard fonts map to) is refused, which PDF.js's own
- * `fetchStandardFontData` already treats as "fall back to a system font",
- * not a failure.
+ * Helvetica standard fonts map to, or a built-in CMap, which this tool
+ * never bundles at all, D-138) is refused, which PDF.js's own
+ * `fetchStandardFontData`/`fetchBuiltInCMap` already treat as "fall back",
+ * not a failure. `onCmapRequest` is called once per refused `cMapUrl`
+ * request, which the caller turns into the visitor-facing CJK note.
  */
 class BundledBinaryDataFactory {
+  private readonly onCmapRequest: () => void;
+  constructor(_opts: unknown, onCmapRequest: () => void) {
+    this.onCmapRequest = onCmapRequest;
+  }
   async fetch({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> {
     const bundledKind = kind === 'standardFontDataUrl' ? 'font' : kind === 'cMapUrl' ? 'cmap' : 'wasm';
     const data = bundledBinaryData(bundledKind, filename);
@@ -68,6 +93,7 @@ class BundledBinaryDataFactory {
     if (typeof window !== 'undefined') {
       window.__FODT_PDF_TO_IMAGE_TEST_HOOKS__?.requests.push({ kind, filename, served });
     }
+    if (!served && kind === 'cMapUrl') this.onCmapRequest();
     if (!data) throw new Error(`Not bundled: ${kind} ${filename}`);
     return data;
   }
@@ -139,11 +165,15 @@ function createBrowserSurfaceFactory(): SurfaceFactory {
  * Renders every requested page of `file` to the format `options` names.
  * Checks the file header and clamps options before anything else
  * (`planRender`), builds a fresh PDF.js worker from this page's own
- * already-loaded chunk, and renders through an `OffscreenCanvas` surface
- * factory. A password-protected PDF is refused with a clean message,
- * without PDF.js's own password callback ever being answered.
+ * already-loaded chunk, and renders through a browser surface factory.
+ *
+ * A password-protected PDF is refused with a clean message, without PDF.js's
+ * own password callback ever being answered (`onPassword` is never set at
+ * all). A run that reports no progress for `PDF_STALL_LIMIT_MS` is stopped;
+ * a run the visitor cancels stops between pages, or mid-page through
+ * PDF.js's own `RenderTask.cancel` (tools/pdf-to-image/src/render.ts).
  */
-export async function renderPdfInPage(file: File, options: RenderOptions, ctx: RunContext): Promise<RenderedPage[]> {
+export async function renderPdfInPage(file: File, options: RenderOptions, ctx: RunContext): Promise<RenderPdfResult> {
   if (ctx.signal.aborted) {
     throw new Error('The run was cancelled before it started.');
   }
@@ -158,6 +188,15 @@ export async function renderPdfInPage(file: File, options: RenderOptions, ctx: R
   const worker = new PdfToImageWorker();
   const pdfWorker = new PDFWorker({ port: worker as never });
 
+  let cjkNoteNeeded = false;
+  class ScopedBinaryDataFactory extends BundledBinaryDataFactory {
+    constructor() {
+      super(undefined, () => {
+        cjkNoteNeeded = true;
+      });
+    }
+  }
+
   const task = getDocument({
     ...PDFJS_SAFE_OPTIONS,
     // PDF.js's own `data` option takes ownership of the bytes it is given
@@ -165,7 +204,7 @@ export async function renderPdfInPage(file: File, options: RenderOptions, ctx: R
     // itself usable if a later step (or a future task) needs it again.
     data: bytes.slice(),
     worker: pdfWorker,
-    BinaryDataFactory: BundledBinaryDataFactory,
+    BinaryDataFactory: ScopedBinaryDataFactory,
   });
 
   let document;
@@ -182,13 +221,50 @@ export async function renderPdfInPage(file: File, options: RenderOptions, ctx: R
     throw err;
   }
 
+  // Combines the visitor's own Cancel/edit-triggered abort with this
+  // driver's own stall watchdog: renderPages sees one signal regardless of
+  // which one fires, and only this function needs to know which happened.
+  const internalController = new AbortController();
+  const forwardAbort = () => internalController.abort();
+  ctx.signal.addEventListener('abort', forwardAbort, { once: true });
+
+  let stalled = false;
+  const stallLimitMs =
+    typeof window !== 'undefined' && window.__FODT_PDF_TO_IMAGE_TEST_STALL_MS__
+      ? window.__FODT_PDF_TO_IMAGE_TEST_STALL_MS__
+      : PDF_STALL_LIMIT_MS;
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  const resetStallTimer = () => {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      stalled = true;
+      internalController.abort();
+    }, stallLimitMs);
+  };
+  resetStallTimer();
+
   try {
+    const resolvedPlan = resolvePages(plan, document.numPages);
     const surfaces = createBrowserSurfaceFactory();
-    return await renderPages(document, plan, surfaces, {
-      signal: ctx.signal,
-      onProgress: (done, total, detail) => ctx.onProgress?.(total === 0 ? 1 : done / total, detail),
+    const pages = await renderPages(document, resolvedPlan, surfaces, {
+      signal: internalController.signal,
+      onProgress: (done, total, detail) => {
+        resetStallTimer();
+        ctx.onProgress?.(total === 0 ? 1 : done / total, detail);
+      },
     });
+    return { pages, cjkNoteNeeded, documentPageCount: document.numPages };
+  } catch (err) {
+    if (stalled) {
+      throw new PdfToImageError(
+        `Stopped: no progress for ${Math.round(stallLimitMs / 1000)} seconds. The file may be unusually large or complex for this browser.`,
+        'stalled',
+      );
+    }
+    throw err;
   } finally {
+    clearTimeout(stallTimer);
+    ctx.signal.removeEventListener('abort', forwardAbort);
     await task.destroy();
   }
 }
