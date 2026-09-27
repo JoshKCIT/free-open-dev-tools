@@ -35,9 +35,7 @@ if (typeof (Promise as unknown as { try?: unknown }).try !== 'function') {
     };
 }
 
-async function loadPdf(
-  bytes: Uint8Array,
-): Promise<{
+async function loadPdf(bytes: Uint8Array): Promise<{
   doc: {
     numPages: number;
     getPage(n: number): Promise<{ getTextContent(): Promise<{ items: { str?: string }[] }>; rotate: number }>;
