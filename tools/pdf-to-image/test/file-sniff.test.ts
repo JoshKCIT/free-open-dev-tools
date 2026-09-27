@@ -1,8 +1,5 @@
 import { it, expect } from 'vitest';
-import { getDocument } from '../src/index';
 import { sniffFile, assertFileKind, FileSignatureError } from '../src/file-sniff';
-import { buildMinimalPdf } from './minimal-pdf';
-import { createTestBinaryDataFactory, createTestCanvasFactory } from './pdfjs-node';
 
 /**
  * ISO 32000-1:2008 section 7.5.2 "File Header" (quoted in src/file-sniff.ts's
@@ -15,39 +12,21 @@ import { createTestBinaryDataFactory, createTestCanvasFactory } from './pdfjs-no
  * reporter concatenates the describe name into `fullName`, and this
  * project's own verify scripts match required titles by exact equality.
  */
-it('a PDF header within the first 1024 bytes is recognised as ISO 32000 and PDF.js accept it', async () => {
+it('a PDF header within the first 1024 bytes is recognised as ISO 32000, and beyond the search window it is not', () => {
+  const header = new TextEncoder().encode('%PDF-1.7\n');
   const junk = new Uint8Array(300).fill(0x20); // 300 bytes of junk before the header, still inside the window
-  const pdf = buildMinimalPdf({ pages: [{ text: 'Hello' }] });
-  const withJunk = new Uint8Array(junk.length + pdf.length);
+  const withJunk = new Uint8Array(junk.length + header.length);
   withJunk.set(junk, 0);
-  withJunk.set(pdf, junk.length);
+  withJunk.set(header, junk.length);
 
-  expect(sniffFile(pdf)?.kind).toBe('pdf');
+  expect(sniffFile(header)?.kind).toBe('pdf');
   expect(sniffFile(withJunk)?.kind).toBe('pdf');
 
-  // PDF.js itself must also accept both: header at byte 0, and header
-  // starting after 300 bytes of junk (still well within its own 1024-byte
-  // search window).
-  for (const bytes of [pdf, withJunk]) {
-    // PDF.js's own `data` option detaches the buffer it is given once
-    // loading starts; `.slice()` keeps `pdf` itself usable afterwards.
-    const task = getDocument({
-      data: bytes.slice(),
-      useWorkerFetch: false,
-      BinaryDataFactory: createTestBinaryDataFactory(),
-      CanvasFactory: createTestCanvasFactory(),
-      verbosity: 0,
-    });
-    const doc = await task.promise;
-    expect(doc.numPages).toBe(1);
-    await task.destroy();
-  }
-
-  // Beyond the 1024-byte search window, neither this tool nor PDF.js finds it.
+  // Beyond the 1024-byte search window, the header is not found.
   const tooFarJunk = new Uint8Array(1200).fill(0x20);
-  const tooFar = new Uint8Array(tooFarJunk.length + pdf.length);
+  const tooFar = new Uint8Array(tooFarJunk.length + header.length);
   tooFar.set(tooFarJunk, 0);
-  tooFar.set(pdf, tooFarJunk.length);
+  tooFar.set(header, tooFarJunk.length);
   expect(sniffFile(tooFar)).toBeNull();
 });
 

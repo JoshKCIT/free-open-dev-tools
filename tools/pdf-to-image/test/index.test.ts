@@ -45,6 +45,36 @@ function loadDocument(bytes: Uint8Array) {
   return { task, requests: BinaryDataFactory.requests };
 }
 
+/**
+ * [09-03 deviation, Rule 3 - Blocking] `test/file-sniff.test.ts` is one of
+ * this phase's canonical, byte-for-byte-copied snippets (09-01's own BR):
+ * every later file-reading tool's copy is checked equal to this file's copy
+ * by SNIPPETS-IDENTICAL. The version 09-01 committed embedded a real PDF.js
+ * getDocument() round trip in its first test, which only compiles here
+ * (this package alone exports getDocument and has test/minimal-pdf.ts and
+ * test/pdfjs-node.ts); copying it verbatim into image-converter or
+ * favicon-generator would fail to even parse. The sniffFile-only behaviour
+ * moved into file-sniff.test.ts's own (renamed) first test, which needs no
+ * package-specific import and is now genuinely copyable; the PDF.js
+ * integration half of the original test is preserved here instead, since it
+ * is still worth proving that PDF.js's own header leniency and this
+ * package's sniffFile() search window agree on the same boundary.
+ */
+it('a PDF header found within file-sniff.ts own search window is one PDF.js itself also opens', async () => {
+  const junk = new Uint8Array(300).fill(0x20); // 300 bytes of junk before the header, still inside the window
+  const pdf = buildMinimalPdf({ pages: [{ text: 'Hello' }] });
+  const withJunk = new Uint8Array(junk.length + pdf.length);
+  withJunk.set(junk, 0);
+  withJunk.set(pdf, junk.length);
+
+  for (const bytes of [pdf, withJunk]) {
+    const { task } = loadDocument(bytes);
+    const doc = await task.promise;
+    expect(doc.numPages).toBe(1);
+    await task.destroy();
+  }
+});
+
 it('a page renders at the requested resolution with the size the PDF user space unit gives', async () => {
   // ISO 32000-1:2008 section 8.3.2.3 "User Space": "the default value of
   // 1/72 inch is used" for the length of a unit in default user space, so
