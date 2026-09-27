@@ -2,7 +2,7 @@
   "id": "text-shadow",
   "drag": ["offset1"],
   "scenarios": [
-    { "label": "default shadow", "steps": [], "pixels": true },
+    { "label": "default shadow", "steps": [] },
     {
       "label": "glow in monospace",
       "steps": [
@@ -10,8 +10,7 @@
         { "action": "fill", "field": "blur1", "value": "8" },
         { "action": "fill", "field": "offset1-x", "value": "0" },
         { "action": "fill", "field": "offset1-y", "value": "0" }
-      ],
-      "pixels": true
+      ]
     }
   ]
 }
