@@ -1,0 +1,9 @@
+{
+  "id": "placeholder-image",
+  "label": "W3C SVG 2's own viewBox syntax for a 320 by 180 image",
+  "steps": [
+    { "action": "fill", "field": "width", "value": "320" },
+    { "action": "fill", "field": "height", "value": "180" }
+  ],
+  "expect": ["viewBox=\"0 0 320 180\""]
+}

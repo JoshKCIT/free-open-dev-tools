@@ -1,0 +1,14 @@
+{
+  "id": "placeholder-image",
+  "scenarios": [
+    {
+      "label": "a 640 by 360 SVG and PNG",
+      "steps": [{ "action": "radio", "field": "format", "value": "both" }, { "action": "run" }],
+      "expect": ["640 × 360"],
+      "downloads": [
+        { "name": "placeholder-640x360[.]svg", "magic": "3c737667" },
+        { "name": "placeholder-640x360[.]png", "magic": "89504e470d0a1a0a" }
+      ]
+    }
+  ]
+}

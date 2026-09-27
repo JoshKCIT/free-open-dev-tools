@@ -1,0 +1,36 @@
+{
+  "id": "placeholder-image",
+  "name": "Placeholder Image Generator",
+  "summary": "Generate placeholder SVG or PNG images at any size.",
+  "about": "Draws a placeholder rectangle at any size you choose, as an SVG string or a PNG image, with a label (the size by default, or your own text), a background and foreground colour, and an optional cross or grid pattern. Nothing is decoded or fetched: the SVG is built as text and the PNG is drawn with the browser's own canvas.",
+  "supports": [
+    "SVG output as a data URI or raw markup, at any size up to 10,000 pixels on a side",
+    "PNG output drawn with the browser's own canvas, up to this browser's own measured encoding limit",
+    "A custom label (defaulting to the image size), background colour and foreground colour",
+    "A cross or grid pattern drawn with plain line elements",
+    "Every hostile label is shown only as escaped text, never as markup"
+  ],
+  "limits": [
+    "The maximum SVG size is 10,000 pixels on a side; the maximum PNG size is this browser's own measured encoding ceiling, since a very large canvas can be slow or fail to encode at all.",
+    "The label is plain text only, limited to 80 characters; it cannot include formatting.",
+    "Colours are accepted only as #rgb or #rrggbb hex values.",
+    "PNG text is drawn with the visitor's own installed fonts, so it can look different between systems and browsers."
+  ],
+  "ambiguities": [
+    "A width, height or font size that is zero, negative, not a number, or above its own maximum is clamped to the nearest valid value with a warning naming the field, rather than rejected outright, so a visitor typing while a field is briefly empty or invalid never loses their other choices.",
+    "MAX_PNG_SIDE is a measured value (the largest square side every tested browser project encodes to PNG in comfortably under one second), not a guessed constant; a PNG request above it is refused with a plain reason while the SVG output for the same request is unaffected."
+  ],
+  "standards": [
+    { "label": "W3C SVG 2 -- Scalable Vector Graphics", "url": "https://www.w3.org/TR/SVG2/" },
+    {
+      "label": "W3C Extensible Markup Language (XML) 1.0 -- Character Data and Markup",
+      "url": "https://www.w3.org/TR/xml/#syntax"
+    }
+  ],
+  "devDependencies": { "@xmldom/xmldom": "0.9.12" },
+  "keywords": ["placeholder", "svg", "png", "image", "mockup"],
+  "primaryExport": "generatePlaceholder",
+  "usage": "import { generatePlaceholder } from '@fodt/placeholder-image';\n\nconst result = generatePlaceholder({ width: 640, height: 360, label: 'Hero image' });\n// result.svg, result.dataUri; drawing the same numbers to a PNG is left to the caller's own canvas.",
+  "apiNotes": "This package builds an SVG string and returns plain values only; it draws no PNG itself and names no browser-only type anywhere, not even in a comment, so it is built and tested in plain Node by a release gate that has no canvas available. The page this package feeds draws the PNG itself with the same clamped numbers, using an OffscreenCanvas this package never imports.",
+  "testNotes": "Every clamping, escaping and colour-normalising rule is proven in plain Node against hand-computed expectations; SVG well-formedness is checked by parsing the generated markup with the installed @xmldom/xmldom (devDependency-only) and asserting no parser error and no element outside the small set this tool ever emits. The real PNG encode -- and MAX_PNG_SIDE's own measured per-engine timing -- is proven only by the dedicated Playwright spec, since drawing a canvas is a browser concern this package's own tests never touch."
+}
