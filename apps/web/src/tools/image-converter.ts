@@ -160,7 +160,7 @@ export default defineTool({
     } catch (err) {
       // An abort rejection is let through rather than swallowed: the
       // runner's own cancel handling already owns the single cancellation
-      // note (hash-file's own established precedent).
+      // note, matching this project's own established worker-page pattern.
       if (ctx.signal.aborted) throw err;
       return {
         outputs: [capabilityOutput],

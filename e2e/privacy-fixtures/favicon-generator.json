@@ -1,0 +1,4 @@
+[
+  { "mode": { "field": "source", "value": "image" }, "attachesFile": true, "file": "png" },
+  { "mode": { "field": "source", "value": "text" }, "values": { "text": "Ab" }, "attachesFile": true }
+]

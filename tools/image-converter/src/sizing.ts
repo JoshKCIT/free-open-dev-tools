@@ -49,9 +49,10 @@ export interface SizePlan {
  * webkit engines (mobile-chrome shares chromium's engine): every one of them
  * decodes a plain fill, draws it and encodes it to both PNG and JPEG at
  * 40,000,000 pixels inside a worker, or -- on the one tested engine with no
- * `OffscreenCanvas` in a worker at all -- on the page thread's own
- * never-shown canvas (see the worker's own header comment). No engine needed
- * this ceiling reduced below the plan's own starting figure.
+ * off-screen drawing surface available to a worker at all -- on the page
+ * thread's own never-shown surface (see the worker's own header comment).
+ * No engine needed this ceiling reduced below the plan's own starting
+ * figure.
  */
 export const MAX_OUTPUT_PIXELS = 40_000_000;
 

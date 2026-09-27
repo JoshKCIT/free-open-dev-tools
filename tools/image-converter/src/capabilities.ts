@@ -46,11 +46,11 @@ export interface EncodeInterpretation {
 
 /**
  * Compares a requested encode media type against the media type a real
- * `Blob` the browser handed back actually carries. Equal means the browser
- * wrote what was asked for; anything else means it silently substituted a
- * different format (most commonly PNG), which this package treats as that
- * format being unavailable in this browser, not as an error in the encode
- * call itself.
+ * encoded result the browser handed back actually carries. Equal means the
+ * browser wrote what was asked for; anything else means it silently
+ * substituted a different format (most commonly PNG), which this package
+ * treats as that format being unavailable in this browser, not as an error
+ * in the encode call itself.
  */
 export function interpretEncodeResult(requestedType: string, returnedType: string): EncodeInterpretation {
   if (requestedType === returnedType) return { ok: true };

@@ -1,0 +1,10 @@
+{
+  "id": "favicon-generator",
+  "label": "the ICO entry sizes the HTML link, Apple touch icon and web app manifest documents name: 16, 32 and 48 pixels",
+  "steps": [
+    { "action": "radio", "field": "source", "value": "text" },
+    { "action": "fill", "field": "text", "value": "Ab" },
+    { "action": "run" }
+  ],
+  "expect": ["16 × 16", "32 × 32", "48 × 48"]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "favicon-generator",
+  "scenarios": [
+    {
+      "label": "from text",
+      "steps": [
+        { "action": "radio", "field": "source", "value": "text" },
+        { "action": "fill", "field": "text", "value": "Ab" },
+        { "action": "run" }
+      ],
+      "expect": [],
+      "downloads": [
+        { "name": "favicon[.]ico", "magic": "00000100" },
+        { "name": "apple-touch-icon[.]png", "magic": "89504e470d0a1a0a" }
+      ]
+    },
+    {
+      "label": "from an image",
+      "steps": [
+        { "action": "radio", "field": "source", "value": "image" },
+        { "action": "attach", "field": "file", "value": "png" },
+        { "action": "run" }
+      ],
+      "expect": [],
+      "downloads": [
+        { "name": "favicon[.]ico", "magic": "00000100" },
+        { "name": "apple-touch-icon[.]png", "magic": "89504e470d0a1a0a" }
+      ]
+    }
+  ]
+}
