@@ -1,0 +1,23 @@
+{
+  "id": "exif-viewer",
+  "scenarios": [
+    {
+      "label": "a JPEG with every metadata block",
+      "steps": [{ "action": "attach", "field": "file", "value": "jpeg" }, { "action": "run" }],
+      "expect": ["Removed"],
+      "downloads": [{ "name": "sample-no-metadata[.]jpg", "magic": "ffd8ff" }]
+    },
+    {
+      "label": "a PNG",
+      "steps": [{ "action": "attach", "field": "file", "value": "png" }, { "action": "run" }],
+      "expect": ["Removed"],
+      "downloads": [{ "name": "sample-no-metadata[.]png", "magic": "89504e470d0a1a0a" }]
+    },
+    {
+      "label": "a WebP",
+      "steps": [{ "action": "attach", "field": "file", "value": "webp" }, { "action": "run" }],
+      "expect": ["Removed"],
+      "downloads": [{ "name": "sample-no-metadata[.]webp", "magic": "52494646" }]
+    }
+  ]
+}

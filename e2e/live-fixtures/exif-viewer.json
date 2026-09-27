@@ -1,0 +1,6 @@
+{
+  "id": "exif-viewer",
+  "label": "CIPA DC-008's own ImageDescription tag name and IPTC IIM's own Caption tag name, read from the fixture's real Exif and IPTC blocks",
+  "steps": [{ "action": "attach", "field": "file", "value": "jpeg" }, { "action": "run" }],
+  "expect": ["ImageDescription", "Caption"]
+}
