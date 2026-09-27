@@ -1,0 +1,6 @@
+{
+  "id": "image-color-extractor",
+  "label": "CSS Color Module Level 4's own named colours red, lime, blue and white, from the built-in four-colour test pattern",
+  "steps": [{ "action": "radio", "field": "source", "value": "sample" }, { "action": "run" }],
+  "expect": ["#ff0000", "#00ff00", "#0000ff", "#ffffff"]
+}
