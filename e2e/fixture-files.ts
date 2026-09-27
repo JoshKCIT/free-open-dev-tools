@@ -431,16 +431,70 @@ export function writeBmp(width: number, height: number): Uint8Array {
   return concatBytes(header, pixelData);
 }
 
-/** A hand-written GIF89a image (GIF89a specification): one comment extension carrying `marker`, one 2x2 image with a trivial LZW-coded data block. */
+/**
+ * GIF89a's own LZW variant (the GIF89a specification, "Appendix F - LZW
+ * Compression and Decompression"): codes are packed least-significant-bit
+ * first, the code table starts with one entry per literal colour index plus
+ * a Clear Code (2**minCodeSize) and an End Code (Clear Code + 1), and the
+ * code size grows by one bit the moment the next code to be assigned would
+ * no longer fit in the current size (capped at 12 bits, never reached by
+ * this project's own small fixture images). `indices` is the image's own
+ * pixel stream, one palette index per pixel, in raster order.
+ */
+export function gifLzwEncode(indices: number[], minCodeSize: number): Uint8Array {
+  const clearCode = 1 << minCodeSize;
+  const endCode = clearCode + 1;
+
+  let bitBuffer = 0;
+  let bitCount = 0;
+  const bytes: number[] = [];
+  const pushCode = (code: number, size: number) => {
+    bitBuffer |= code << bitCount;
+    bitCount += size;
+    while (bitCount >= 8) {
+      bytes.push(bitBuffer & 0xff);
+      bitBuffer >>= 8;
+      bitCount -= 8;
+    }
+  };
+
+  const table = new Map<string, number>();
+  let nextCode = endCode + 1;
+  let codeSize = minCodeSize + 1;
+  for (let i = 0; i < clearCode; i++) table.set(String(i), i);
+
+  pushCode(clearCode, codeSize);
+  let prefix: string | null = null;
+  for (const sym of indices) {
+    if (prefix === null) {
+      prefix = String(sym);
+      continue;
+    }
+    const combined: string = `${prefix},${sym}`;
+    if (table.has(combined)) {
+      prefix = combined;
+      continue;
+    }
+    pushCode(table.get(prefix)!, codeSize);
+    table.set(combined, nextCode);
+    nextCode++;
+    if (nextCode > 1 << codeSize && codeSize < 12) codeSize++;
+    prefix = String(sym);
+  }
+  if (prefix !== null) pushCode(table.get(prefix)!, codeSize);
+  pushCode(endCode, codeSize);
+  if (bitCount > 0) bytes.push(bitBuffer & 0xff);
+  return Uint8Array.from(bytes);
+}
+
+/** A hand-written GIF89a image (GIF89a specification): one comment extension carrying `marker`, one real, decodable 2x2 image (every pixel colour index 0) with a correctly LZW-coded data block. */
 export function writeGif(marker: string): Uint8Array {
   const header = concatBytes(ascii('GIF89a'), [2, 0, 2, 0, 0xf0 | 0, 0, 0]);
   const globalPalette = Uint8Array.from([0, 0, 0, 255, 0, 0]); // 2-colour table
   const commentExt = concatBytes([0x21, 0xfe], [marker.length], ascii(marker), [0]);
-  // A trivial LZW data stream: minimum code size 2, one sub-block encoding
-  // four pixels all colour index 0 (clear code, four literal 0s, end code).
   const imageDescriptor = concatBytes([0x2c], u16leGif(0), u16leGif(0), u16leGif(2), u16leGif(2), [0]);
   const lzwMinCodeSize = 2;
-  const subBlock = Uint8Array.from([0x04, 0x51, 0x00]);
+  const subBlock = gifLzwEncode([0, 0, 0, 0], lzwMinCodeSize);
   const imageData = concatBytes([lzwMinCodeSize], [subBlock.length], subBlock, [0]);
   const trailer = Uint8Array.from([0x3b]);
   return concatBytes(header, globalPalette, commentExt, imageDescriptor, imageData, trailer);
