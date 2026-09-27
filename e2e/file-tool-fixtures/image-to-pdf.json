@@ -1,0 +1,15 @@
+{
+  "id": "image-to-pdf",
+  "scenarios": [
+    {
+      "label": "a PNG and a JPEG on A4",
+      "steps": [
+        { "action": "attach", "field": "files", "value": "png,jpeg" },
+        { "action": "select", "field": "pageSize", "value": "a4" },
+        { "action": "run" }
+      ],
+      "expect": ["595.28 × 841.89"],
+      "downloads": [{ "name": "images[.]pdf", "magic": "255044462d" }]
+    }
+  ]
+}

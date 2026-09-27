@@ -1,0 +1,4 @@
+[
+  { "attachesFile": true, "file": "png,jpeg", "values": { "margin": "10" } },
+  { "attachesFile": true, "file": "gif,webp,bmp", "values": { "margin": "10" } }
+]

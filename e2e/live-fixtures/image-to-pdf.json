@@ -1,0 +1,10 @@
+{
+  "id": "image-to-pdf",
+  "label": "ISO 216 A4 in points (595.28 by 841.89, from 210 by 297mm at 72 points per inch)",
+  "steps": [
+    { "action": "attach", "field": "files", "value": "png" },
+    { "action": "select", "field": "pageSize", "value": "a4" },
+    { "action": "run" }
+  ],
+  "expect": ["595.28 × 841.89"]
+}
