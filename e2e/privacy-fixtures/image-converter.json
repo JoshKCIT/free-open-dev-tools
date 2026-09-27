@@ -1,0 +1,9 @@
+[
+  { "values": { "quality": "85" }, "attachesFile": true, "file": "png" },
+  {
+    "mode": { "field": "format", "value": "jpeg" },
+    "values": { "quality": "85" },
+    "attachesFile": true,
+    "file": "jpeg"
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "id": "image-converter",
+  "scenarios": [
+    {
+      "label": "PNG to JPEG at half size",
+      "steps": [
+        { "action": "attach", "field": "file", "value": "png" },
+        { "action": "select", "field": "format", "value": "jpeg" },
+        { "action": "radio", "field": "resize", "value": "percent" },
+        { "action": "fill", "field": "percent", "value": "50" },
+        { "action": "run" }
+      ],
+      "expect": ["8 × 8"],
+      "downloads": [{ "name": "sample[.]jpg", "magic": "ffd8ff" }]
+    },
+    {
+      "label": "GIF to PNG",
+      "steps": [{ "action": "attach", "field": "file", "value": "gif" }, { "action": "run" }],
+      "expect": [],
+      "downloads": [{ "name": "sample[.]png", "magic": "89504e470d0a1a0a" }]
+    },
+    {
+      "label": "BMP to PNG",
+      "steps": [{ "action": "attach", "field": "file", "value": "bmp" }, { "action": "run" }],
+      "expect": [],
+      "downloads": [{ "name": "sample[.]png", "magic": "89504e470d0a1a0a" }]
+    }
+  ]
+}

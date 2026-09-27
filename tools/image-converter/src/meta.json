@@ -1,0 +1,52 @@
+{
+  "id": "image-converter",
+  "name": "Image Converter & Resizer",
+  "summary": "Convert, resize and re-encode images entirely in the browser canvas.",
+  "about": "Decodes a picked PNG, JPEG, GIF, WebP or BMP image and re-encodes it to PNG, JPEG, WebP or AVIF, resized by percent, to fit inside a box or to an exact size, using the browser's own canvas and codecs. Every run reports plainly which of the four output formats this particular browser can really write, judged by the media type the browser's own encoder hands back, never assumed from a format name alone.",
+  "supports": [
+    "PNG, JPEG, GIF, WebP and BMP input, read from the file's own header before anything is decoded",
+    "PNG, JPEG, WebP and AVIF output, whichever this browser can really encode",
+    "Resize by percent, fit inside a box (never enlarging unless asked), or an exact size with an optional locked aspect ratio",
+    "A quality setting for JPEG, WebP and AVIF output, and a background colour for JPEG output",
+    "EXIF orientation applied so a rotated photo comes out upright",
+    "Decoding, resizing and encoding in a background worker with progress and a Cancel button"
+  ],
+  "limits": [
+    "Files up to 100 MB and up to 100,000,000 declared pixels are accepted; the planned output is refused before any canvas is created once it would exceed this browser's own measured decode-and-encode ceiling, currently 40,000,000 pixels.",
+    "Whether WebP and AVIF can be written at all depends on this browser: the page reports exactly what its own encoder returns and never hands back a PNG under a WebP or AVIF name.",
+    "Re-encoding drops embedded metadata, including any colour profile: the browser converts to sRGB.",
+    "An animated GIF or WebP source gives only its first frame.",
+    "A transparent source written to JPEG is composited on the chosen background colour, since JPEG has no transparency.",
+    "AVIF, HEIC and TIFF are not accepted as input.",
+    "Resampling quality is whatever this browser's own canvas scaling provides; it is not a dedicated resampling algorithm."
+  ],
+  "ambiguities": [
+    "The quality field is a 1 to 100 number in the page, converted to the 0 to 1 fraction the HTML Standard's own canvas encode calls take; an out-of-range value is clamped rather than passed straight through to let the browser fall back to its own default, so the visitor's request stays as close to what they asked for as the standard allows.",
+    "Whether a source is genuinely animated (rather than simply a GIF or WebP file that happens to hold one frame) is not checked before warning that only the first frame is kept, since detecting that reliably would need decoding the whole file rather than reading its header."
+  ],
+  "standards": [
+    {
+      "label": "HTML Standard — Canvas: the 2D rendering context (createImageBitmap, OffscreenCanvas, convertToBlob/toBlob)",
+      "url": "https://html.spec.whatwg.org/multipage/canvas.html"
+    },
+    {
+      "label": "W3C PNG (Third Edition) — Portable Network Graphics Specification",
+      "url": "https://www.w3.org/TR/png/"
+    },
+    {
+      "label": "ITU-T T.81 — Information technology — Digital compression and coding of continuous-tone still images",
+      "url": "https://www.w3.org/Graphics/JPEG/itu-t81.pdf"
+    },
+    { "label": "RFC 9649 — WebP Image Format", "url": "https://www.rfc-editor.org/rfc/rfc9649" },
+    { "label": "AV1 Image File Format (AVIF)", "url": "https://aomediacodec.github.io/av1-avif/" },
+    {
+      "label": "CSS Images Level 3 — image-orientation",
+      "url": "https://www.w3.org/TR/css-images-3/#the-image-orientation"
+    }
+  ],
+  "keywords": ["image", "convert", "resize", "png", "jpeg", "webp", "avif", "canvas"],
+  "primaryExport": "planConversion",
+  "usage": "import { planConversion, outputFileName } from '@fodt/image-converter';\n\nconst plan = planConversion(bytes, 'photo.png', { format: 'jpeg', quality: 85, background: '#ffffff', resize: { mode: 'percent', percent: 50 } });\n// plan.targetWidth/targetHeight/mediaType/qualityFraction/background feed the\n// worker's own createImageBitmap/OffscreenCanvas/convertToBlob call, which\n// this package never names.",
+  "apiNotes": "This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Deciding the output pixel size, checking the file header and clamping options all happen here; decoding, drawing and encoding the actual pixels happen only in the worker this package never imports.",
+  "testNotes": "Every sizing, capability-interpretation and quality-clamping rule is proven in plain Node against hand-computed expectations; the header check reuses the canonical file-sniff.ts this phase's every file-reading tool copies byte for byte. The real browser encode -- and the per-engine truth about which formats this particular browser can actually write -- is proven only by the dedicated Playwright spec, which probes each of the four tested browser projects with its own OffscreenCanvas.convertToBlob call and compares the result to what the page itself reports."
+}

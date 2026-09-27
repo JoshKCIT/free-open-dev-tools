@@ -1,0 +1,11 @@
+{
+  "id": "image-converter",
+  "label": "half of the fixture's own IHDR size (W3C PNG Third Edition), a 16 by 16 source at 50 percent",
+  "steps": [
+    { "action": "attach", "field": "file", "value": "png" },
+    { "action": "radio", "field": "resize", "value": "percent" },
+    { "action": "fill", "field": "percent", "value": "50" },
+    { "action": "run" }
+  ],
+  "expect": ["8 × 8"]
+}
