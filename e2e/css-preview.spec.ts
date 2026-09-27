@@ -1107,6 +1107,15 @@ test('the preview surface applies keyframes and hover rules inside a shadow root
   expect(animInfo.count, 'the shadow root did not run the adopted @keyframes animation').toBe(1);
   expect(animInfo.keyframeCount, 'the animation reported the wrong keyframe count').toBe(2);
 
+  // A brand-new page's virtual pointer has no established position until a
+  // real mouse action moves it. On Chromium-family engines specifically
+  // (confirmed: chromium and mobile-chrome, never firefox or webkit), that
+  // undefined position can already sit at the viewport's (0, 0) origin --
+  // exactly where this probe's own `position:fixed;top:0;left:0` element
+  // sits -- so the element can already read as `:hover`-matched before any
+  // explicit hover call. Moving the pointer decisively away first
+  // guarantees a genuine, non-hovered baseline on every engine.
+  await page.mouse.move(400, 400);
   const before = await probe.evaluate((el) => getComputedStyle(el).outlineWidth);
   await probe.hover();
   const after = await probe.evaluate((el) => getComputedStyle(el).outlineWidth);
