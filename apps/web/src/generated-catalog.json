@@ -1204,7 +1204,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 2,
       "summary": "Generate QR codes for text, URLs, WiFi, vCard, email and SMS payloads.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "barcode-generator",
@@ -1213,7 +1213,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Generate Code 128, EAN-13, EAN-8 and UPC-A barcodes as SVG.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "image-converter",
@@ -1222,7 +1222,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Convert, resize and re-encode images entirely in the browser canvas.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "exif-viewer",
@@ -1231,7 +1231,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Read image metadata and write a copy with it removed.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "favicon-generator",
@@ -1240,7 +1240,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Produce favicon sizes and an ICO from text, an emoji or an image.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "placeholder-image",
@@ -1249,7 +1249,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 2,
       "summary": "Generate placeholder SVG or PNG images at any size.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "pdf-merge",
@@ -1258,7 +1258,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Combine PDFs into one document in the browser.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "pdf-split",
@@ -1267,7 +1267,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Split, extract, delete, reorder and rotate PDF pages in the browser.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "pdf-to-image",
@@ -1276,7 +1276,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Render PDF pages to PNG or JPEG in the browser.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "image-to-pdf",
@@ -1285,7 +1285,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Place images into a PDF with page size and orientation control.",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "archive-toolkit",
@@ -1294,7 +1294,7 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Create and extract ZIP archives and extract TAR and gzip archives in the browser.",
-      "implemented": false
+      "implemented": true
     }
   ]
 }

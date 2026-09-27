@@ -1,4 +1,22 @@
 {
+  "archive-toolkit": {
+    "id": "archive-toolkit",
+    "name": "ZIP & TAR Toolkit",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "fflate": "0.8.3"
+    },
+    "keywords": [
+      "zip",
+      "tar",
+      "gzip",
+      "archive",
+      "compress",
+      "extract",
+      "decompress"
+    ]
+  },
   "ascii-art": {
     "id": "ascii-art",
     "name": "ASCII Art Text",
@@ -43,6 +61,21 @@
       "resolution",
       "ratio",
       "calculator"
+    ]
+  },
+  "barcode-generator": {
+    "id": "barcode-generator",
+    "name": "Barcode Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "barcode generator",
+      "code 128",
+      "ean-13",
+      "ean-8",
+      "upc-a",
+      "gs1 check digit"
     ]
   },
   "base32": {
@@ -713,6 +746,40 @@
       "devops"
     ]
   },
+  "exif-viewer": {
+    "id": "exif-viewer",
+    "name": "EXIF Viewer & Remover",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "exifr": "7.1.3"
+    },
+    "keywords": [
+      "exif",
+      "metadata",
+      "gps",
+      "xmp",
+      "iptc",
+      "icc",
+      "image",
+      "privacy"
+    ]
+  },
+  "favicon-generator": {
+    "id": "favicon-generator",
+    "name": "Favicon Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "favicon",
+      "ico",
+      "icon",
+      "manifest",
+      "apple-touch-icon",
+      "png"
+    ]
+  },
   "find-replace": {
     "id": "find-replace",
     "name": "Find and Replace",
@@ -1030,6 +1097,40 @@
       "webp",
       "bmp",
       "median-cut"
+    ]
+  },
+  "image-converter": {
+    "id": "image-converter",
+    "name": "Image Converter & Resizer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "image",
+      "convert",
+      "resize",
+      "png",
+      "jpeg",
+      "webp",
+      "avif",
+      "canvas"
+    ]
+  },
+  "image-to-pdf": {
+    "id": "image-to-pdf",
+    "name": "Image to PDF",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@cantoo/pdf-lib": "2.11.1"
+    },
+    "keywords": [
+      "image",
+      "pdf",
+      "convert",
+      "png",
+      "jpeg",
+      "page size"
     ]
   },
   "ip-ptr": {
@@ -1615,6 +1716,57 @@
       "guessability"
     ]
   },
+  "pdf-merge": {
+    "id": "pdf-merge",
+    "name": "PDF Merge",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@cantoo/pdf-lib": "2.11.1"
+    },
+    "keywords": [
+      "pdf",
+      "merge",
+      "combine",
+      "pages",
+      "document"
+    ]
+  },
+  "pdf-split": {
+    "id": "pdf-split",
+    "name": "PDF Split & Page Organizer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@cantoo/pdf-lib": "2.11.1"
+    },
+    "keywords": [
+      "pdf",
+      "split",
+      "extract",
+      "reorder",
+      "rotate",
+      "pages"
+    ]
+  },
+  "pdf-to-image": {
+    "id": "pdf-to-image",
+    "name": "PDF to Image",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "pdfjs-dist": "6.3.289"
+    },
+    "keywords": [
+      "pdf",
+      "image",
+      "png",
+      "jpeg",
+      "render",
+      "pdfjs",
+      "convert"
+    ]
+  },
   "php-unserialize": {
     "id": "php-unserialize",
     "name": "PHP Unserialize",
@@ -1627,6 +1779,38 @@
       "serialize",
       "json",
       "deserialize"
+    ]
+  },
+  "placeholder-image": {
+    "id": "placeholder-image",
+    "name": "Placeholder Image Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "placeholder",
+      "svg",
+      "png",
+      "image",
+      "mockup"
+    ]
+  },
+  "qr-generator": {
+    "id": "qr-generator",
+    "name": "QR Code Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "qrcode": "1.5.4"
+    },
+    "keywords": [
+      "qr code",
+      "qr code generator",
+      "wifi qr code",
+      "vcard qr code",
+      "mailto",
+      "sms qr code",
+      "iso 18004"
     ]
   },
   "random-number": {

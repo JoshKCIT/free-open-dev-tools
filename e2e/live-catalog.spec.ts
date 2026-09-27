@@ -201,10 +201,7 @@ const PHASE_8_TOOL_IDS = [
   'image-color-extractor',
 ];
 
-/**
- * The 11 tools Phase 9 adds (MEDIA-01..11); phase still in progress, so its
- * own count/completeness tests are added by 09-07.
- */
+/** The 11 tools Phase 9 adds (MEDIA-01..11), completing the 144-tool catalog. */
 const PHASE_9_TOOL_IDS = [
   'qr-generator',
   'barcode-generator',
@@ -607,7 +604,7 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 133 links to built tool pages, not the 144-entry catalog size', async ({
+  test('the rendered catalog counts 144 links to built tool pages, every entry of the 144-entry catalog', async ({
     page,
   }) => {
     await page.goto(rel('/catalog'));
@@ -615,7 +612,33 @@ test.describe('the live catalog shows exactly the built tools', () => {
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(133);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(144);
+  });
+
+  test('every docs/catalog.json entry has a built page and the catalog shows none missing', async ({ page }) => {
+    const docsCatalogPath = join(root, 'docs', 'catalog.json');
+    const docsCatalogRaw: unknown = JSON.parse(readFileSync(docsCatalogPath, 'utf8'));
+    const docsEntries: { id: string }[] = Array.isArray(docsCatalogRaw)
+      ? (docsCatalogRaw as { id: string }[])
+      : (docsCatalogRaw as { tools: { id: string }[] }).tools;
+    expect(docsEntries.length, 'docs/catalog.json is the single source of truth for the catalog size').toBe(144);
+
+    await page.goto(rel('/catalog'));
+    await expect(page.locator('a.tool-card').first()).toBeVisible();
+
+    for (const entry of docsEntries) {
+      const link = page.locator(`a.tool-card[href$="/tools/${entry.id}"]`);
+      await expect(
+        link,
+        `docs/catalog.json entry "${entry.id}" has no matching link in the rendered catalog`,
+      ).toHaveCount(1);
+    }
+
+    const plannedPills = page.locator('.tool-card .pill-neutral', { hasText: 'Planned' });
+    expect(
+      await plannedPills.count(),
+      'the catalog shows a card marked Planned even though every entry is now implemented',
+    ).toBe(0);
   });
 });
 
@@ -738,12 +761,18 @@ test('every phase 8 tool has exactly one live fixture file', () => {
   }
 });
 
+test('every phase 9 tool has exactly one live fixture file', () => {
+  for (const id of PHASE_9_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
+  }
+});
+
 /**
- * Membership only (not strict equality): phase 9 is still in progress (this
- * is its own tracer plan), so not every phase 9 tool has a live fixture
- * file yet -- only that every declared fixture id belongs to one of the
- * seven phases' own lists, and none appears twice. 09-07 restores strict
- * equality once all 144 tools exist.
+ * Strict equality (not membership-only): the catalog is complete at 144
+ * tools, so every one of the seven phases' own id lists must now have
+ * exactly one live fixture file, and no fixture id may exist outside those
+ * seven lists.
  */
 test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8 or 9', () => {
   const union = [
@@ -755,13 +784,7 @@ test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8 or 9', () => {
     ...PHASE_8_TOOL_IDS,
     ...PHASE_9_TOOL_IDS,
   ];
-  const unionSet = new Set(union);
-  for (const id of LIVE_FIXTURE_IDS) {
-    expect(unionSet.has(id), `live fixture id "${id}" does not belong to any known phase's tool list`).toBe(true);
-  }
-  const seen = new Set<string>();
-  for (const id of LIVE_FIXTURE_IDS) {
-    expect(seen.has(id), `live fixture id "${id}" is declared more than once`).toBe(false);
-    seen.add(id);
-  }
+  expect([...LIVE_FIXTURE_IDS].sort(), 'every live fixture id must be exactly the union of all seven phases').toEqual(
+    [...union].sort(),
+  );
 });

@@ -194,11 +194,16 @@ test.describe('search and navigation', () => {
     await expect.poll(() => page.locator('.tool-card').count()).toBe(all);
   });
 
-  test('the catalog marks unbuilt tools as planned rather than linking to nothing', async ({ page }) => {
+  test('every catalog card links to its built tool page now that no tool is planned', async ({ page }) => {
     await page.goto(rel('/catalog'));
-    await expect(page.getByText('Planned', { exact: true }).first()).toBeVisible();
-    const plannedCard = page.locator('.tool-card', { hasText: 'Planned' }).first();
-    expect(await plannedCard.evaluate((el) => el.tagName.toLowerCase())).not.toBe('a');
+    await expect(page.locator('.tool-card').first()).toBeVisible();
+    const cards = page.locator('.tool-card');
+    const count = await cards.count();
+    expect(count, 'the catalog must render at least one card').toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const tagName = await cards.nth(i).evaluate((el) => el.tagName.toLowerCase());
+      expect(tagName, 'every card is a link (react-router Link) once every tool is built').toBe('a');
+    }
   });
 });
 
@@ -331,14 +336,11 @@ test.describe('public copy carries no derivation story', () => {
     expect(await page.locator('.tool-card').count()).toBe(144);
   });
 
-  test('every unbuilt card reads just "Planned", with no build-tier number', async ({ page }) => {
+  test('no catalog card reads Planned once every entry is built', async ({ page }) => {
     await page.goto(rel('/catalog'));
-    const pills = page.locator('.tool-card .pill-neutral');
-    const count = await pills.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      await expect(pills.nth(i)).toHaveText('Planned');
-    }
+    await expect(page.locator('.tool-card').first()).toBeVisible();
+    const plannedPills = page.locator('.tool-card .pill-neutral', { hasText: 'Planned' });
+    expect(await plannedPills.count(), 'no card may read Planned now that the catalog is complete at 144').toBe(0);
   });
 
   test('the home page statistics row holds exactly three items', async ({ page }) => {
