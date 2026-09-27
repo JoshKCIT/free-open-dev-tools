@@ -1,0 +1,10 @@
+{
+  "id": "pdf-split",
+  "label": "splitting a three-page document every page gives sample-page-3.pdf, from the fixture kind's own definition and the documented naming rule",
+  "steps": [
+    { "action": "attach", "field": "file", "value": "pdf-3" },
+    { "action": "radio", "field": "operation", "value": "split-each" },
+    { "action": "run" }
+  ],
+  "expect": ["sample-page-3.pdf"]
+}

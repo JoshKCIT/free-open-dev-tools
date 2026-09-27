@@ -1,0 +1,30 @@
+{
+  "id": "pdf-split",
+  "scenarios": [
+    {
+      "label": "split every page",
+      "steps": [
+        { "action": "attach", "field": "file", "value": "pdf-3" },
+        { "action": "radio", "field": "operation", "value": "split-each" },
+        { "action": "run" }
+      ],
+      "expect": ["sample-page-1.pdf"],
+      "downloads": [
+        { "name": "sample-page-1[.]pdf", "magic": "255044462d" },
+        { "name": "sample-page-2[.]pdf", "magic": "255044462d" },
+        { "name": "sample-page-3[.]pdf", "magic": "255044462d" }
+      ]
+    },
+    {
+      "label": "reorder",
+      "steps": [
+        { "action": "attach", "field": "file", "value": "pdf-3" },
+        { "action": "radio", "field": "operation", "value": "reorder" },
+        { "action": "fill", "field": "order", "value": "3,1,2" },
+        { "action": "run" }
+      ],
+      "expect": ["sample-reordered.pdf"],
+      "downloads": [{ "name": "sample-reordered[.]pdf", "magic": "255044462d" }]
+    }
+  ]
+}

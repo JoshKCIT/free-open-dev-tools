@@ -1,0 +1,44 @@
+{
+  "id": "pdf-split",
+  "name": "PDF Split & Page Organizer",
+  "summary": "Split, extract, delete, reorder and rotate PDF pages in the browser.",
+  "about": "Takes a PDF apart the way you need it: split every page into its own file, split it into ranges, pull specific pages out, drop pages, put the remaining pages in a new order, or turn pages by 90, 180 or 270 degrees. Every output page is copied as the original PDF objects — never rasterised into a picture — and the file you pick never leaves your browser.",
+  "supports": [
+    "Split every page into its own single-page PDF",
+    "Split by ranges such as 1-2;3 into one document per range",
+    "Extract a page list such as 3,1 into one document, in that order, duplicates allowed",
+    "Delete a page list, keeping every other page in order",
+    "Reorder pages by a full permutation such as 3,1,2",
+    "Rotate listed pages, or every page, by 90, 180 or 270 degrees, added to whatever rotation the page already has",
+    "A progress bar and a Cancel button that stops the run"
+  ],
+  "limits": [
+    "Files up to 200 MB and at most 1,000 output files in one run, above which this tool refuses rather than risk freezing the tab.",
+    "Bookmarks and interactive form field definitions are not carried over into any output file.",
+    "Encrypted PDFs are refused outright: this tool never asks for or accepts a password, even when only an owner password is set, because writing a modified copy would drop or break whatever protection the source had.",
+    "Reordering requires every page named exactly once; a missing or repeated page number is refused by name.",
+    "Deleting every page from a document is refused, since a PDF must have at least one page.",
+    "Splitting and rotating run in your browser, so very large files depend on your browser's own memory."
+  ],
+  "ambiguities": [
+    "Rotating adds the requested degrees to whatever rotation the page already effectively has (including one it only inherits from the document's own page tree), never replacing it, so rotating the same page twice compounds rather than resets.",
+    "A PDF that reports itself encrypted with an empty (blank) user password is refused the same as one that needs a real password, since writing any modified copy would silently drop the source's own protection."
+  ],
+  "standards": [
+    {
+      "label": "ISO 32000-1:2008 — Document management — Portable document format — Part 1: PDF 1.7",
+      "url": "https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf"
+    },
+    {
+      "label": "ISO 32000-2:2020 — Document management — Portable document format — Part 2: PDF 2.0",
+      "url": "https://www.iso.org/standard/75839.html"
+    }
+  ],
+  "dependencies": { "@cantoo/pdf-lib": "2.11.1" },
+  "devDependencies": { "pdfjs-dist": "6.3.289" },
+  "keywords": ["pdf", "split", "extract", "reorder", "rotate", "pages"],
+  "primaryExport": "organizePdf",
+  "usage": "import { organizePdf } from '@fodt/pdf-split';\n\nconst result = await organizePdf(bytes, 'document.pdf', { kind: 'split-ranges', ranges: '1-2;3' }, {\n  onProgress: (fraction, detail) => {},\n  signal: controller.signal,\n});\n// result.files is one entry per output document.",
+  "apiNotes": "This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Every input is loaded with its own loadPdf (a small file this package owns outright, not shared code), which checks the file header before the PDF library ever sees the bytes and refuses any encrypted document by name.",
+  "testNotes": "Every test runs the real, installed @cantoo/pdf-lib end to end against fixtures this package's own test/build-pdfs.ts builds with the same library, then checks results with an independent reader (the same pdfjs-dist version this catalog already pins elsewhere for rendering PDF pages) so the same library that wrote a file is never the only thing that reads it back."
+}

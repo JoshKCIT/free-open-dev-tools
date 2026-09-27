@@ -1,0 +1,9 @@
+[
+  { "mode": { "field": "operation", "value": "split-each" }, "attachesFile": true, "file": "pdf-3" },
+  {
+    "mode": { "field": "operation", "value": "reorder" },
+    "values": { "order": "3,1,2" },
+    "attachesFile": true,
+    "file": "pdf-3"
+  }
+]
