@@ -224,7 +224,12 @@ for (const id of ids.sort()) {
       types: './dist/index.d.ts',
       exports: { '.': { types: './dist/index.d.ts', import: './dist/index.js' }, './meta.json': './src/meta.json' },
       files: ['dist', 'src', 'README.md', 'LICENSE'],
-      sideEffects: false,
+      // false unless a tool's own meta.json names files that have a real
+      // import-time side effect a bundler must never tree-shake away (for
+      // example a worker-entry file whose only job is a top-level call) --
+      // every other tool keeps the blanket false a folder copied out on its
+      // own relies on to tree-shake cleanly.
+      sideEffects: m.sideEffects ?? false,
       keywords: m.keywords ?? [],
       scripts: { build: 'tsc -p tsconfig.json', test: 'vitest run', 'test:watch': 'vitest' },
       ...(m.dependencies && Object.keys(m.dependencies).length ? { dependencies: m.dependencies } : {}),

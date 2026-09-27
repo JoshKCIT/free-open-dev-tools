@@ -1,0 +1,10 @@
+{
+  "id": "pdf-to-image",
+  "label": "ISO 32000-1 8.3.2.3's own default user space unit: a US Letter page (MediaBox 612 by 792) renders at 612 by 792 pixels at 72 dots per inch",
+  "steps": [
+    { "action": "attach", "field": "file", "value": "pdf" },
+    { "action": "fill", "field": "dpi", "value": "72" },
+    { "action": "run" }
+  ],
+  "expect": ["612 × 792"]
+}

@@ -2,6 +2,7 @@ import { test, expect, type Page, type Request, type TestInfo } from '@playwrigh
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildFixtureFiles } from './fixture-files';
 
 /**
  * Paths below are written with a leading slash because it reads better.
@@ -359,6 +360,30 @@ async function attachCanaryFiles(page: Page, value: string): Promise<number> {
 }
 
 /**
+ * Attaches real files built by `buildFixtureFiles` (e2e/fixture-files.ts),
+ * carrying `marker`, to the first visible file input -- every file goes to
+ * that one input, since a page whose own contract accepts more than one
+ * file reads them all from a single `multiple` input. Used only when a
+ * fixture names `file`; reaches a file tool's real processing path with a
+ * file its own header check actually accepts, which the synthetic text
+ * file `attachCanaryFiles` sends would be refused before ever reaching.
+ */
+async function attachRealFixtureFiles(page: Page, kinds: string, marker: string): Promise<number> {
+  const fileInputs = page.locator('main input[type="file"]');
+  const count = await fileInputs.count();
+  const built = buildFixtureFiles(kinds, marker);
+  for (let i = 0; i < count; i++) {
+    const field = fileInputs.nth(i);
+    if (!(await field.isVisible())) continue;
+    await field.setInputFiles(
+      built.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: Buffer.from(f.buffer) })),
+    );
+    return built.length;
+  }
+  return 0;
+}
+
+/**
  * Presses the Run button if this state rendered one, and waits for it to
  * return to its idle label -- a precise finish signal, not a sleep, because
  * the button reads the "Working…" label for the whole run
@@ -397,6 +422,14 @@ interface FixtureEntry {
   values?: Record<string, string>;
   /** Whether this page has a file input at all. Pages with none must attach zero files. */
   attachesFile: boolean;
+  /**
+   * A comma-separated list of `FIXTURE_FILE_KINDS` (e2e/fixture-files.ts):
+   * when set, the fixture pass attaches real files of these kinds (built
+   * with the canary as marker) instead of the synthetic canary text file
+   * `attachCanaryFiles` always sends, reaching a file tool's real
+   * processing path with a file its own header check actually accepts.
+   */
+  file?: string;
 }
 
 const BUILT_IN_FIXTURES: Record<string, FixtureEntry[]> = {
@@ -757,7 +790,8 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
       }
     }
 
-    if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
+    if (fixture.file) filesAttached += await attachRealFixtureFiles(page, fixture.file, value);
+    else if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
     if (await pressRunIfPresent(page)) {
       runsCompleted++;
       await settle(page);

@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildFixtureFiles, FIXTURE_FILE_KINDS } from './fixture-files';
 
 /**
  * Plan 02-14 Task 3's own evidence for the roadmap's first and fifth
@@ -200,6 +201,24 @@ const PHASE_8_TOOL_IDS = [
   'image-color-extractor',
 ];
 
+/**
+ * The 11 tools Phase 9 adds (MEDIA-01..11); phase still in progress, so its
+ * own count/completeness tests are added by 09-07.
+ */
+const PHASE_9_TOOL_IDS = [
+  'qr-generator',
+  'barcode-generator',
+  'image-converter',
+  'exif-viewer',
+  'favicon-generator',
+  'placeholder-image',
+  'pdf-merge',
+  'pdf-split',
+  'pdf-to-image',
+  'image-to-pdf',
+  'archive-toolkit',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -264,9 +283,14 @@ async function firstCodeBlockText(page: Page): Promise<string> {
   return text.trim();
 }
 
-/** One step of a live fixture file: what to do to a single field, or press Run. */
+/**
+ * One step of a live fixture file: what to do to a single field, or press
+ * Run. `attach` names a comma-separated list of `FIXTURE_FILE_KINDS`
+ * (e2e/fixture-files.ts) in `value`, attached to the field's own file
+ * input carrying the marker `FODT-LIVE-FIXTURE`.
+ */
 interface LiveStep {
-  action: 'fill' | 'select' | 'check' | 'uncheck' | 'radio' | 'run';
+  action: 'fill' | 'select' | 'check' | 'uncheck' | 'radio' | 'run' | 'attach';
   field?: string;
   value?: string;
 }
@@ -329,6 +353,13 @@ async function applyLiveStep(page: Page, step: LiveStep): Promise<void> {
     case 'run':
       await pressRunIfPresent(page);
       break;
+    case 'attach': {
+      const files = buildFixtureFiles(step.value ?? '', 'FODT-LIVE-FIXTURE');
+      await page
+        .locator(`#f-${step.field}`)
+        .setInputFiles(files.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: Buffer.from(f.buffer) })));
+      break;
+    }
   }
 }
 
@@ -624,7 +655,19 @@ test.describe('every new tool gives a correct, checkable result on first use', (
 });
 
 test('every live fixture file names a built tool page and uses only known step actions', () => {
-  const KNOWN_ACTIONS: LiveStep['action'][] = ['fill', 'select', 'check', 'uncheck', 'radio', 'run'];
+  const KNOWN_ACTIONS: LiveStep['action'][] = ['fill', 'select', 'check', 'uncheck', 'radio', 'run', 'attach'];
+  const KNOWN_FIXTURE_FILE_KINDS = new Set(FIXTURE_FILE_KINDS);
+  for (const { file, data } of LIVE_FIXTURE_FILES) {
+    for (const step of data.steps) {
+      if (step.action !== 'attach') continue;
+      for (const kind of (step.value ?? '').split(',')) {
+        expect(
+          (KNOWN_FIXTURE_FILE_KINDS as Set<string>).has(kind),
+          `e2e/live-fixtures/${file} attaches an unknown fixture file kind "${kind}"`,
+        ).toBe(true);
+      }
+    }
+  }
   const pageIds = new Set(
     readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
       .filter((f) => f.endsWith('.ts'))
@@ -696,12 +739,13 @@ test('every phase 8 tool has exactly one live fixture file', () => {
 });
 
 /**
- * Strict equality (not membership only): every phase 8 tool now has a live
- * fixture file (08-10), so the sorted set of every declared fixture id must
- * equal the sorted union of all six phase id lists exactly -- no id missing,
- * none duplicated, and none left over from a stray or renamed fixture file.
+ * Membership only (not strict equality): phase 9 is still in progress (this
+ * is its own tracer plan), so not every phase 9 tool has a live fixture
+ * file yet -- only that every declared fixture id belongs to one of the
+ * seven phases' own lists, and none appears twice. 09-07 restores strict
+ * equality once all 144 tools exist.
  */
-test('every live fixture file belongs to phase 3, 4, 5, 6, 7 or 8', () => {
+test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8 or 9', () => {
   const union = [
     ...PHASE_3_TOOL_IDS,
     ...PHASE_4_TOOL_IDS,
@@ -709,6 +753,15 @@ test('every live fixture file belongs to phase 3, 4, 5, 6, 7 or 8', () => {
     ...PHASE_6_TOOL_IDS,
     ...PHASE_7_TOOL_IDS,
     ...PHASE_8_TOOL_IDS,
+    ...PHASE_9_TOOL_IDS,
   ];
-  expect([...LIVE_FIXTURE_IDS].sort()).toEqual([...union].sort());
+  const unionSet = new Set(union);
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(unionSet.has(id), `live fixture id "${id}" does not belong to any known phase's tool list`).toBe(true);
+  }
+  const seen = new Set<string>();
+  for (const id of LIVE_FIXTURE_IDS) {
+    expect(seen.has(id), `live fixture id "${id}" is declared more than once`).toBe(false);
+    seen.add(id);
+  }
 });
