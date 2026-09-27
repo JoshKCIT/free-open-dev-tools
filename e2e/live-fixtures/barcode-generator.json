@@ -1,0 +1,9 @@
+{
+  "id": "barcode-generator",
+  "label": "the GS1 modulo 10 check digit for data 400638133393 is 1, giving the full EAN-13 number 4006381333931",
+  "steps": [
+    { "action": "select", "field": "symbology", "value": "ean13" },
+    { "action": "fill", "field": "data", "value": "400638133393" }
+  ],
+  "expect": ["4006381333931"]
+}

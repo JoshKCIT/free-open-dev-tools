@@ -1,0 +1,14 @@
+{
+  "id": "barcode-generator",
+  "scenarios": [
+    {
+      "label": "an EAN-13 SVG",
+      "steps": [
+        { "action": "select", "field": "symbology", "value": "ean13" },
+        { "action": "fill", "field": "data", "value": "400638133393" }
+      ],
+      "expect": ["4006381333931"],
+      "downloads": [{ "name": "barcode[.]svg", "magic": "3c737667" }]
+    }
+  ]
+}

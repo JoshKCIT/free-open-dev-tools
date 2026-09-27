@@ -9,7 +9,7 @@
  * recoverable byte for byte by `node:zlib`'s inflate.
  */
 
-import { resolveColors, type Matrix, type RenderOptions, type RenderResult } from './svg';
+import { resolveColors, type Matrix, type RenderOptions } from './svg';
 
 function crc32Table(): Uint32Array {
   const table = new Uint32Array(256);

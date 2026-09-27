@@ -14,7 +14,7 @@
   ],
   "limits": [
     "WiFi and SMSTO payloads are conventions widely read by phone scanner apps, not standards -- no RFC defines them.",
-    "Text is encoded in QR byte mode as UTF-8 with no ECI marker, which almost every modern phone scanner reads correctly, but a strict reader may show it as Latin-1.",
+    "Text outside the QR alphanumeric character set (anything but upper-case letters, digits, space and a few symbols) is encoded in byte mode as UTF-8 with no ECI marker, which almost every modern phone scanner reads correctly, but a strict reader may show it as Latin-1.",
     "QR Kanji mode is never used; Kanji text is instead encoded as UTF-8 bytes, which costs more capacity per character.",
     "Whether a phone actually opens a WiFi network, a contact card or a message from the decoded payload depends on that phone's own scanner app, not on this tool.",
     "A payload longer than a version 40 symbol can hold at the chosen error correction level is refused rather than silently truncated.",
