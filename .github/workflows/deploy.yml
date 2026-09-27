@@ -192,3 +192,24 @@ jobs:
           done
 
           exit $fail
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser engines
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: The 144 tool pages load and their JavaScript is clean
+        run: pnpm exec playwright test e2e/all-tool-chunks.spec.ts --project=chromium
+        env:
+          E2E_BASE_URL: https://joshkcit.github.io/free-open-dev-tools
+          PROVENANCE_DENYLIST: ${{ secrets.PROVENANCE_DENYLIST }}
