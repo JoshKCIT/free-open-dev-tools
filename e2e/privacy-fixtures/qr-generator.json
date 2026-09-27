@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "kind", "value": "url" },
+    "values": { "url": "https://example.invalid/qr" },
+    "attachesFile": false
+  }
+]

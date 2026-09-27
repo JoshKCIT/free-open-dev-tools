@@ -1,0 +1,18 @@
+{
+  "id": "qr-generator",
+  "scenarios": [
+    {
+      "label": "a URL as SVG and PNG",
+      "steps": [
+        { "action": "radio", "field": "kind", "value": "url" },
+        { "action": "fill", "field": "url", "value": "https://example.invalid/qr" },
+        { "action": "fill", "field": "scale", "value": "4" }
+      ],
+      "expect": ["https://example.invalid/qr"],
+      "downloads": [
+        { "name": "qr-code[.]svg", "magic": "3c737667" },
+        { "name": "qr-code[.]png", "magic": "89504e470d0a1a0a" }
+      ]
+    }
+  ]
+}

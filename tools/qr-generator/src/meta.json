@@ -1,0 +1,63 @@
+{
+  "id": "qr-generator",
+  "name": "QR Code Generator",
+  "summary": "Generate QR codes for text, URLs, WiFi, vCard, email and SMS payloads.",
+  "about": "Builds an ISO/IEC 18004 QR code for plain text, a URL, a WiFi network, a vCard contact, an email or an SMS message, shows the exact text it encodes, and offers the result as an SVG or a PNG. The bitmap comes from the qrcode package; the payload text for every non-text, non-URL kind is built here against each scheme's own cited specification, never delegated to the encoder.",
+  "supports": [
+    "Text and URL payloads, encoded exactly as typed",
+    "WiFi network payloads (the WIFI: convention) with WPA, WEP or no password, and a hidden-network flag",
+    "vCard 3.0 and 4.0 contact payloads with name, organisation, title, phone, email, website, address and a note, correctly escaped and line-folded",
+    "Email payloads (a mailto: URI) with subject, body and CC, percent-encoded per RFC 6068",
+    "SMS payloads as either an sms: URI (RFC 5724) or the older SMSTO: convention",
+    "Error correction levels L, M, Q and H, an adjustable scale and quiet zone margin, and custom dark/light colours",
+    "SVG and PNG output, both written by this package with no browser canvas and no image library"
+  ],
+  "limits": [
+    "WiFi and SMSTO payloads are conventions widely read by phone scanner apps, not standards -- no RFC defines them.",
+    "Text is encoded in QR byte mode as UTF-8 with no ECI marker, which almost every modern phone scanner reads correctly, but a strict reader may show it as Latin-1.",
+    "QR Kanji mode is never used; Kanji text is instead encoded as UTF-8 bytes, which costs more capacity per character.",
+    "Whether a phone actually opens a WiFi network, a contact card or a message from the decoded payload depends on that phone's own scanner app, not on this tool.",
+    "A payload longer than a version 40 symbol can hold at the chosen error correction level is refused rather than silently truncated.",
+    "Low contrast between the dark and light colours, or a quiet zone narrower than four modules, can make a code harder for a scanner to read even though it is generated correctly."
+  ],
+  "ambiguities": [
+    "vCard 3.0 (RFC 2426) states line folding at 75 characters while vCard 4.0 (RFC 6350) states 75 octets; this tool applies the octet-safe rule (never splitting a UTF-8 character) to both versions rather than counting characters for 3.0, which is a stricter, safer choice than the letter of RFC 2426 but never produces a line RFC 2426 would call too long.",
+    "The SMSTO: convention has no normative specification this tool's research found; its message component is written as plain text after the second colon (not percent-encoded), matching the form widely observed in the wild rather than a documented grammar.",
+    "The Wi-Fi Alliance's own WPA3 QR code specification text was not reachable without an account during this tool's research, so the WIFI: payload offers only WPA, WEP and no-password (the ZXing/Android convention's own documented values), not a WPA3-specific SAE keyword."
+  ],
+  "standards": [
+    {
+      "label": "ISO/IEC 18004:2015 — Automatic identification and data capture techniques — QR Code bar code symbology specification",
+      "url": "https://www.iso.org/standard/62021.html"
+    },
+    { "label": "RFC 6350 — vCard Format Specification (version 4.0)", "url": "https://www.rfc-editor.org/rfc/rfc6350" },
+    {
+      "label": "RFC 2426 — vCard MIME Directory Profile (version 3.0)",
+      "url": "https://www.rfc-editor.org/rfc/rfc2426"
+    },
+    { "label": "RFC 6068 — The 'mailto' URI Scheme", "url": "https://www.rfc-editor.org/rfc/rfc6068" },
+    {
+      "label": "RFC 5724 — URI Scheme for Global System for Mobile Communications (GSM) Short Message Service (SMS)",
+      "url": "https://www.rfc-editor.org/rfc/rfc5724"
+    },
+    {
+      "label": "W3C PNG (Third Edition) — Portable Network Graphics Specification",
+      "url": "https://www.w3.org/TR/png/"
+    },
+    {
+      "label": "RFC 1950 — ZLIB Compressed Data Format Specification",
+      "url": "https://www.rfc-editor.org/rfc/rfc1950"
+    },
+    {
+      "label": "RFC 1951 — DEFLATE Compressed Data Format Specification",
+      "url": "https://www.rfc-editor.org/rfc/rfc1951"
+    }
+  ],
+  "keywords": ["qr code", "qr code generator", "wifi qr code", "vcard qr code", "mailto", "sms qr code", "iso 18004"],
+  "dependencies": { "qrcode": "1.5.4" },
+  "devDependencies": { "@types/qrcode": "^1.5.6", "jsqr": "^1.4.0", "@zxing/library": "0.21.3" },
+  "primaryExport": "generateQr",
+  "usage": "import { generateQr, buildPayload, matrixToSvg, matrixToPng } from '@fodt/qr-generator';\n\nconst { payload } = buildPayload('url', { url: 'https://example.invalid/' });\nconst qr = generateQr({ payload, level: 'M' });\nconst { output: svg } = matrixToSvg(qr, { scale: 8 });",
+  "apiNotes": "buildPayload and generateQr are separate steps on purpose: buildPayload turns the visitor's fields into the exact text a QR code will encode (and is what the page shows as 'Encoded text'), and generateQr only ever sees that already-built string -- it has no per-kind knowledge at all. matrixToSvg and matrixToPng both take the same { size, modules } matrix shape and the same colour/scale/margin options, so either can render any generateQr result.",
+  "testNotes": "ISO/IEC 18004 is not freely published; its format information table, capacity table and quiet zone rule are taken from a fetched public reproduction (Thonky's QR Code Tutorial) and from Denso Wave's own published QR code pages, quoted in test and source comments, not from the paywalled standard text itself. The vCard, mailto and SMS RFCs were fetched from www.rfc-editor.org and quoted directly. jsQR and the ZXing library decode every generated code back to its payload in tests only; neither ships to visitors."
+}

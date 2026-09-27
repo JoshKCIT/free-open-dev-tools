@@ -1,0 +1,10 @@
+{
+  "id": "qr-generator",
+  "label": "the ISO/IEC 18004 alphanumeric mode fits HELLO WORLD in a version 1 symbol at error correction level M",
+  "steps": [
+    { "action": "radio", "field": "kind", "value": "text" },
+    { "action": "fill", "field": "text", "value": "HELLO WORLD" },
+    { "action": "select", "field": "level", "value": "M" }
+  ],
+  "expect": ["Version 1"]
+}
