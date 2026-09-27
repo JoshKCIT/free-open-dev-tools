@@ -19,7 +19,7 @@ Draws a placeholder rectangle at any size you choose, as an SVG string or a PNG 
 
 ## Limits
 
-- SVG sizes are limited to 10,000 pixels on a side; PNG sizes are limited to this browser's own measured encoding ceiling, since a very large canvas can be slow or fail to encode at all.
+- The maximum SVG size is 10,000 pixels on a side; the maximum PNG size is this browser's own measured encoding ceiling, since a very large canvas can be slow or fail to encode at all.
 - The label is plain text only, limited to 80 characters; it cannot include formatting.
 - Colours are accepted only as #rgb or #rrggbb hex values.
 - PNG text is drawn with the visitor's own installed fonts, so it can look different between systems and browsers.
