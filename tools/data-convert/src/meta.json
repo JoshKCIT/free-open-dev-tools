@@ -21,7 +21,8 @@
     "TOML has no distinct date type on the JSON/YAML side of a conversion; a TOML date or time becomes a string",
     "TOML output lists plain keys before any table, which can change the input's key order",
     "A JSON number beyond double precision is rounded, the same limit JSON.parse itself has",
-    "Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0"
+    "Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0",
+    "Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; JSON and TOML sources have no such limit"
   ],
   "ambiguities": [
     "Unquoted yes and no stay strings on the YAML side, per the YAML 1.2 core schema this reads with, not the YAML 1.1 boolean set some tools use",

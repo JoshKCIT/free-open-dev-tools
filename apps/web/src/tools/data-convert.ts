@@ -1,4 +1,5 @@
-import { meta, convertData, DataConvertError } from '@fodt/data-convert';
+import { meta, convertData, DataConvertError, type ConvertOptions } from '@fodt/data-convert';
+import { dataConvertInWorker, DataConvertRunError } from '../lib/run-data-convert-in-worker';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const LANGUAGE: Record<string, string | undefined> = { json: 'json', yaml: 'yaml', toml: undefined };
@@ -6,6 +7,11 @@ const LANGUAGE: Record<string, string | undefined> = { json: 'json', yaml: 'yaml
 export default defineTool({
   id: 'data-convert',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
+  // A YAML source runs in a background worker with a 1.5 second time limit
+  // (checking duplicate mapping keys grows quadratically with a flat
+  // mapping's key count, the same risk yaml-formatter carries), so that run
+  // can be cancelled. JSON and TOML sources stay synchronous.
+  cancellable: true,
   fields: [
     {
       name: 'from',
@@ -52,16 +58,24 @@ export default defineTool({
     { label: 'YAML to TOML', values: { from: 'yaml', to: 'toml', input: 'name: Ada\ntags:\n  - a\n  - b\n' } },
     { label: 'TOML to JSON', values: { from: 'toml', to: 'json', input: 'name = "Ada"\n' } },
   ],
-  run(values): ToolResult {
+  async run(values, ctx): Promise<ToolResult> {
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
 
     const from = str(values, 'from', 'json') as 'json' | 'yaml' | 'toml';
     const to = str(values, 'to', 'yaml') as 'json' | 'yaml' | 'toml';
     const indent = Number(str(values, 'indent', '2')) === 4 ? 4 : 2;
+    const options: ConvertOptions = { from, to, indent };
 
     try {
-      const result = convertData(input, { from, to, indent });
+      // Only a YAML source carries the quadratic duplicate-key risk (the
+      // same yaml package yaml-formatter already time-limits), so only it
+      // is routed through the worker; JSON and TOML sources stay
+      // synchronous, exactly as before.
+      const result =
+        from === 'yaml'
+          ? await dataConvertInWorker({ type: 'data-convert-job', source: input, options }, ctx)
+          : convertData(input, options);
       const outputs: OutputBlock[] = [{ kind: 'code', label: 'Output', language: LANGUAGE[to], value: result.output }];
       if (result.warnings.length > 0) {
         outputs.push({ kind: 'note', label: 'Warnings', tone: 'warn', value: result.warnings.join('\n') });
@@ -74,7 +88,10 @@ export default defineTool({
         ],
       };
     } catch (err) {
-      if (err instanceof DataConvertError) {
+      // An abort rejection is let through rather than swallowed: the
+      // runner's own cancellation note already owns that message.
+      if (ctx.signal.aborted) throw err;
+      if (err instanceof DataConvertError || err instanceof DataConvertRunError) {
         return {
           outputs: [],
           errors: [{ message: err.message, line: err.line, column: err.column, path: err.path }],

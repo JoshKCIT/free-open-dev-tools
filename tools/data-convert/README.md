@@ -30,6 +30,7 @@ Converts a pasted document between JSON, YAML and TOML in any direction. A YAML 
 - TOML output lists plain keys before any table, which can change the input's key order
 - A JSON number beyond double precision is rounded, the same limit JSON.parse itself has
 - Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0
+- Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; JSON and TOML sources have no such limit
 
 ## Ambiguous cases, and what this does about them
 
