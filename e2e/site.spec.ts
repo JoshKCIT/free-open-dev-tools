@@ -101,6 +101,10 @@ test.describe('progress and cancel stay inert until a tool opts in', () => {
    * progress element in the tree unconditionally.
    */
   test('no tool page renders a Cancel button or a progress element before any run starts', async ({ page }) => {
+    // 144 sequential navigations comfortably fit the default 45s budget
+    // against a local build, but not against a deployed site's real network
+    // latency on every browser project (09-07, the final catalog size).
+    test.setTimeout(180_000);
     for (const id of toolIds) {
       await page.goto(rel(`/tools/${id}`));
       const cancelButton = page.getByRole('button', { name: 'Cancel', exact: true });
@@ -272,6 +276,10 @@ test.describe('accessibility', () => {
   });
 
   test('every form control has an accessible name', async ({ page }) => {
+    // Same reason as the Cancel/progress sweep above: 144 navigations need
+    // more than the default 45s budget against a deployed site's real
+    // network latency (09-07, the final catalog size).
+    test.setTimeout(180_000);
     for (const id of toolIds) {
       await page.goto(rel(`/tools/${id}`));
       const unnamed = await page.evaluate(() => {
