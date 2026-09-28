@@ -3,6 +3,8 @@ import { REPO_URL, COMMIT, BUILD_DATE } from '../lib/site';
 import { CATALOG, LIVE_TOOLS } from '../lib/registry';
 
 export default function About() {
+  const allBuilt = LIVE_TOOLS.length === CATALOG.length;
+
   return (
     <div className="prose">
       <h1>About</h1>
@@ -45,12 +47,25 @@ export default function About() {
 
       <h2>State of the catalog</h2>
       <p>
-        {LIVE_TOOLS.length} of {CATALOG.length} planned tools are built and tested. The{' '}
-        <Link to="/catalog">catalog page</Link> shows the rest, and the{' '}
-        <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
-          implementation ledger
-        </a>{' '}
-        records exactly what is outstanding and in what order.
+        {allBuilt ? (
+          <>
+            All {CATALOG.length} tools in the catalog are built and tested. The <Link to="/catalog">catalog page</Link>{' '}
+            lists every one, and the{' '}
+            <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
+              implementation ledger
+            </a>{' '}
+            records what shipped and in what order.
+          </>
+        ) : (
+          <>
+            {LIVE_TOOLS.length} of {CATALOG.length} planned tools are built and tested. The{' '}
+            <Link to="/catalog">catalog page</Link> shows the rest, and the{' '}
+            <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
+              implementation ledger
+            </a>{' '}
+            records exactly what is outstanding and in what order.
+          </>
+        )}
       </p>
 
       <h2>Contributing</h2>
@@ -79,11 +94,13 @@ export default function About() {
 
       <h2>This build</h2>
       <p>
-        Commit <code>{COMMIT}</code>, built {BUILD_DATE}. The{' '}
-        <a href={`${REPO_URL}/blob/main/docs/RELEASE-MANIFEST.md`} rel="noreferrer noopener">
-          release manifest
+        Commit <code>{COMMIT}</code>, built {BUILD_DATE}. Every CI run publishes a release manifest, mapping each
+        shipped tool to its version and its verification result, as that run&apos;s job summary and workflow artifact on
+        the{' '}
+        <a href={`${REPO_URL}/actions`} rel="noreferrer noopener">
+          Actions
         </a>{' '}
-        maps each shipped tool to its version and its verification result.
+        tab.
       </p>
     </div>
   );

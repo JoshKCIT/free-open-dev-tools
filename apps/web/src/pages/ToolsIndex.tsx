@@ -21,6 +21,13 @@ export default function ToolsIndex() {
     return searchTools(query, scoped);
   }, [query, activeCategory]);
 
+  /** True only when the query matches a catalog entry that exists but is not built yet. */
+  const matchesUnbuiltEntry = useMemo(() => {
+    if (!query.trim() || filtered.length > 0) return false;
+    const scopedCatalog = activeCategory ? CATALOG.filter((t) => t.category === activeCategory) : CATALOG;
+    return searchTools(query, scopedCatalog).some((t) => !t.implemented);
+  }, [query, activeCategory, filtered.length]);
+
   const groups = query
     ? [{ category: 'results', label: `${filtered.length} match${filtered.length === 1 ? '' : 'es'}`, tools: filtered }]
     : byCategory(filtered);
@@ -77,8 +84,16 @@ export default function ToolsIndex() {
             No tool matches <strong>{query}</strong>.
           </p>
           <p style={{ margin: '8px 0 0' }}>
-            It may be in the planned catalog but not built yet. <Link to="/catalog">Check the catalog</Link> to see
-            where it stands.
+            {matchesUnbuiltEntry ? (
+              <>
+                It is in the catalog but not built yet. <Link to="/catalog">Check the catalog</Link> to see where it
+                stands.
+              </>
+            ) : (
+              <>
+                Try a different word, or <Link to="/catalog">browse the full catalog</Link>.
+              </>
+            )}
           </p>
         </div>
       ) : (

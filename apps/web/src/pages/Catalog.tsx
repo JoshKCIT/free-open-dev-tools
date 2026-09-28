@@ -5,21 +5,31 @@ import { REPO_URL } from '../lib/site';
 export default function Catalog() {
   const groups = byCategory(CATALOG);
   const built = CATALOG.filter((t) => t.implemented).length;
+  const allBuilt = built === CATALOG.length;
 
   return (
     <>
       <h1>Catalog</h1>
       <div className="prose">
         <p>
-          <strong>{built}</strong> of those are built, tested and usable today. The rest are listed here so the gap is
-          visible rather than hidden. Nothing on this page is a mock: if a tool is not marked as built, there is no
-          half-finished version of it behind a link.
+          {allBuilt ? (
+            <>
+              All <strong>{built}</strong> tools in the catalog are built, tested and usable today. Nothing on this page
+              is a mock: every entry here is a live tool behind its link.
+            </>
+          ) : (
+            <>
+              <strong>{built}</strong> of those are built, tested and usable today. The rest are listed here so the gap
+              is visible rather than hidden. Nothing on this page is a mock: if a tool is not marked as built, there is
+              no half-finished version of it behind a link.
+            </>
+          )}
         </p>
         <p>
           <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
             Implementation ledger
           </a>{' '}
-          — what is left to build, in order.
+          — {allBuilt ? 'every shipped tool, by category.' : 'what is left to build, in order.'}
         </p>
       </div>
 

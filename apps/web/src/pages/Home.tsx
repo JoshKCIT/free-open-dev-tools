@@ -47,7 +47,7 @@ export default function Home() {
           </div>
           <div>
             <strong>{CATALOG.length}</strong>
-            <span>in the planned catalog</span>
+            <span>in the full catalog</span>
           </div>
           <div>
             <strong>0</strong>

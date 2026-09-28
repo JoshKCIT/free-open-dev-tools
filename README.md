@@ -1,12 +1,14 @@
 # Free & Open Dev Tools
 
+**[Open the live site](https://joshkcit.github.io/free-open-dev-tools/)** — 144 free developer tools, every one running
+in your browser.
+
 Free developer tools, published for anyone to use. Explore the source, download individual tools, and make them your own.
 
 Every tool runs in your browser. Your input is processed by JavaScript already loaded in the tab and is never
 transmitted, stored or put in the URL. That is not a promise in a footer: it is checked on every commit by a test that
 drives each tool in a real browser and fails the build if anything escapes. See [Privacy](#privacy) below.
 
-- **Site:** https://joshkcit.github.io/free-open-dev-tools/
 - **Licence:** MIT for all original code. Third-party notices in [`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md).
 
 ## Take a single tool
@@ -63,14 +65,15 @@ pnpm verify         # everything CI runs, except the browser tests
 pnpm e2e            # browser tests against the production build
 ```
 
-`pnpm verify` runs the inventory check, regenerates the tool files, typechecks, lints, runs the unit tests, and then
-the three release gates:
+`pnpm verify` checks the lockfile, regenerates the catalog, the synced tool files and the ledger, typechecks, lints,
+checks formatting, runs the unit tests, and then the four release gates:
 
 | Gate               | What it blocks                                                                                                                                      |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check:catalog`    | A tool on the site with no tests, a folder with no page, empty documentation, or any code path that could transmit input.                           |
 | `check:standalone` | A tool folder that could not be lifted out and used on its own. Add `--full` to actually install, build and test each folder outside the workspace. |
 | `check:licenses`   | A dependency under a licence that cannot be shipped here, or one whose notice is missing. Regenerates `docs/THIRD-PARTY.md`.                        |
+| `check:provenance` | A reference this project must not ship, in tracked files, the built site, or a commit message.                                                      |
 
 ## Privacy
 
@@ -91,11 +94,11 @@ request happens at all during processing.
 
 ## The catalog
 
-The catalog is **144** tools. **16** of them are built, tested and usable today; the rest are listed so the gap is
-visible.
+All **144** tools in the catalog are built, tested and live.
 
-- [`docs/LEDGER.md`](docs/LEDGER.md) — what is built, what is next, and what is outstanding.
-- [`docs/RELEASE-MANIFEST.md`](docs/RELEASE-MANIFEST.md) — what shipped, from which commit, and what was verified.
+- [`docs/LEDGER.md`](docs/LEDGER.md) — every shipped tool, by category.
+- The release manifest, mapping each shipped tool to its version and its verification result, is not a file in this
+  repository: it is produced fresh on every CI run and published as that run's job summary and workflow artifact.
 
 ## Contributing
 
