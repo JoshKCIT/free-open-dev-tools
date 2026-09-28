@@ -1,32 +1,10 @@
 :root {
-  --bg: #ffffff;
-  --bg-sunken: #f6f7f9;
-  --bg-raised: #ffffff;
-  --bg-inset: #f1f3f6;
-  --border: #dfe3e8;
-  --border-strong: #c4cad2;
-  --text: #16191d;
-  --text-muted: #5b636d;
-  --text-faint: #858d97;
-  --accent: #1d4ed8;
-  --accent-hover: #1740b5;
-  --accent-soft: #eaf0fe;
-  --danger: #b4232a;
-  --danger-soft: #fdeceb;
-  --warn: #8a5a00;
-  --warn-soft: #fdf3dd;
-  --success: #1f6b3f;
-  --success-soft: #e7f5ec;
-  --focus: #1d4ed8;
-  --radius: 8px;
-  --radius-sm: 5px;
-  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --shadow: 0 1px 2px rgba(16, 20, 26, 0.06), 0 2px 8px rgba(16, 20, 26, 0.04);
-  --maxw: 1180px;
-}
-
-:root[data-theme='dark'] {
+  /* Dark is the default theme; light applies only when a visitor picks it
+     (data-theme='light', set before first paint by index.html). */
+  color-scheme: dark;
+  --page: #0c0e12;
+  --dot: rgba(148, 163, 184, 0.17);
+  --glow: rgba(123, 162, 255, 0.11);
   --bg: #0f1115;
   --bg-sunken: #0b0d11;
   --bg-raised: #171a20;
@@ -39,6 +17,8 @@
   --accent: #7ba2ff;
   --accent-hover: #9cb9ff;
   --accent-soft: #17203a;
+  --on-accent: #0a1633;
+  --selection: rgba(123, 162, 255, 0.32);
   --danger: #ff8d87;
   --danger-soft: #331a1a;
   --warn: #e8bd63;
@@ -47,31 +27,40 @@
   --success-soft: #122a1d;
   --focus: #7ba2ff;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.3);
+  --radius: 8px;
+  --radius-sm: 5px;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --maxw: 1180px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #0f1115;
-    --bg-sunken: #0b0d11;
-    --bg-raised: #171a20;
-    --bg-inset: #1c2027;
-    --border: #2a2f38;
-    --border-strong: #3a414c;
-    --text: #e8eaed;
-    --text-muted: #a2aab6;
-    --text-faint: #7b838f;
-    --accent: #7ba2ff;
-    --accent-hover: #9cb9ff;
-    --accent-soft: #17203a;
-    --danger: #ff8d87;
-    --danger-soft: #331a1a;
-    --warn: #e8bd63;
-    --warn-soft: #302713;
-    --success: #6fd396;
-    --success-soft: #122a1d;
-    --focus: #7ba2ff;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.3);
-  }
+:root[data-theme='light'] {
+  color-scheme: light;
+  --page: #f4f5f7;
+  --dot: rgba(30, 41, 59, 0.17);
+  --glow: rgba(29, 78, 216, 0.07);
+  --bg: #ffffff;
+  --bg-sunken: #f6f7f9;
+  --bg-raised: #ffffff;
+  --bg-inset: #f1f3f6;
+  --border: #dfe3e8;
+  --border-strong: #c4cad2;
+  --text: #16191d;
+  --text-muted: #5b636d;
+  --text-faint: #858d97;
+  --accent: #1d4ed8;
+  --accent-hover: #1740b5;
+  --accent-soft: #eaf0fe;
+  --on-accent: #ffffff;
+  --selection: rgba(29, 78, 216, 0.18);
+  --danger: #b4232a;
+  --danger-soft: #fdeceb;
+  --warn: #8a5a00;
+  --warn-soft: #fdf3dd;
+  --success: #1f6b3f;
+  --success-soft: #e7f5ec;
+  --focus: #1d4ed8;
+  --shadow: 0 1px 2px rgba(16, 20, 26, 0.06), 0 2px 8px rgba(16, 20, 26, 0.04);
 }
 
 * {
@@ -84,13 +73,38 @@ body {
   padding: 0;
 }
 
+html {
+  accent-color: var(--accent);
+  scrollbar-color: var(--border-strong) var(--page);
+}
+
+/* The page is an engineering canvas: a faint 24px dot grid with a soft
+   accent glow at the top. Panels, cards, the header and the footer stay
+   solid, so no text ever sits on more than the faint dots. */
 body {
-  background: var(--bg);
+  background-color: var(--page);
+  background-image:
+    radial-gradient(ellipse 75% 480px at 50% 0, var(--glow), transparent 72%),
+    radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 1.6px);
+  background-size:
+    100% 100%,
+    24px 24px;
+  background-repeat: no-repeat, repeat;
   color: var(--text);
   font-family: var(--sans);
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}
+
+input,
+textarea {
+  caret-color: var(--accent);
 }
 
 a {
@@ -142,7 +156,7 @@ pre {
   left: -9999px;
   top: 0;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   padding: 10px 16px;
   z-index: 100;
   border-radius: 0 0 var(--radius) 0;
@@ -302,12 +316,12 @@ main {
 .button-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .button-primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: #fff;
+  color: var(--on-accent);
 }
 .button:disabled {
   opacity: 0.5;
@@ -329,6 +343,7 @@ main {
 }
 .pill-neutral {
   background: var(--bg-inset);
+  border-color: var(--border);
   color: var(--text-muted);
 }
 .pill-warn {
@@ -392,7 +407,7 @@ main {
 .chip[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .tool-grid {
