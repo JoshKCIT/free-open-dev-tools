@@ -29,7 +29,22 @@ function initialValues(fields: Field[]): Values {
   return v;
 }
 
-function FieldControl({ field, value, onChange }: { field: Field; value: unknown; onChange: (v: unknown) => void }) {
+function FieldControl({
+  field,
+  value,
+  onChange,
+  resetSeq,
+}: {
+  field: Field;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  // Bumped by ToolRunner's Reset button. Used only as the file input's own
+  // React key: a native <input type="file"> is uncontrolled, so clearing
+  // `value` to [] does not clear what the browser itself displays as
+  // chosen. Changing the key forces React to unmount and recreate just this
+  // element, which is the only way to clear that native display.
+  resetSeq: number;
+}) {
   const id = `f-${field.name}`;
   const describedBy = field.help ? `${id}-help` : undefined;
   const mono = field.mono ?? field.type === 'textarea';
@@ -215,6 +230,7 @@ function FieldControl({ field, value, onChange }: { field: Field; value: unknown
           <label htmlFor={id}>{field.label}</label>
           <input
             id={id}
+            key={resetSeq}
             type="file"
             accept={field.accept}
             multiple={field.multiple}
@@ -254,6 +270,10 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const [running, setRunning] = useState(false);
   const [crashed, setCrashed] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ fraction: number; detail?: string } | null>(null);
+  // Bumped only by Reset (below); remounts native file inputs so the
+  // browser's own "no file chosen" display clears along with the app's
+  // selected-file summary. See FieldControl's own comment on this prop.
+  const [resetSeq, setResetSeq] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const runSeq = useRef(0);
 
@@ -428,7 +448,13 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
         </div>
         <div className="panel-body">
           {visibleFields.map((f) => (
-            <FieldControl key={f.name} field={f} value={values[f.name]} onChange={(v) => set(f.name, v)} />
+            <FieldControl
+              key={f.name}
+              field={f}
+              value={values[f.name]}
+              onChange={(v) => set(f.name, v)}
+              resetSeq={resetSeq}
+            />
           ))}
           <div className="toolbar">
             {tool.autoRun === false ? (
@@ -462,6 +488,10 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
                 setValues({ ...base });
                 setResult(null);
                 setCrashed(null);
+                // Remounts every native file input (see resetSeq's own
+                // comment above), clearing the browser's own displayed
+                // file name alongside the app's selected-file summary.
+                setResetSeq((k) => k + 1);
               }}
             >
               Reset
