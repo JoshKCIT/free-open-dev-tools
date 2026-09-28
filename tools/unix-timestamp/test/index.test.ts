@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { detectUnit, toMilliseconds, render, parseInput, isoWeek, relativeTime, isValidZone } from '../src/index';
 
 const NOW = Date.UTC(2026, 0, 1, 0, 0, 0);
@@ -148,6 +148,42 @@ describe('time zones', () => {
   it('validates zone names', () => {
     expect(isValidZone('Europe/London')).toBe(true);
     expect(isValidZone('Mars/Olympus_Mons')).toBe(false);
+  });
+
+  describe("Firefox's own shortOffset behaviour (WINDOWS.md deferred item, timeZoneName: 'longOffset' fix)", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    /**
+     * Firefox can resolve `timeZoneName: 'shortOffset'` to a named
+     * abbreviation ("BST") instead of a numeric offset for some zone/locale
+     * combinations. The old code read offsets with `shortOffset` and its
+     * regex only matches a "GMT+HH:MM" shape, so a stubbed abbreviation
+     * would fail to match and silently fall back to the '+00:00' default --
+     * wrong for Europe/London in summer, whose real offset is +01:00. This
+     * stub only breaks the `shortOffset` formatter, reproducing exactly
+     * that failure; `longOffset` (what the fixed code now asks for) is left
+     * alone, so this test only passes because the fix reads longOffset.
+     */
+    it('gives +01:00 for Europe/London in summer even when shortOffset resolves to a named abbreviation', () => {
+      const RealDateTimeFormat = Intl.DateTimeFormat;
+      vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+        (locale?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions) => {
+          const real = new RealDateTimeFormat(locale, options);
+          if (options?.timeZoneName !== 'shortOffset') return real;
+          // Reproduces Firefox's own observed behaviour: a named
+          // abbreviation where a numeric offset was asked for.
+          return {
+            formatToParts: (date?: Date | number) =>
+              real.formatToParts(date).map((part) => (part.type === 'timeZoneName' ? { ...part, value: 'BST' } : part)),
+          } as Intl.DateTimeFormat;
+        },
+      );
+
+      const r = render(Date.UTC(2026, 6, 15, 11, 0, 0), { timeZone: 'Europe/London' });
+      expect(r.zoneOffset).toBe('+01:00');
+    });
   });
 });
 

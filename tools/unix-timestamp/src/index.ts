@@ -129,6 +129,13 @@ export function relativeTime(ms: number, now: number): string {
 }
 
 function zoneParts(date: Date, timeZone: string): { formatted: string; offset: string; abbreviation: string } {
+  // 'longOffset', not 'shortOffset': shortOffset is inconsistent across
+  // engines -- Firefox returns a named abbreviation ("BST") instead of a
+  // numeric offset for some zone/locale combinations, which the regex below
+  // then fails to match, silently falling back to the '+00:00' default even
+  // for a real +01:00. longOffset always gives "GMT+HH:MM" (or a bare "GMT"
+  // for a true zero offset in WebKit). Same fix, same reasoning, as
+  // tools/timezone-converter/src/index.ts's own zoneParts.
   const formatter = new Intl.DateTimeFormat('en-GB', {
     timeZone,
     year: 'numeric',
@@ -138,7 +145,7 @@ function zoneParts(date: Date, timeZone: string): { formatted: string; offset: s
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-    timeZoneName: 'shortOffset',
+    timeZoneName: 'longOffset',
   });
   const parts = formatter.formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
