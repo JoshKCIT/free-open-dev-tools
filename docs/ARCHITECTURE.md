@@ -71,8 +71,9 @@ Documentation drifts. The defence is to have one source and generate the rest.
 | The installed dependency tree         | `docs/THIRD-PARTY.md`.                                                            |
 | The test reports produced by a CI run | `docs/RELEASE-MANIFEST.json` and `.md`.                                           |
 
-CI regenerates all of these and fails if the working tree changes afterwards, so a stale generated file cannot be
-merged.
+CI regenerates the committed ones (the tool READMEs and package files, the catalog, and `docs/THIRD-PARTY.md`) and
+fails if the working tree changes afterwards, so a stale generated file cannot be merged. The release manifest is
+never committed: CI builds it fresh on every run and publishes it as that run's job summary and workflow artifact.
 
 ## Routing and static hosting
 
