@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 /**
  * Behavioural proof of the page-side time limit (D-14/D-15/D-27, D-57) on
@@ -12,6 +12,21 @@ import { test, expect } from '@playwright/test';
  * the worker, so they carry no time limit and are not tested here.
  */
 const rel = (path: string) => path.replace(/^\//, '');
+
+/**
+ * Sets a textarea's value through the native setter and dispatches one `input`
+ * event, instead of Playwright's `locator.fill()`, which types the value one
+ * character (or clipboard chunk) at a time. `e2e/yaml-formatter.spec.ts`
+ * documents `fill()` routinely taking over a minute on a ~200KB value; this
+ * is the same fix for this file's own 200KB sample.
+ */
+async function setLargeValue(page: Page, selector: string, value: string): Promise<void> {
+  await page.locator(selector).evaluate((el, v) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    setter.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
+}
 
 /** A long chain of string-literal `+` concatenation: wide, not deep, and reliably exceeds the 1.5s limit. */
 function pathologicalSource(): string {
@@ -74,7 +89,7 @@ test('a 200KB realistic TypeScript file minifies successfully through the worker
   for (let i = 0; i < 2000; i++) {
     src += `interface I${i} { a: number; b: string; }\nexport function f${i}(x: I${i}): number { return x.a; }\n`;
   }
-  await page.locator('#f-input').fill(src);
+  await setLargeValue(page, '#f-input', src);
   await expect(page.locator('section[aria-label="Output"] pre.output')).toContainText('function f0(', {
     timeout: 10_000,
   });
