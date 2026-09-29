@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "parser", "value": "markdown" },
+    "values": { "input": "# Title\n\n* a\n* b\n" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "parser", "value": "mdx" },
+    "values": { "input": "# Title\n\n* a\n* b\n" },
+    "attachesFile": false
+  }
+]

@@ -1583,6 +1583,23 @@
       "issuer identification number"
     ]
   },
+  "markdown-formatter": {
+    "id": "markdown-formatter",
+    "name": "Markdown Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "prettier": "3.9.9"
+    },
+    "keywords": [
+      "markdown",
+      "mdx",
+      "format",
+      "prettier",
+      "table",
+      "gfm"
+    ]
+  },
   "markdown-html": {
     "id": "markdown-html",
     "name": "Markdown & HTML Converter",

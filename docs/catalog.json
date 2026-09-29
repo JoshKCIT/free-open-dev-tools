@@ -476,6 +476,13 @@
     "summary": "Beautify or minify GraphQL queries, fragments and schema definitions."
   },
   {
+    "id": "markdown-formatter",
+    "name": "Markdown Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Reformat Markdown consistently, aligning tables and normalising lists, emphasis and headings."
+  },
+  {
     "id": "svg-optimizer",
     "name": "SVG Optimizer",
     "category": "code",

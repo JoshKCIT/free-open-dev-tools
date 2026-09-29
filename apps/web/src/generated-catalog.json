@@ -613,6 +613,15 @@
       "implemented": true
     },
     {
+      "id": "markdown-formatter",
+      "name": "Markdown Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Reformat Markdown consistently, aligning tables and normalising lists, emphasis and headings.",
+      "implemented": true
+    },
+    {
       "id": "svg-optimizer",
       "name": "SVG Optimizer",
       "category": "code",
