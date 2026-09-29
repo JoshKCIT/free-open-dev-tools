@@ -91,6 +91,15 @@
       "implemented": true
     },
     {
+      "id": "gzip-deflate",
+      "name": "Gzip, Zlib & Deflate Codec",
+      "category": "encoding",
+      "categoryLabel": "Encoding, escaping and numbers",
+      "tier": 2,
+      "summary": "Compress text to gzip, zlib or raw deflate as Base64 or hex, and decompress it back, with integrity checks and a size cap.",
+      "implemented": true
+    },
+    {
       "id": "morse-code",
       "name": "Morse Code Translator",
       "category": "encoding",

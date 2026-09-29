@@ -586,7 +586,18 @@
     "version": "1.0.0",
     "license": "MIT",
     "dependencies": {},
-    "keywords": []
+    "keywords": [
+      "data size",
+      "byte converter",
+      "bit converter",
+      "transfer time",
+      "bandwidth",
+      "KiB",
+      "MiB",
+      "GiB",
+      "kbit",
+      "Mbit"
+    ]
   },
   "data-to-sql": {
     "id": "data-to-sql",
@@ -935,8 +946,19 @@
     "name": "Gzip, Zlib & Deflate Codec",
     "version": "1.0.0",
     "license": "MIT",
-    "dependencies": {},
-    "keywords": []
+    "dependencies": {
+      "fflate": "0.8.3"
+    },
+    "keywords": [
+      "gzip",
+      "zlib",
+      "deflate",
+      "decompress",
+      "compress",
+      "inflate",
+      "crc32",
+      "adler32"
+    ]
   },
   "hash-file": {
     "id": "hash-file",

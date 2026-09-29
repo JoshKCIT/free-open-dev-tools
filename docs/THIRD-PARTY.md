@@ -57,7 +57,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
-| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
+| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
 | [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-to-typescript |
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |

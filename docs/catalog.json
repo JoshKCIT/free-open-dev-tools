@@ -70,6 +70,13 @@
     "summary": "Convert files to and from data URIs with correct MIME type and Base64 handling."
   },
   {
+    "id": "gzip-deflate",
+    "name": "Gzip, Zlib & Deflate Codec",
+    "category": "encoding",
+    "tier": 2,
+    "summary": "Compress text to gzip, zlib or raw deflate as Base64 or hex, and decompress it back, with integrity checks and a size cap."
+  },
+  {
     "id": "morse-code",
     "name": "Morse Code Translator",
     "category": "encoding",
