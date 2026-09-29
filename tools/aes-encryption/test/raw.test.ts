@@ -430,3 +430,80 @@ describe('secret contract', () => {
     }
   });
 });
+
+// Published AES-256 vectors, asserted as literal expected values. Each was
+// also checked against Node's aes-256-* implementation before being pinned.
+describe('NIST SP 800-38A Appendix F.2.5 CBC-AES256 and F.5.5 CTR-AES256', () => {
+  const key = hex('603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4');
+
+  it('F.2.5 CBC-AES256.Encrypt / F.2.6 CBC-AES256.Decrypt', async () => {
+    const iv = hex('000102030405060708090a0b0c0d0e0f');
+    const expected =
+      'f58c4c04d6e5f1ba779eabfb5f7bfbd6' +
+      '9cfc4e967edb808d679f777bc6702c7d' +
+      '39f23369a9d9bacfa530e26304231461' +
+      'b2eb05e2c39be9fcda6c19078c6a9d1b';
+    const enc = await encryptRaw(NIST_PLAINTEXT, key, { mode: 'cbc', iv });
+    // The 64 NIST bytes plus one PKCS#7 padding block.
+    expect(toHex(enc.ciphertext.slice(0, 64))).toBe(expected);
+    expect(enc.ciphertext).toHaveLength(80);
+    const dec = await decryptRaw(enc.ciphertext, key, { mode: 'cbc', iv });
+    expect(toHex(dec.plaintext)).toBe(toHex(NIST_PLAINTEXT));
+  });
+
+  it('F.5.5 CTR-AES256.Encrypt / F.5.6 CTR-AES256.Decrypt', async () => {
+    const iv = hex('f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff');
+    const expected =
+      '601ec313775789a5b7a7f504bbf3d228' +
+      'f443e3ca4d62b59aca84e990cacaf5c5' +
+      '2b0930daa23de94ce87017ba2d84988d' +
+      'dfc9c58db67aada613c2dd08457941a6';
+    const enc = await encryptRaw(NIST_PLAINTEXT, key, { mode: 'ctr', iv });
+    expect(toHex(enc.ciphertext)).toBe(expected);
+    const dec = await decryptRaw(enc.ciphertext, key, { mode: 'ctr', iv });
+    expect(toHex(dec.plaintext)).toBe(toHex(NIST_PLAINTEXT));
+  });
+});
+
+describe('The Galois/Counter Mode of Operation (McGrew and Viega), AES-256 test cases 13 to 16', () => {
+  const zeroKey = new Uint8Array(32);
+  const zeroIv = new Uint8Array(12);
+  const key = hex('feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308');
+  const iv = hex('cafebabefacedbaddecaf888');
+  const p64 = hex(
+    'd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a72' +
+      '1c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255',
+  );
+  const c64 =
+    '522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa' +
+    '8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662898015ad';
+
+  it('test case 13: empty plaintext', async () => {
+    const enc = await encryptRaw(new Uint8Array(0), zeroKey, { mode: 'gcm', iv: zeroIv });
+    expect(toHex(enc.ciphertext)).toBe('');
+    expect(toHex(enc.tag!)).toBe('530f8afbc74536b9a963b4f1c4cb738b');
+  });
+
+  it('test case 14: one zero block', async () => {
+    const enc = await encryptRaw(new Uint8Array(16), zeroKey, { mode: 'gcm', iv: zeroIv });
+    expect(toHex(enc.ciphertext)).toBe('cea7403d4d606b6e074ec5d3baf39d18');
+    expect(toHex(enc.tag!)).toBe('d0d1c8a799996bf0265b98b5d48ab919');
+  });
+
+  it('test case 15: 64-byte plaintext, no additional data', async () => {
+    const enc = await encryptRaw(p64, key, { mode: 'gcm', iv });
+    expect(toHex(enc.ciphertext)).toBe(c64);
+    expect(toHex(enc.tag!)).toBe('b094dac5d93471bdec1a502270e3cc6c');
+    const dec = await decryptRaw(enc.combined, key, { mode: 'gcm', ivPrepended: true });
+    expect(toHex(dec.plaintext)).toBe(toHex(p64));
+  });
+
+  it('test case 16: 60-byte plaintext with additional authenticated data', async () => {
+    const aad = hex('feedfacedeadbeeffeedfacedeadbeefabaddad2');
+    const enc = await encryptRaw(p64.slice(0, 60), key, { mode: 'gcm', iv, aad });
+    expect(toHex(enc.ciphertext)).toBe(c64.slice(0, 120));
+    expect(toHex(enc.tag!)).toBe('76fc6ece0f4e1768cddf8853bb2d551b');
+    const dec = await decryptRaw(enc.combined, key, { mode: 'gcm', ivPrepended: true, aad });
+    expect(toHex(dec.plaintext)).toBe(toHex(p64.slice(0, 60)));
+  });
+});

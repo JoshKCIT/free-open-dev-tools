@@ -95,7 +95,7 @@ Every function that touches `crypto.subtle` is asynchronous, because Web Crypto'
 npm test
 ```
 
-NIST SP 800-38A Appendix F.2 (CBC) and F.5 (CTR) vectors; the McGrew–Viega GCM specification's Appendix B test cases 2-4 and 14-16; a CTR counter-wrap case against Node's own `createCipheriv`; a Node `crypto` differential over randomised keys, IVs and plaintext lengths for every mode; six OpenSSL 3.5.5 interoperability fixtures generated once with the local `openssl` CLI (recorded as literals, with the exact commands used to make and confirm them in a comment; tests never shell out) covering PBKDF2 at two iteration counts and both EVP_BytesToKey hashes; and the full secret-handling contract (no passphrase or key ever appears in a result, an error message, or the OpenSSL command line).
+NIST SP 800-38A Appendix F.2 (CBC-AES128 and CBC-AES256) and F.5 (CTR-AES128 and CTR-AES256) vectors; the McGrew–Viega GCM specification's test cases 2-4 (AES-128) and 13-16 (AES-256), asserted as the published literal values; a CTR counter-wrap case against Node's own `createCipheriv`; a Node `crypto` differential over randomised keys, IVs and plaintext lengths for every mode; six OpenSSL 3.5.5 interoperability fixtures generated once with the local `openssl` CLI (recorded as literals, with the exact commands used to make and confirm them in a comment; tests never shell out) covering PBKDF2 at two iteration counts and both EVP_BytesToKey hashes; and the full secret-handling contract (no passphrase or key ever appears in a result, an error message, or the OpenSSL command line).
 
 ## Licence
 
