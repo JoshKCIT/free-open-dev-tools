@@ -11,11 +11,12 @@ Computes every common digest over the same input at once, so you can find the on
 
 ## Supported
 
-- MD5, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA3-256, SHA3-512, Keccak-256, RIPEMD-160 and CRC-32
+- MD5, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256, SHA3-224, SHA3-256, SHA3-384, SHA3-512, Keccak-256, BLAKE2b-512, BLAKE2s-256, BLAKE3, RIPEMD-160 and CRC-32
 - Input read as UTF-8 text, as hexadecimal bytes, or as Base64
 - Output as lowercase hex, uppercase hex, Base64 or Base64url
 - Comparing a computed digest against one you paste in, ignoring case and separators
 - Keccak-256 as distinct from SHA3-256, which matters if you work with Ethereum
+- BLAKE2b-512 and BLAKE2s-256 unkeyed at their full default output length; BLAKE3 in its plain hashing mode at its default 256-bit output
 
 ## Limits
 
@@ -24,17 +25,22 @@ Computes every common digest over the same input at once, so you can find the on
 - CRC-32 is an error-detection code, not a hash. It is trivial to construct a collision on purpose.
 - This hashes text. For a file, use the file hash tool, which streams rather than loading the whole file into a string.
 - Hashing a secret does not protect it here in any meaningful sense: the secret is already in your clipboard and your browser memory.
+- Keyed BLAKE2, BLAKE3's derive-key mode and BLAKE3's extendable output beyond 256 bits are not offered; BLAKE2 at an output length other than its full default, and BLAKE2b-512/BLAKE2s-256 truncated, are not offered either -- BLAKE2 at a shorter length is a different digest, not a truncation of the full one.
+- BLAKE2 and BLAKE3 are not FIPS-approved. Where a standard specifically requires FIPS approval, use SHA-2 or SHA-3 instead.
 
 ## Ambiguous cases, and what this does about them
 
 - Text must be turned into bytes before it can be hashed, and the encoding chosen changes the result. This uses UTF-8, which is what nearly every modern system means. If you are trying to reproduce a value from an older system that used Latin-1, paste the bytes as hex instead.
 - What Ethereum calls sha3 is original Keccak, not the FIPS 202 SHA-3 that was standardised later with different padding. Both are offered and they are labelled separately.
+- SHA-512/224 and SHA-512/256 are not the same digest as SHA-224 and SHA-256, even though the bit lengths match: they use SHA-512's compression function with their own distinct initial values, defined alongside it in FIPS 180-4.
 
 ## Defined by
 
 - [RFC 1321 — The MD5 Message-Digest Algorithm](https://www.rfc-editor.org/rfc/rfc1321)
-- [FIPS 180-4 — Secure Hash Standard (SHA-1, SHA-2)](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
+- [FIPS 180-4 — Secure Hash Standard (SHA-1, SHA-2, including SHA-512/t)](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
 - [FIPS 202 — SHA-3 Standard](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)
+- [RFC 7693 — The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)](https://www.rfc-editor.org/rfc/rfc7693)
+- [BLAKE3 specification](https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf)
 - [ISO/IEC 13239 — CRC-32 (ISO-HDLC)](https://reveng.sourceforge.io/crc-catalogue/17plus.htm#crc.cat.crc-32-iso-hdlc)
 
 ## Use it on its own
@@ -62,6 +68,7 @@ import { hashText, hashAll, hashBytes, crc32 } from '@fodt/hash-text';
 
 hashText('abc', 'sha256');            // 'ba7816bf…'
 hashText('abc', 'md5', 'base64');     // digest in Base64
+hashText('abc', 'blake3');            // BLAKE3's default 256-bit output
 hashAll(new TextEncoder().encode('abc')); // every algorithm at once
 crc32(new Uint8Array([1, 2, 3]));     // a number
 ```
@@ -78,7 +85,7 @@ Hashing is synchronous. The cryptographic work is done by `@noble/hashes`, which
 npm test
 ```
 
-Asserted against the published vectors: the full RFC 1321 appendix A.5 MD5 suite, FIPS 180-4 samples for SHA-1 and SHA-2 including the multi-block case, FIPS 202 samples for SHA-3, the reference RIPEMD-160 vectors, and the documented CRC-32 check value 0xCBF43926. A differential pass then compares every algorithm against Node's own `crypto` module over 200 random buffers and at every block boundary from 0 to 256 bytes, where padding bugs hide.
+Asserted against the published vectors: the full RFC 1321 appendix A.5 MD5 suite, FIPS 180-4 samples for SHA-1, SHA-2 and SHA-512/t (SHA-512/224, SHA-512/256) including the multi-block case, FIPS 202 samples for SHA-3, RFC 7693 Appendix A and B for BLAKE2b-512 and BLAKE2s-256, the BLAKE3 project's own test_vectors.json for input lengths 0, 1, 1023, 1024 and 1025, the reference RIPEMD-160 vectors, and the documented CRC-32 check value 0xCBF43926. A differential pass then compares every algorithm Node's own `crypto` module also implements against it, over 200 random buffers and at every block boundary from 0 to 256 bytes (plus SHA3-224's and SHA3-384's own rate boundaries), where padding bugs hide; BLAKE3 has no Node `crypto` counterpart, so it rests on the published test vectors and a digest-length check instead.
 
 ## Licence
 

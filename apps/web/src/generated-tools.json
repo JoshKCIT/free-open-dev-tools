@@ -939,7 +939,14 @@
       "sha1",
       "crc32",
       "digest",
-      "worker"
+      "worker",
+      "sha3",
+      "sha512/256",
+      "sha512/224",
+      "blake2",
+      "blake2b",
+      "blake2s",
+      "blake3"
     ]
   },
   "hash-text": {
@@ -957,7 +964,14 @@
       "sha1",
       "crc32",
       "checksum",
-      "digest"
+      "digest",
+      "sha3",
+      "sha512/256",
+      "sha512/224",
+      "blake2",
+      "blake2b",
+      "blake2s",
+      "blake3"
     ]
   },
   "hmac": {

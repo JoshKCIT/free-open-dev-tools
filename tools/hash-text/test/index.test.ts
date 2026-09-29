@@ -60,11 +60,38 @@ describe('FIPS 180-4 — SHA-1 and SHA-2 sample vectors', () => {
       '8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909',
     );
   });
+
+  it('SHA-512/224 of "abc" (FIPS 180-4 section 5.3.6.2 initial value, NIST CSRC example)', () => {
+    expect(hashText('abc', 'sha512-224')).toBe('4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa');
+  });
+
+  it('SHA-512/256 of "abc" (FIPS 180-4 section 5.3.6.2 initial value, NIST CSRC example)', () => {
+    expect(hashText('abc', 'sha512-256')).toBe('53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23');
+  });
+
+  it('SHA-512/224 and SHA-512/256 are not truncated SHA-224/SHA-256', () => {
+    expect(hashText('abc', 'sha512-224')).not.toBe(hashText('abc', 'sha224').slice(0, 56));
+    expect(hashText('abc', 'sha512-256')).not.toBe(hashText('abc', 'sha256'));
+  });
 });
 
 describe('FIPS 202 — SHA-3 and Keccak', () => {
+  it('SHA3-224 of the empty string and of "abc"', () => {
+    expect(hashText('', 'sha3-224')).toBe('6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7');
+    expect(hashText('abc', 'sha3-224')).toBe('e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf');
+  });
+
   it('SHA3-256 of the empty string', () => {
     expect(hashText('', 'sha3-256')).toBe('a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a');
+  });
+
+  it('SHA3-384 of the empty string and of "abc"', () => {
+    expect(hashText('', 'sha3-384')).toBe(
+      '0c63a75b845e4f7d01107d852e4c2485c51a50aaaa94fc61995e71bbee983a2ac3713831264adb47fb6bd1e058d5f004',
+    );
+    expect(hashText('abc', 'sha3-384')).toBe(
+      'ec01498288516fc926459f58e2c6ad8df9b473cb0fc08c2596da7cf0e49be4b298d88cea927ac7f539f1edf228376d25',
+    );
   });
 
   it('SHA3-512 of the empty string', () => {
@@ -77,6 +104,48 @@ describe('FIPS 202 — SHA-3 and Keccak', () => {
     // This trips people up constantly: Ethereum's "sha3" is original Keccak.
     expect(hashText('', 'keccak-256')).toBe('c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470');
     expect(hashText('', 'keccak-256')).not.toBe(hashText('', 'sha3-256'));
+  });
+});
+
+describe('RFC 7693 Appendix A and B: BLAKE2b-512 and BLAKE2s-256', () => {
+  it('BLAKE2b-512 of "abc" (Appendix A)', () => {
+    expect(hashText('abc', 'blake2b-512')).toBe(
+      'ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923',
+    );
+  });
+
+  it('BLAKE2s-256 of "abc" (Appendix B)', () => {
+    expect(hashText('abc', 'blake2s-256')).toBe('508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982');
+  });
+});
+
+describe('BLAKE3 official test vectors (test_vectors.json)', () => {
+  // input byte i = i % 251, per the BLAKE3 repository's own
+  // test_vectors/test_vectors.json generation rule. Only the first 32
+  // bytes (64 hex characters) of the "hash" field are asserted, since this
+  // tool only offers the default 256-bit output.
+  function inputOfLength(len: number): Uint8Array {
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = i % 251;
+    return bytes;
+  }
+
+  const cases: [number, string][] = [
+    [0, 'af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262'],
+    [1, '2d3adedff11b61f14c886e35afa036736dcd87a74d27b5c1510225d0f592e213'],
+    [1023, '10108970eeda3eb932baac1428c7a2163b0e924c9a9e25b35bba72b28f70bd11'],
+    [1024, '42214739f095a406f3fc83deb889744ac00df831c10daa55189b5d121c855af7'],
+    [1025, 'd00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b8444'],
+  ];
+
+  for (const [len, expected] of cases) {
+    it(`input length ${len}`, () => {
+      expect(format(hashBytes(inputOfLength(len), 'blake3'), 'hex')).toBe(expected);
+    });
+  }
+
+  it('produces a 32-byte (256-bit) digest', () => {
+    expect(hashBytes(new Uint8Array(0), 'blake3')).toHaveLength(32);
   });
 });
 
@@ -124,9 +193,15 @@ describe('agreement with the Node crypto module', () => {
     ['sha256', 'sha256'],
     ['sha384', 'sha384'],
     ['sha512', 'sha512'],
+    ['sha512-224', 'sha512-224'],
+    ['sha512-256', 'sha512-256'],
+    ['sha3-224', 'sha3-224'],
     ['sha3-256', 'sha3-256'],
+    ['sha3-384', 'sha3-384'],
     ['sha3-512', 'sha3-512'],
     ['ripemd160', 'ripemd160'],
+    ['blake2b-512', 'blake2b512'],
+    ['blake2s-256', 'blake2s256'],
   ];
 
   it('matches across 200 random inputs of varying length', () => {
@@ -144,8 +219,11 @@ describe('agreement with the Node crypto module', () => {
   });
 
   it('matches at every block boundary, where padding bugs live', () => {
-    // SHA-256 blocks are 64 bytes, SHA-512 blocks are 128.
-    for (const len of [0, 1, 55, 56, 57, 63, 64, 65, 111, 112, 113, 127, 128, 129, 255, 256]) {
+    // SHA-256 blocks are 64 bytes, SHA-512 blocks are 128, SHA3-384's rate
+    // is 104 bytes and SHA3-224's rate is 144 bytes.
+    for (const len of [
+      0, 1, 55, 56, 57, 63, 64, 65, 103, 104, 105, 111, 112, 113, 127, 128, 129, 143, 144, 145, 255, 256,
+    ]) {
       const buf = new Uint8Array(len).fill(0x61);
       for (const [ours, theirs] of pairs) {
         expect(format(hashBytes(buf, ours as never), 'hex')).toBe(
@@ -202,6 +280,12 @@ describe('hashAll and comparison', () => {
     expect(results.find((r) => r.algorithm === 'md5')!.security).toBe('broken');
     expect(results.find((r) => r.algorithm === 'sha1')!.security).toBe('broken');
     expect(results.find((r) => r.algorithm === 'crc32')!.security).toBe('checksum');
+  });
+
+  it("every algorithm's declared bit length equals 8 times the byte length it actually returns", () => {
+    for (const info of ALGORITHMS) {
+      expect(hashBytes(new TextEncoder().encode('abc'), info.id), info.id).toHaveLength(info.bits / 8);
+    }
   });
 
   it('compares digests ignoring case and separators', () => {

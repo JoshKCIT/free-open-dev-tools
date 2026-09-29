@@ -1,6 +1,8 @@
 import { md5, sha1, ripemd160 } from '@noble/hashes/legacy.js';
-import { sha256, sha384, sha512, sha224 } from '@noble/hashes/sha2.js';
-import { sha3_256, sha3_512, keccak_256 } from '@noble/hashes/sha3.js';
+import { sha256, sha384, sha512, sha224, sha512_224, sha512_256 } from '@noble/hashes/sha2.js';
+import { sha3_256, sha3_512, keccak_256, sha3_224, sha3_384 } from '@noble/hashes/sha3.js';
+import { blake2b, blake2s } from '@noble/hashes/blake2.js';
+import { blake3 } from '@noble/hashes/blake3.js';
 import { bytesToHex, utf8ToBytes, hexToBytes } from '@noble/hashes/utils.js';
 import meta from './meta.json';
 
@@ -13,9 +15,16 @@ export type Algorithm =
   | 'sha256'
   | 'sha384'
   | 'sha512'
+  | 'sha512-224'
+  | 'sha512-256'
+  | 'sha3-224'
   | 'sha3-256'
+  | 'sha3-384'
   | 'sha3-512'
   | 'keccak-256'
+  | 'blake2b-512'
+  | 'blake2s-256'
+  | 'blake3'
   | 'ripemd160'
   | 'crc32';
 
@@ -66,9 +75,37 @@ export const ALGORITHMS: AlgorithmInfo[] = [
     note: 'SHA-2 family. Faster than SHA-256 on 64-bit hardware.',
   },
   {
+    id: 'sha512-224',
+    label: 'SHA-512/224',
+    bits: 224,
+    security: 'ok',
+    note: "SHA-512's compression function with its own initial values, truncated to 224 bits. Not the same digest as SHA-224, even though the bit length matches; often faster than SHA-224 on 64-bit hardware.",
+  },
+  {
+    id: 'sha512-256',
+    label: 'SHA-512/256',
+    bits: 256,
+    security: 'ok',
+    note: "SHA-512's compression function with its own initial values, truncated to 256 bits. Not the same digest as SHA-256, even though the bit length matches; often faster than SHA-256 on 64-bit hardware.",
+  },
+  {
+    id: 'sha3-224',
+    label: 'SHA3-224',
+    bits: 224,
+    security: 'ok',
+    note: 'Keccak-based, standardised in FIPS 202. A different construction from SHA-2.',
+  },
+  {
     id: 'sha3-256',
     label: 'SHA3-256',
     bits: 256,
+    security: 'ok',
+    note: 'Keccak-based, standardised in FIPS 202. A different construction from SHA-2.',
+  },
+  {
+    id: 'sha3-384',
+    label: 'SHA3-384',
+    bits: 384,
     security: 'ok',
     note: 'Keccak-based, standardised in FIPS 202. A different construction from SHA-2.',
   },
@@ -79,6 +116,27 @@ export const ALGORITHMS: AlgorithmInfo[] = [
     bits: 256,
     security: 'ok',
     note: 'The original Keccak padding, not the FIPS 202 one. This is what Ethereum uses, and it gives different output from SHA3-256.',
+  },
+  {
+    id: 'blake2b-512',
+    label: 'BLAKE2b-512',
+    bits: 512,
+    security: 'ok',
+    note: 'RFC 7693, unkeyed, full 64-byte output. BLAKE2b at a shorter output length is a different digest, not a truncation of this one.',
+  },
+  {
+    id: 'blake2s-256',
+    label: 'BLAKE2s-256',
+    bits: 256,
+    security: 'ok',
+    note: 'RFC 7693, unkeyed, 32-byte output, designed for 8- to 32-bit platforms.',
+  },
+  {
+    id: 'blake3',
+    label: 'BLAKE3',
+    bits: 256,
+    security: 'ok',
+    note: 'The plain hashing mode with its default 256-bit output. Not a NIST standard, but well analysed and very fast; keyed, key-derivation and longer extendable-output modes are not offered here.',
   },
   {
     id: 'ripemd160',
@@ -157,12 +215,26 @@ export function hashBytes(bytes: Uint8Array, algorithm: Algorithm): Uint8Array {
       return sha384(bytes);
     case 'sha512':
       return sha512(bytes);
+    case 'sha512-224':
+      return sha512_224(bytes);
+    case 'sha512-256':
+      return sha512_256(bytes);
+    case 'sha3-224':
+      return sha3_224(bytes);
     case 'sha3-256':
       return sha3_256(bytes);
+    case 'sha3-384':
+      return sha3_384(bytes);
     case 'sha3-512':
       return sha3_512(bytes);
     case 'keccak-256':
       return keccak_256(bytes);
+    case 'blake2b-512':
+      return blake2b(bytes);
+    case 'blake2s-256':
+      return blake2s(bytes);
+    case 'blake3':
+      return blake3(bytes);
     case 'ripemd160':
       return ripemd160(bytes);
     case 'crc32': {
