@@ -322,25 +322,27 @@ describe('round-trip property', () => {
     const count = Math.floor(rand() * 4);
     for (let i = 0; i < count; i++) {
       const key = randomKey();
-      obj[key] = randomValue(depth - 1);
+      // defineProperty, not `obj[key] =`: assigning to a key named
+      // __proto__ would replace the prototype instead of creating the own
+      // key this property test is meant to exercise.
+      Object.defineProperty(obj, key, {
+        value: randomValue(depth - 1),
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     return obj;
   }
 
   it('applyJsonPatch(a, toJsonPatch(a, b)) deep-equals b, over 300 seeded pairs', () => {
-    // Compared with this package's own RFC 6902 section 4.6 `jsonEqual`
-    // (object member order ignored, array order significant) rather than
-    // `toStrictEqual`: over hundreds of large, deeply nested random pairs
-    // in one test, Vitest's own structural-equality comparator was
-    // observed to report a spurious mismatch on a pair an independent
-    // hand-rolled recursive walk confirmed had no real structural
-    // difference.
     for (let i = 0; i < 300; i++) {
       const a = randomValue(3);
       const b = randomValue(3);
       const patch = toJsonPatch(a, b);
       const result = applyJsonPatch(a, patch);
-      expect(jsonEqual(result, b), `pair ${i}: ${JSON.stringify(result)} vs ${JSON.stringify(b)}`).toBe(true);
+      expect(result, `pair ${i}`).toStrictEqual(b);
+      expect(jsonEqual(result, b), `pair ${i}`).toBe(true);
     }
   });
 });
