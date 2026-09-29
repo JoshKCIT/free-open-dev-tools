@@ -27,7 +27,9 @@
     "invisible characters",
     "escape sequences",
     "nfc",
-    "nfd"
+    "nfd",
+    "remove accents",
+    "diacritics"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

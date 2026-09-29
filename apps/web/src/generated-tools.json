@@ -2362,7 +2362,9 @@
       "invisible characters",
       "escape sequences",
       "nfc",
-      "nfd"
+      "nfd",
+      "remove accents",
+      "diacritics"
     ]
   },
   "unix-timestamp": {

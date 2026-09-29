@@ -307,6 +307,61 @@ export function normalise(text: string, form: NormalisationForm): string {
   return text.normalize(form);
 }
 
+export interface RemoveAccentsOptions {
+  /** Default true. Remove a combining mark only when its base letter is Latin, Greek or Cyrillic; off removes every combining mark. */
+  onlyLatinGreekCyrillic?: boolean;
+}
+
+export interface RemoveAccentsResult {
+  output: string;
+  /** How many combining marks were removed. */
+  removed: number;
+}
+
+// Built once at module load, per UnicodeData.txt field 5 (Decomposition
+// Mapping): a combining mark carries General_Category=Mark (Mn, Mc or Me),
+// and the three scripts this tool restricts removal to by default.
+// https://www.unicode.org/Public/UNIDATA/UnicodeData.txt
+const COMBINING_MARK = /\p{M}/u;
+const LATIN_GREEK_CYRILLIC = /[\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}]/u;
+
+/**
+ * Strips combining marks from text: decomposes to NFD (so a precomposed
+ * character such as é becomes e + a combining acute accent), removes marks
+ * per `options`, then recomposes the kept text to NFC.
+ *
+ * A combining mark belongs to the nearest PRECEDING non-mark code point in
+ * the decomposed text. With `onlyLatinGreekCyrillic` on (the default), a
+ * mark is removed only when that base letter's script is Latin, Greek or
+ * Cyrillic -- a mark with no preceding base at all, or on a digit, symbol,
+ * space or any other script, is kept. With the option off, every combining
+ * mark is removed regardless of its base, which also clears "Zalgo" text.
+ */
+export function removeAccents(text: string, options: RemoveAccentsOptions = {}): RemoveAccentsResult {
+  const onlyLatinGreekCyrillic = options.onlyLatinGreekCyrillic ?? true;
+  const decomposed = text.normalize('NFD');
+
+  let kept = '';
+  let removed = 0;
+  let baseIsLatinGreekCyrillic = false;
+
+  for (const ch of decomposed) {
+    if (COMBINING_MARK.test(ch)) {
+      const shouldRemove = onlyLatinGreekCyrillic ? baseIsLatinGreekCyrillic : true;
+      if (shouldRemove) {
+        removed++;
+      } else {
+        kept += ch;
+      }
+      continue;
+    }
+    baseIsLatinGreekCyrillic = LATIN_GREEK_CYRILLIC.test(ch);
+    kept += ch;
+  }
+
+  return { output: kept.normalize('NFC'), removed };
+}
+
 export type EscapeStyle = 'javascript' | 'html-numeric' | 'code-point';
 
 export interface ToEscapesOptions {

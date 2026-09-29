@@ -2,6 +2,7 @@ import { it, expect } from 'vitest';
 import {
   inspect,
   normalise,
+  removeAccents,
   toEscapes,
   fromEscapes,
   INVISIBLE,
@@ -179,4 +180,72 @@ it('escaping to the JavaScript, HTML numeric and code-point forms produces the e
   expect(toEscapes('A')).toBe('\\u0041');
   expect(toEscapes('A', { style: 'html-numeric' })).toBe('&#65;');
   expect(toEscapes('A', { style: 'code-point' })).toBe('\\u{41}');
+});
+
+// removeAccents: decomposition mappings taken from UnicodeData.txt field 5
+// (Decomposition Mapping) -- https://www.unicode.org/Public/UNIDATA/UnicodeData.txt
+
+it('removes a single combining accent from a Latin letter (é -> e, ñ -> n)', () => {
+  expect(removeAccents('é')).toEqual({ output: 'e', removed: 1 });
+  expect(removeAccents('ñ')).toEqual({ output: 'n', removed: 1 });
+});
+
+it('removes both marks of a doubly-decomposed Latin letter (U+01D6 decomposes to U+00FC U+0304, and U+00FC to U+0075 U+0308)', () => {
+  const doublyDecomposed = String.fromCodePoint(0x01d6);
+  expect(removeAccents(doublyDecomposed)).toEqual({ output: 'u', removed: 2 });
+});
+
+it('strips the stacked Vietnamese marks from every letter in a word', () => {
+  expect(removeAccents('Tiếng Việt')).toEqual({ output: 'Tieng Viet', removed: 4 });
+});
+
+it('with the option off, removes every combining mark, including Zalgo marks stacked on Latin letters', () => {
+  const zalgo = 'Z̶a̵̡l̷g̸o̴͜';
+  expect(removeAccents(zalgo, { onlyLatinGreekCyrillic: false })).toEqual({ output: 'Zalgo', removed: 7 });
+});
+
+it('a mark on a digit is kept by default (no Latin/Greek/Cyrillic base) and removed when the option is off', () => {
+  const digitWithMark = `1${String.fromCodePoint(0x0301)}`;
+  expect(removeAccents(digitWithMark)).toEqual({ output: digitWithMark, removed: 0 });
+  expect(removeAccents(digitWithMark, { onlyLatinGreekCyrillic: false })).toEqual({ output: '1', removed: 1 });
+});
+
+it('Devanagari vowel signs are kept by default and stripped when the option is off', () => {
+  expect(removeAccents('हिन्दी')).toEqual({ output: 'हिन्दी', removed: 0 });
+  expect(removeAccents('हिन्दी', { onlyLatinGreekCyrillic: false })).toEqual({ output: 'हनद', removed: 3 });
+});
+
+it('leaves distinct Latin letters that are not accented forms unchanged (ø, ł, đ, ß, æ)', () => {
+  expect(removeAccents('øłđßæ')).toEqual({ output: 'øłđßæ', removed: 0 });
+});
+
+it('strips a Greek tonos and Cyrillic breve/diaeresis marks', () => {
+  expect(removeAccents('Ελληνικά')).toEqual({ output: 'Ελληνικα', removed: 1 });
+  expect(removeAccents('йё')).toEqual({ output: 'ие', removed: 2 });
+});
+
+it('leaves Hebrew points untouched by default', () => {
+  expect(removeAccents('שָׁלוֹם')).toEqual({ output: 'שָׁלוֹם', removed: 0 });
+});
+
+it('leaves a Japanese voiced sound mark untouched by default, and strips it when the option is off', () => {
+  const ga = String.fromCodePoint(0x304c);
+  const ka = String.fromCodePoint(0x304b);
+  expect(removeAccents(ga)).toEqual({ output: ga, removed: 0 });
+  expect(removeAccents(ga, { onlyLatinGreekCyrillic: false })).toEqual({ output: ka, removed: 1 });
+});
+
+it('an already-decomposed base plus mark is handled the same as a precomposed character', () => {
+  expect(removeAccents(`e${String.fromCodePoint(0x0301)}`)).toEqual({ output: 'e', removed: 1 });
+});
+
+it('empty input gives empty output and zero removed', () => {
+  expect(removeAccents('')).toEqual({ output: '', removed: 0 });
+});
+
+it('handles a large input (100,000 accented letters) without excessive cost', () => {
+  const input = 'é'.repeat(100000);
+  const result = removeAccents(input);
+  expect(result.output).toBe('e'.repeat(100000));
+  expect(result.removed).toBe(100000);
 });

@@ -2,13 +2,14 @@ import {
   meta,
   inspect,
   normalise,
+  removeAccents,
   toEscapes,
   fromEscapes,
   UnicodeInspectorError,
   type NormalisationForm,
   type EscapeStyle,
 } from '@fodt/unicode-inspector';
-import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** D-24: the row cap for the inspection table. Stated in meta.json limits too. */
 const ROW_CAP = 5000;
@@ -44,6 +45,7 @@ export default defineTool({
         { value: 'inspect', label: 'Inspect' },
         { value: 'normalise', label: 'Normalise' },
         { value: 'escapes', label: 'Escape sequences' },
+        { value: 'accents', label: 'Remove accents' },
       ],
     },
     {
@@ -90,11 +92,19 @@ export default defineTool({
       ],
       visible: (v) => v.mode === 'escapes',
     },
+    {
+      name: 'onlyLatinGreekCyrillic',
+      label: 'Only from Latin, Greek and Cyrillic letters',
+      type: 'checkbox',
+      default: true,
+      visible: (v) => v.mode === 'accents',
+    },
   ],
   examples: [
     { label: 'Hidden zero-width space', values: { mode: 'inspect', input: 'ad​min' } },
     { label: 'Composed vs decomposed', values: { mode: 'normalise', input: 'é', form: 'NFC' } },
     { label: 'Escape to HTML numeric', values: { mode: 'escapes', input: 'café', style: 'html-numeric' } },
+    { label: 'Remove accents', values: { mode: 'accents', input: 'Crème brûlée, Tiếng Việt' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
@@ -152,6 +162,18 @@ export default defineTool({
           ['Input code points', `${Array.from(input).length}`],
           ['Output code points', `${Array.from(result).length}`],
           ['Changed', result === input ? 'no' : 'yes'],
+        ],
+      };
+    }
+
+    if (mode === 'accents') {
+      const onlyLatinGreekCyrillic = bool(values, 'onlyLatinGreekCyrillic', true);
+      const result = removeAccents(input, { onlyLatinGreekCyrillic });
+      return {
+        outputs: [{ kind: 'code', label: 'Without accents', value: result.output, download: 'no-accents.txt' }],
+        stats: [
+          ['Marks removed', `${result.removed}`],
+          ['Changed', result.output === input ? 'no' : 'yes'],
         ],
       };
     }
