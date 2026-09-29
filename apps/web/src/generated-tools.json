@@ -580,6 +580,14 @@
       "toml to json"
     ]
   },
+  "data-size": {
+    "id": "data-size",
+    "name": "Data Size & Transfer Time",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": []
+  },
   "data-to-sql": {
     "id": "data-to-sql",
     "name": "CSV & JSON to SQL",
@@ -921,6 +929,14 @@
       "preview",
       "layout"
     ]
+  },
+  "gzip-deflate": {
+    "id": "gzip-deflate",
+    "name": "Gzip, Zlib & Deflate Codec",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": []
   },
   "hash-file": {
     "id": "hash-file",
@@ -2045,6 +2061,28 @@
       "mysql",
       "sqlite",
       "sql server"
+    ]
+  },
+  "string-escape": {
+    "id": "string-escape",
+    "name": "String Literal Escaper",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "string escape",
+      "unescape",
+      "literal",
+      "quote",
+      "javascript",
+      "java",
+      "csharp",
+      "python",
+      "go",
+      "sql",
+      "csv",
+      "shell",
+      "regex"
     ]
   },
   "svg-optimizer": {

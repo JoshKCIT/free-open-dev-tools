@@ -542,6 +542,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/data-size:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/data-to-sql:
     devDependencies:
       '@types/sql.js':
@@ -796,6 +805,15 @@ importers:
       css-tree:
         specifier: ^3.2.1
         version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/gzip-deflate:
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -1649,6 +1667,15 @@ importers:
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@types/sql.js@1.4.11)(sql.js@1.14.2)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/string-escape:
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

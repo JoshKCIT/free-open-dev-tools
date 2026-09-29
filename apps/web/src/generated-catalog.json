@@ -73,6 +73,15 @@
       "implemented": true
     },
     {
+      "id": "string-escape",
+      "name": "String Literal Escaper",
+      "category": "encoding",
+      "categoryLabel": "Encoding, escaping and numbers",
+      "tier": 1,
+      "summary": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell and regular expressions.",
+      "implemented": true
+    },
+    {
       "id": "data-uri",
       "name": "Data URI Converter",
       "category": "encoding",

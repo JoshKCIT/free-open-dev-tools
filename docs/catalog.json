@@ -56,6 +56,13 @@
     "summary": "Escape and unescape JSON string literals exactly as RFC 8259 defines them."
   },
   {
+    "id": "string-escape",
+    "name": "String Literal Escaper",
+    "category": "encoding",
+    "tier": 1,
+    "summary": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell and regular expressions."
+  },
+  {
     "id": "data-uri",
     "name": "Data URI Converter",
     "category": "encoding",
