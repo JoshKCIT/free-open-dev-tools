@@ -819,6 +819,13 @@
     "summary": "Generate an nginx server block for common hosting patterns."
   },
   {
+    "id": "data-size",
+    "name": "Data Size & Transfer Time",
+    "category": "network",
+    "tier": 1,
+    "summary": "Convert between bits, bytes and their SI and IEC multiples, convert speeds, and work out transfer times."
+  },
+  {
     "id": "http-status-codes",
     "name": "HTTP Status Code Reference",
     "category": "reference",

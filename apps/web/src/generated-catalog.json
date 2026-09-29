@@ -1054,6 +1054,15 @@
       "implemented": true
     },
     {
+      "id": "data-size",
+      "name": "Data Size & Transfer Time",
+      "category": "network",
+      "categoryLabel": "Network and web",
+      "tier": 1,
+      "summary": "Convert between bits, bytes and their SI and IEC multiples, convert speeds, and work out transfer times.",
+      "implemented": true
+    },
+    {
       "id": "http-status-codes",
       "name": "HTTP Status Code Reference",
       "category": "reference",
