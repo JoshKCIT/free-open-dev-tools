@@ -408,3 +408,56 @@ describe('errors', () => {
     expect(() => parseIpv6('nope')).toThrow(IpError);
   });
 });
+
+describe('the address as an unsigned integer, IPv4 dotted-decimal convention', () => {
+  it('192.168.1.1 is 3232235777 decimal and 0xC0A80101 hex, confirmed by a second, independent computation', () => {
+    const r = describeNet('192.168.1.1');
+    expect(r.addressDecimal).toBe('3232235777');
+    expect(r.addressHex).toBe('0xC0A80101');
+    expect(BigInt(Buffer.from([192, 168, 1, 1]).readUInt32BE(0))).toBe(BigInt(r.addressDecimal));
+  });
+
+  it('0.0.0.0/0 is 0 decimal and 0x0 hex', () => {
+    const r = describeNet('0.0.0.0/0');
+    expect(r.addressDecimal).toBe('0');
+    expect(r.addressHex).toBe('0x0');
+  });
+
+  it('255.255.255.255 is 4294967295 decimal and 0xFFFFFFFF hex', () => {
+    const r = describeNet('255.255.255.255');
+    expect(r.addressDecimal).toBe('4294967295');
+    expect(r.addressHex).toBe('0xFFFFFFFF');
+  });
+
+  it('192.168.1.130/26 reports the typed host address, not the network address, as the integer', () => {
+    const r = describeNet('192.168.1.130/26');
+    expect(r.network).toBe('192.168.1.128');
+    expect(r.addressDecimal).toBe('3232235906');
+  });
+
+  it('a bare integer is still refused as input; the integer forms are output only', () => {
+    expect(() => describeNet('3232235777')).toThrow(IpError);
+  });
+});
+
+describe('the address as an unsigned integer, RFC 4291 section 2.2 (IPv6 text representation)', () => {
+  it('::1 is 1 decimal and 0x1 hex', () => {
+    const r = describeNet('::1');
+    expect(r.addressDecimal).toBe('1');
+    expect(r.addressHex).toBe('0x1');
+  });
+
+  it('2001:db8::1 matches a value computed independently in this test', () => {
+    const expected = (0x20010db8n << 96n) | 1n;
+    expect(expected).toBe(42540766411282592856903984951653826561n);
+    const r = describeNet('2001:db8::1');
+    expect(r.addressDecimal).toBe(expected.toString());
+    expect(r.addressHex).toBe('0x20010DB8000000000000000000000001');
+  });
+
+  it('the all-ones IPv6 address is 2^128 - 1 decimal and 0x followed by 32 F characters', () => {
+    const r = describeNet('ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff');
+    expect(r.addressDecimal).toBe(((1n << 128n) - 1n).toString());
+    expect(r.addressHex).toBe('0x' + 'F'.repeat(32));
+  });
+});

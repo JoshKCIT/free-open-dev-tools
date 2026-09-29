@@ -108,6 +108,8 @@ export default defineTool({
         pairs.push(['Usable hosts', r.usableHosts]);
         if (r.expanded) pairs.push(['Expanded', r.expanded]);
         pairs.push(['Reverse DNS name', r.arpa]);
+        pairs.push(['Address as an integer', r.addressDecimal]);
+        pairs.push(['Address in hexadecimal', r.addressHex]);
 
         const outputs: OutputBlock[] = [{ kind: 'keyvalue', label: `IPv${r.version} block`, pairs }];
 

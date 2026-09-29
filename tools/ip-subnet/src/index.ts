@@ -226,6 +226,10 @@ export interface SubnetReport {
   version: IpVersion;
   cidr: string;
   inputAddress: string;
+  /** The typed address (not the network address) as a plain decimal integer. */
+  addressDecimal: string;
+  /** The typed address (not the network address) as `0x` plus uppercase hex digits, no zero padding. */
+  addressHex: string;
   network: string;
   prefix: number;
   mask: string;
@@ -318,6 +322,8 @@ export function describe(cidrText: string): SubnetReport {
     version,
     cidr: `${formatAddress(networkValue, version)}/${prefix}`,
     inputAddress: formatAddress(net.address, version),
+    addressDecimal: net.address.toString(),
+    addressHex: '0x' + net.address.toString(16).toUpperCase(),
     network: formatAddress(networkValue, version),
     prefix,
     mask: formatAddress(mask, version),

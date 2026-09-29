@@ -22,6 +22,7 @@ Works out everything about a network block: the network and broadcast addresses,
 - Naming reserved and special-purpose ranges from the RFC 6890 registries
 - Reverse DNS names, in-addr.arpa and ip6.arpa
 - Generating random addresses inside a block
+- The typed address as an unsigned integer, in decimal and hexadecimal: 32-bit for IPv4, 128-bit for IPv6
 
 ## Limits
 
@@ -35,6 +36,7 @@ Works out everything about a network block: the network and broadcast addresses,
 - A /31 has no broadcast address and both of its addresses are usable, as RFC 3021 defines for point-to-point links. Applying the usual subtract-two rule makes a working link look unusable, so /31 and /32 are handled as their own cases.
 - An IPv4 octet with a leading zero, such as 192.168.01.1, is read as decimal by some libraries and octal by others. That disagreement has been used to slip past address filters, so it is refused rather than guessed at.
 - An address given without a prefix is treated as a single host, /32 or /128, rather than assumed to be a classful network.
+- A bare integer, such as 3232235777, is not accepted as input, because the same number could mean an IPv4 address, an IPv6 address or a plain count; the integer forms are output only.
 
 ## Defined by
 
