@@ -71,5 +71,62 @@ it('an empty split separator throws instead of splitting into single characters'
 });
 
 it('OPERATIONS lists every operation the page can select', () => {
-  expect(OPERATIONS).toEqual(['sort', 'dedupe', 'shuffle', 'number', 'trim', 'filter', 'join', 'split']);
+  expect(OPERATIONS).toEqual([
+    'sort',
+    'dedupe',
+    'shuffle',
+    'number',
+    'trim',
+    'filter',
+    'join',
+    'split',
+    'affix',
+    'reverse',
+  ]);
+});
+
+it('affix adds a prefix and/or suffix to every line', () => {
+  const r = processLines('a\nb', 'affix', { prefix: '- ', suffix: ';' });
+  expect(r.output).toBe('- a;\n- b;');
+});
+
+it('affix can skip blank lines, leaving them unchanged in place', () => {
+  const skipped = processLines('a\n\n  \nb', 'affix', { prefix: '> ', skipBlank: true });
+  expect(skipped.output).toBe('> a\n\n  \n> b');
+
+  const notSkipped = processLines('a\n\n  \nb', 'affix', { prefix: '> ', skipBlank: false });
+  expect(notSkipped.output).toBe('> a\n> \n>   \n> b');
+});
+
+it('reverse reverses the order of the lines', () => {
+  const r = processLines('a\r\nb\r\nc', 'reverse', {});
+  expect(r.output).toBe('c\nb\na');
+});
+
+it('length sort orders by code-point length, not UTF-16 code units, with ties in original order', () => {
+  const input = 'ccc\na\nbb\nd\n😀😀';
+
+  const ascending = processLines(input, 'sort', { order: 'length' });
+  expect(ascending.output.split('\n')).toEqual(['a', 'd', 'bb', '😀😀', 'ccc']);
+
+  const descending = processLines(input, 'sort', { order: 'length', descending: true });
+  expect(descending.output.split('\n')).toEqual(['ccc', 'bb', '😀😀', 'a', 'd']);
+});
+
+it('length sort does not count a stripped carriage return', () => {
+  const r = processLines('ccc\r\na\r\nbb', 'sort', { order: 'length' });
+  expect(r.output.split('\n')).toEqual(['a', 'bb', 'ccc']);
+});
+
+it('affix, reverse and length sort all handle empty input the same way as every other operation', () => {
+  for (const [operation, options] of [
+    ['affix', { prefix: '> ' }],
+    ['reverse', {}],
+    ['sort', { order: 'length' }],
+  ] as const) {
+    const r = processLines('', operation, options);
+    expect(r.output, operation).toBe('');
+    expect(r.linesIn, operation).toBe(0);
+    expect(r.linesOut, operation).toBe(0);
+  }
 });

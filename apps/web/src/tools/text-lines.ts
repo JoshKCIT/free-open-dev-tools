@@ -10,6 +10,8 @@ const OPERATION_LABELS: Record<LineOperation, string> = {
   filter: 'Filter',
   join: 'Join',
   split: 'Split',
+  affix: 'Add prefix or suffix',
+  reverse: 'Reverse order',
 };
 
 const isOp = (values: Values, op: LineOperation) => str(values, 'operation', 'sort') === op;
@@ -40,6 +42,7 @@ export default defineTool({
       options: [
         { value: 'codepoint', label: 'Code point' },
         { value: 'natural', label: 'Natural (line 2 before line 10)' },
+        { value: 'length', label: 'Length in characters' },
       ],
       visible: (values) => isOp(values, 'sort'),
     },
@@ -122,10 +125,32 @@ export default defineTool({
       default: ',',
       visible: (values) => isOp(values, 'split'),
     },
+    {
+      name: 'prefix',
+      label: 'Prefix',
+      type: 'text',
+      default: '',
+      visible: (values) => isOp(values, 'affix'),
+    },
+    {
+      name: 'suffix',
+      label: 'Suffix',
+      type: 'text',
+      default: '',
+      visible: (values) => isOp(values, 'affix'),
+    },
+    {
+      name: 'skipBlank',
+      label: 'Skip blank lines',
+      type: 'checkbox',
+      default: false,
+      visible: (values) => isOp(values, 'affix'),
+    },
   ],
   examples: [
     { label: 'Sort', values: { input: 'banana\napple\ncherry', operation: 'sort' } },
     { label: 'Natural order', values: { input: 'line 10\nline 2\nline 1', operation: 'sort', order: 'natural' } },
+    { label: 'Add a prefix', values: { input: 'apple\nbanana\ncherry', operation: 'affix', prefix: '- ' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
@@ -134,7 +159,7 @@ export default defineTool({
     const operation = str(values, 'operation', 'sort') as LineOperation;
     try {
       const result = processLines(input, operation, {
-        order: str(values, 'order', 'codepoint') as 'codepoint' | 'natural',
+        order: str(values, 'order', 'codepoint') as 'codepoint' | 'natural' | 'length',
         descending: bool(values, 'descending'),
         ignoreCase: bool(values, 'ignoreCase'),
         seed: str(values, 'seed', '1'),
@@ -146,6 +171,9 @@ export default defineTool({
         filterMode: str(values, 'filterMode', 'keep') as 'keep' | 'remove',
         joinWith: str(values, 'joinWith', ', '),
         splitOn: str(values, 'splitOn', ','),
+        prefix: str(values, 'prefix', ''),
+        suffix: str(values, 'suffix', ''),
+        skipBlank: bool(values, 'skipBlank'),
       });
 
       const outputs: OutputBlock[] = [{ kind: 'code', value: result.output }];

@@ -9,12 +9,23 @@ export class TextLinesError extends Error {
   }
 }
 
-export const OPERATIONS = ['sort', 'dedupe', 'shuffle', 'number', 'trim', 'filter', 'join', 'split'] as const;
+export const OPERATIONS = [
+  'sort',
+  'dedupe',
+  'shuffle',
+  'number',
+  'trim',
+  'filter',
+  'join',
+  'split',
+  'affix',
+  'reverse',
+] as const;
 export type LineOperation = (typeof OPERATIONS)[number];
 
 export interface LineOptions {
   /** 'sort' only. Default 'codepoint'. */
-  order?: 'codepoint' | 'natural';
+  order?: 'codepoint' | 'natural' | 'length';
   /** 'sort' only. Default false. */
   descending?: boolean;
   /** 'dedupe' and 'filter'. Default false. */
@@ -37,6 +48,12 @@ export interface LineOptions {
   joinWith?: string;
   /** 'split' only. Default ','. May not be empty. */
   splitOn?: string;
+  /** 'affix' only. Default ''. */
+  prefix?: string;
+  /** 'affix' only. Default ''. */
+  suffix?: string;
+  /** 'affix' only. A blank line (empty after trimming whitespace) is left unchanged when true. Default false. */
+  skipBlank?: boolean;
 }
 
 export interface LinesResult {
@@ -124,6 +141,18 @@ export function processLines(input: string, operation: LineOperation, options: L
   switch (operation) {
     case 'sort': {
       const order = options.order ?? 'codepoint';
+      if (order === 'length') {
+        // Descending uses a negated comparator directly, rather than
+        // sorting ascending and reversing, so a tie stays in its original
+        // order in BOTH directions (reversing an ascending sort would flip
+        // tie order for descending).
+        const codePointLength = (line: string) => Array.from(line).length;
+        const cmp = options.descending
+          ? (a: string, b: string) => codePointLength(b) - codePointLength(a)
+          : (a: string, b: string) => codePointLength(a) - codePointLength(b);
+        result = [...lines].sort(cmp);
+        break;
+      }
       const cmp = order === 'natural' ? naturalCompare : (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
       result = [...lines].sort(cmp);
       if (options.descending) result.reverse();
@@ -181,6 +210,20 @@ export function processLines(input: string, operation: LineOperation, options: L
       const on = options.splitOn ?? ',';
       if (on === '') throw new TextLinesError('The separator to split on cannot be empty.');
       result = input.split(on);
+      break;
+    }
+    case 'affix': {
+      const prefix = options.prefix ?? '';
+      const suffix = options.suffix ?? '';
+      const skipBlank = options.skipBlank ?? false;
+      result = lines.map((line) => {
+        if (skipBlank && line.trim() === '') return line;
+        return `${prefix}${line}${suffix}`;
+      });
+      break;
+    }
+    case 'reverse': {
+      result = [...lines].reverse();
       break;
     }
     default: {

@@ -2,14 +2,16 @@
   "id": "text-lines",
   "name": "Line Toolkit",
   "summary": "Sort, deduplicate, shuffle, number, trim, filter, join and split lines.",
-  "about": "Treats pasted text as a list of lines and reshapes it: sort by code point or natural order, remove duplicates, shuffle with a repeatable seed, number each line, trim whitespace, keep or drop lines matching a literal text, or join and split against a chosen separator.",
+  "about": "Treats pasted text as a list of lines and reshapes it: sort by code point, natural or length order, remove duplicates, shuffle with a repeatable seed, number each line, trim whitespace, keep or drop lines matching a literal text, add a prefix or suffix, reverse the line order, or join and split against a chosen separator.",
   "supports": [
-    "Sort by code point or natural order, so line 2 sorts before line 10, ascending or descending",
+    "Sort by code point, natural or length order, so line 2 sorts before line 10 and a shorter line can sort before a longer one, ascending or descending",
     "Deduplicate, keeping the first occurrence, case-sensitive or case-insensitive",
     "Shuffle with a seed, so the same seed always gives the same order",
     "Number each line from a chosen starting number with a custom separator",
     "Trim leading, trailing or both kinds of whitespace, and drop blank lines",
     "Filter lines that contain or do not contain a literal substring",
+    "Add a prefix and/or suffix to every line, optionally skipping blank lines so they stay unchanged",
+    "Reverse the order of the lines",
     "Join lines into one line with a chosen separator, or split one line back into many",
     "Reads CRLF, LF and CR line endings the same way"
   ],
@@ -17,6 +19,7 @@
     "The shuffle is a deterministic pseudo-random generator, not a cryptographically secure one. It is unsuitable wherever real unpredictability matters, such as drawing lots.",
     "Natural sort compares each run of digits as an ordinary JavaScript number, so a digit run far beyond safe integer precision can compare incorrectly.",
     "Sort by code point compares UTF-16 code units, not full Unicode code points, so characters outside the basic multilingual plane may not sort the way a person expects.",
+    "Length sort counts Unicode code points, not user-perceived characters or display width, so a decomposed accented letter counts as more than one character and a multi-code-point emoji counts several",
     "Filter and dedupe match a literal substring or a whole line, never a regular expression."
   ],
   "ambiguities": [
