@@ -2,8 +2,13 @@ import meta from './meta.json';
 import { formatPointer } from './pointer';
 import { hasOwn, getOwn } from './own-property';
 import { parseJsonText, exceedsDepth, MAX_JSON_DEPTH } from './json-text';
+import { toJsonPatch, type JsonPatchOperation } from './json-patch';
+import { toMergePatch, type MergePatchResult } from './merge-patch';
 
 export { meta };
+export * from './json-patch';
+export * from './merge-patch';
+export * from './json-value';
 
 const DEPTH_MESSAGE = 'A document nested more than 512 levels deep was refused rather than risk freezing the tab.';
 
@@ -140,11 +145,12 @@ export function diffJson(a: unknown, b: unknown): DiffResult {
 
 /**
  * Parses both documents (through the same RFC 8259 reader this tool
- * bundles) and diffs the results. Throws `JsonDiffError` naming which
- * document failed to parse, with `line` and `column`, or refuses either
- * document nested more than 512 levels deep before walking it.
+ * bundles), refusing either one nested more than 512 levels deep before
+ * walking it. Throws `JsonDiffError` naming which document failed to
+ * parse, with `line` and `column`. Shared by `diffJsonText` and
+ * `compareJsonText` so both parse and refuse exactly the same way.
  */
-export function diffJsonText(first: string, second: string): DiffResult {
+function parseBothOrThrow(first: string, second: string): { a: unknown; b: unknown } {
   const firstParsed = parseJsonText(first);
   if (!firstParsed.ok) {
     throw new JsonDiffError(`The first document could not be parsed: ${firstParsed.message}`, {
@@ -165,5 +171,34 @@ export function diffJsonText(first: string, second: string): DiffResult {
     throw new JsonDiffError(DEPTH_MESSAGE);
   }
 
-  return diffJson(firstParsed.value, secondParsed.value);
+  return { a: firstParsed.value, b: secondParsed.value };
+}
+
+/**
+ * Parses both documents and diffs the results. Throws `JsonDiffError`
+ * naming which document failed to parse, with `line` and `column`, or
+ * refuses either document nested more than 512 levels deep before walking
+ * it.
+ */
+export function diffJsonText(first: string, second: string): DiffResult {
+  const { a, b } = parseBothOrThrow(first, second);
+  return diffJson(a, b);
+}
+
+export interface CompareResult {
+  diff: DiffResult;
+  jsonPatch: JsonPatchOperation[];
+  mergePatch: MergePatchResult;
+}
+
+/**
+ * Parses both documents, diffs them, and also builds the RFC 6902 JSON
+ * Patch and RFC 7386 Merge Patch that would turn the first into the
+ * second. Throws the same way `diffJsonText` does for a parse failure or
+ * excess nesting.
+ */
+export function compareJsonText(first: string, second: string): CompareResult {
+  const { a, b } = parseBothOrThrow(first, second);
+  const diff = diffJson(a, b);
+  return { diff, jsonPatch: toJsonPatch(diff), mergePatch: toMergePatch(a, b) };
 }

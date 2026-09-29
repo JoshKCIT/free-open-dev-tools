@@ -1,22 +1,25 @@
-# JSON Diff
+# JSON Diff & Patch
 
-Compare two JSON documents structurally and list added, removed and changed paths.
+Compare two JSON documents, list every change, and generate or apply RFC 6902 JSON Patch and RFC 7386 Merge Patch.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Compares two JSON documents structurally and lists every location that was added, removed or changed, as an RFC 6901 JSON Pointer. Key order never counts as a change, array elements are compared by position, and a change of type at one location is reported once there, not as a cascade of changes in every value beneath it.
+Compares two JSON documents structurally, lists every location that was added, removed or changed as an RFC 6901 JSON Pointer, and generates an RFC 6902 JSON Patch and an RFC 7386 Merge Patch that would turn the first document into the second. It also applies a JSON Patch or a Merge Patch a visitor already has to a document of their own.
 
 ## Supported
 
 - Comparing two arbitrary JSON values and listing every added, removed and changed location as an RFC 6901 JSON Pointer
-- Keys containing a slash or tilde escaped correctly in every reported path (~ as ~0, / as ~1)
-- Object key order ignored; array elements compared by position
-- A change of type at a location (for example an object replaced by an array) reported as one change there, not as child changes
-- Reading own keys only, so a document with a key named __proto__ or constructor compares correctly and never touches Object.prototype
-- Refusing a document nested more than 512 levels deep before walking it, so a hostile document cannot freeze the tab
+- Generating an RFC 6902 JSON Patch from a comparison: add for an added location, remove for a removed one, replace for a changed one (a whole-document type change becomes one replace at "")
+- Applying a full RFC 6902 JSON Patch: add, remove, replace, move, copy and test, with RFC 6901 pointers including "-" for array append and ~0/~1 escaping
+- Generating an RFC 7386 Merge Patch from a comparison, and applying one, per RFC 7386 section 2's algorithm
+- Every JSON Patch and Merge Patch error names the failing operation's position and path
+- Applying a patch is atomic: the first failing operation stops the whole apply, and neither the original document nor the patch is ever changed by a successful or a failed apply
+- Reading own keys only throughout, so a document or patch with a key named __proto__ or constructor behaves as an ordinary key and never touches Object.prototype
+- Refusing a document or patch nested more than 512 levels deep before walking it, so a hostile document cannot freeze the tab
+- Refusing a JSON Patch that would grow the document past 1,000,000 values, so a chain of copy operations cannot freeze the tab either
 
 ## Limits
 
@@ -25,17 +28,28 @@ Compares two JSON documents structurally and lists every location that was added
 - Numbers compare with strict equality, so 1.0 and 1 parse to the same number and are reported identical
 - Strings compare code unit by code unit with no Unicode normalisation
 - A repeated key in either document keeps only its last value, since RFC 8259 leaves a repeated name undefined
-- A number beyond double precision is compared after it has already been rounded by parsing
+- A number beyond double precision is compared, and tested by a JSON Patch test operation, after it has already been rounded by parsing
+- The generated JSON Patch only ever uses add, remove and replace, never move or copy, because the underlying comparison is positional: inserting near the front of an array is reported as replacing every later position, not as one insert
+- A Merge Patch cannot set a value to the literal null, because null already means "delete this member"; when a comparison would need that, the tool reports which locations instead of producing a patch that would not actually work
+- A Merge Patch always replaces an array whole; it never merges array elements one by one
+- Removing the whole document (JSON Patch remove at path "") is refused: RFC 6902 does not define what that would mean
+- Applying a JSON Patch that would grow the document past 1,000,000 values is refused outright, rather than applying part of it
 
 ## Ambiguous cases, and what this does about them
 
 - Every path this reports is an RFC 6901 JSON Pointer (/a/b, with ~ and / escaped), never a $.a.b dollar-dot path.
 - Arrays are positional: this never tries to detect that an element moved, only that a position's value changed.
+- When an array shrinks, the generated JSON Patch removes the highest index first, so each remove still applies against the array length the previous one left behind.
+- Removing the whole document at JSON Pointer "" is refused, since RFC 6902 leaves it undefined; every other JSON Patch operation is defined at "".
+- RFC 7396 (October 2014) republishes RFC 7386 (June 2014) as an Internet Standard, with the same section 2 merge algorithm and the same Appendix A examples; this tool's catalog summary keeps citing RFC 7386, the name the format is still commonly known by, and this note is here so the two are not mistaken for different formats.
 
 ## Defined by
 
 - [RFC 6901 — JavaScript Object Notation (JSON) Pointer](https://www.rfc-editor.org/rfc/rfc6901)
 - [RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [RFC 6902 — JavaScript Object Notation (JSON) Patch](https://www.rfc-editor.org/rfc/rfc6902)
+- [RFC 7386 — JSON Merge Patch](https://www.rfc-editor.org/rfc/rfc7386)
+- [RFC 7396 — JSON Merge Patch (Internet Standard, republishes RFC 7386)](https://www.rfc-editor.org/rfc/rfc7396)
 
 ## Use it on its own
 
@@ -58,15 +72,19 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { diffJson, diffJsonText } from '@fodt/json-diff';
+import { diffJson, diffJsonText, compareJsonText, toJsonPatch, applyJsonPatch, applyJsonPatchText, toMergePatch, applyMergePatch, applyMergePatchText } from '@fodt/json-diff';
 
 diffJson({ a: 1 }, { a: 1, b: 2 });
 // { identical: false, changes: [{ kind: 'added', path: '/b', before: undefined, after: 2 }], stats: { added: 1, removed: 0, changed: 0 } }
 
-diffJsonText('{"a":1}', '{"a":2}');
+compareJsonText('{"a":1}', '{"a":2}');
+// { diff, jsonPatch: [{ op: 'replace', path: '/a', value: 2 }], mergePatch: { patch: { a: 2 }, warnings: [] } }
+
+applyJsonPatch({ a: 1 }, [{ op: 'replace', path: '/a', value: 2 }]); // { a: 2 }
+applyMergePatch({ a: 1, b: 2 }, { a: null, c: 3 }); // { b: 2, c: 3 }
 ```
 
-`diffJson` compares two already-parsed JSON values. `diffJsonText` parses each document first (through the same RFC 8259 reader this tool bundles) and applies the same 512-level depth rule to both before diffing, throwing `JsonDiffError` naming which document (first or second) failed to parse, with `line` and `column`.
+`diffJson`/`diffJsonText` compare two documents. `compareJsonText` parses both, diffs them, and also builds the RFC 6902 JSON Patch and RFC 7386 Merge Patch that would turn the first into the second, throwing `JsonDiffError` (naming which document, with `line` and `column`) the same way `diffJsonText` does. `toJsonPatch` takes either a `DiffResult` or two documents. `applyJsonPatch`/`applyMergePatch` work on already-parsed values; the `...Text` forms parse both a document and a patch first, applying the same 512-level depth rule diffJsonText uses. `JsonPatchError` carries `index` (the failing operation's zero-based position) and `path`.
 
 ## Dependencies
 
@@ -78,7 +96,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every required behaviour is checked against a real call to diffJson or diffJsonText: RFC 6901 pointer escaping, key-order independence, positional array comparison, one change per type-changed location, own-key-only reads on a document with a __proto__ key, RFC 8259 parse-error reporting, and the 512-level depth refusal.
+RFC 6902 Appendix A examples A.1 through A.16 are each asserted directly against `applyJsonPatch`, including the failing-test, nonexistent-target, duplicate-"op"-member and pointer-escaping cases. Every row of RFC 7386 Appendix A's table and its section 3 worked example are asserted against `applyMergePatch`. A seeded round-trip property checks `applyJsonPatch(a, toJsonPatch(a, b))` equals `b`, and the equivalent for merge patches when no value would need to become null, over hundreds of randomly generated document pairs including `__proto__`, escaped and astral-plane keys. Atomicity (a failing patch changes nothing, in either the document or the patch) and own-property-only reads and writes (a `__proto__` key stays an ordinary key) are asserted directly. The growth cap is proven by a patch of repeated whole-subtree copies that is refused before it can grow past a million values.
 
 ## Licence
 

@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { diffJson, diffJsonText, JsonDiffError, type DiffChange } from '../src/index';
+import { diffJson, diffJsonText, compareJsonText, JsonDiffError, type DiffChange } from '../src/index';
 import { MAX_JSON_DEPTH } from '../src/json-text';
 
 function find(changes: DiffChange[], path: string): DiffChange | undefined {
@@ -97,4 +97,29 @@ it('diffJsonText parses both documents and reports their structural differences'
   const result = diffJsonText('{"a":1,"b":[1,2]}', '{"a":2,"b":[1,2,3]}');
   expect(find(result.changes, '/a')).toEqual({ kind: 'changed', path: '/a', before: 1, after: 2 });
   expect(find(result.changes, '/b/2')).toEqual({ kind: 'added', path: '/b/2', before: undefined, after: 3 });
+});
+
+it('compareJsonText returns the same diff diffJsonText would, plus both patches', () => {
+  const result = compareJsonText('{"a":1,"b":[1,2]}', '{"a":2,"b":[1,2,3]}');
+  const plainDiff = diffJsonText('{"a":1,"b":[1,2]}', '{"a":2,"b":[1,2,3]}');
+  expect(result.diff).toEqual(plainDiff);
+  expect(result.jsonPatch).toEqual(
+    expect.arrayContaining([
+      { op: 'replace', path: '/a', value: 2 },
+      { op: 'add', path: '/b/2', value: 3 },
+    ]),
+  );
+  expect(result.mergePatch.warnings).toEqual([]);
+  expect(result.mergePatch.patch).toEqual({ a: 2, b: [1, 2, 3] });
+});
+
+it('compareJsonText names which document failed to parse', () => {
+  let err: JsonDiffError | undefined;
+  try {
+    compareJsonText('{"a": ,}', '{"a":1}');
+  } catch (e) {
+    err = e as JsonDiffError;
+  }
+  expect(err).toBeInstanceOf(JsonDiffError);
+  expect(err?.message).toMatch(/first/i);
 });

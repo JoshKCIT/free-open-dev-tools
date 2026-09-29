@@ -218,10 +218,10 @@
   },
   {
     "id": "json-diff",
-    "name": "JSON Diff",
+    "name": "JSON Diff & Patch",
     "category": "json-data",
     "tier": 1,
-    "summary": "Compare two JSON documents structurally and list added, removed and changed paths."
+    "summary": "Compare two JSON documents, list every change, and generate or apply RFC 6902 JSON Patch and RFC 7386 Merge Patch."
   },
   {
     "id": "jsonpath",

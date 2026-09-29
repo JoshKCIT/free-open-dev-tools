@@ -1,7 +1,7 @@
 {
   "name": "@fodt/json-diff",
   "version": "1.0.0",
-  "description": "Compare two JSON documents structurally and list added, removed and changed paths.",
+  "description": "Compare two JSON documents, list every change, and generate or apply RFC 6902 JSON Patch and RFC 7386 Merge Patch.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,13 @@
     "compare",
     "json pointer",
     "rfc6901",
-    "structural diff"
+    "structural diff",
+    "json patch",
+    "rfc6902",
+    "merge patch",
+    "rfc7386",
+    "rfc7396",
+    "patch"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

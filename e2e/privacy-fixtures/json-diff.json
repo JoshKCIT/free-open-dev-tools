@@ -2,5 +2,21 @@
   {
     "values": { "first": "{\"a\":1,\"b\":[1,2]}", "second": "{\"a\":2,\"b\":[1,2,3]}" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "apply-json-patch" },
+    "values": {
+      "document": "{\"a\":1,\"b\":2}",
+      "patch": "[{\"op\":\"replace\",\"path\":\"/a\",\"value\":9}]"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "apply-merge-patch" },
+    "values": {
+      "document": "{\"a\":1,\"b\":2}",
+      "patch": "{\"a\":9}"
+    },
+    "attachesFile": false
   }
 ]
