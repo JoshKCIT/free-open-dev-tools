@@ -179,10 +179,80 @@ export function widthReport(value: bigint): WidthReport {
 }
 
 export type Operation =
-  'add' | 'subtract' | 'multiply' | 'divide' | 'modulo' | 'power' | 'and' | 'or' | 'xor' | 'shiftLeft' | 'shiftRight';
+  | 'add'
+  | 'subtract'
+  | 'multiply'
+  | 'divide'
+  | 'modulo'
+  | 'power'
+  | 'and'
+  | 'or'
+  | 'xor'
+  | 'not'
+  | 'nand'
+  | 'nor'
+  | 'xnor'
+  | 'shiftLeft'
+  | 'shiftRight'
+  | 'shiftRightLogical'
+  | 'rotateLeft'
+  | 'rotateRight'
+  | 'byteSwap';
 
-/** Arithmetic and bitwise operations in the chosen base, all at arbitrary precision. */
-export function calculate(a: bigint, b: bigint, operation: Operation): bigint {
+/** A fixed hardware integer width this tool can show a bitwise or shift result at. */
+export type FixedWidth = 8 | 16 | 32 | 64 | 128;
+
+/** `'unbounded'` is arbitrary-precision two's complement (today's default, arithmetic's only option); anything else is one of `FIXED_WIDTHS`. */
+export type Width = 'unbounded' | FixedWidth;
+
+export const FIXED_WIDTHS: readonly FixedWidth[] = [8, 16, 32, 64, 128];
+
+const ARITHMETIC_OPERATIONS: ReadonlySet<Operation> = new Set([
+  'add',
+  'subtract',
+  'multiply',
+  'divide',
+  'modulo',
+  'power',
+]);
+
+/** Operations a width select applies to at all -- every bitwise and shift/rotate operation, never arithmetic. */
+export const WIDTH_OPERATIONS: ReadonlySet<Operation> = new Set([
+  'and',
+  'or',
+  'xor',
+  'not',
+  'nand',
+  'nor',
+  'xnor',
+  'shiftLeft',
+  'shiftRight',
+  'shiftRightLogical',
+  'rotateLeft',
+  'rotateRight',
+  'byteSwap',
+]);
+
+/** Operations that take one number and ignore the second entirely. */
+export const UNARY_OPERATIONS: ReadonlySet<Operation> = new Set(['not', 'byteSwap']);
+
+/** Operations that are meaningless without a fixed width and are refused at `'unbounded'`. */
+export const FIXED_WIDTH_ONLY_OPERATIONS: ReadonlySet<Operation> = new Set([
+  'rotateLeft',
+  'rotateRight',
+  'shiftRightLogical',
+  'byteSwap',
+]);
+
+function requireNonNegativeAmount(amount: bigint, operation: Operation): bigint {
+  if (amount < 0n) {
+    throw new BaseError(`The amount for "${operation}" must not be negative.`);
+  }
+  return amount;
+}
+
+/** Every arbitrary-precision case: today's behaviour, byte for byte, plus the new unbounded bitwise-complement operations. */
+function calculateUnbounded(a: bigint, b: bigint, operation: Operation): bigint {
   switch (operation) {
     case 'add':
       return a + b;
@@ -207,11 +277,143 @@ export function calculate(a: bigint, b: bigint, operation: Operation): bigint {
       return a | b;
     case 'xor':
       return a ^ b;
+    case 'not':
+      return ~a;
+    case 'nand':
+      return ~(a & b);
+    case 'nor':
+      return ~(a | b);
+    case 'xnor':
+      return ~(a ^ b);
     case 'shiftLeft':
       if (b < 0n || b > 4096n) throw new BaseError('Shift amount must be between 0 and 4096.');
       return a << b;
     case 'shiftRight':
       if (b < 0n || b > 4096n) throw new BaseError('Shift amount must be between 0 and 4096.');
       return a >> b;
+    // These four are refused for 'unbounded' before calculateUnbounded is
+    // ever called; handled here only so this switch stays exhaustive.
+    case 'shiftRightLogical':
+    case 'rotateLeft':
+    case 'rotateRight':
+    case 'byteSwap':
+      throw new BaseError(`"${operation}" needs a fixed width. Pick one of ${FIXED_WIDTHS.join(', ')} bits.`);
   }
+}
+
+/** Every fixed-width case. Operands are reduced to the width first; the result is always the unsigned value in [0, 2^width). */
+function calculateAtWidth(a: bigint, b: bigint, operation: Operation, width: FixedWidth): bigint {
+  const w = BigInt(width);
+  const ua = BigInt.asUintN(width, a);
+
+  switch (operation) {
+    case 'not':
+      return BigInt.asUintN(width, ~ua);
+    case 'and':
+      return BigInt.asUintN(width, ua & BigInt.asUintN(width, b));
+    case 'or':
+      return BigInt.asUintN(width, ua | BigInt.asUintN(width, b));
+    case 'xor':
+      return BigInt.asUintN(width, ua ^ BigInt.asUintN(width, b));
+    case 'nand':
+      return BigInt.asUintN(width, ~(ua & BigInt.asUintN(width, b)));
+    case 'nor':
+      return BigInt.asUintN(width, ~(ua | BigInt.asUintN(width, b)));
+    case 'xnor':
+      return BigInt.asUintN(width, ~(ua ^ BigInt.asUintN(width, b)));
+    case 'shiftLeft': {
+      const amount = requireNonNegativeAmount(b, operation);
+      if (amount >= w) return 0n;
+      return BigInt.asUintN(width, ua << amount);
+    }
+    case 'shiftRight': {
+      const amount = requireNonNegativeAmount(b, operation);
+      const signed = BigInt.asIntN(width, a);
+      const result = amount >= w ? (signed < 0n ? -1n : 0n) : signed >> amount;
+      return BigInt.asUintN(width, result);
+    }
+    case 'shiftRightLogical': {
+      const amount = requireNonNegativeAmount(b, operation);
+      if (amount >= w) return 0n;
+      return BigInt.asUintN(width, ua >> amount);
+    }
+    case 'rotateLeft':
+    case 'rotateRight': {
+      const amount = requireNonNegativeAmount(b, operation);
+      const r = amount % w;
+      // Rotating right by r is the same as rotating left by (w - r) mod w.
+      const left = operation === 'rotateLeft' ? r : (w - r) % w;
+      const rotated = (ua << left) | (ua >> (w - left));
+      return BigInt.asUintN(width, rotated);
+    }
+    case 'byteSwap': {
+      let remaining = ua;
+      let result = 0n;
+      for (let i = 0; i < width / 8; i++) {
+        result = (result << 8n) | (remaining & 0xffn);
+        remaining >>= 8n;
+      }
+      return result;
+    }
+    default: {
+      // Arithmetic operations are refused with a fixed width before this
+      // function is ever called; unreachable, kept only for exhaustiveness.
+      throw new BaseError('A fixed width applies only to bitwise and shift operations, not arithmetic.');
+    }
+  }
+}
+
+/**
+ * Arithmetic and bitwise operations in the chosen base. At `width:
+ * 'unbounded'` (the default) this is unchanged, arbitrary-precision
+ * behaviour: every existing result is identical. At a fixed width,
+ * arithmetic operations are refused (they stay arbitrary precision always);
+ * every bitwise, shift and rotate operation instead reduces its operand(s)
+ * to the width, works in that width's own two's complement, and returns
+ * the unsigned value in [0, 2^width).
+ */
+export function calculate(a: bigint, b: bigint, operation: Operation, width: Width = 'unbounded'): bigint {
+  if (width === 'unbounded') {
+    if (FIXED_WIDTH_ONLY_OPERATIONS.has(operation)) {
+      throw new BaseError(`"${operation}" needs a fixed width. Pick one of ${FIXED_WIDTHS.join(', ')} bits.`);
+    }
+    return calculateUnbounded(a, b, operation);
+  }
+
+  if (ARITHMETIC_OPERATIONS.has(operation)) {
+    throw new BaseError('A fixed width applies only to bitwise and shift operations, not arithmetic.');
+  }
+
+  return calculateAtWidth(a, b, operation, width);
+}
+
+export interface AtWidthReport {
+  width: FixedWidth;
+  /** The value read as an unsigned integer at this width, in [0, 2^width). */
+  unsigned: bigint;
+  /** The same bits read as a two's complement signed integer at this width. */
+  signed: bigint;
+  /** The unsigned value in hexadecimal, padded to width/4 digits, no "0x" prefix. */
+  hex: string;
+  /** The unsigned value in binary, padded to width digits, no "0b" prefix. */
+  binary: string;
+}
+
+/** Shows a value at a fixed width: unsigned, signed (two's complement), hex and binary, all reduced to that width first. */
+export function atWidth(value: bigint, width: FixedWidth): AtWidthReport {
+  const unsigned = BigInt.asUintN(width, value);
+  const signed = BigInt.asIntN(width, value);
+  return {
+    width,
+    unsigned,
+    signed,
+    hex: unsigned.toString(16).padStart(width / 4, '0'),
+    binary: unsigned.toString(2).padStart(width, '0'),
+  };
+}
+
+/** True when `value` fits at `width` as either an unsigned or a two's complement signed integer. */
+export function fitsWidth(value: bigint, width: FixedWidth): boolean {
+  const w = BigInt(width);
+  return value >= -(1n << (w - 1n)) && value <= (1n << w) - 1n;
 }

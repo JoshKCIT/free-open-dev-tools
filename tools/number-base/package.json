@@ -27,7 +27,11 @@
     "hexadecimal",
     "octal",
     "bigint",
-    "twos-complement"
+    "twos-complement",
+    "bitwise",
+    "rotate",
+    "byte swap",
+    "endianness"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

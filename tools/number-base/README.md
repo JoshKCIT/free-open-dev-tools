@@ -16,19 +16,25 @@ Converts whole numbers between any pair of bases from 2 to 36. Everything is com
 - Negative numbers, with the sign kept outside any prefix
 - Two complement at 8, 16, 32, 64, 128 and 256 bits, with the smallest width that fits each value
 - Digit grouping: bytes in binary, nibbles in hexadecimal
-- Arbitrary-precision arithmetic and bitwise operations between two numbers
+- Arbitrary-precision arithmetic between two numbers, always unbounded regardless of the width setting
+- Fixed-width bitwise work at 8, 16, 32, 64 and 128 bits: NOT, AND, OR, XOR, NAND, NOR, XNOR, shift left, shift right (arithmetic and logical), rotate left, rotate right and byte swap, with the result shown unsigned, signed (two complement), in hexadecimal and in binary
 
 ## Limits
 
 - Whole numbers only. There is no fractional part, so 0.5 in binary is not something this converts. The IEEE 754 inspector handles fractional binary values.
 - Bases above 36 would need digits beyond the 26 letters, and there is no agreed alphabet for them. Base58 and Base64 have their own tools here because they encode bytes rather than numbers.
-- Bitwise operations on a negative number use the arbitrary-precision two complement of an infinite-width integer, which is what JavaScript BigInt does. That differs from a fixed-width language where the result wraps.
-- The exponent for a power is capped, and a shift is capped at 4096 places, because the result would otherwise be too large to render.
+- Bitwise operations at the unbounded width use the arbitrary-precision two complement of an infinite-width integer, which is what JavaScript BigInt does, and that differs from a fixed-width language where the result wraps; pick a fixed width to get the wrap-around a fixed-width language gives instead.
+- The exponent for a power is capped, and an unbounded shift is capped at 4096 places, because the result would otherwise be too large to render.
+- Rotate left, rotate right, the logical (zero-fill) right shift, and byte swap only exist at a fixed width: there is no arbitrary-precision meaning for rotating or swapping the bytes of a number with no fixed size, so these are refused at the unbounded width.
+- A fixed width applies only to bitwise, shift and rotate operations. Add, subtract, multiply, divide, remainder and power always stay arbitrary precision and refuse a fixed width.
+- At a fixed width, an operand outside both the unsigned and signed range for that width is wrapped (reduced modulo 2^width) before the operation runs, and the page notes which operand wrapped.
 
 ## Ambiguous cases, and what this does about them
 
 - Integer division truncates towards zero, so -7 divided by 2 is -3. C, Java, Go and Rust all agree; Python rounds towards negative infinity and gives -4. The choice made here is the more common one and is stated on the page.
 - The remainder takes the sign of the dividend, so -7 modulo 3 is -1 rather than 2. This follows from the division rule above.
+- Shifting by the width or more gives 0 for a left shift and a logical right shift, and the sign fill for an arithmetic right shift. C leaves a shift by the width or more undefined, Java masks the shift amount (5 bits for int, 6 bits for long), and JavaScript masks it to 5 bits for its own 32-bit operators.
+- A rotate amount is taken modulo the width, so rotating by the width plus 3 is the same as rotating by 3.
 
 ## Use it on its own
 
@@ -51,15 +57,17 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { parseInBase, toBase, convertAll, widthReport } from '@fodt/number-base';
+import { parseInBase, toBase, convertAll, widthReport, calculate, atWidth } from '@fodt/number-base';
 
 parseInBase('0xdead_beef', 16).value;   // 3735928559n
 toBase(255n, 2);                        // '11111111'
 convertAll(255n);                       // every common base at once
 widthReport(-1n).twosComplement;        // ff, ffff, ffffffff, …
+calculate(0x80000001n, 1n, 'rotateLeft', 32); // 3n (0x00000003)
+atWidth(3n, 32);                        // { unsigned: 3n, signed: 3n, hex: '00000003', binary: '000…011' }
 ```
 
-Values are `bigint` throughout. `parseInBase` returns the magnitude with a separate `negative` flag, so a leading zero or a prefix can still be reported accurately.
+Values are `bigint` throughout. `parseInBase` returns the magnitude with a separate `negative` flag, so a leading zero or a prefix can still be reported accurately. `calculate` takes an optional fourth argument, `width` (`'unbounded'` by default, or 8/16/32/64/128); `WIDTH_OPERATIONS`, `UNARY_OPERATIONS` and `FIXED_WIDTH_ONLY_OPERATIONS` classify which operations a width applies to, which take one operand, and which need a fixed width outright. `atWidth` and `fitsWidth` work on a value already reduced to a specific width.
 
 ## Dependencies
 
@@ -71,7 +79,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Round trips every base from 2 to 36 over a set of values including zero, negatives and 2 to the 64th. Agreement with the platform is checked against `Number.prototype.toString` and `parseInt` for values a double can hold, and precision is checked by converting a 64-digit hexadecimal hash to its exact 78-digit decimal form. Two complement is asserted at every width, and division and modulo sign behaviour is pinned down explicitly.
+Round trips every base from 2 to 36 over a set of values including zero, negatives and 2 to the 64th. Agreement with the platform is checked against `Number.prototype.toString` and `parseInt` for values a double can hold, and precision is checked by converting a 64-digit hexadecimal hash to its exact 78-digit decimal form. Two complement is asserted at every width, and division and modulo sign behaviour is pinned down explicitly. The fixed-width operations are checked against known C and Java results (NOT, rotates, a logical shift, byte swap), truth tables for NAND/NOR/XNOR, the shift-and-rotate-at-or-past-the-width rules, and two differential passes: one against JavaScript's own 32-bit bitwise and shift operators over 1000 random pairs, and one against `BigInt.asUintN`/`asIntN` at 64 bits.
 
 ## Licence
 
