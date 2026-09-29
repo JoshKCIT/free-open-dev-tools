@@ -1,0 +1,33 @@
+[
+  {
+    "mode": { "field": "keySource", "value": "passphrase" },
+    "values": { "salt": "", "iterations": "10000" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "keySource", "value": "raw" },
+    "values": { "key": "00112233445566778899aabbccddeeff", "iv": "" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "keySource", "value": "passphrase" },
+    "values": {
+      "direction": "decrypt",
+      "input": "U2FsdGVkX18BAgMEBQYHCMu0XEsdjP5nVNrhGouunGngbsutjjqqTyCT5gK/eAOZeHkWD8Nz2DctvlNPqkUVxw==",
+      "passphrase": "correct horse battery staple",
+      "iterations": "10000"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "keySource", "value": "raw" },
+    "values": {
+      "direction": "decrypt",
+      "aad": "",
+      "key": "00112233445566778899aabbccddeeff",
+      "iv": "000102030405060708090a0b",
+      "input": "W6dess/09kD5UVHrZf8kvDT4BoWtFv7WdQPIqKsWJQ=="
+    },
+    "attachesFile": false
+  }
+]

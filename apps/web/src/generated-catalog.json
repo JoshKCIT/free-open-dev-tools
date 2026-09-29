@@ -208,6 +208,15 @@
       "implemented": true
     },
     {
+      "id": "db-password-hash",
+      "name": "Database Password Hash",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 1,
+      "summary": "Generate and check PostgreSQL SCRAM-SHA-256 and md5 password hashes and MySQL/MariaDB native password hashes.",
+      "implemented": true
+    },
+    {
       "id": "password-generator",
       "name": "Password Generator",
       "category": "hashing",
@@ -241,6 +250,15 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 2,
       "summary": "Sign and verify JWTs with HMAC, RSA and ECDSA using the browser crypto API.",
+      "implemented": true
+    },
+    {
+      "id": "aes-encryption",
+      "name": "AES Encrypt & Decrypt",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 2,
+      "summary": "Encrypt and decrypt with AES-GCM, AES-CBC or AES-CTR, with a raw key or an OpenSSL-compatible passphrase.",
       "implemented": true
     },
     {

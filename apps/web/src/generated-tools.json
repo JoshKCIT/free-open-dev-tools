@@ -1,4 +1,24 @@
 {
+  "aes-encryption": {
+    "id": "aes-encryption",
+    "name": "AES Encrypt & Decrypt",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "aes",
+      "encrypt",
+      "decrypt",
+      "openssl",
+      "gcm",
+      "cbc",
+      "ctr",
+      "pbkdf2",
+      "webcrypto"
+    ]
+  },
   "archive-toolkit": {
     "id": "archive-toolkit",
     "name": "ZIP & TAR Toolkit",
@@ -661,6 +681,26 @@
       "intl",
       "posix",
       "unicode"
+    ]
+  },
+  "db-password-hash": {
+    "id": "db-password-hash",
+    "name": "Database Password Hash",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "^2.4.0"
+    },
+    "keywords": [
+      "postgresql",
+      "mysql",
+      "mariadb",
+      "scram",
+      "password",
+      "hash",
+      "auth",
+      "sha256",
+      "md5"
     ]
   },
   "docker-compose-validator": {

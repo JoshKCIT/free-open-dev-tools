@@ -17,7 +17,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@eslint-community/regexpp](https://github.com/eslint-community/regexpp#readme) | 4.12.2 | MIT | direct | tools/regex-tester |
 | [@jridgewell/source-map](https://github.com/jridgewell/sourcemaps/tree/main/packages/source-map) | 0.3.11 | MIT | transitive (via terser) | tools/html-formatter, tools/js-formatter |
 | [@mixmark-io/domino](https://github.com/mixmark-io/domino) | 2.2.0 | BSD-2-Clause | transitive (via turndown) | tools/markdown-html |
-| [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/base58, tools/hash-file, tools/hash-text, tools/hmac, tools/uuid |
+| [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/aes-encryption, tools/base58, tools/db-password-hash, tools/hash-file, tools/hash-text, tools/hmac, tools/uuid |
 | [@nodable/entities](https://github.com/nodable/val-parsers) | 3.0.0 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [@types/debug](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/debug) | 4.1.13 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [@types/mdast](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mdast) | 4.0.4 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
