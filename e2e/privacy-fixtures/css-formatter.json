@@ -8,5 +8,15 @@
     "mode": { "field": "mode", "value": "minify" },
     "values": { "input": "a { color: red; }" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "syntax", "value": "scss" },
+    "values": { "input": "$c: red;\n.a { &:hover { color: $c; } }" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "syntax", "value": "less" },
+    "values": { "input": "@c: red;\n.a { color: @c; }" },
+    "attachesFile": false
   }
 ]

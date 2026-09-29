@@ -24,9 +24,18 @@ export class CssFormatterError extends Error {
 
 export type CssFormatterMode = 'beautify' | 'minify';
 export type CssFormatterIndent = 2 | 4 | 'tab';
+export type CssFormatterSyntax = 'css' | 'scss' | 'less';
 
 export interface FormatCssOptions {
   mode?: CssFormatterMode;
+  /**
+   * The stylesheet dialect to parse. Default 'css'. Beautify accepts all
+   * three (css, scss, less); minify accepts css only -- csso is a CSS
+   * minifier and does not understand Sass or Less syntax, so minifying with
+   * scss or less is refused before any parsing happens (see formatCss's own
+   * doc comment).
+   */
+  syntax?: CssFormatterSyntax;
   /** Beautify only. Default 2. */
   indent?: CssFormatterIndent;
   /** Minify only. Default true: merge and reorder rules where csso judges it safe. */
@@ -54,15 +63,27 @@ function isPrettierParseError(err: unknown): err is PrettierParseError {
 }
 
 /**
- * Beautifies CSS with Prettier's own CSS printer, or minifies it with csso.
- * Both modes first parse the input with Prettier's `css` parser (via
- * `prettier/plugins/postcss`, the plugin that backs Prettier's CSS/SCSS/Less
- * support), so malformed CSS is refused the same way in either mode, with
- * the same line and column. Minifying then runs csso separately over the
- * same, already-validated source text.
+ * Beautifies CSS, SCSS or Less with Prettier's own printer (its `css`,
+ * `scss` or `less` parser, all from `prettier/plugins/postcss`), or
+ * minifies CSS with csso. Beautify first parses the input with the chosen
+ * syntax's own Prettier parser, so malformed CSS, SCSS or Less is refused
+ * with that parser's own line and column. Minifying only ever understands
+ * plain CSS -- csso has no SCSS or Less grammar -- so a minify request for
+ * `syntax: 'scss'` or `'less'` is refused up front with a message asking
+ * the visitor to compile to CSS first, before Prettier is even asked to
+ * parse anything.
  */
 export async function formatCss(source: string, options: FormatCssOptions = {}): Promise<FormatCssResult> {
-  const { mode = 'beautify', indent = 2, restructure = true, keepLicenceComments = true } = options;
+  const { mode = 'beautify', syntax = 'css', indent = 2, restructure = true, keepLicenceComments = true } = options;
+
+  if (syntax !== 'css' && syntax !== 'scss' && syntax !== 'less') {
+    throw new CssFormatterError(`Unknown syntax "${String(syntax)}". Use "css", "scss" or "less".`);
+  }
+  if (mode === 'minify' && syntax !== 'css') {
+    throw new CssFormatterError(
+      'Minifying needs plain CSS. Compile the SCSS or Less to CSS first, then minify the result.',
+    );
+  }
 
   const inputBytes = byteLength(source);
   const tabWidth = indent === 'tab' ? 2 : indent;
@@ -71,7 +92,7 @@ export async function formatCss(source: string, options: FormatCssOptions = {}):
   let beautified: string;
   try {
     beautified = await prettier.format(source, {
-      parser: 'css',
+      parser: syntax,
       plugins: [postcssPlugin],
       tabWidth,
       useTabs,
@@ -80,7 +101,7 @@ export async function formatCss(source: string, options: FormatCssOptions = {}):
     if (isPrettierParseError(err)) {
       throw new CssFormatterError(err.message, { line: err.loc?.start?.line, column: err.loc?.start?.column });
     }
-    throw new CssFormatterError(err instanceof Error ? err.message : 'This CSS could not be parsed.');
+    throw new CssFormatterError(err instanceof Error ? err.message : 'This stylesheet could not be parsed.');
   }
 
   const output =

@@ -28,7 +28,7 @@ Reformats Markdown or MDX with Prettier's own Markdown printer: aligns tables, n
 - A document nested thousands of levels deep (for example deeply nested block quotes) is refused with a message rather than crashing
 - Extensions outside CommonMark and GFM, such as math, are treated as plain text
 - Output line endings are always \n, whatever the input used
-- A pathological document (for example a very long chain of unmatched link-opening brackets) is stopped after 3 seconds on the page rather than freezing the tab
+- A pathological document (for example a very long run of unmatched [ brackets) is stopped after 5 seconds on the page rather than freezing the tab
 
 ## Ambiguous cases, and what this does about them
 

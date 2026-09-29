@@ -7,10 +7,21 @@ export default defineTool({
   fields: [
     {
       name: 'input',
-      label: 'CSS',
+      label: 'CSS, SCSS or Less',
       type: 'textarea',
       rows: 14,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
+    },
+    {
+      name: 'syntax',
+      label: 'Syntax',
+      type: 'radio',
+      default: 'css',
+      options: [
+        { value: 'css', label: 'CSS' },
+        { value: 'scss', label: 'SCSS' },
+        { value: 'less', label: 'Less' },
+      ],
     },
     {
       name: 'mode',
@@ -52,11 +63,22 @@ export default defineTool({
   examples: [
     { label: 'Beautify a compact rule', values: { input: 'a{color:red}', mode: 'beautify' } },
     { label: 'Minify a spaced-out rule', values: { input: '.test { color: #ff0000; }', mode: 'minify' } },
+    {
+      label: 'Beautify SCSS with nesting and a mixin',
+      values: {
+        input:
+          '@mixin theme($color) {\n  background: $color;\n}\n.a {\n  &:hover {\n    @include theme(DarkRed);\n  }\n}\n',
+        syntax: 'scss',
+        mode: 'beautify',
+      },
+    },
   ],
   async run(values): Promise<ToolResult> {
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
 
+    const syntaxValue = str(values, 'syntax', 'css');
+    const syntax = syntaxValue === 'scss' || syntaxValue === 'less' ? syntaxValue : 'css';
     const mode = str(values, 'mode', 'beautify') === 'minify' ? 'minify' : 'beautify';
     const indentValue = str(values, 'indent', '2');
     const indent = indentValue === 'tab' ? 'tab' : indentValue === '4' ? 4 : 2;
@@ -64,6 +86,7 @@ export default defineTool({
     try {
       const result = await formatCss(input, {
         mode,
+        syntax,
         indent,
         restructure: bool(values, 'restructure', true),
         keepLicenceComments: bool(values, 'keepLicenceComments', true),
@@ -73,9 +96,9 @@ export default defineTool({
         {
           kind: 'code',
           label: 'Output',
-          language: 'css',
+          language: syntax,
           value: result.output,
-          download: mode === 'beautify' ? 'formatted.css' : 'styles.min.css',
+          download: mode === 'beautify' ? `formatted.${syntax}` : 'styles.min.css',
         },
       ];
 

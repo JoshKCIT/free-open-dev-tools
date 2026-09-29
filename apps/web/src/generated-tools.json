@@ -478,7 +478,10 @@
       "beautify",
       "minify",
       "prettier",
-      "csso"
+      "csso",
+      "scss",
+      "sass",
+      "less"
     ]
   },
   "css-specificity": {
