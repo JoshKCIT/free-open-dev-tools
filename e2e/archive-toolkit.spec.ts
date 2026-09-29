@@ -353,7 +353,10 @@ test('archive-toolkit shows progress, stops on Cancel and the page keeps answeri
   // Stored (not deflated), so its own compressed size equals its real size
   // regardless of content -- the small test chunk size then forces enough
   // real feed iterations for a Playwright poll to land mid-run.
-  const bigContent = new Uint8Array(256 * 1024);
+  // 1 MiB: 256 chunks at 20 ms each is about 5 s of work. 256 KiB (about
+  // 1.3 s) was too short on GitHub's WebKit runner: the run finished while
+  // the Cancel click was landing (CI run 36488561740).
+  const bigContent = new Uint8Array(1024 * 1024);
   for (let i = 0; i < bigContent.length; i++) bigContent[i] = (i * 31 + 7) & 0xff;
   const bigZip = writeHostileZip([{ name: 'big.bin', content: bigContent, method: 0 }]);
   await attachFiles(page, 'archive', [{ name: 'big.zip', mimeType: 'application/zip', buffer: bigZip }]);
