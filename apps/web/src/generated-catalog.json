@@ -604,6 +604,15 @@
       "implemented": true
     },
     {
+      "id": "graphql-formatter",
+      "name": "GraphQL Formatter & Minifier",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Beautify or minify GraphQL queries, fragments and schema definitions.",
+      "implemented": true
+    },
+    {
       "id": "svg-optimizer",
       "name": "SVG Optimizer",
       "category": "code",

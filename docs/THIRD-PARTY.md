@@ -58,7 +58,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
 | [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
-| [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-to-typescript |
+| [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-formatter, tools/graphql-to-typescript |
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
 | [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
@@ -103,7 +103,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [pdfjs-dist](https://mozilla.github.io/pdf.js/) | 6.3.289 | Apache-2.0 | direct | tools/pdf-to-image |
 | [picocolors]() | 1.1.1 | ISC | transitive (via svgo) | tools/svg-optimizer |
 | [pngjs](https://github.com/lukeapage/pngjs) | 5.0.0 | MIT | transitive (via qrcode) | tools/qr-generator |
-| [prettier](https://prettier.io) | 3.9.8 | MIT | direct | tools/css-formatter, tools/html-formatter, tools/js-formatter |
+| [prettier](https://prettier.io) | 3.9.8 | MIT | direct | tools/css-formatter, tools/graphql-formatter, tools/html-formatter, tools/js-formatter |
 | [qrcode](http://github.com/soldair/node-qrcode) | 1.5.4 | MIT | direct | tools/qr-generator |
 | [react](https://react.dev/) | 19.3.0 | MIT | direct | apps/web |
 | [react-dom](https://react.dev/) | 19.3.0 | MIT | direct | apps/web |

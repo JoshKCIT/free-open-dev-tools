@@ -949,6 +949,25 @@
       "background"
     ]
   },
+  "graphql-formatter": {
+    "id": "graphql-formatter",
+    "name": "GraphQL Formatter & Minifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "prettier": "3.9.9",
+      "graphql": "17.0.2"
+    },
+    "keywords": [
+      "graphql",
+      "format",
+      "beautify",
+      "minify",
+      "prettier",
+      "sdl",
+      "query"
+    ]
+  },
   "graphql-to-typescript": {
     "id": "graphql-to-typescript",
     "name": "GraphQL SDL to TypeScript",

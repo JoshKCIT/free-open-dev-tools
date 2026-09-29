@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "beautify" },
+    "values": { "input": "{ hero { name } }" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "minify" },
+    "values": { "input": "{ hero { name } }" },
+    "attachesFile": false
+  }
+]
