@@ -10,6 +10,9 @@ const LANGUAGE_LABELS: Record<Language, string> = {
   csharp: 'C#',
   kotlin: 'Kotlin',
   php: 'PHP',
+  swift: 'Swift',
+  dart: 'Dart',
+  protobuf: 'Protocol Buffers',
 };
 
 export default defineTool({
@@ -40,6 +43,10 @@ export default defineTool({
     { label: 'A key that is a keyword', values: { input: '{"type":"user","class":"admin"}', language: 'go' } },
     { label: 'Java record with Jackson', values: { input: '{"class":"admin","score":9.5}', language: 'java' } },
     { label: 'PHP readonly properties', values: { input: '{"weird key":"x"}', language: 'php' } },
+    {
+      label: 'Protocol Buffers message',
+      values: { input: '{"userId":1,"weird key":"x","tags":["a"],"extra":[1,"a"]}', language: 'protobuf' },
+    },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');

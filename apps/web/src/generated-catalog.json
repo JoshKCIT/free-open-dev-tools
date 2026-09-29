@@ -366,7 +366,7 @@
       "category": "json-data",
       "categoryLabel": "JSON and structured data",
       "tier": 2,
-      "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP types from JSON.",
+      "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON.",
       "implemented": true
     },
     {

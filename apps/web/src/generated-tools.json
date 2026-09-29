@@ -1415,6 +1415,11 @@
       "csharp",
       "kotlin",
       "php",
+      "swift",
+      "dart",
+      "protobuf",
+      "protocol buffers",
+      "proto3",
       "type inference"
     ]
   },

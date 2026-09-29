@@ -1,7 +1,7 @@
 {
   "name": "@fodt/json-to-code",
   "version": "1.0.0",
-  "description": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin and PHP types from JSON.",
+  "description": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,6 +31,11 @@
     "csharp",
     "kotlin",
     "php",
+    "swift",
+    "dart",
+    "protobuf",
+    "protocol buffers",
+    "proto3",
     "type inference"
   ],
   "scripts": {

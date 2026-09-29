@@ -1,11 +1,14 @@
 import meta from './meta.json';
 import { emitCSharp } from './emit-csharp';
+import { emitDart } from './emit-dart';
 import { emitGo } from './emit-go';
 import { emitJava } from './emit-java';
 import { emitKotlin } from './emit-kotlin';
 import { emitPhp } from './emit-php';
+import { emitProtobuf } from './emit-protobuf';
 import { emitPython } from './emit-python';
 import { emitRust } from './emit-rust';
+import { emitSwift } from './emit-swift';
 import { emitTypeScript } from './emit-typescript';
 import { type InferredModel, inferModel } from './infer';
 import { MAX_JSON_DEPTH, exceedsDepth, parseJsonText } from './json-text';
@@ -16,7 +19,19 @@ export { MAX_JSON_DEPTH };
 const DEPTH_MESSAGE =
   'This document is nested more than 512 levels deep, so it was refused rather than risk freezing the tab.';
 
-export const LANGUAGES = ['typescript', 'go', 'rust', 'python', 'java', 'csharp', 'kotlin', 'php'] as const;
+export const LANGUAGES = [
+  'typescript',
+  'go',
+  'rust',
+  'python',
+  'java',
+  'csharp',
+  'kotlin',
+  'php',
+  'swift',
+  'dart',
+  'protobuf',
+] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 export class JsonToCodeError extends Error {
@@ -61,6 +76,12 @@ function emit(model: InferredModel, language: Language): { output: string; warni
       return emitKotlin(model);
     case 'php':
       return emitPhp(model);
+    case 'swift':
+      return emitSwift(model);
+    case 'dart':
+      return emitDart(model);
+    case 'protobuf':
+      return emitProtobuf(model);
     default: {
       const exhaustive: never = language;
       throw new JsonToCodeError(`"${String(exhaustive)}" is not a supported language.`);

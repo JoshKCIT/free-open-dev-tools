@@ -682,3 +682,354 @@ export function isPhpReservedClassName(name: string): boolean {
 export function phpClassName(name: string): string {
   return isPhpReservedClassName(name) ? `${name}Type` : name;
 }
+
+// --- shared camelCase-boundary splitting, used by lowerSnakeCase below -----
+// Splits a run of letters and digits at a camelCase boundary: between a
+// lowercase letter or digit and a following uppercase letter, and between an
+// uppercase run and a following uppercase-then-lowercase pair (so
+// "HTTPServer" splits as "HTTP" + "Server", not one word or four).
+function splitCamelWords(chunk: string): string[] {
+  const spaced = chunk.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+  return spaced.split(/\s+/).filter(Boolean);
+}
+
+/**
+ * lower_snake_case that also splits at camelCase boundaries, unlike
+ * `snakeCase` above (which Rust's own field-name rule depends on and must
+ * not change). Used by Protocol Buffers field names and the Dart part-file
+ * name (P-04).
+ */
+export function lowerSnakeCase(key: string, fallback: string): string {
+  const words = wordsFromKey(key).flatMap(splitCamelWords);
+  if (words.length === 0) return fallback;
+  let name = words.map((w) => w.toLowerCase()).join('_');
+  if (name === '') return fallback;
+  if (/^[0-9]/.test(name)) name = `n_${name}`;
+  return name;
+}
+
+// --- Protocol Buffers (proto3) ----------------------------------------------
+// https://protobuf.dev/reference/protobuf/proto3-spec/, fetched this
+// session: the grammar's keyword tokens (syntax, edition, import, weak,
+// public, package, option, repeated, optional, required, oneof, map,
+// reserved, to, max, enum, message, service, rpc, stream, returns, extend,
+// extensions, group, inf, nan, true, false) plus the scalar type names,
+// which the ident rule also excludes from being written as a plain field
+// name without escaping.
+// https://protobuf.dev/programming-guides/json/, fetched this session:
+// ProtoJSON maps a field name to lowerCamelCase by default, and a
+// `json_name` option overrides that default when present.
+// https://protobuf.dev/programming-guides/proto3/, fetched this session:
+// field numbers 19000 through 19999 are reserved for the protocol buffers
+// implementation and may not be used in a message.
+export const PROTOBUF_KEYWORDS = new Set([
+  'syntax',
+  'edition',
+  'import',
+  'weak',
+  'public',
+  'package',
+  'option',
+  'repeated',
+  'optional',
+  'required',
+  'oneof',
+  'map',
+  'reserved',
+  'to',
+  'max',
+  'enum',
+  'message',
+  'service',
+  'rpc',
+  'stream',
+  'returns',
+  'extend',
+  'extensions',
+  'group',
+  'inf',
+  'nan',
+  'true',
+  'false',
+  'double',
+  'float',
+  'int32',
+  'int64',
+  'uint32',
+  'uint64',
+  'sint32',
+  'sint64',
+  'fixed32',
+  'fixed64',
+  'sfixed32',
+  'sfixed64',
+  'bool',
+  'string',
+  'bytes',
+]);
+
+/** protoc's own rule, implemented literally: an underscore is dropped and uppercases the next character; every other character is copied, so a trailing underscore simply disappears. */
+export function protobufDefaultJsonName(fieldName: string): string {
+  let out = '';
+  let upperNext = false;
+  for (const ch of fieldName) {
+    if (ch === '_') {
+      upperNext = true;
+      continue;
+    }
+    out += upperNext ? ch.toUpperCase() : ch;
+    upperNext = false;
+  }
+  return out;
+}
+
+/**
+ * Assigns a proto3 field name per JSON key: `lowerSnakeCase`, with a
+ * trailing underscore added when that candidate is a proto3 keyword. On a
+ * collision -- either the candidate name or its own protoc default JSON name
+ * was already produced for an earlier key in this same message -- 2, 3, ...
+ * is appended, so both the field name and its default JSON name stay unique
+ * inside the message and protoc's own JSON-name uniqueness check can never
+ * fail.
+ */
+export function assignProtobufFieldNames(keys: string[]): Map<string, string> {
+  const usedNames = new Set<string>();
+  const usedJsonNames = new Set<string>();
+  const result = new Map<string, string>();
+  for (const key of keys) {
+    const base = lowerSnakeCase(key, 'field');
+    const candidateBase = PROTOBUF_KEYWORDS.has(base) ? `${base}_` : base;
+    let name = candidateBase;
+    let i = 2;
+    while (usedNames.has(name) || usedJsonNames.has(protobufDefaultJsonName(name))) {
+      name = `${candidateBase}${i}`;
+      i++;
+    }
+    usedNames.add(name);
+    usedJsonNames.add(protobufDefaultJsonName(name));
+    result.set(key, name);
+  }
+  return result;
+}
+
+export function escapeProtobufStringLiteral(text: string): string {
+  let out = '';
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!;
+    if (ch === '\\') out += '\\\\';
+    else if (ch === '"') out += '\\"';
+    else if (ch === '\n') out += '\\n';
+    else if (ch === '\r') out += '\\r';
+    else if (ch === '\t') out += '\\t';
+    else if (code < 0x20 || code === 0x7f) out += '\\x' + code.toString(16).padStart(2, '0');
+    else out += ch;
+  }
+  return out;
+}
+
+// --- Swift -------------------------------------------------------------
+// https://docs.swift.org/swift-book/documentation/the-swift-programming-language/lexicalstructure/,
+// fetched this session, "Keywords and Punctuation": the keywords reserved
+// in all contexts (as opposed to Swift's separate, smaller list of
+// keywords reserved only in particular contexts, which stay valid ordinary
+// identifiers everywhere else and so are not escaped here); the same page
+// documents that a keyword can be used as an identifier by surrounding it
+// with backticks.
+export const SWIFT_KEYWORDS = new Set([
+  'associatedtype',
+  'borrowing',
+  'class',
+  'consuming',
+  'deinit',
+  'enum',
+  'extension',
+  'fileprivate',
+  'func',
+  'import',
+  'init',
+  'inout',
+  'internal',
+  'let',
+  'nonisolated',
+  'open',
+  'operator',
+  'precedencegroup',
+  'private',
+  'protocol',
+  'public',
+  'rethrows',
+  'static',
+  'struct',
+  'subscript',
+  'typealias',
+  'var',
+  'break',
+  'case',
+  'catch',
+  'continue',
+  'default',
+  'defer',
+  'do',
+  'else',
+  'fallthrough',
+  'for',
+  'guard',
+  'if',
+  'in',
+  'repeat',
+  'return',
+  'throw',
+  'switch',
+  'where',
+  'while',
+  'Any',
+  'as',
+  'await',
+  'false',
+  'is',
+  'nil',
+  'self',
+  'Self',
+  'super',
+  'throws',
+  'true',
+  'try',
+  '_',
+]);
+
+export const SWIFT_SHADOW_TYPES = new Set([
+  'String',
+  'Int',
+  'Double',
+  'Bool',
+  'Array',
+  'Dictionary',
+  'Optional',
+  'Codable',
+  'Decodable',
+  'Encodable',
+  'Data',
+  'Date',
+  'URL',
+  'Error',
+  'Any',
+  'Self',
+  'Type',
+  'Protocol',
+  'JSONValue',
+  'CodingKeys',
+]);
+
+export function escapeSwiftStringLiteral(text: string): string {
+  let out = '';
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!;
+    if (ch === '\\') out += '\\\\';
+    else if (ch === '"') out += '\\"';
+    else if (ch === '\n') out += '\\n';
+    else if (ch === '\r') out += '\\r';
+    else if (ch === '\t') out += '\\t';
+    else if (code < 0x20 || code === 0x7f) out += '\\u{' + code.toString(16) + '}';
+    else out += ch;
+  }
+  return out;
+}
+
+// --- Dart ----------------------------------------------------------------
+// https://dart.dev/language/keywords, fetched this session: the reserved
+// words (which cannot be used as identifiers at all), plus `await` and
+// `yield`, which that same page marks as restricted only inside an async or
+// generator function body -- treated as reserved here too, since a
+// generated property could otherwise land inside one. Object's own members
+// (hashCode, runtimeType, toString, noSuchMethod) and json_serializable's
+// two generated members (fromJson, toJson) are added on top, since a field
+// of either name would collide with a real member or a generated one.
+export const DART_RESERVED = new Set([
+  'assert',
+  'break',
+  'case',
+  'catch',
+  'class',
+  'const',
+  'continue',
+  'default',
+  'do',
+  'else',
+  'enum',
+  'extends',
+  'false',
+  'final',
+  'finally',
+  'for',
+  'if',
+  'in',
+  'is',
+  'new',
+  'null',
+  'rethrow',
+  'return',
+  'super',
+  'switch',
+  'this',
+  'throw',
+  'true',
+  'try',
+  'var',
+  'void',
+  'while',
+  'with',
+  'await',
+  'yield',
+  'hashCode',
+  'runtimeType',
+  'toString',
+  'noSuchMethod',
+  'fromJson',
+  'toJson',
+]);
+
+export function dartFieldName(key: string): string {
+  const base = camelCase(key, 'value');
+  return DART_RESERVED.has(base) ? `${base}_` : base;
+}
+
+export const DART_SHADOW_TYPES = new Set([
+  'String',
+  'List',
+  'Map',
+  'Object',
+  'Function',
+  'Null',
+  'Type',
+  'Iterable',
+  'Set',
+  'Record',
+  'Never',
+  'Enum',
+  'Symbol',
+  'Error',
+  'Exception',
+  'DateTime',
+  'Duration',
+  'Uri',
+  'Future',
+  'Stream',
+  'JsonKey',
+  'JsonSerializable',
+]);
+
+export function escapeDartStringLiteral(text: string): string {
+  let out = '';
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!;
+    if (ch === '\\') out += '\\\\';
+    else if (ch === "'") out += "\\'";
+    else if (ch === '$') out += '\\$';
+    else if (ch === '\n') out += '\\n';
+    else if (ch === '\r') out += '\\r';
+    else if (ch === '\t') out += '\\t';
+    else if (code < 0x20 || code === 0x7f) out += '\\u{' + code.toString(16) + '}';
+    else out += ch;
+  }
+  return out;
+}
