@@ -9,10 +9,13 @@
     "ROT47, which rotates the ninety-four printable ASCII characters from the exclamation mark to the tilde by forty-seven positions, its own inverse",
     "Atbash, mapping each letter to its mirror image in the alphabet within its own case, its own inverse",
     "Vigenere with a text key, enciphering and deciphering back to the original, preserving case and leaving non-letters untouched",
-    "Every cipher round trips for text containing letters in both cases, digits, punctuation and characters outside ASCII"
+    "Every cipher round trips for text containing letters in both cases, digits, punctuation and characters outside ASCII",
+    "Try every Caesar shift at once: a table of all 25 possible deciphered readings, so a shift you were not told can be found by eye"
   ],
   "limits": [
     "This is for learning and puzzle work only. None of these ciphers is secure; a computer can break every one of them in well under a second.",
+    "Trying every Caesar shift does not rank or guess which reading is correct; it lists all 25 so you can pick the one that reads as real text",
+    "The every-shift table covers at most the first 10,000 characters of the input; a longer message is still counted in the stats but only that much is shown in the table",
     "Caesar, ROT13, Atbash and Vigenere transform only the twenty-six unaccented Latin letters; every other character, including accented letters, passes through unchanged.",
     "ROT47 covers only the ninety-four printable ASCII characters from the exclamation mark to the tilde; a space, a tab, a newline and anything outside that range passes through unchanged.",
     "A Vigenere key is not a password. It is recoverable from enough ciphertext by well-known frequency-analysis techniques, and this tool does not attempt to hide that."

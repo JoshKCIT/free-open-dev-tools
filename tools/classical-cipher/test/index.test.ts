@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { encipher, decipher, CIPHERS, ClassicalCipherError } from '../src/index';
+import { encipher, decipher, caesarAllShifts, CIPHERS, ClassicalCipherError } from '../src/index';
 
 // The six mandated top-level tests.
 
@@ -86,6 +86,44 @@ it('a Vigenere key with non-letters mixed in behaves like the letters-only key',
   expect(encipher(text, { cipher: 'vigenere', key: 'sun-shine' })).toBe(
     encipher(text, { cipher: 'vigenere', key: 'sunshine' }),
   );
+});
+
+it('caesarAllShifts returns 25 rows, shifts 1 through 25 in order, each matching decipher for that shift', () => {
+  const text = 'Dwwdfn dw gdzq';
+  const rows = caesarAllShifts(text);
+  expect(rows).toHaveLength(25);
+  expect(rows.map((r) => r.shift)).toEqual(Array.from({ length: 25 }, (_, i) => i + 1));
+  for (const row of rows) {
+    expect(row.text).toBe(decipher(text, { cipher: 'caesar', shift: row.shift }));
+  }
+});
+
+it('caesarAllShifts finds the correct shift-3 plaintext among its 25 rows', () => {
+  const rows = caesarAllShifts('Dwwdfn dw gdzq');
+  expect(rows.find((r) => r.shift === 3)!.text).toBe('Attack at dawn');
+});
+
+it('caesarAllShifts at shift 13 agrees with ROT13 (Caesar shift 13 is its own inverse, like ROT13)', () => {
+  const text = 'Hello, World!';
+  const rows = caesarAllShifts(text);
+  expect(rows.find((r) => r.shift === 13)!.text).toBe(encipher(text, { cipher: 'rot13' }));
+});
+
+it('caesarAllShifts leaves case, digits, punctuation and non-ASCII characters unchanged in every row', () => {
+  const text = "Wéird Input: 42! Don't panic.";
+  for (const row of caesarAllShifts(text)) {
+    expect(row.text.length).toBe(text.length);
+    for (let i = 0; i < text.length; i++) {
+      const isLetter = /[a-zA-Z]/.test(text[i]!);
+      if (!isLetter) expect(row.text[i], `shift ${row.shift}, index ${i}`).toBe(text[i]);
+    }
+  }
+});
+
+it('caesarAllShifts on empty text gives 25 rows of empty text', () => {
+  const rows = caesarAllShifts('');
+  expect(rows).toHaveLength(25);
+  expect(rows.every((r) => r.text === '')).toBe(true);
 });
 
 it('every cipher round trips a string with both cases, digits, punctuation and a non-ASCII character', () => {

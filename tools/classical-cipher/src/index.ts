@@ -179,3 +179,17 @@ export function encipher(text: string, options: CipherOptions): string {
 export function decipher(text: string, options: CipherOptions): string {
   return apply(text, options, -1);
 }
+
+export interface CaesarShiftRow {
+  shift: number;
+  text: string;
+}
+
+/** Every Caesar shift from 1 to 25, each row exactly what `decipher(text, { cipher: 'caesar', shift })` returns for that shift. */
+export function caesarAllShifts(text: string): CaesarShiftRow[] {
+  const rows: CaesarShiftRow[] = [];
+  for (let shift = 1; shift <= 25; shift++) {
+    rows.push({ shift, text: decipher(text, { cipher: 'caesar', shift }) });
+  }
+  return rows;
+}
