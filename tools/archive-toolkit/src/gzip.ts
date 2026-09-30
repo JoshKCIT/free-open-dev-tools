@@ -16,10 +16,14 @@
  * Finding exactly where one member's own compressed data ends -- so its
  * trailer, and a following member's own header, can be located -- reads
  * two fields of the installed `fflate` 0.8.3 `Inflate` instance beyond its
- * public API: `s.f` (truthy once the decoder's own state has consumed a
- * real DEFLATE "final block" bit, independent of any `final` flag this
- * reader passes to `push`) and `p` (every byte fed so far that decoding has
- * not yet consumed). `s.p`, this same instance's own leftover bit offset
+ * public API: `s.f` (the BFINAL bit of the block most recently started,
+ * independent of any `final` flag this reader passes to `push`), `s.l`
+ * (the literal/length code map of a Huffman block still being decoded;
+ * cleared once that block's end-of-block code is read) and `p` (every byte
+ * fed so far that decoding has not yet consumed). The compressed data has
+ * ended only when `s.f` is set AND `s.l` is empty: `s.f` alone is already
+ * set while the final block is still being decoded, so a final block that
+ * spans more than one push would otherwise be cut short. `s.p`, this same instance's own leftover bit offset
  * (0 to 7) into `p`'s first byte, says whether that first byte was spent
  * finishing the compressed stream's own last, sub-byte-aligned bits (spent
  * whenever `s.p` is not zero, in which case that byte is not read as part
@@ -51,7 +55,7 @@ export interface GzipReadResult {
 }
 
 interface InflateInternals {
-  s: { f?: number; p?: number };
+  s: { f?: number; p?: number; l?: unknown };
   p: Uint8Array;
 }
 
@@ -175,7 +179,7 @@ export async function readGzip(
       collectingInflator.push(piece.slice(), false);
       budget.charge(0, piece.length);
       const internals = collectingInflator as unknown as InflateInternals;
-      if (internals.s.f) {
+      if (internals.s.f && !internals.s.l) {
         const subByteBitsConsumed = internals.s.p ?? 0;
         const skip = subByteBitsConsumed === 0 ? 0 : 1;
         const rewound = internals.p.subarray(skip);

@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { inflateRawSync } from 'node:zlib';
+import { inflateRawSync, gzipSync, constants as zlibConstants } from 'node:zlib';
 import { extractArchive, createZip, ArchiveError } from '../src/index';
 import { readZip } from '../src/zip-read';
 import { readTar } from '../src/tar';
@@ -390,6 +390,30 @@ it('gzip members are decompressed with their CRC-32 and length checked as RFC 19
 
   const badIsize = writeHostileGzip([{ content: bytesOf('will be corrupted'), corruptIsize: true }]);
   await expect(readGzip(bytesReader(badIsize))).rejects.toThrow(/damaged/);
+});
+
+it('a gzip file whose final deflate block spans more than one read is decoded in full', async () => {
+  // Low-redundancy text makes zlib emit large dynamic Huffman blocks, so the
+  // final block is far longer than one 16 KiB read. Reading it used to stop
+  // at the first read that saw the final block's header, and the member was
+  // then reported as damaged.
+  let seed = 20260929;
+  const words: string[] = [];
+  let length = 0;
+  while (length < 2_000_000) {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    const word = seed.toString(36);
+    words.push(word);
+    length += word.length + 1;
+  }
+  const content = bytesOf(words.join(' ').slice(0, 2_000_000));
+  for (const level of [1, 6, 9]) {
+    const gz = new Uint8Array(gzipSync(content, { level, strategy: zlibConstants.Z_DEFAULT_STRATEGY }));
+    const result = await readGzip(bytesReader(gz));
+    expect(result.bytes.length, `level ${level}`).toBe(content.length);
+    // Buffer.compare rather than toEqual: a deep comparison of 2 MB byte by byte is too slow.
+    expect(Buffer.compare(result.bytes, content), `level ${level}`).toBe(0);
+  }
 });
 
 it('a tar.gz is read as gzip then TAR under the same limits', async () => {
