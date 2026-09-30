@@ -1,0 +1,13 @@
+{
+  "id": "graphql-formatter",
+  "label": "graphql-js stripIgnoredCharacters documented example (GraphQL spec section 2.1.7 ignored tokens)",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "minify" },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "query SomeQuery($foo: String!, $bar: String) {\n  someField(foo: $foo, bar: $bar) {\n    a\n    b {\n      c\n      d\n    }\n  }\n}\n"
+    }
+  ],
+  "expect": ["query SomeQuery($foo:String!$bar:String){someField(foo:$foo bar:$bar){a b{c d}}}"]
+}

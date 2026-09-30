@@ -1,0 +1,17 @@
+{
+  "id": "aes-encryption",
+  "label": "McGrew-Viega GCM test case 2 (AES-128, zero key, zero 96-bit IV, one zero block): ciphertext and tag",
+  "steps": [
+    { "action": "radio", "field": "keySource", "value": "raw" },
+    { "action": "select", "field": "direction", "value": "encrypt" },
+    { "action": "select", "field": "aesMode", "value": "gcm" },
+    { "action": "select", "field": "plaintextEncoding", "value": "hex" },
+    { "action": "select", "field": "keyEncoding", "value": "hex" },
+    { "action": "fill", "field": "key", "value": "00000000000000000000000000000000" },
+    { "action": "fill", "field": "iv", "value": "000000000000000000000000" },
+    { "action": "fill", "field": "input", "value": "00000000000000000000000000000000" },
+    { "action": "select", "field": "cipherEncoding", "value": "hex" },
+    { "action": "run" }
+  ],
+  "expect": ["0388dace60b6a392f328c2b971b2fe78", "ab6e47d42cec13bdf53a67b21257bddf"]
+}

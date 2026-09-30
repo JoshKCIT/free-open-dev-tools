@@ -1,0 +1,12 @@
+{
+  "id": "data-size",
+  "label": "SI prefixes (1 GB = 8 x 10^9 bit): 1 GB at 100 Mbit/s takes 80 seconds",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "time" },
+    { "action": "fill", "field": "size", "value": "1" },
+    { "action": "select", "field": "sizeUnit", "value": "GB" },
+    { "action": "fill", "field": "speed", "value": "100" },
+    { "action": "select", "field": "speedUnit", "value": "Mbit" }
+  ],
+  "expect": ["1 m 20 s", "80"]
+}

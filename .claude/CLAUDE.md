@@ -9,8 +9,8 @@ self-contained MIT-licensed folder they can download, test and reuse. It exists 
 common utilities on code, tokens, configs and customer data without sending any of it to a service they
 cannot inspect.
 
-It is live at https://joshkcit.github.io/free-open-dev-tools/ with all 144 tools in the catalog built
-and deployed (completed 2026-09-28).
+It is live at https://joshkcit.github.io/free-open-dev-tools/. All 151 tools in the catalog are built;
+the catalog was first completed on 2026-09-28 and grew by seven tools on 2026-09-29.
 
 **Core Value:** A developer can use any tool without their input leaving the browser, and can take that tool's complete,
 tested source for their own project.

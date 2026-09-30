@@ -201,7 +201,7 @@ const PHASE_8_TOOL_IDS = [
   'image-color-extractor',
 ];
 
-/** The 11 tools Phase 9 adds (MEDIA-01..11), completing the 144-tool catalog. */
+/** The 11 tools Phase 9 adds (MEDIA-01..11). */
 const PHASE_9_TOOL_IDS = [
   'qr-generator',
   'barcode-generator',
@@ -214,6 +214,17 @@ const PHASE_9_TOOL_IDS = [
   'pdf-to-image',
   'image-to-pdf',
   'archive-toolkit',
+];
+
+/** The 7 tools added on 2026-09-29, taking the catalog to 151. */
+const ADDED_2026_09_29_TOOL_IDS = [
+  'string-escape',
+  'gzip-deflate',
+  'data-size',
+  'aes-encryption',
+  'db-password-hash',
+  'graphql-formatter',
+  'markdown-formatter',
 ];
 
 // --- Small, deliberately unabstracted field helpers -------------------------
@@ -604,7 +615,7 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 144 links to built tool pages, every entry of the 144-entry catalog', async ({
+  test('the rendered catalog counts 151 links to built tool pages, every entry of the 151-entry catalog', async ({
     page,
   }) => {
     await page.goto(rel('/catalog'));
@@ -612,7 +623,7 @@ test.describe('the live catalog shows exactly the built tools', () => {
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(144);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(151);
   });
 
   test('every docs/catalog.json entry has a built page and the catalog shows none missing', async ({ page }) => {
@@ -621,7 +632,7 @@ test.describe('the live catalog shows exactly the built tools', () => {
     const docsEntries: { id: string }[] = Array.isArray(docsCatalogRaw)
       ? (docsCatalogRaw as { id: string }[])
       : (docsCatalogRaw as { tools: { id: string }[] }).tools;
-    expect(docsEntries.length, 'docs/catalog.json is the single source of truth for the catalog size').toBe(144);
+    expect(docsEntries.length, 'docs/catalog.json is the single source of truth for the catalog size').toBe(151);
 
     await page.goto(rel('/catalog'));
     await expect(page.locator('a.tool-card').first()).toBeVisible();
@@ -768,13 +779,20 @@ test('every phase 9 tool has exactly one live fixture file', () => {
   }
 });
 
+test('every tool added on 2026-09-29 has exactly one live fixture file', () => {
+  for (const id of ADDED_2026_09_29_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
+  }
+});
+
 /**
- * Strict equality (not membership-only): the catalog is complete at 144
- * tools, so every one of the seven phases' own id lists must now have
- * exactly one live fixture file, and no fixture id may exist outside those
- * seven lists.
+ * Strict equality (not membership-only): the catalog is complete at 151
+ * tools, so every id list above (the seven phases and the 2026-09-29
+ * additions) must have exactly one live fixture file, and no fixture id may
+ * exist outside those eight lists.
  */
-test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8 or 9', () => {
+test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8, 9 or the 2026-09-29 additions', () => {
   const union = [
     ...PHASE_3_TOOL_IDS,
     ...PHASE_4_TOOL_IDS,
@@ -783,8 +801,10 @@ test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8 or 9', () => {
     ...PHASE_7_TOOL_IDS,
     ...PHASE_8_TOOL_IDS,
     ...PHASE_9_TOOL_IDS,
+    ...ADDED_2026_09_29_TOOL_IDS,
   ];
-  expect([...LIVE_FIXTURE_IDS].sort(), 'every live fixture id must be exactly the union of all seven phases').toEqual(
-    [...union].sort(),
-  );
+  expect(
+    [...LIVE_FIXTURE_IDS].sort(),
+    'every live fixture id must be exactly the union of all seven phases and the 2026-09-29 additions',
+  ).toEqual([...union].sort());
 });

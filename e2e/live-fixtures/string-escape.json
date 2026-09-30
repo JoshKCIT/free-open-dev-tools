@@ -1,0 +1,10 @@
+{
+  "id": "string-escape",
+  "label": "ECMA-262 SingleEscapeCharacter table: a double quote, a tab and a newline escape as \\\", \\t and \\n inside a double-quoted JavaScript literal",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "escape" },
+    { "action": "select", "field": "language", "value": "javascript" },
+    { "action": "fill", "field": "input", "value": "Say \"hi\"\tnow\nbye" }
+  ],
+  "expect": ["\"Say \\\"hi\\\"\\tnow\\nbye\""]
+}

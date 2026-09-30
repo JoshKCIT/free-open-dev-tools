@@ -1,0 +1,9 @@
+{
+  "id": "markdown-formatter",
+  "label": "GFM 0.29 section 4.10 tables: left, centre and right alignment markers survive formatting",
+  "steps": [
+    { "action": "radio", "field": "parser", "value": "markdown" },
+    { "action": "fill", "field": "input", "value": "| a | bbbb | c |\n|:-|:-:|-:|\n| 1 | 2 | 333333 |\n" }
+  ],
+  "expect": ["| :-- | :--: | -----: |"]
+}

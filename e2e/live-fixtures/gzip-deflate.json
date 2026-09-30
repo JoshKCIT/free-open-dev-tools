@@ -1,0 +1,11 @@
+{
+  "id": "gzip-deflate",
+  "label": "RFC 1951 section 3.2.4: a hand-built final stored block holding hello decodes to hello",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "decompress" },
+    { "action": "select", "field": "inputEncoding", "value": "hex" },
+    { "action": "select", "field": "container", "value": "raw" },
+    { "action": "fill", "field": "input", "value": "01 05 00 FA FF 68 65 6C 6C 6F" }
+  ],
+  "expect": ["hello"]
+}
