@@ -42,3 +42,13 @@ ba9a57e2efcbf305f3ad325b0ec94be93772bc9e:tools/curl-converter/test/parse.test.ts
 3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:29
 3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:48
 3d26e4b435d3634e4713a93bb76fd01621d297a9:tools/github-actions-validator/test/fixtures/schemastore/UPSTREAM.md:generic-api-key:71
+# A made-up canary password the db-password-hash browser test types, to prove it never appears in the output.
+f5755a1605a43bd7e153e4aa035800b7b03f9386:e2e/db-password-hash.spec.ts:generic-api-key:26
+# A patterned AES test key (00112233...eeff) in the aes-encryption privacy fixture, not a real key.
+9aab145f380c41e05ece00d05f7d0c1835833991:e2e/privacy-fixtures/aes-encryption.json:generic-api-key:9
+9aab145f380c41e05ece00d05f7d0c1835833991:e2e/privacy-fixtures/aes-encryption.json:generic-api-key:27
+# A sequential-pattern AES-256 test key the aes-encryption browser test types, to prove it never appears in the output.
+9aab145f380c41e05ece00d05f7d0c1835833991:e2e/aes-encryption.spec.ts:generic-api-key:72
+# Keys that `openssl enc -P` derived from a test passphrase and a fixed test salt, pinned as interop fixtures.
+9aab145f380c41e05ece00d05f7d0c1835833991:tools/aes-encryption/test/openssl.test.ts:generic-api-key:106
+9aab145f380c41e05ece00d05f7d0c1835833991:tools/aes-encryption/test/openssl.test.ts:generic-api-key:109
