@@ -6,8 +6,8 @@ in your browser.
 Free developer tools, published for anyone to use. Explore the source, download individual tools, and make them your own.
 
 Every tool runs in your browser. Your input is processed by JavaScript already loaded in the tab and is never
-transmitted, stored or put in the URL. That is not a promise in a footer: it is checked on every commit by a test that
-drives each tool in a real browser and fails the build if anything escapes. See [Privacy](#privacy) below.
+transmitted, stored or put in the URL. That is not a promise in a footer: a test drives each tool in a real browser and
+fails the build if anything escapes, on every push for each tool that push could affect, and on every tool once a day. See [Privacy](#privacy) below.
 
 - **Licence:** MIT for all original code. Third-party notices in [`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md).
 
@@ -98,7 +98,8 @@ All **151** tools in the catalog are built, tested and live.
 
 - [`docs/LEDGER.md`](docs/LEDGER.md) — every shipped tool, by category.
 - The release manifest, mapping each shipped tool to its version and its verification result, is not a file in this
-  repository: it is produced fresh on every CI run and published as that run's job summary and workflow artifact.
+  repository: it is produced fresh on every CI run and published as that run's job summary and workflow artifact. A push's run records the tools it rechecked and lists the
+  rest as not run in that build; the daily full run's manifest covers every tool.
 
 ## Contributing
 

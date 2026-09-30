@@ -9,9 +9,12 @@
  *
  *   node scripts/check-standalone.mjs           # structural checks only
  *   node scripts/check-standalone.mjs --full    # also install, build and test
+ *   node scripts/check-standalone.mjs --full --only=a,b   # just these folders
  *
- * The full run is slow, so CI does it on a schedule and on release, while the
- * fast structural pass runs on every commit.
+ * The full run is slow, so on a push CI runs it only for the tool folders that
+ * push reaches (chosen by scripts/affected-tools.mjs) and for every folder in
+ * the daily full run, while the fast structural pass runs over every folder on
+ * every commit.
  */
 import { readFileSync, readdirSync, existsSync, statSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';

@@ -170,6 +170,16 @@ pnpm verify
 pnpm e2e
 ```
 
+`pnpm e2e` runs every browser test, which takes a long time. This command runs only the ones your change reaches, the
+same selection CI makes when you push (uncommitted and new files included):
+
+```sh
+node scripts/affected-tools.mjs --base origin/main --run -- --project=chromium
+```
+
+Without `--run` it only prints the plan and the reason for each changed file. Everything after `--` goes to
+Playwright, so dropping `--project=chromium` uses all four browsers like CI. CI still runs everything once a day.
+
 ## Dependencies
 
 Prefer no runtime dependency. Where one is needed, especially for cryptography, use a well-reviewed library rather

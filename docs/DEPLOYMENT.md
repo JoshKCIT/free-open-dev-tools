@@ -107,8 +107,11 @@ optional required-reviewers setting in steps 9 and 10 was **not** in use, so the
 push to main
      |
      v
-  CI workflow          typecheck, lint, format, unit tests, four release gates,
-     |                 dependency audit, secret scan, browser and privacy tests
+  CI workflow          plan: work out what this push reaches
+     |                 always in full: typecheck, lint, format, unit tests,
+     |                   four release gates, dependency audit, secret scan
+     |                 only what the push reaches: browser and privacy tests,
+     |                   standalone folder check
      |  on success
      v
  Deploy workflow       build with VITE_BASE=/free-open-dev-tools/, upload, publish
@@ -117,8 +120,46 @@ push to main
  Post-deployment checks against the live site
 ```
 
+```
+nightly run (08:23 UTC) or the CI "Run workflow" button
+     |
+     v
+  CI workflow          checks everything, and no deploy follows
+```
+
 The deploy workflow triggers on **completion of the CI workflow**, and its first job refuses to continue unless CI
-concluded `success`. A failing test therefore stops a deploy, rather than the two racing each other.
+concluded `success` **and** that CI run was started by a push to `main`. A failing test therefore stops a deploy,
+rather than the two racing each other, and a nightly, hand-started or pull-request CI run never publishes anything.
+The Deploy workflow's own Run workflow button is separate and still deploys any commit (see Rollback).
+
+### What a push rechecks
+
+The first CI job, `plan`, runs `scripts/affected-tools.mjs`. It compares the push with the newest commit on `main`
+whose CI run passed, not with the previous push, so the changes of a failed push are rechecked by the next push.
+
+- A change to one tool (its folder, its page, its fixtures, its catalog entry or its dependencies) reruns that tool's
+  browser tests in all four browsers and its standalone folder check.
+- A changed browser test file runs whole, for every tool it covers.
+- Browser tests that name no tool are site-wide and always run.
+- Anything every page shares (the page frame, shared components, the build, the browser test set-up, root
+  dependencies), or any file no rule covers, reruns everything. Guessing wrong therefore costs time, never coverage.
+- Documentation, and edits that only touch comments, recheck nothing.
+
+The plan job's summary on the run page lists every changed file and why it counts the way it does. Typecheck, lint,
+format, unit tests and every gate in the table below still run in full on every run.
+
+Locally, `node scripts/affected-tools.mjs --base origin/main` prints the same plan for your working tree, and adding
+`--run -- --project=chromium` runs those tests.
+
+### Full runs
+
+CI runs everything once a day at 08:23 UTC (skipped when that commit already passed a full run) and whenever someone
+presses Run workflow on the CI workflow in the Actions tab. A full run never deploys.
+
+The trade-off, stated plainly: a push whose partial check passes is deployed, and the daily full run is the safety
+net. If a daily run fails, fix it promptly, because push runs compare with the last passing run and will not recheck
+that tool on their own. GitHub turns off scheduled workflows in a public repository after 60 days with no activity;
+re-enable it from the Actions tab if that happens.
 
 ### The release gate
 
@@ -137,6 +178,9 @@ Deployment is blocked when any of these fail:
 | gitleaks                               | A credential committed to the repository.                                                                                  |
 | `playwright test`                      | A broken route or workflow, a failing accessibility check, or **any tool leaking input**.                                  |
 | Generated file check                   | Documentation that has drifted from its source.                                                                            |
+
+On a push, `playwright test` and the full standalone folder check run only for what the push reaches; every other row
+runs in full on every run.
 
 ### Why the base path matters
 
@@ -185,8 +229,8 @@ git revert <bad-commit-sha>
 git push origin main
 ```
 
-CI runs on the revert, and on success the deploy follows automatically. Slower than option 1 because it waits for the
-full pipeline, but it leaves `main` in a correct state.
+CI runs on the revert, and on success the deploy follows automatically. Slower than option 1 because it waits for CI to
+run on the revert, but it leaves `main` in a correct state.
 
 ### Option 3: take the site down
 
