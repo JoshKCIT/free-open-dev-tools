@@ -244,6 +244,8 @@ describe('secret contract', () => {
 });
 
 describe('round trip', () => {
+  // About 2 s alone (1 MiB through every cipher and key derivation); the
+  // default 5 s is too tight when the whole suite runs in parallel.
   it('every cipher x kdf, plus empty plaintext, an astral UTF-8 character, and 1 MiB of bytes', async () => {
     const cases = [new Uint8Array(0), new TextEncoder().encode('hello 𝄞 world'), new Uint8Array(1024 * 1024).fill(9)];
     for (const cipher of OPENSSL_CIPHERS) {
@@ -263,5 +265,5 @@ describe('round trip', () => {
         }
       }
     }
-  });
+  }, 30_000);
 });

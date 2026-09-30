@@ -198,6 +198,8 @@ describe('formatMarkdown: idempotence', () => {
 });
 
 describe('formatMarkdown: errors', () => {
+  // Fast alone, but it recurses to the stack limit, which takes far longer
+  // when the whole suite runs in parallel; the default 5 s is too tight.
   it('5,000 nested > block quotes throw the too-deeply-nested error, never a raw RangeError', async () => {
     const source = '> '.repeat(5000) + 'a';
     try {
@@ -208,7 +210,7 @@ describe('formatMarkdown: errors', () => {
       expect(err).not.toBeInstanceOf(RangeError);
       expect((err as MarkdownFormatterError).message).toBe('This document is nested too deeply to format.');
     }
-  });
+  }, 30_000);
 
   it('printWidth outside 20-200 or non-integer throws the PD-3 error', async () => {
     const message = 'Print width must be a whole number from 20 to 200.';
