@@ -3,7 +3,9 @@
  *
  * Repository: https://github.com/llvm/llvm-project
  * Tag:        llvmorg-23.1.1
- * Path:       clang/docs/ClangFormatStyleOptions.rst (section IndentWidth) -- more files are added further down
+ * Paths:      clang/docs/ClangFormatStyleOptions.rst (section IndentWidth),
+ *             clang/unittests/Format/{FormatTest,FormatTestCSharp,FormatTestJava,FormatTestObjC,FormatTestProto}.cpp,
+ *             clang/lib/Format/Format.cpp (the preset widths, quoted in a comment)
  * URL:        https://github.com/llvm/llvm-project/blob/llvmorg-23.1.1/clang/docs/ClangFormatStyleOptions.rst
  * Licence:    Apache-2.0 WITH LLVM-exception (see ./LICENSE, clang/LICENSE.TXT at the same tag, unmodified)
  * Fetched:    2026-10-01 with curl from raw.githubusercontent.com
@@ -17,3 +19,106 @@ export const INDENT_WIDTH_DOC_INPUT = "void f() { someFunction(); if (true, fals
 
 /** The formatted block of the IndentWidth example, "IndentWidth: 3", exactly as the documentation prints it, plus the final line break the formatter ends with */
 export const INDENT_WIDTH_DOC_OUTPUT = "void f() {\n   someFunction();\n   if (true, false) {\n      f();\n   }\n}\n";
+
+/**
+ * One published two-argument case per language: the expected output and the input, exactly as the unit test file
+ * writes them (the C++ string literal pieces joined, escapes resolved). `file` and `line` are the position of the call
+ * at tag llvmorg-23.1.1; `style` is the style the test uses.
+ */
+export interface PublishedCase {
+  language: "c" | "cpp" | "csharp" | "java" | "objc" | "proto";
+  preset: "LLVM" | "Google" | "Microsoft";
+  file: string;
+  line: number;
+  test: string;
+  style: string;
+  expected: string;
+  input: string;
+}
+
+export const PUBLISHED_CASES: PublishedCase[] = [
+  {
+    language: "cpp",
+    preset: "LLVM",
+    file: "clang/unittests/Format/FormatTest.cpp",
+    line: 3745,
+    test: "FormatTest.SeparatesLogicalBlocks",
+    style: "getLLVMStyle() (the default style of FormatTestBase, no option changed)",
+    expected: "class A {\npublic:\n  void f();\n\nprivate:\n  void g() {}\n  // test\nprotected:\n  int h;\n};",
+    input: "class A {\npublic:\nvoid f();\nprivate:\nvoid g() {}\n// test\nprotected:\nint h;\n};",
+  },
+  {
+    language: "c",
+    preset: "LLVM",
+    file: "clang/unittests/Format/FormatTest.cpp",
+    line: 12267,
+    test: "FormatTest.UnderstandsNewAndDelete",
+    style: "getLLVMStyle(FormatStyle::LK_C), no option changed",
+    expected: "void new(link p);\nvoid delete(link p);",
+    input: "void new (link p);\nvoid delete (link p);",
+  },
+  {
+    language: "csharp",
+    preset: "Microsoft",
+    file: "clang/unittests/Format/FormatTestCSharp.cpp",
+    line: 1706,
+    test: "FormatTestCSharp.GotoCaseLabel",
+    style: "getMicrosoftStyle(FormatStyle::LK_CSharp) (the fixture default, no option changed)",
+    expected: "switch (i)\n{\ncase 0:\n    goto case 1;\ncase 1:\n    j = 0;\n    {\n        break;\n    }\n}",
+    input: "switch (i) {\ncase 0:\n  goto case 1;\ncase 1:\n  j = 0;\n  {\n    break;\n  }\n}",
+  },
+  {
+    language: "java",
+    preset: "Google",
+    file: "clang/unittests/Format/FormatTestJava.cpp",
+    line: 851,
+    test: "FormatTestJava.TextBlock",
+    style: "getGoogleStyle(FormatStyle::LK_Java) (the fixture default, no option changed)",
+    expected: "String foo = \"\"\"\n    bar\n    \\\\\"\"\";",
+    input: "String foo=\"\"\"\n    bar\n    \\\\\"\"\" ;",
+  },
+  {
+    language: "objc",
+    preset: "LLVM",
+    file: "clang/unittests/Format/FormatTestObjC.cpp",
+    line: 571,
+    test: "FormatTestObjC.FormatObjCMethodDeclarations",
+    style: "getLLVMStyle() with Language set to LK_ObjC (the fixture default, no option changed at this point of the test)",
+    expected: "/*\n */\n- (void)foo;",
+    input: "/*\n */- (void)foo;",
+  },
+  {
+    language: "proto",
+    preset: "Google",
+    file: "clang/unittests/Format/FormatTestProto.cpp",
+    line: 197,
+    test: "FormatTestProto.DoesntWrapFileOptions",
+    style: "getGoogleStyle(FormatStyle::LK_Proto) with the fixture ColumnLimit of 60 (the page offers the preset only, whose limit is 80; the case is about a file option that is never wrapped)",
+    expected: "option java_package = \"some.really.long.package.that.exceeds.the.column.limit\";",
+    input: "option    java_package   =    \"some.really.long.package.that.exceeds.the.column.limit\";",
+  },
+];
+
+/**
+ * The indent width and the column limit each named preset gives a C++ source, read from clang/lib/Format/Format.cpp at
+ * llvmorg-23.1.1 (https://github.com/llvm/llvm-project/blob/llvmorg-23.1.1/clang/lib/Format/Format.cpp):
+ *  - getLLVMStyle: IndentWidth = 2 (line 1948), ColumnLimit = 80 (line 1916)
+ *  - getGoogleStyle: starts from getLLVMStyle and sets no IndentWidth, so 2; ColumnLimit 80 for C and C++ (100 for Java, Objective-C and C#)
+ *  - getChromiumStyle: starts from getGoogleStyle; IndentWidth = 4 only for Java (line 2255), so 2 for C and C++; ColumnLimit 80
+ *  - getMozillaStyle: starts from getLLVMStyle and sets no IndentWidth, so 2; ColumnLimit 80
+ *  - getWebKitStyle: IndentWidth = 4 (line 2328), ColumnLimit = 0, which is no limit (line 2325)
+ *  - getMicrosoftStyle: IndentWidth = 4 (line 2357), ColumnLimit = 120 (line 2355)
+ *  - getGNUStyle: starts from getLLVMStyle and sets no IndentWidth, so 2; ColumnLimit = 79 (line 2345)
+ */
+export const PRESET_WIDTHS = {
+  LLVM: { indentWidth: 2, columnLimit: 80 },
+  Google: { indentWidth: 2, columnLimit: 80 },
+  Chromium: { indentWidth: 2, columnLimit: 80 },
+  Mozilla: { indentWidth: 2, columnLimit: 80 },
+  WebKit: { indentWidth: 4, columnLimit: 0 },
+  Microsoft: { indentWidth: 4, columnLimit: 120 },
+  GNU: { indentWidth: 2, columnLimit: 79 },
+} as const;
+
+/** Chromium style for Java (getChromiumStyle, IndentWidth = 4 at line 2255 and ContinuationIndentWidth = 8 at line 2254) */
+export const CHROMIUM_JAVA_INDENT_WIDTH = 4;

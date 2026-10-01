@@ -147,13 +147,12 @@ const FORMATTERS: FormatterCase[] = [
   },
   {
     id: 'c-family-formatter',
-    // The IndentWidth example of clang-format's own style documentation (llvmorg-23.1.1,
-    // https://github.com/llvm/llvm-project/blob/llvmorg-23.1.1/clang/docs/ClangFormatStyleOptions.rst,
-    // Apache-2.0 WITH LLVM-exception), formatted with the default language, preset and indent width (C++, LLVM, the
-    // preset's own width): the call and the condition of the documented block. A published unit test case replaces
-    // it once the language cases are added.
-    valid: { input: liveFixtureInput('c-family-formatter') },
-    expectOutput: 'someFunction(); if (true, false) {',
+    // clang-format's own unit test FormatTest.SeparatesLogicalBlocks (FormatTest.cpp line 3745, llvmorg-23.1.1,
+    // https://github.com/llvm/llvm-project/blob/llvmorg-23.1.1/clang/unittests/Format/FormatTest.cpp, Apache-2.0
+    // WITH LLVM-exception), formatted with the default language, preset and indent width (C++, LLVM, the preset's own
+    // width): a line of its expected output.
+    valid: { input: 'class A {\npublic:\nvoid f();\nprivate:\nvoid g() {}\n// test\nprotected:\nint h;\n};' },
+    expectOutput: 'private: void g() {} // test protected: int h; };',
     // No broken input: clang-format reports no syntax errors, it formats malformed code best effort.
   },
 ];
@@ -313,4 +312,75 @@ test('shell-formatter: a mksh coprocess formats under mksh and is refused under 
   await page.locator('#f-dialect').selectOption('bash');
   await expect(outputArea(page).locator('.issue-list')).toContainText('Line 1, column 11', { timeout: 15_000 });
   expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+});
+
+// One published two-argument case per language, taken from clang-format's own unit tests (llvmorg-23.1.1,
+// https://github.com/llvm/llvm-project/tree/llvmorg-23.1.1/clang/unittests/Format, Apache-2.0 WITH LLVM-exception),
+// each under the preset its test file uses with no option changed.
+const SIX_LANGUAGE_CASES: { language: string; preset: string; source: string; input: string; expected: string }[] = [
+  {
+    // clang/unittests/Format/FormatTest.cpp line 3745, FormatTest.SeparatesLogicalBlocks
+    language: 'cpp',
+    preset: 'LLVM',
+    source: 'FormatTest.SeparatesLogicalBlocks',
+    input: 'class A {\npublic:\nvoid f();\nprivate:\nvoid g() {}\n// test\nprotected:\nint h;\n};',
+    expected: 'class A {\npublic:\n  void f();\n\nprivate:\n  void g() {}\n  // test\nprotected:\n  int h;\n};',
+  },
+  {
+    // clang/unittests/Format/FormatTest.cpp line 12267, FormatTest.UnderstandsNewAndDelete
+    language: 'c',
+    preset: 'LLVM',
+    source: 'FormatTest.UnderstandsNewAndDelete',
+    input: 'void new (link p);\nvoid delete (link p);',
+    expected: 'void new(link p);\nvoid delete(link p);',
+  },
+  {
+    // clang/unittests/Format/FormatTestCSharp.cpp line 1706, FormatTestCSharp.GotoCaseLabel
+    language: 'csharp',
+    preset: 'Microsoft',
+    source: 'FormatTestCSharp.GotoCaseLabel',
+    input: 'switch (i) {\ncase 0:\n  goto case 1;\ncase 1:\n  j = 0;\n  {\n    break;\n  }\n}',
+    expected: 'switch (i)\n{\ncase 0:\n    goto case 1;\ncase 1:\n    j = 0;\n    {\n        break;\n    }\n}',
+  },
+  {
+    // clang/unittests/Format/FormatTestJava.cpp line 851, FormatTestJava.TextBlock
+    language: 'java',
+    preset: 'Google',
+    source: 'FormatTestJava.TextBlock',
+    input: 'String foo="""\n    bar\n    \\\\""" ;',
+    expected: 'String foo = """\n    bar\n    \\\\""";',
+  },
+  {
+    // clang/unittests/Format/FormatTestObjC.cpp line 571, FormatTestObjC.FormatObjCMethodDeclarations
+    language: 'objc',
+    preset: 'LLVM',
+    source: 'FormatTestObjC.FormatObjCMethodDeclarations',
+    input: '/*\n */- (void)foo;',
+    expected: '/*\n */\n- (void)foo;',
+  },
+  {
+    // clang/unittests/Format/FormatTestProto.cpp line 197, FormatTestProto.DoesntWrapFileOptions
+    language: 'proto',
+    preset: 'Google',
+    source: 'FormatTestProto.DoesntWrapFileOptions',
+    input: 'option    java_package   =    "some.really.long.package.that.exceeds.the.column.limit";',
+    expected: 'option java_package = "some.really.long.package.that.exceeds.the.column.limit";',
+  },
+];
+
+test('c-family-formatter: each of the six languages formats in this browser', async ({ page }) => {
+  await openFormatter(page, 'c-family-formatter');
+
+  for (const c of SIX_LANGUAGE_CASES) {
+    await page.locator('#f-language').selectOption(c.language);
+    await page.locator('#f-preset').selectOption(c.preset);
+    await page.locator('#f-input').fill(c.input);
+
+    // The formatted block is exactly the unit test's expected text, whitespace included.
+    const block = outputArea(page).locator('pre.output').first();
+    await expect
+      .poll(async () => (await block.textContent()) ?? '', { message: `${c.language} (${c.source})`, timeout: 15_000 })
+      .toBe(c.expected);
+    expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
+  }
 });
