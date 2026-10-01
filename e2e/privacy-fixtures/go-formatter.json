@@ -1,0 +1,8 @@
+[
+  {
+    "values": {
+      "input": "package main\n\nfunc main() {}\n"
+    },
+    "attachesFile": false
+  }
+]
