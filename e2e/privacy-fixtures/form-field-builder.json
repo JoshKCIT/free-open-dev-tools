@@ -1,7 +1,80 @@
 [
   {
     "mode": { "field": "control", "value": "text" },
-    "values": { "label": "Full name:", "name": "fn", "id": "fn", "value": "Ada" },
+    "values": {
+      "label": "Full name:",
+      "name": "fn",
+      "id": "fn",
+      "value": "Ada",
+      "flags": "required",
+      "autocomplete": "name",
+      "placeholder": "Ada Lovelace",
+      "pattern": "[A-Za-z ]+",
+      "title": "Letters and spaces",
+      "minlength": "1",
+      "maxlength": "40",
+      "size": "20"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "control", "value": "number" },
+    "values": {
+      "label": "Quantity",
+      "name": "qty",
+      "id": "qty",
+      "value": "5",
+      "flags": "required",
+      "autocomplete": "off",
+      "placeholder": "1",
+      "min": "0",
+      "max": "10",
+      "step": "1",
+      "title": "A whole number"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "control", "value": "select" },
+    "values": {
+      "label": "Colour",
+      "name": "colour",
+      "id": "colour",
+      "value": "b",
+      "options": "a | Alpha\nb | Beta",
+      "flags": "multiple",
+      "autocomplete": "off",
+      "size": "1",
+      "title": "Pick one"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "control", "value": "radio" },
+    "values": {
+      "label": "Size",
+      "name": "size",
+      "id": "size",
+      "value": "sm",
+      "options": "sm | Small\nlg | Large",
+      "flags": "required",
+      "title": "Pick one size"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "control", "value": "image" },
+    "values": {
+      "label": "Search",
+      "name": "go",
+      "id": "go",
+      "flags": "disabled",
+      "title": "Search button",
+      "src": "button.png",
+      "alt": "Search",
+      "width": "40",
+      "height": "40"
+    },
     "attachesFile": false
   }
 ]

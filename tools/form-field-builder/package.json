@@ -25,6 +25,7 @@
     "form",
     "input",
     "label",
+    "autocomplete",
     "accessibility",
     "markup generator"
   ],

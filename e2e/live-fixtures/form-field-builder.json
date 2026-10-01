@@ -1,9 +1,15 @@
 {
   "id": "form-field-builder",
-  "label": "WHATWG 4.10.4 label example: Full name with the name fn",
+  "label": "WHATWG 4.10.19.7 autofill example: the blue shipping address textarea",
   "steps": [
-    { "action": "fill", "field": "label", "value": "Full name:" },
-    { "action": "fill", "field": "name", "value": "fn" }
+    { "action": "select", "field": "control", "value": "textarea" },
+    { "action": "fill", "field": "label", "value": "Address:" },
+    { "action": "fill", "field": "name", "value": "ba" },
+    { "action": "fill", "field": "autocomplete", "value": "section-blue shipping street-address" }
   ],
-  "expect": ["<label for=\"fn\">Full name:</label>", "name=\"fn\""]
+  "expect": [
+    "autocomplete=\"section-blue shipping street-address\"",
+    "name=\"ba\"",
+    "<label for=\"ba\">Address:</label>"
+  ]
 }
