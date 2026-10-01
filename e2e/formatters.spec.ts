@@ -175,7 +175,9 @@ const FORMATTERS: FormatterCase[] = [
     // its published output. The same input the live fixture types.
     valid: { input: liveFixtureInput('php-formatter') },
     expectOutput: '$other_test = [1, 2, 123.4324, $hi];',
-    // No broken input yet: syntax errors get their line and column in the next task.
+    // Counted by hand: line 2 is `$a = ;`, the dollar sign is column 1 and the semicolon, where an expression must
+    // be, is column 6 (the plugin counts from zero and says 5).
+    broken: { input: '<?php\n$a = ;\n', issue: 'Line 2, column 6' },
   },
 ];
 
@@ -423,4 +425,24 @@ test('dart-formatter: the line width decides where an import wraps in this brows
   await expect
     .poll(async () => (await block.textContent()) ?? '', { timeout: 15_000 })
     .toBe("import 'package:foo/foo.dart' deferred as path;\n");
+});
+
+test('php-formatter: the single quote option and the trailing comma default reach the formatter in this browser', async ({
+  page,
+}) => {
+  await openFormatter(page, 'php-formatter');
+  const block = outputArea(page).locator('pre.output').first();
+
+  // The Prettier PHP plugin's own test of the single quote option (tests/single-quote-api/jsfmt.spec.mjs, tag v0.25.0,
+  // https://github.com/prettier/plugin-php/blob/v0.25.0/tests/single-quote-api/jsfmt.spec.mjs, MIT): its input, and its
+  // expected output, which also shows the trailing comma the plugin prints by default.
+  await page
+    .locator('#f-input')
+    .fill('<?php echo link_to_route("frontend.users.user.show", $users["name"], $users[\'_id\']); ?>');
+  await page.locator('#f-singleQuote').check();
+  await expect
+    .poll(async () => (await block.textContent()) ?? '', { timeout: 15_000 })
+    .toBe(
+      "<?php echo link_to_route(\n    'frontend.users.user.show',\n    $users['name'],\n    $users['_id'],\n); ?>\n",
+    );
 });

@@ -62,8 +62,8 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ```ts
 import { formatPhp } from '@fodt/php-formatter';
 
-await formatPhp('<?php $a=[1,2,3];', { printWidth: 80, singleQuote: true });
-// { output: ..., inputBytes: ..., outputBytes: ... }
+await formatPhp('<?php $a=[1,2,3]; $b="x";', { singleQuote: true });
+// { output: "<?php $a = [1, 2, 3];\n$b = 'x';\n", inputBytes: 25, outputBytes: 32 }
 ```
 
 `formatPhp(source, options?)` is asynchronous and returns `{ output, inputBytes, outputBytes }`, or `null` for blank or whitespace-only source without calling Prettier. The options are `printWidth` (20 to 200, default 80), `tabWidth` (1 to 16, default 4), `useTabs` (default false), `singleQuote` (default false), `trailingCommaPHP` (default true), `braceStyle` (`per-cs` or `1tbs`, default `per-cs`) and `phpVersion` (a version from `PHP_VERSIONS`, default 8.5). `phpVersion` is always passed to the plugin as a concrete version: auto and composer are refused. It throws `PhpFormatterError` for every failure and never returns partly formatted code; the error carries `line` and `column` (both 1-based, the column counted in characters) when the parser located a syntax error.
@@ -79,7 +79,7 @@ await formatPhp('<?php $a=[1,2,3];', { printWidth: 80, singleQuote: true });
 npm test
 ```
 
-The oracle is the plugin's own published jest snapshots at v0.25.0 (tests/array and the other snapshot directories): each case's options block, input and output are vendored with the licence, and every case whose options the page offers reproduces with an explicit PHP version. Error positions in the tests are counted by hand from each test's input.
+The oracle is the plugin's own published tests at v0.25.0: the 18 cases of its array, arrowfunc, assign, class, if, string and switch snapshots, and the cases of its brace-style, string-single-quote, string-double-quote, trailing_commas, trailing_comma_func and attributes-trail-comma snapshots and its single quote API test, which exercise the brace style, quote and trailing comma options this page offers. 62 of the 66 cases reproduce byte for byte with an explicit PHP version (8.5 where the plugin's own run passed none, because automatic detection falls back to 8.5); four are left out by name because they use the deprecated psr-2 brace style or Prettier's trailingComma none, which the page does not offer. Indent width, tabs and print width are checked against what Prettier documents for them, not against the formatter's own output. Error positions in the tests are counted by hand from each test's input.
 
 ## Licence
 
