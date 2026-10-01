@@ -29,6 +29,12 @@ const rel = (path: string) => path.replace(/^\//, '');
 declare global {
   interface Window {
     __FODT_FORMATTER_WORKERS__?: string[];
+    /** The position (in construction order) of every worker the page has terminated, in the order it did so. */
+    __FODT_FORMATTER_TERMINATED__?: number[];
+    /** Replies of the held worker that were produced but not yet delivered; each entry delivers one reply. */
+    __FODT_HELD_REPLIES__?: (() => void)[];
+    /** Delivers every held reply, and every later one at once, to whatever listeners the page still has attached. */
+    __FODT_RELEASE_HELD__?: () => void;
   }
 }
 
@@ -42,44 +48,102 @@ function cancelButtonOf(page: Page) {
 
 /**
  * Installs a wrapper around the global Worker constructor, before any page
- * script runs, so every construction is recorded under its own global name.
+ * script runs, so every construction is recorded under its own global name and
+ * every terminate() call is recorded by the position of the worker it ends.
  * With `swallowFirst`, the first worker built never receives its job (as if
  * the engine were stuck inside one synchronous call); every later worker
  * behaves normally, so the next run after a stop can be proven to format.
+ * With `holdFirstReply`, the first worker does its job but its reply is held
+ * back until the test calls `window.__FODT_RELEASE_HELD__()`: the reply then
+ * goes to whatever listeners the page still has attached to that worker, which
+ * is how a reply that arrives after a newer run has been shown is produced.
  */
-async function installWorkerWrapper(page: Page, options: { swallowFirst: boolean }): Promise<void> {
-  await page.addInitScript((swallowFirst: boolean) => {
-    const OriginalWorker = window.Worker;
-    window.__FODT_FORMATTER_WORKERS__ = [];
+async function installWorkerWrapper(
+  page: Page,
+  options: { swallowFirst: boolean; holdFirstReply?: boolean },
+): Promise<void> {
+  await page.addInitScript(
+    (modes: { swallowFirst: boolean; holdFirstReply: boolean }) => {
+      const OriginalWorker = window.Worker;
+      window.__FODT_FORMATTER_WORKERS__ = [];
+      window.__FODT_FORMATTER_TERMINATED__ = [];
+      window.__FODT_HELD_REPLIES__ = [];
+      let released = false;
+      window.__FODT_RELEASE_HELD__ = () => {
+        released = true;
+        for (const deliver of window.__FODT_HELD_REPLIES__!.splice(0)) deliver();
+      };
 
-    class WrappedWorker {
-      inner: Worker;
-      swallow: boolean;
-      constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
-        this.inner = new OriginalWorker(scriptURL, workerOptions);
-        this.swallow = swallowFirst && window.__FODT_FORMATTER_WORKERS__!.length === 0;
-        window.__FODT_FORMATTER_WORKERS__!.push(String(scriptURL));
+      class WrappedWorker {
+        inner: Worker;
+        index: number;
+        swallow: boolean;
+        hold: boolean;
+        heldListeners = new Set<EventListenerOrEventListenerObject>();
+        holdInstalled = false;
+        constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
+          this.inner = new OriginalWorker(scriptURL, workerOptions);
+          this.index = window.__FODT_FORMATTER_WORKERS__!.length;
+          this.swallow = modes.swallowFirst && this.index === 0;
+          this.hold = modes.holdFirstReply && this.index === 0;
+          window.__FODT_FORMATTER_WORKERS__!.push(String(scriptURL));
+        }
+        postMessage(...args: Parameters<Worker['postMessage']>): void {
+          if (this.swallow) return;
+          this.inner.postMessage(...args);
+        }
+        addEventListener(...args: Parameters<Worker['addEventListener']>): void {
+          const [type, listener] = args;
+          if (this.hold && type === 'message') {
+            this.heldListeners.add(listener as EventListenerOrEventListenerObject);
+            if (!this.holdInstalled) {
+              this.holdInstalled = true;
+              this.inner.addEventListener('message', (event) => {
+                const deliver = () => {
+                  // Only the listeners the page still has attached when the reply is delivered receive it.
+                  for (const held of [...this.heldListeners]) {
+                    if (typeof held === 'function') held.call(this.inner, event);
+                    else held.handleEvent(event);
+                  }
+                };
+                if (released) deliver();
+                else window.__FODT_HELD_REPLIES__!.push(deliver);
+              });
+            }
+            return;
+          }
+          this.inner.addEventListener(...args);
+        }
+        removeEventListener(...args: Parameters<Worker['removeEventListener']>): void {
+          const [type, listener] = args;
+          if (this.hold && type === 'message') {
+            this.heldListeners.delete(listener as EventListenerOrEventListenerObject);
+            return;
+          }
+          this.inner.removeEventListener(...args);
+        }
+        terminate(): void {
+          window.__FODT_FORMATTER_TERMINATED__!.push(this.index);
+          this.inner.terminate();
+        }
+        dispatchEvent(event: Event): boolean {
+          return this.inner.dispatchEvent(event);
+        }
       }
-      postMessage(...args: Parameters<Worker['postMessage']>): void {
-        if (this.swallow) return;
-        this.inner.postMessage(...args);
-      }
-      addEventListener(...args: Parameters<Worker['addEventListener']>): void {
-        this.inner.addEventListener(...args);
-      }
-      removeEventListener(...args: Parameters<Worker['removeEventListener']>): void {
-        this.inner.removeEventListener(...args);
-      }
-      terminate(): void {
-        this.inner.terminate();
-      }
-      dispatchEvent(event: Event): boolean {
-        return this.inner.dispatchEvent(event);
-      }
-    }
 
-    window.Worker = WrappedWorker as unknown as typeof Worker;
-  }, options.swallowFirst);
+      window.Worker = WrappedWorker as unknown as typeof Worker;
+    },
+    { swallowFirst: options.swallowFirst, holdFirstReply: options.holdFirstReply ?? false },
+  );
+}
+
+/** The position of every worker the page has terminated so far, in order. */
+async function terminatedWorkers(page: Page): Promise<number[]> {
+  return page.evaluate(() => window.__FODT_FORMATTER_TERMINATED__ ?? []);
+}
+
+async function workerCount(page: Page): Promise<number> {
+  return page.evaluate(() => (window.__FODT_FORMATTER_WORKERS__ ?? []).length);
 }
 
 /** Starts recording every request the page makes from now on, and returns the live list. */
@@ -94,13 +158,17 @@ function recordRequests(page: Page): string[] {
  * fields to fill (field name to value); `expectOutput` is text the formatted
  * result must contain (the page text is compared with whitespace collapsed);
  * `broken`, when present, is an input the engine refuses and the exact
- * `Line N, column M` text the issue list must show for it.
+ * `Line N, column M` text the issue list must show for it. `newest` is a pair
+ * of small valid inputs, the first naming "alpha" and the second "beta", and the
+ * text the formatted second one must contain: it drives the tests that a newer
+ * input replaces an older one still in flight.
  */
 interface FormatterCase {
   id: string;
   valid: Record<string, string>;
   expectOutput: string;
   broken?: { input: string; issue: string };
+  newest: { first: string; second: string; expectSecond: string };
 }
 
 /** The input of a live fixture file, so the page is driven by the same published text its unit tests use. */
@@ -123,6 +191,11 @@ const FORMATTERS: FormatterCase[] = [
     // Counted by hand: line 1 package main, line 2 blank, line 3 func main() {, line 4 x := (tab, then the
     // operator, nothing after it), line 5 the lone closing brace where an operand must follow, column 1.
     broken: { input: 'package main\n\nfunc main() {\n\tx :=\n}\n', issue: 'Line 5, column 1' },
+    newest: {
+      first: 'package alpha\n\nfunc a(){}\n',
+      second: 'package beta\n\nfunc b(){}\n',
+      expectSecond: 'package beta',
+    },
   },
   {
     id: 'python-formatter',
@@ -134,6 +207,7 @@ const FORMATTERS: FormatterCase[] = [
     // Counted by hand: in `def f(:` the letters d, e, f, a space and f are columns 1 to 5, the opening parenthesis is
     // column 6 and the colon, where a parameter or the closing parenthesis must be, is column 7 on line 1.
     broken: { input: 'def f(:\n  pass\n', issue: 'Line 1, column 7' },
+    newest: { first: 'def alpha():\n  pass\n', second: 'def beta():\n  pass\n', expectSecond: 'def beta():' },
   },
   {
     id: 'shell-formatter',
@@ -144,6 +218,7 @@ const FORMATTERS: FormatterCase[] = [
     expectOutput: 'space >redirs',
     // Counted by hand: the unfinished `if` starts the script, so it is line 1, column 1.
     broken: { input: 'if true; then\n  echo hi\n', issue: 'Line 1, column 1' },
+    newest: { first: 'echo alpha\n', second: 'echo beta\n', expectSecond: 'echo beta' },
   },
   {
     id: 'c-family-formatter',
@@ -154,6 +229,7 @@ const FORMATTERS: FormatterCase[] = [
     valid: { input: 'class A {\npublic:\nvoid f();\nprivate:\nvoid g() {}\n// test\nprotected:\nint h;\n};' },
     expectOutput: 'private: void g() {} // test protected: int h; };',
     // No broken input: clang-format reports no syntax errors, it formats malformed code best effort.
+    newest: { first: 'int alpha;\n', second: 'int beta;\n', expectSecond: 'int beta;' },
   },
   {
     id: 'dart-formatter',
@@ -166,6 +242,7 @@ const FORMATTERS: FormatterCase[] = [
     // Counted by hand: two lines, each ended by a line break, and a closing brace that never comes, so the
     // formatter looks for it at the end of the input: line 3, column 1.
     broken: { input: 'void main() {\n  print(1);\n', issue: 'Line 3, column 1' },
+    newest: { first: 'var alpha=1;\n', second: 'var beta=1;\n', expectSecond: 'var beta = 1;' },
   },
   {
     id: 'php-formatter',
@@ -178,6 +255,7 @@ const FORMATTERS: FormatterCase[] = [
     // Counted by hand: line 2 is `$a = ;`, the dollar sign is column 1 and the semicolon, where an expression must
     // be, is column 6 (the plugin counts from zero and says 5).
     broken: { input: '<?php\n$a = ;\n', issue: 'Line 2, column 6' },
+    newest: { first: '<?php echo "alpha";\n', second: '<?php echo "beta";\n', expectSecond: 'echo "beta";' },
   },
 ];
 
@@ -193,6 +271,11 @@ async function openFormatter(page: Page, id: string): Promise<void> {
 
 async function fillFields(page: Page, fields: Record<string, string>): Promise<void> {
   for (const [name, value] of Object.entries(fields)) await page.locator(`#f-${name}`).fill(value);
+}
+
+/** Page time in milliseconds, read from the page itself so it follows the page clock. */
+async function pageNow(page: Page): Promise<number> {
+  return page.evaluate(() => Date.now());
 }
 
 for (const c of FORMATTERS) {
@@ -212,6 +295,9 @@ for (const c of FORMATTERS) {
     expect(workers.length).toBeGreaterThanOrEqual(1);
     for (const address of workers) expect(address.startsWith('blob:')).toBe(true);
 
+    // A worker that finished its job is ended too: every worker the page built has been terminated.
+    await expect.poll(async () => (await terminatedWorkers(page)).length).toBe(workers.length);
+
     const offending = requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'));
     expect(offending).toEqual([]);
   });
@@ -225,6 +311,9 @@ for (const c of FORMATTERS) {
     await page.clock.install();
     await openFormatter(page, c.id);
 
+    // Page time before the run is started: the run's own timer begins a little after this (the input debounce), so
+    // no more than this much page time has passed on it at any moment measured from here.
+    const before = await pageNow(page);
     await fillFields(page, c.valid);
     await expect(cancelButtonOf(page)).toBeVisible();
 
@@ -232,26 +321,35 @@ for (const c of FORMATTERS) {
     // Moving the clock first would let real seconds pass instead (the page's own timer would not exist yet).
     await page.waitForTimeout(800);
 
-    // 8 seconds into a stuck run: still running, no stop message.
-    await page.clock.fastForward(8_000);
+    // 8 seconds into a stuck run: still running, no stop message, and the stuck worker is not yet ended.
+    await page.clock.fastForward(Math.max(0, before + 8_000 - (await pageNow(page))));
     await expect(cancelButtonOf(page)).toBeVisible();
     await expect(outputArea(page)).not.toContainText('Stopped after');
+    expect(await terminatedWorkers(page)).toEqual([]);
 
-    // 11 seconds in: stopped, with the plain message.
-    await page.clock.fastForward(3_000);
+    // 9.9 seconds in, at the most: still running. A limit that fired at 9 seconds would already have stopped it.
+    await page.clock.fastForward(Math.max(0, before + 9_900 - (await pageNow(page))));
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await expect(outputArea(page)).not.toContainText('Stopped after');
+    expect(await terminatedWorkers(page)).toEqual([]);
+
+    // 12 seconds in: stopped, with the plain message, and the timed-out worker has been terminated.
+    await page.clock.fastForward(Math.max(0, before + 12_000 - (await pageNow(page))));
     await expect(outputArea(page).locator('.issue-list')).toContainText('Stopped after 10 seconds', {
       timeout: 15_000,
     });
     expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    expect(await terminatedWorkers(page)).toEqual([0]);
 
     // The page still answers a script call within a second.
     const answerStart = Date.now();
     await page.evaluate(() => 1 + 1);
     expect(Date.now() - answerStart).toBeLessThan(1_000);
 
-    // The next input formats normally.
+    // The next input formats normally, in a new worker.
     await fillFields(page, secondValid(c.valid));
     await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+    expect(await workerCount(page)).toBeGreaterThanOrEqual(2);
   });
 
   test(`${c.id}: Cancel stops a run at once, no time-limit message follows, and the next run formats`, async ({
@@ -264,11 +362,14 @@ for (const c of FORMATTERS) {
     await fillFields(page, c.valid);
     await expect(cancelButtonOf(page)).toBeVisible();
     await page.waitForTimeout(800);
+    expect(await terminatedWorkers(page)).toEqual([]);
     await cancelButtonOf(page).click();
 
     const note = outputArea(page).locator('.note-warn');
     await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
     expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    // The cancelled worker has been terminated, not just forgotten.
+    expect(await terminatedWorkers(page)).toEqual([0]);
 
     // 11 seconds of page clock later the limit would have fired had Cancel not cleared it: it must not.
     await page.clock.fastForward(11_000);
@@ -290,36 +391,68 @@ for (const c of FORMATTERS) {
       expect(await outputArea(page).locator('pre.output').count()).toBe(0);
     });
   }
+
+  test(`${c.id}: blank input starts no worker and shows nothing`, async ({ page }) => {
+    await installWorkerWrapper(page, { swallowFirst: false });
+    await openFormatter(page, c.id);
+
+    await page.locator('#f-input').fill('   \n');
+    // Past the 140 ms auto-run debounce with room to spare.
+    await page.waitForTimeout(1_500);
+
+    expect(await workerCount(page)).toBe(0);
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
+    expect(await cancelButtonOf(page).count()).toBe(0);
+  });
+
+  test(`${c.id}: when the input changes during a run only the newest input is formatted`, async ({ page }) => {
+    // The first worker never answers, so the first input is still in flight when the second arrives.
+    await installWorkerWrapper(page, { swallowFirst: true });
+    await openFormatter(page, c.id);
+
+    await page.locator('#f-input').fill(c.newest.first);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await page.locator('#f-input').fill(c.newest.second);
+
+    await expect(outputArea(page)).toContainText(c.newest.expectSecond, { timeout: 15_000 });
+    await expect(outputArea(page)).not.toContainText('alpha');
+    expect(await outputArea(page).locator('pre.output').count()).toBe(1);
+    expect(await workerCount(page)).toBeGreaterThanOrEqual(2);
+    // The replaced run's worker was ended as soon as the newer input arrived.
+    expect(await terminatedWorkers(page)).toContain(0);
+  });
+
+  test(`${c.id}: a reply that arrives after a newer input has been shown does not change the shown result`, async ({
+    page,
+  }) => {
+    // The first worker does its job, but its reply is held back by the test. By the time it is let through the page has
+    // moved on to the second input, so the late reply meets whatever the page still has listening to that worker.
+    await installWorkerWrapper(page, { swallowFirst: false, holdFirstReply: true });
+    await openFormatter(page, c.id);
+
+    await page.locator('#f-input').fill(c.newest.first);
+    // The first worker has produced its reply (held), so there is something to arrive late.
+    await expect
+      .poll(async () => page.evaluate(() => (window.__FODT_HELD_REPLIES__ ?? []).length), { timeout: 15_000 })
+      .toBe(1);
+
+    await page.locator('#f-input').fill(c.newest.second);
+    await expect(outputArea(page)).toContainText(c.newest.expectSecond, { timeout: 15_000 });
+    await expect(outputArea(page)).not.toContainText('alpha');
+    const shown = await outputArea(page).innerText();
+
+    // Let the old worker's reply through, then give the page time to act on it.
+    await page.evaluate(() => window.__FODT_RELEASE_HELD__?.());
+    expect(await page.evaluate(() => (window.__FODT_HELD_REPLIES__ ?? []).length)).toBe(0);
+    await page.waitForTimeout(500);
+
+    await expect(outputArea(page)).not.toContainText('alpha');
+    expect(await outputArea(page).innerText()).toBe(shown);
+    expect(await outputArea(page).locator('pre.output').count()).toBe(1);
+    expect(await terminatedWorkers(page)).toContain(0);
+  });
 }
-
-test('go-formatter: blank input starts no worker and shows nothing', async ({ page }) => {
-  await installWorkerWrapper(page, { swallowFirst: false });
-  await openFormatter(page, 'go-formatter');
-
-  await page.locator('#f-input').fill('   \n');
-  // Past the 140 ms auto-run debounce with room to spare.
-  await page.waitForTimeout(1_500);
-
-  expect(await page.evaluate(() => (window.__FODT_FORMATTER_WORKERS__ ?? []).length)).toBe(0);
-  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
-  expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
-  expect(await cancelButtonOf(page).count()).toBe(0);
-});
-
-test('go-formatter: when the input changes during a run only the newest input is formatted', async ({ page }) => {
-  // The first worker never answers, so program A is still in flight when program B arrives.
-  await installWorkerWrapper(page, { swallowFirst: true });
-  await openFormatter(page, 'go-formatter');
-
-  await page.locator('#f-input').fill('package alpha\n\nfunc a(){}\n');
-  await expect(cancelButtonOf(page)).toBeVisible();
-  await page.locator('#f-input').fill('package beta\n\nfunc b(){}\n');
-
-  await expect(outputArea(page)).toContainText('package beta', { timeout: 15_000 });
-  await expect(outputArea(page)).not.toContainText('package alpha');
-  expect(await outputArea(page).locator('pre.output').count()).toBe(1);
-  expect(await page.evaluate(() => (window.__FODT_FORMATTER_WORKERS__ ?? []).length)).toBeGreaterThanOrEqual(2);
-});
 
 test('shell-formatter: a mksh coprocess formats under mksh and is refused under bash in this browser', async ({
   page,
