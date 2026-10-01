@@ -1,0 +1,11 @@
+{
+  "id": "stock-metrics",
+  "label": "12 CFR 220 (Regulation T) 50 percent initial and FINRA Rule 4210 25 percent maintenance margin, derived by hand: bought at 100, a margin call comes below 66.67",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "margin" },
+    { "action": "fill", "field": "buyPrice", "value": "100" },
+    { "action": "fill", "field": "initialMargin", "value": "50" },
+    { "action": "fill", "field": "maintenanceMargin", "value": "25" }
+  ],
+  "expect": ["66.67"]
+}

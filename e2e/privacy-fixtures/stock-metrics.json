@@ -1,0 +1,27 @@
+[
+  {
+    "mode": { "field": "mode", "value": "eps" },
+    "values": { "earnings": "5000000", "shares": "2000000", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "pe" },
+    "values": { "price": "50", "eps": "2.50", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "yield" },
+    "values": { "dividend": "2", "price": "50", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "payout" },
+    "values": { "dividends": "1000000", "earnings": "4000000", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "margin" },
+    "values": { "buyPrice": "100", "initialMargin": "50", "maintenanceMargin": "25", "currency": "USD" },
+    "attachesFile": false
+  }
+]
