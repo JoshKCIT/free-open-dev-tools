@@ -14,20 +14,22 @@ Formats Go source the way the gofmt command does with no flags, using the Go sta
 - Go 1.25 syntax, including generic type parameters and type aliases
 - Import blocks sorted and de-duplicated within each block, as gofmt does
 - Comments kept in place and aligned the way gofmt aligns them
-- CRLF line endings in the input are accepted and normalised to LF in the output
+- CRLF line endings in the input are accepted and written out as LF
 - Whole files, and also bare declarations or statement lists without a package clause
-- Syntax errors reported with a line and a column
+- A syntax error is reported with its line and column, and no formatted code is shown
 
 ## Limits
 
 - Formats exactly as gofmt does with no flags; gofmt -s (simplify) and -r (rewrite) are not applied.
 - A run that takes longer than 10 seconds is stopped with a message, so a pathological input cannot freeze the page.
 - Line and column in an error count characters as you see them; gofmt itself counts bytes, so the column is converted.
-- Only the first syntax error is reported.
+- Only the first syntax error is located; when there are more, the message says how many.
+- A very long chain of nested expressions (for example 20000 terms added together) is refused with a plain message, because the engine runs out of stack, instead of crashing the page.
 
 ## Ambiguous cases, and what this does about them
 
-- gofmt aligns trailing comments and struct field tags with spaces after the tab indentation, so the output changes width when a neighbouring line changes; this is gofmt's own behaviour and is kept
+- gofmt aligns trailing comments and struct field values into columns, so the padding on a line changes when a neighbouring line changes; this is gofmt's own behaviour and is kept
+- Source that is not a whole file is accepted when it parses as a list of declarations or statements, and is then formatted without adding a package clause or a final newline, as gofmt does for standard input
 
 ## Defined by
 
@@ -72,7 +74,7 @@ const require = createRequire(import.meta.url);
 loadEngine(readFileSync(require.resolve('@wasm-fmt/gofmt/wasm')));
 
 formatGo('package main\nfunc main(){}\n');
-// { output: 'package main\n\nfunc main() {}\n', inputBytes: 28, outputBytes: 32 }
+// { output: 'package main\n\nfunc main() {}\n', inputBytes: 27, outputBytes: 29 }
 ```
 
 `loadEngine(wasm)` hands the gofmt WebAssembly bytes (or a compiled module) to the engine once; calling it again does nothing. `formatGo(source)` returns `{ output, inputBytes, outputBytes }`, or `null` for blank or whitespace-only source without calling the engine, and throws `GoFormatterError` for every engine failure, never returning partly formatted code. The error carries `line` and `column` (both 1-based, the column counted in characters) when gofmt located a syntax error.
@@ -87,7 +89,7 @@ formatGo('package main\nfunc main(){}\n');
 npm test
 ```
 
-The oracle is the gofmt command's own published test data at Go 1.25.5 (src/cmd/gofmt/testdata): each flag-free input is formatted and compared byte for byte with its golden file, which is vendored with its licence and a record of where it came from. Error positions in the tests are counted by hand from each test's input.
+The oracle is the gofmt command's own published test data at tag go1.25.5 (src/cmd/gofmt/testdata): the sixteen fixtures that need no flag (comments, crlf, go2numbers, import, issue28082, stdin1 to stdin7, tabs, typealias, typeparams and typeswitch) are formatted and compared byte for byte with their golden files, and each golden formats to itself. The slices1 fixture, whose golden needs gofmt -s, proves that simplification is not applied. The goldens are vendored with Go's licence and a record of where they came from. Error positions in the tests are counted by hand from each test's input.
 
 ## Licence
 
