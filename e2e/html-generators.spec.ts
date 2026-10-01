@@ -397,6 +397,23 @@ const ELEMENTS_UNDER_TEST: { element: string; free: string[]; valid: Record<stri
   { element: 'dialog', free: ['paragraphs', 'closeLabel'], valid: { id: 'sure' } },
   { element: 'meter', free: ['label', 'title', 'content'], valid: { value: '0.5' } },
   { element: 'progress', free: ['label', 'content'], valid: { value: '5', max: '10' } },
+  {
+    element: 'blockquote',
+    free: ['paragraphs', 'attribution', 'workTitle', 'citeUrl'],
+    valid: {},
+  },
+  { element: 'figure', free: ['imageUrl', 'alt', 'caption'], valid: { width: '320', height: '200' } },
+  { element: 'abbr', free: ['content', 'title'], valid: {} },
+  { element: 'mark', free: ['before', 'content', 'after'], valid: {} },
+  { element: 'sub', free: ['before', 'content', 'after'], valid: {} },
+  { element: 'sup', free: ['before', 'content', 'after'], valid: {} },
+  {
+    element: 'del',
+    free: ['before', 'content', 'after', 'citeUrl'],
+    valid: { datetime: '2009-10-11T01:25-07:00' },
+  },
+  { element: 'ins', free: ['before', 'content', 'after', 'citeUrl'], valid: { datetime: '2005-03-16 00:00Z' } },
+  { element: 'kbd', free: ['before', 'content', 'after'], valid: {} },
 ];
 
 /** Selects an element and fills its fields, then waits for the result to settle. */
@@ -528,4 +545,56 @@ test('semantic-html-builder: clicking the summary and the dialog close button in
     description: `${testInfo.project.name}: ${closed}`,
   });
   console.log(`dialog-closed-by-preview-button ${testInfo.project.name}: ${closed}`);
+});
+
+test('semantic-html-builder: addresses typed into the citation and image fields are never requested and never reach the preview', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/semantic-html-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const cases: { element: string; fields: Record<string, string>; needle: string; attribute: string }[] = [
+    {
+      element: 'blockquote',
+      fields: { paragraphs: 'Quoted words', citeUrl: VISITOR_URL },
+      needle: '<blockquote',
+      attribute: 'cite',
+    },
+    {
+      element: 'figure',
+      fields: { imageUrl: VISITOR_URL, alt: 'A chart', caption: 'Sales' },
+      needle: '<figure',
+      attribute: 'src',
+    },
+    {
+      element: 'del',
+      fields: { content: 'old', citeUrl: VISITOR_URL },
+      needle: '<del',
+      attribute: 'cite',
+    },
+  ];
+
+  for (const { element, fields, needle, attribute } of cases) {
+    const requests = await withRequestRecorder(page, async () => {
+      await page.locator('#f-element').selectOption(element);
+      for (const [field, value] of Object.entries(fields)) await page.locator(`#f-${field}`).fill(value);
+      await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText(needle);
+      await settle(page);
+    });
+    expect(
+      requests,
+      `${element}: an address typed into a field must never be requested: ${requests.join(', ')}`,
+    ).toEqual([]);
+
+    const srcdocs = await previewSrcdocs(page);
+    expect(srcdocs.length, `${element}: the preview must render in a frame`).toBeGreaterThan(0);
+    for (const srcdoc of srcdocs) {
+      expect(await scanPreview(page, srcdoc), `${element}: the preview carries no address`).toEqual([]);
+      expect(srcdoc, `${element}: the preview holds no part of the typed address`).not.toContain('example.invalid');
+    }
+    const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+    expect(markup, `${element}: the copyable markup keeps the address exactly as typed`).toContain(
+      `${attribute}="${VISITOR_URL}"`,
+    );
+  }
 });

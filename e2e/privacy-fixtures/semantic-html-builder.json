@@ -45,11 +45,82 @@
     "attachesFile": false
   },
   {
+    "mode": { "field": "element", "value": "blockquote" },
+    "values": {
+      "paragraphs": "Quoted words",
+      "attribution": "A. Writer",
+      "workTitle": "A Book",
+      "citeUrl": "source.html"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "figure" },
+    "values": {
+      "imageUrl": "chart.png",
+      "alt": "A chart",
+      "width": "320",
+      "height": "200",
+      "caption": "Sales by month"
+    },
+    "attachesFile": false
+  },
+  {
     "mode": { "field": "element", "value": "time" },
     "values": {
       "content": "18 November 2011",
       "datetime": "2011-11-18T14:54:39.929Z"
     },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "abbr" },
+    "values": {
+      "content": "WHATWG",
+      "title": "Web Hypertext Application Technology Working Group"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "mark" },
+    "values": { "before": "A ", "content": "marked", "after": " word" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "sub" },
+    "values": { "before": "H", "content": "2", "after": "O" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "sup" },
+    "values": { "before": "E = mc", "content": "2", "after": " is energy" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "del" },
+    "values": {
+      "before": "Price: ",
+      "content": "10",
+      "after": " now 8",
+      "citeUrl": "changes.html",
+      "datetime": "2009-10-11T01:25-07:00"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "ins" },
+    "values": {
+      "before": "Now ",
+      "content": "8",
+      "after": " not 10",
+      "citeUrl": "changes.html",
+      "datetime": "2005-03-16 00:00Z"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "kbd" },
+    "values": { "before": "Press ", "content": "Enter", "after": " to send" },
     "attachesFile": false
   }
 ]
