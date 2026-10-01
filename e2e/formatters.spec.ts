@@ -145,6 +145,17 @@ const FORMATTERS: FormatterCase[] = [
     // Counted by hand: the unfinished `if` starts the script, so it is line 1, column 1.
     broken: { input: 'if true; then\n  echo hi\n', issue: 'Line 1, column 1' },
   },
+  {
+    id: 'c-family-formatter',
+    // The IndentWidth example of clang-format's own style documentation (llvmorg-23.1.1,
+    // https://github.com/llvm/llvm-project/blob/llvmorg-23.1.1/clang/docs/ClangFormatStyleOptions.rst,
+    // Apache-2.0 WITH LLVM-exception), formatted with the default language, preset and indent width (C++, LLVM, the
+    // preset's own width): the call and the condition of the documented block. A published unit test case replaces
+    // it once the language cases are added.
+    valid: { input: liveFixtureInput('c-family-formatter') },
+    expectOutput: 'someFunction(); if (true, false) {',
+    // No broken input: clang-format reports no syntax errors, it formats malformed code best effort.
+  },
 ];
 
 /** A second valid input that differs from the first by one trailing line break, so it is a new run. */

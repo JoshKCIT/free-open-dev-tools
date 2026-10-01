@@ -1,0 +1,68 @@
+[
+  {
+    "mode": {
+      "field": "language",
+      "value": "c"
+    },
+    "values": {
+      "input": "#include <stdio.h>\nint main(void){printf(\"hi\");return 0;}\n",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "language",
+      "value": "cpp"
+    },
+    "values": {
+      "input": "int add(int a,int b){return a+b;}\n",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "language",
+      "value": "csharp"
+    },
+    "values": {
+      "input": "class Greeter{public string Greet(string n){return \"hi \"+n;}}\n",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "language",
+      "value": "java"
+    },
+    "values": {
+      "input": "public class Greeter{public String greet(String n){return \"hi \"+n;}}\n",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "language",
+      "value": "objc"
+    },
+    "values": {
+      "input": "@interface Greeter : NSObject\n- (void)greet;\n@end\n",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "language",
+      "value": "proto"
+    },
+    "values": {
+      "input": "syntax = \"proto3\";\nmessage Greeting{string name=1;}\n",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "id": "c-family-formatter",
+  "label": "ClangFormatStyleOptions IndentWidth example: three spaces",
+  "steps": [
+    {
+      "action": "select",
+      "field": "language",
+      "value": "cpp"
+    },
+    {
+      "action": "select",
+      "field": "preset",
+      "value": "LLVM"
+    },
+    {
+      "action": "fill",
+      "field": "indentWidth",
+      "value": "3"
+    },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "void f() { someFunction(); if (true, false) { f(); } }\n"
+    }
+  ],
+  "expect": ["void f() { someFunction();", "if (true, false) { f(); } }"]
+}
