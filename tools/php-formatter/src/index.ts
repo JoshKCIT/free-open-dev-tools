@@ -84,6 +84,7 @@ const PRINT_WIDTH_MAX = 200;
 const TAB_WIDTH_MIN = 1;
 const TAB_WIDTH_MAX = 16;
 
+const TOO_LARGE_MESSAGE = 'This input is too large or too deeply nested for the formatter.';
 const FAILED_MESSAGE = 'The formatter failed on this input.';
 
 function byteLength(text: string): number {
@@ -115,6 +116,42 @@ function validate(options: FormatPhpOptions): void {
 }
 
 /**
+ * Turns the position the plugin reports into the line and column a visitor sees. The plugin counts columns from
+ * zero, in UTF-16 code units (what a JavaScript string slices by), and treats a line feed, a carriage return and
+ * line feed pair, and a lone carriage return as line breaks. The column shown is the number of characters
+ * (Unicode code points, so an emoji counts once) before that position on the reported line, plus one.
+ */
+function characterColumn(source: string, line: number, unitColumn: number): number {
+  const lineText = source.split(/\r\n|\r|\n/)[line - 1];
+  if (lineText === undefined) return unitColumn + 1;
+  return Array.from(lineText.slice(0, unitColumn)).length + 1;
+}
+
+interface PositionedError {
+  loc?: { start?: { line?: unknown; column?: unknown } };
+}
+
+/**
+ * Maps everything Prettier and the plugin can throw to one PhpFormatterError. A syntax error carries `loc.start`
+ * (a 1-based line and a 0-based column) and a message that is a heading followed by a code frame; the heading, the
+ * first line, is kept unchanged and the frame is dropped. A stack overflow on a pathologically deep input arrives as
+ * a RangeError. Anything else keeps its own first line, or gets a plain message when it has none.
+ */
+function describeFailure(err: unknown, source: string): PhpFormatterError {
+  if (err instanceof RangeError) return new PhpFormatterError(TOO_LARGE_MESSAGE);
+  const message = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  const firstLine = message.split('\n').find((l) => l.trim() !== '') ?? FAILED_MESSAGE;
+  const start = typeof err === 'object' && err !== null ? (err as PositionedError).loc?.start : undefined;
+  if (typeof start?.line === 'number' && typeof start.column === 'number') {
+    return new PhpFormatterError(firstLine, {
+      line: start.line,
+      column: characterColumn(source, start.line, start.column),
+    });
+  }
+  return new PhpFormatterError(firstLine);
+}
+
+/**
  * Formats PHP source with Prettier and the PHP plugin. Returns `null` for blank or whitespace-only source without
  * calling Prettier. Throws `PhpFormatterError` for every failure and never returns partly formatted code. The PHP
  * version is always passed explicitly: the plugin's own default reads the file system.
@@ -141,8 +178,7 @@ export async function formatPhp(
       phpVersion: chosen.phpVersion,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
-    throw new PhpFormatterError(message.split('\n').find((l) => l.trim() !== '') ?? FAILED_MESSAGE);
+    throw describeFailure(err, source);
   }
 
   return { output, inputBytes: byteLength(source), outputBytes: byteLength(output) };
