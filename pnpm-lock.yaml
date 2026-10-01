@@ -811,6 +811,18 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/form-field-builder:
+    devDependencies:
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/freelance-rate:
     dependencies:
       decimal.js:
@@ -1340,6 +1352,18 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/link-builder:
+    devDependencies:
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/list-compare:
     devDependencies:
       typescript:
@@ -1432,6 +1456,18 @@ importers:
 
   tools/mcp-config-builder:
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/media-embed-builder:
+    devDependencies:
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -1887,6 +1923,18 @@ importers:
 
   tools/security-headers:
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/semantic-html-builder:
+    devDependencies:
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

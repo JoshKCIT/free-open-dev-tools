@@ -975,6 +975,22 @@
       "layout"
     ]
   },
+  "form-field-builder": {
+    "id": "form-field-builder",
+    "name": "HTML Form Field Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "html",
+      "form",
+      "input",
+      "label",
+      "autocomplete",
+      "accessibility",
+      "markup generator"
+    ]
+  },
   "freelance-rate": {
     "id": "freelance-rate",
     "name": "Freelance Rate Calculator",
@@ -1714,6 +1730,28 @@
       "pod"
     ]
   },
+  "link-builder": {
+    "id": "link-builder",
+    "name": "HTML Link Builder (mailto, tel, sms)",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "html",
+      "link",
+      "anchor",
+      "rel",
+      "noopener",
+      "nofollow",
+      "target",
+      "download",
+      "mailto",
+      "tel",
+      "sms",
+      "percent-encoding",
+      "markup generator"
+    ]
+  },
   "list-compare": {
     "id": "list-compare",
     "name": "List Comparison",
@@ -1833,6 +1871,27 @@
       "cursor",
       "vscode",
       "devops"
+    ]
+  },
+  "media-embed-builder": {
+    "id": "media-embed-builder",
+    "name": "HTML Media Embed Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "html",
+      "video",
+      "audio",
+      "track",
+      "subtitles",
+      "captions",
+      "source",
+      "picture",
+      "img",
+      "srcset",
+      "sizes",
+      "markup generator"
     ]
   },
   "meta-tags": {
@@ -2414,6 +2473,28 @@
       "coop",
       "coep",
       "corp"
+    ]
+  },
+  "semantic-html-builder": {
+    "id": "semantic-html-builder",
+    "name": "Semantic HTML Element Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "html",
+      "semantic",
+      "details",
+      "dialog",
+      "meter",
+      "progress",
+      "blockquote",
+      "figure",
+      "time",
+      "abbr",
+      "mark",
+      "kbd",
+      "markup generator"
     ]
   },
   "sitemap-generator": {
