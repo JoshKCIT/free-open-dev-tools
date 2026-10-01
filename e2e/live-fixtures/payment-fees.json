@@ -1,0 +1,11 @@
+{
+  "id": "payment-fees",
+  "label": "Fee arithmetic shown on the page, derived by hand: 100 at 2.9 percent plus 0.30 costs 3.20 and leaves 96.80",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "charge" },
+    { "action": "fill", "field": "amount", "value": "100" },
+    { "action": "fill", "field": "percentFee", "value": "2.9" },
+    { "action": "fill", "field": "fixedFee", "value": "0.30" }
+  ],
+  "expect": ["3.20", "96.80"]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "charge" },
+    "values": { "amount": "100", "percentFee": "2.9", "fixedFee": "0.30", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "receive" },
+    "values": { "target": "100", "percentFee": "2.9", "fixedFee": "0.30", "currency": "USD" },
+    "attachesFile": false
+  }
+]
