@@ -1,0 +1,99 @@
+# NPV, IRR & Payback Calculator
+
+Work out net present value, internal rate of return, payback and discounted payback for a series of cash flows.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Takes a series of cash flows, one per line with the first line being now (period 0), and a discount rate per period that you type. It shows the net present value, the internal rate of return (every rate it finds, or a plain statement that there is none), the simple payback period and the discounted payback period, and a table of each period's present value and running totals. The page shows the formulas with your own numbers put in, so you can check each figure by hand.
+
+## Supported
+
+- Up to 200 cash flows, one per line, either as an amount or as a label, a vertical bar and an amount; a negative amount is money paid out
+- A discount rate per period, as a percent, from just above -100 percent upward; nothing is filled in for you
+- Net present value with the first line left undiscounted (period 0), the way US Office of Management and Budget Circular A-94 discounts, and the same figure written as the first flow plus the OpenFormula NPV of the rest
+- Internal rate of return found by counting the sign changes in the flows, scanning for them and bisecting each bracket in exact decimal until it is narrower than 1e-12 in the rate, shown to 4 places of a percent
+- Every rate that satisfies the flows, with a plain message when more than one does, when none does, or when the sign changes allow more rates than were found
+- Simple payback and discounted payback in periods, counted linearly inside the period where the running total turns non-negative, or a plain statement that it is not reached
+- A table of each period's cash flow, discount factor, present value, running total and discounted running total
+- The working shown: the formulas, your numbers put into them, and the result before and after rounding
+- Any currency code your browser knows, with the right number of decimal places for that currency
+- Exact decimal arithmetic with decimal.js: no amount or rate ever passes through a JavaScript floating-point number
+
+## Limits
+
+- Amounts are rounded half away from zero to the currency's smallest unit only when shown; every step before that keeps 40 significant digits, so the net present value is worked out from exact figures and each table row is rounded on its own, which means a column of shown rows can differ from a shown total by a unit or two of the smallest digit.
+- Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores taxes, inflation adjustments, financing costs, reinvestment assumptions and the risk of the flows.
+- Periods are equal in length and the first line is period 0, which is not discounted; type the discount rate for one period.
+- The rate scan covers rates from -99.9999 percent to 99,900 percent; two rates closer together than one scan step, or a rate where the curve only touches zero, can be missed, so when the sign changes allow more rates than were found the result says up to that many are possible.
+- A rate is accepted when its bracket is narrower than 1e-12 in the rate (a hundred-billionth of a percentage point) and is shown to 4 places of a percent.
+- Between 2 and 200 cash flows are accepted, and the discount rate must be above -100 percent.
+- Payback is counted linearly inside the period where the running total first turns non-negative, and is not reached when the flows never recover the outlay within the periods typed.
+- A cash flow may have up to 15 digits before the point and 12 after, and is used exactly as typed and rounded only when shown.
+- Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose.
+
+## Ambiguous cases, and what this does about them
+
+- OpenFormula's NPV discounts its first value by one period, while this page treats the first line as period 0 and does not discount it; this page's NPV equals the first flow plus the OpenFormula NPV of the remaining flows, and the working shows both.
+- Flows that change sign more than once can have several internal rates of return, or none; the page lists every rate it finds instead of choosing one.
+- OpenFormula lets an evaluator return an approximate IRR from an iterative method with a starting guess; this page scans a fixed grid and bisects, so no guess is needed and the answer does not depend on one.
+- No standard fixes how to count a fraction of a period in payback; this page counts the shortfall divided by that period's flow.
+
+## Defined by
+
+- [OMB Circular A-94 (November 2023) Appendix B, discounting deferred costs and benefits](https://www.whitehouse.gov/wp-content/uploads/2023/11/CircularA-94.pdf)
+- [ISO/IEC 26300-2:2015 (OpenFormula, OASIS ODF 1.2 part 2) sections 6.12.30 NPV and 6.12.24 IRR](https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part2.html)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/npv-irr npv-irr
+cd npv-irr
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/npv-irr
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { calculateCashFlows } from '@fodt/npv-irr';
+
+const result = calculateCashFlows({
+  flows: '-1000\n400\n400\n400',
+  rate: '10',
+  currency: 'USD',
+});
+result.summary.npv; // '-5.26'
+result.summary.irr.rates; // ['9.7010']
+result.summary.payback; // '2.50'
+result.summary.discountedPayback; // null (not reached)
+```
+
+`calculateCashFlows` takes the page's text values (`flows`, one cash flow per line as an amount or `label | amount`; `rate`, the discount rate per period in percent; and `currency`) and returns `{ summary, rows, working }`, or `null` when both the flows and the rate are blank, or throws `MoneyInputError` carrying the `field` that was wrong and, for a bad line, its `line` and `column`. `npv(ratePercent, flows)` discounts the first flow by zero periods and `openFormulaNpv(ratePercent, values)` discounts the first value by one period (OpenFormula 6.12.30); both take and return exact `Dec` values (a decimal.js value made by this folder's own clone, 40 significant digits, half away from zero). `irr(flows)` returns `{ status, rates, signChanges }` with the rates as fractions (0.1 is 10 percent) in ascending order. `payback(flows)` and `discountedPayback(ratePercent, flows)` return a number of periods as a `Dec`, or `null` when not reached. `parseFlows(text)` reads the textarea and `signChanges(flows)` counts the sign changes that bound the number of rates. `money.ts` is the shared exact-decimal helper: strict text parsing, rounding, money formatting, whole-number counts, calendar dates, one-row-per-line text with line and column errors, and spreadsheet-safe CSV cells.
+
+## Dependencies
+
+- `decimal.js` 10.6.0
+
+## Tests
+
+```sh
+npm test
+```
+
+The net present value of 61.55 and the discounted costs (123.37) and benefits (184.92) are the totals printed in OMB Circular A-94 Appendix B for ten years at a 3.1 percent discount rate. The OpenFormula 6.12.30 and 6.12.24 sections are read from the specification text; the IRR examples (10 percent, 0 and 100 percent, -99.5 percent, 1900 percent) and the payback of 2.5 periods are derived by hand in the test comments from the equation the specification gives, since neither source prints an IRR or a payback worked example. Exactness is proven by first showing that 0.1 + 0.2 in JavaScript floating point is 0.30000000000000004 and then that this tool's own path returns exactly 0.3.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
