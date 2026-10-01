@@ -36,6 +36,10 @@ function outputArea(page: Page) {
   return page.locator('section[aria-label="Output"]');
 }
 
+function cancelButtonOf(page: Page) {
+  return page.getByRole('button', { name: 'Cancel', exact: true });
+}
+
 /**
  * Installs a wrapper around the global Worker constructor, before any page
  * script runs, so every construction is recorded under its own global name.
@@ -116,8 +120,16 @@ const FORMATTERS: FormatterCase[] = [
     // https://github.com/golang/go/tree/go1.25.5/src/cmd/gofmt/testdata, BSD-3-Clause).
     valid: { input: liveFixtureInput('go-formatter') },
     expectOutput: 'import ( "errors" "fmt" "io" "log" "math" )',
+    // Counted by hand: line 1 package main, line 2 blank, line 3 func main() {, line 4 x := (tab, then the
+    // operator, nothing after it), line 5 the lone closing brace where an operand must follow, column 1.
+    broken: { input: 'package main\n\nfunc main() {\n\tx :=\n}\n', issue: 'Line 5, column 1' },
   },
 ];
+
+/** A second valid input that differs from the first by one trailing line break, so it is a new run. */
+function secondValid(valid: Record<string, string>): Record<string, string> {
+  return { ...valid, input: `${valid.input ?? ''}\n` };
+}
 
 async function openFormatter(page: Page, id: string): Promise<void> {
   await page.goto(rel(`/tools/${id}`));
@@ -148,4 +160,108 @@ for (const c of FORMATTERS) {
     const offending = requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'));
     expect(offending).toEqual([]);
   });
+
+  test(`${c.id}: a run past the 10 second limit stops with a plain message, not before, and the page stays usable`, async ({
+    page,
+  }) => {
+    // The first worker never receives its job, so the run stays in flight like a stuck engine, and the page
+    // clock (not real time) crosses the limit.
+    await installWorkerWrapper(page, { swallowFirst: true });
+    await page.clock.install();
+    await openFormatter(page, c.id);
+
+    await fillFields(page, c.valid);
+    await expect(cancelButtonOf(page)).toBeVisible();
+
+    // Real time, not page time: the run's debounce has fired and its limit timer exists before the clock moves.
+    // Moving the clock first would let real seconds pass instead (the page's own timer would not exist yet).
+    await page.waitForTimeout(800);
+
+    // 8 seconds into a stuck run: still running, no stop message.
+    await page.clock.fastForward(8_000);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await expect(outputArea(page)).not.toContainText('Stopped after');
+
+    // 11 seconds in: stopped, with the plain message.
+    await page.clock.fastForward(3_000);
+    await expect(outputArea(page).locator('.issue-list')).toContainText('Stopped after 10 seconds', {
+      timeout: 15_000,
+    });
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+
+    // The page still answers a script call within a second.
+    const answerStart = Date.now();
+    await page.evaluate(() => 1 + 1);
+    expect(Date.now() - answerStart).toBeLessThan(1_000);
+
+    // The next input formats normally.
+    await fillFields(page, secondValid(c.valid));
+    await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+  });
+
+  test(`${c.id}: Cancel stops a run at once, no time-limit message follows, and the next run formats`, async ({
+    page,
+  }) => {
+    await installWorkerWrapper(page, { swallowFirst: true });
+    await page.clock.install();
+    await openFormatter(page, c.id);
+
+    await fillFields(page, c.valid);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await page.waitForTimeout(800);
+    await cancelButtonOf(page).click();
+
+    const note = outputArea(page).locator('.note-warn');
+    await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+
+    // 11 seconds of page clock later the limit would have fired had Cancel not cleared it: it must not.
+    await page.clock.fastForward(11_000);
+    await page.waitForTimeout(300);
+    await expect(outputArea(page)).not.toContainText('Stopped after');
+    await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+
+    // The next input formats normally.
+    await fillFields(page, secondValid(c.valid));
+    await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+  });
+
+  if (c.broken) {
+    const broken = c.broken;
+    test(`${c.id}: a syntax error shows its line and column and no formatted code`, async ({ page }) => {
+      await openFormatter(page, c.id);
+      await fillFields(page, { ...c.valid, input: broken.input });
+      await expect(outputArea(page).locator('.issue-list')).toContainText(broken.issue, { timeout: 15_000 });
+      expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    });
+  }
 }
+
+test('go-formatter: blank input starts no worker and shows nothing', async ({ page }) => {
+  await installWorkerWrapper(page, { swallowFirst: false });
+  await openFormatter(page, 'go-formatter');
+
+  await page.locator('#f-input').fill('   \n');
+  // Past the 140 ms auto-run debounce with room to spare.
+  await page.waitForTimeout(1_500);
+
+  expect(await page.evaluate(() => (window.__FODT_FORMATTER_WORKERS__ ?? []).length)).toBe(0);
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
+  expect(await cancelButtonOf(page).count()).toBe(0);
+});
+
+test('go-formatter: when the input changes during a run only the newest input is formatted', async ({ page }) => {
+  // The first worker never answers, so program A is still in flight when program B arrives.
+  await installWorkerWrapper(page, { swallowFirst: true });
+  await openFormatter(page, 'go-formatter');
+
+  await page.locator('#f-input').fill('package alpha\n\nfunc a(){}\n');
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await page.locator('#f-input').fill('package beta\n\nfunc b(){}\n');
+
+  await expect(outputArea(page)).toContainText('package beta', { timeout: 15_000 });
+  await expect(outputArea(page)).not.toContainText('package alpha');
+  expect(await outputArea(page).locator('pre.output').count()).toBe(1);
+  expect(await page.evaluate(() => (window.__FODT_FORMATTER_WORKERS__ ?? []).length)).toBeGreaterThanOrEqual(2);
+});
