@@ -1,5 +1,15 @@
 import meta from './meta.json';
-import { MarkupError, assertSafeText, el, inert, serialize, type AttrValue, type El } from './markup';
+import { MarkupError, assertSafeText, el, inert, schemeWarning, serialize, type AttrValue, type El } from './markup';
+import {
+  compareTyped,
+  isValidDate,
+  isValidFloat,
+  isValidLocalDateTime,
+  isValidMonth,
+  isValidTime,
+  isValidWeek,
+  parseValidFloat,
+} from './microsyntax';
 import {
   AUTOFILL_CONTACT,
   AUTOFILL_CONTACT_TYPES,
@@ -408,6 +418,107 @@ function parseAccept(raw: string): string[] {
   return tokens;
 }
 
+// ---- Numbers, dates, times and patterns (WHATWG 4.10.5.3) ----------------------------------------------------------
+
+interface TypedRule {
+  valid: (s: string) => boolean;
+  compare: 'date' | 'month' | 'week' | 'time' | 'datetime-local' | 'number';
+  what: string;
+}
+
+/** The syntax each control's min, max and starting value must have, from the section that defines its state. */
+const TYPED_RULES: Readonly<Record<string, TypedRule>> = {
+  date: { valid: isValidDate, compare: 'date', what: 'a valid date string such as 2011-11-18 (WHATWG 2.3.5.2)' },
+  month: { valid: isValidMonth, compare: 'month', what: 'a valid month string such as 2011-11 (WHATWG 2.3.5.1)' },
+  week: { valid: isValidWeek, compare: 'week', what: 'a valid week string such as 2011-W47 (WHATWG 2.3.5.8)' },
+  time: { valid: isValidTime, compare: 'time', what: 'a valid time string such as 14:54 (WHATWG 2.3.5.4)' },
+  'datetime-local': {
+    valid: isValidLocalDateTime,
+    compare: 'datetime-local',
+    what: 'a valid local date and time string such as 2011-11-18T14:54 (WHATWG 2.3.5.5)',
+  },
+  number: {
+    valid: isValidFloat,
+    compare: 'number',
+    what: 'a valid floating-point number such as 1.5 (WHATWG 2.3.4.3)',
+  },
+  range: { valid: isValidFloat, compare: 'number', what: 'a valid floating-point number such as 1.5 (WHATWG 2.3.4.3)' },
+};
+
+/**
+ * Checks min, max, step and the starting value of the date, time, number and range controls against the syntax of
+ * the control: a step is a floating-point number above zero or any, and max may not be below min except for time,
+ * whose range wraps round midnight (WHATWG 4.10.5.3.7 and 4.10.5.3.8). A starting value outside min and max only
+ * earns a note, because the standard treats it as out of range rather than as a markup error.
+ */
+function checkTypedAttributes(
+  control: ControlKind,
+  min: string,
+  max: string,
+  step: string,
+  value: string,
+  warnings: string[],
+): void {
+  const rule = Object.prototype.hasOwnProperty.call(TYPED_RULES, control) ? TYPED_RULES[control] : undefined;
+  if (!rule) return;
+  const check = (key: 'min' | 'max' | 'value', v: string): void => {
+    if (v !== '' && !rule.valid(v)) {
+      throw new MarkupError(FIELD_LABELS[key], `"${v.length > 60 ? v.slice(0, 60) + '...' : v}" is not ${rule.what}`);
+    }
+  };
+  check('min', min);
+  check('max', max);
+  check('value', value);
+  const lowerStep = step.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  if (step !== '' && lowerStep !== 'any') {
+    const n = parseValidFloat(step);
+    if (n === null) {
+      throw new MarkupError(
+        FIELD_LABELS.step,
+        `"${step}" is not a valid floating-point number or the word any (WHATWG 4.10.5.3.8)`,
+      );
+    }
+    if (n <= 0) {
+      throw new MarkupError(
+        FIELD_LABELS.step,
+        `${step} is not greater than zero; use a positive floating-point number or any (WHATWG 4.10.5.3.8)`,
+      );
+    }
+  }
+  if (control === 'time') return;
+  if (min !== '' && max !== '' && compareTyped(rule.compare, min, max) === 1) {
+    throw new MarkupError(
+      FIELD_LABELS.max,
+      `${max} is less than the min ${min}; the maximum may not be below the minimum (WHATWG 4.10.5.3.7)`,
+    );
+  }
+  if (value !== '') {
+    if (min !== '' && compareTyped(rule.compare, value, min) === -1) {
+      warnings.push(`The starting value ${value} is below the min ${min}; the standard treats it as out of range.`);
+    }
+    if (max !== '' && compareTyped(rule.compare, value, max) === 1) {
+      warnings.push(`The starting value ${value} is above the max ${max}; the standard treats it as out of range.`);
+    }
+  }
+}
+
+/**
+ * WHATWG 4.10.5.3.6: the pattern must match the JavaScript Pattern production with the v flag, and is compiled wrapped
+ * in a group between a start and an end anchor. It is only compiled here, never run against any text, so no pattern
+ * can stall the page.
+ */
+function checkPattern(pattern: string): void {
+  try {
+    new RegExp('^(?:' + pattern + ')$', 'v');
+  } catch (err) {
+    const why = err instanceof Error ? err.message.slice(0, 160) : 'it does not compile';
+    throw new MarkupError(
+      FIELD_LABELS.pattern,
+      `is not a valid regular expression; the standard compiles it with the v flag: ${why} (WHATWG 4.10.5.3.6)`,
+    );
+  }
+}
+
 // ---- Building ------------------------------------------------------------------------------------------------------
 
 type AttrPair = [string, AttrValue | false | null | undefined];
@@ -519,10 +630,24 @@ export function buildField(spec: FieldSpec): BuiltField | null {
       'A placeholder is a hint, not a label: it disappears once a visitor types, and HTML-AAM 4.1.1 uses it for the name only when no label exists. The label above names the control.',
     );
   }
-  if (t('pattern') !== '' && t('title') === '') {
-    warnings.push(
-      'The pattern has no title; a title should describe the pattern so a visitor knows what is expected (WHATWG 4.10.5.3.6).',
+  if (t('pattern') !== '') {
+    checkPattern(t('pattern'));
+    if (t('title') === '') {
+      warnings.push(
+        'The pattern has no title; a title should describe the pattern so a visitor knows what is expected (WHATWG 4.10.5.3.6).',
+      );
+    }
+  }
+  checkTypedAttributes(control, t('min'), t('max'), t('step'), raw.value, warnings);
+  if (control === 'color' && raw.value !== '' && !/^#[0-9A-Fa-f]{6}$/.test(raw.value)) {
+    throw new MarkupError(
+      FIELD_LABELS.value,
+      `"${raw.value}" is not a valid simple color: a hash and six hexadecimal digits, such as #00ff7f (WHATWG 2.3.6)`,
     );
+  }
+  if (control === 'image' && t('src') !== '') {
+    const risky = schemeWarning(FIELD_LABELS.src, t('src'));
+    if (risky) warnings.push(risky);
   }
 
   // The starting value against the lengths.

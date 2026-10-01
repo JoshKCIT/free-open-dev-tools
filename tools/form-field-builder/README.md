@@ -15,6 +15,8 @@ Builds one accessible form field and shows its markup first, ready to copy, with
 - A label element tied to the control by a for value that equals its id; checkbox and radio put the control before its label, and a radio field is a group of at least two radios in a fieldset with a legend
 - An id worked out from the name (each run of spaces becomes one hyphen) that you can overwrite; an id with a space is refused
 - Validation attributes only where the standard's own table allows them: pattern, minlength, maxlength and size on text-like types, min, max and step on number, range and the date and time types, accept on file, alt and src on image, rows and cols on textarea; anything else is refused with the list of controls that do allow it
+- Min, max, step and the starting value checked against the syntax of the control: valid numbers for number and range, valid date, month, week, time and local date and time strings for the date and time types, a step that is above zero or the word any, and a maximum that is not below the minimum (a time range may wrap round midnight)
+- A pattern checked by compiling it the way the standard does (with the v flag, between a start and an end anchor) without ever running it, and minlength and maxlength compared with the starting value in UTF-16 code units
 - Boolean attributes (required, readonly, disabled, multiple, checked, autofocus) typed as space-separated names and written exactly as typed, only where the control allows them
 - An autocomplete value checked against the autofill grammar: an optional section name, shipping or billing, a field name from the standard's table (or a contact type and a contact field name), then an optional webauthn, or on or off alone
 - A select or radio group from option lines written value | label, a select placeholder option with an empty value, and the rule that a required single select needs one
@@ -29,6 +31,7 @@ Builds one accessible form field and shows its markup first, ready to copy, with
 - Attributes this builder does not offer: list, dirname, the form submission overrides (formaction and the others), the popover targets, and the colour input's alpha and colorspace, which the browsers checked do not implement; optgroups are not generated.
 - A hidden input is not labelable in the standard, so no label is written for it and a note says why.
 - The preview cannot show everything a browser does: it never runs script, so it shows the structure and the label tie, not the behaviour of validation attributes.
+- A pattern is only compiled to prove it is a valid regular expression; it is never run against any text, so a pattern that would be slow to run cannot stall this page, and it is not tested against the starting value.
 
 ## Ambiguous cases, and what this does about them
 
@@ -37,6 +40,8 @@ Builds one accessible form field and shows its markup first, ready to copy, with
 - The standard treats a token whose first eight characters are section- as a section name; this builder also asks for at least one character after the hyphen, because a section with no name groups nothing.
 - A starting value that is longer than the maxlength, or non-empty and shorter than the minlength, is refused although the standard only applies those limits to what a visitor types; characters are counted as UTF-16 code units, so an emoji counts as two.
 - A starting value for a radio group or a select names the option to check or select by its value; if no option has that value it is refused rather than ignored.
+- A starting value below the min or above the max is written as typed with a note, because the standard treats it as out of range rather than as a markup error; a time range is not checked this way because it may wrap round midnight.
+- The starting value of a colour input must be a hash and six hexadecimal digits (WHATWG 2.3.6); other value syntaxes, such as a valid email address or an absolute URL, are not checked.
 
 ## Defined by
 
@@ -93,7 +98,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every generated snippet is parsed with parse5 and must report zero parse errors. The label rule of the HTML Living Standard (4.10.4), the autofill examples of 4.10.19.7.1 (section-blue shipping street-address and the others), the applicability table of 4.10.5 and the label rules of HTML-AAM 4.1.1 are checked literally, and hostile text typed into every field must leave the parsed element tree unchanged. The counts of the copied tables (22 input types, 44 normal and 10 contact autofill field names) are asserted.
+Every generated snippet is parsed with parse5 and must report zero parse errors. The label rule of the HTML Living Standard (4.10.4), the autofill examples of 4.10.19.7.1 (section-blue shipping street-address and the others), the applicability table of 4.10.5, the number and date and time examples of 2.3.4 and 2.3.5, and the label rules of HTML-AAM 4.1.1 are checked literally, and hostile text typed into every field must leave the parsed element tree unchanged. The counts of the copied tables (22 input types, 44 normal and 10 contact autofill field names) are asserted.
 
 ## Licence
 

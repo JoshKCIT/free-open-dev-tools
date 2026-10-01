@@ -19,7 +19,7 @@ import {
   SPEC_LAST_UPDATED,
 } from '../src/spec-data';
 import { serialize, inert } from '../src/markup';
-import { HOSTILE, accName, attrOf, findAll, parse, shape, textOf } from './parse';
+import { HOSTILE, accName, attrOf, findAll, hasControlCharacter, parse, shape, textOf } from './parse';
 
 function refusal(run: () => unknown): MarkupError {
   try {
@@ -86,7 +86,7 @@ it('hostile text in the label, name and value comes out as text', () => {
       { label: 'Label', name: 'nm', value: hostile },
     ]) {
       // A value holding a control character is refused outright; every other one comes out as text.
-      if (/[\u0000-\u0008\u000a-\u001f]/.test(hostile)) {
+      if (hasControlCharacter(hostile)) {
         expect(refusal(() => buildField({ control: 'text', ...spec })).message).toContain('U+0001');
         continue;
       }

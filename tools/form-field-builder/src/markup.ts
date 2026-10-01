@@ -188,26 +188,68 @@ function attrValue(node: El, name: string): string | undefined {
   return found && found[1] !== true ? found[1] : undefined;
 }
 
-function inertElement(node: El): El {
-  const tag = node.tag.toLowerCase();
-  const isImageInput = tag === 'input' && (attrValue(node, 'type') ?? '').toLowerCase() === 'image';
-  const wantsPlaceholder = tag === 'img' || isImageInput;
-  const placeholder = wantsPlaceholder
-    ? placeholderImage(clampDimension(attrValue(node, 'width'), 300), clampDimension(attrValue(node, 'height'), 150))
-    : '';
+interface Dimensions {
+  width: number;
+  height: number;
+}
+
+/** The width and height an element declares as valid non-negative integers, or the fallback for each. */
+function declaredDimensions(node: El, fallback: Dimensions = { width: 300, height: 150 }): Dimensions {
+  return {
+    width: clampDimension(attrValue(node, 'width'), fallback.width),
+    height: clampDimension(attrValue(node, 'height'), fallback.height),
+  };
+}
+
+/** The attributes of an element with every address-bearing one removed, and `src` replaced when asked. */
+function inertAttributes(node: El, replace: Record<string, string> = {}): [string, AttrValue][] {
   const attrs: [string, AttrValue][] = [];
-  let placed = false;
+  const placed = new Set<string>();
   for (const [name, value] of node.attrs) {
     const lower = name.toLowerCase();
-    if (lower === 'src' && wantsPlaceholder) {
-      attrs.push([name, placeholder]);
-      placed = true;
+    const replacement = replace[lower];
+    if (replacement !== undefined) {
+      attrs.push([name, replacement]);
+      placed.add(lower);
     } else if (!URL_ATTRIBUTES.has(lower)) {
       attrs.push([name, value]);
     }
   }
-  if (wantsPlaceholder && !placed) attrs.push(['src', placeholder]);
-  return { tag: node.tag, attrs, children: node.children.map(inertChild) };
+  for (const [lower, replacement] of Object.entries(replace)) {
+    if (!placed.has(lower) && lower !== 'type') attrs.push([lower, replacement]);
+  }
+  return attrs;
+}
+
+/** A source inside a picture: its srcset becomes the placeholder and its type becomes image/svg+xml. */
+function inertPictureSource(node: El, fallback: Dimensions): El {
+  const { width, height } = declaredDimensions(node, fallback);
+  const replace: Record<string, string> = { srcset: placeholderImage(width, height) };
+  if (attrValue(node, 'type') !== undefined) replace.type = 'image/svg+xml';
+  return { tag: node.tag, attrs: inertAttributes(node, replace), children: [] };
+}
+
+function inertElement(node: El): El {
+  const tag = node.tag.toLowerCase();
+  if (tag === 'video' || tag === 'audio') {
+    // The element loses src and poster, and its source children are dropped: a source is an address to fetch.
+    const kept = node.children.filter((c) => typeof c === 'string' || c.tag.toLowerCase() !== 'source');
+    return { tag: node.tag, attrs: inertAttributes(node), children: kept.map(inertChild) };
+  }
+  if (tag === 'picture') {
+    const img = node.children.find((c): c is El => typeof c !== 'string' && c.tag.toLowerCase() === 'img');
+    const fallback = img ? declaredDimensions(img) : { width: 300, height: 150 };
+    const children = node.children.map((c) =>
+      typeof c !== 'string' && c.tag.toLowerCase() === 'source' ? inertPictureSource(c, fallback) : inertChild(c),
+    );
+    return { tag: node.tag, attrs: inertAttributes(node), children };
+  }
+  const isImageInput = tag === 'input' && (attrValue(node, 'type') ?? '').toLowerCase() === 'image';
+  if (tag === 'img' || isImageInput) {
+    const { width, height } = declaredDimensions(node);
+    return { tag: node.tag, attrs: inertAttributes(node, { src: placeholderImage(width, height) }), children: [] };
+  }
+  return { tag: node.tag, attrs: inertAttributes(node), children: node.children.map(inertChild) };
 }
 
 function inertChild(node: Child): Child {
@@ -215,15 +257,43 @@ function inertChild(node: Child): Child {
 }
 
 /**
- * Returns a new tree for the preview: `img` and `input type=image` get a data
- * placeholder for `src` (sized from their own width and height) and lose
- * `srcset`; `a` and `area` lose `href` and `ping`; `form` loses `action`;
- * `button` and `input` lose `formaction`; any other attribute in URL_ATTRIBUTES
- * is removed. The input tree is never changed.
+ * Returns a new tree for the preview. `img` and `input type=image` get a data placeholder for `src` (sized from their
+ * own width and height) and lose `srcset`; a `source` inside a `picture` gets the placeholder in `srcset` and, when it
+ * has a type, the type image/svg+xml; `video` and `audio` lose `src` and `poster` and their `source` children are
+ * dropped; `a` and `area` lose `href` and `ping`; `form` loses `action`; `button` and `input` lose `formaction`;
+ * `blockquote`, `q`, `ins` and `del` lose `cite`; `object` loses `data`; every other attribute in URL_ATTRIBUTES is
+ * removed. The input tree is never changed.
  */
 export function inert(nodes: Child | Child[]): Child[] {
   const list = Array.isArray(nodes) ? nodes : [nodes];
   return list.map(inertChild);
+}
+
+// ---- Addresses typed by a visitor ------------------------------------------------------------------------------
+
+/**
+ * The scheme of an address as the URL Standard parses it (leading and trailing C0 controls and spaces stripped, tabs and
+ * newlines removed, case folded), or null when it has none, as a relative address does.
+ */
+export function urlScheme(value: string): string | null {
+  try {
+    return new URL(value).protocol.slice(0, -1).toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/** The scheme when it is one that runs or embeds content when followed. */
+export function riskyScheme(value: string): 'javascript' | 'data' | 'vbscript' | null {
+  const scheme = urlScheme(value);
+  return scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript' ? scheme : null;
+}
+
+/** A warning for an address whose scheme runs or embeds content; the address itself is never changed. */
+export function schemeWarning(field: string, value: string): string | null {
+  const scheme = riskyScheme(value);
+  if (scheme === null) return null;
+  return `${field}: this address uses the ${scheme}: scheme, which runs or embeds content when followed; it is kept as you typed it.`;
 }
 
 /** Lone surrogates, controls, noncharacters: the code points HTML cannot carry as text. */

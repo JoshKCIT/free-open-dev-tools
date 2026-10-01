@@ -13,7 +13,7 @@ import {
   urlScheme,
   type El,
 } from '../src/markup';
-import { HOSTILE, attrOf, findAll, parse, shape, textOf } from './parse';
+import { HOSTILE, attrOf, findAll, hasControlCharacter, parse, shape, textOf } from './parse';
 
 it('escapeText replaces ampersand, less-than and greater-than and nothing else', () => {
   expect(escapeText('a & <b> "c" \'d\'')).toBe('a &amp; &lt;b&gt; "c" \'d\'');
@@ -278,7 +278,7 @@ it('a hostile value in any text or attribute leaves the parsed tree unchanged ap
   ];
   const benign = shape(parse(serialize(build('plain', 'plain'))).frag);
   for (const hostile of HOSTILE) {
-    if (/[\u0000-\u0008\u000b-\u001f]/.test(hostile)) continue;
+    if (hasControlCharacter(hostile)) continue;
     const html = serialize(build(hostile, hostile));
     const { frag, errors } = parse(html);
     expect(errors, hostile.slice(0, 30)).toEqual([]);

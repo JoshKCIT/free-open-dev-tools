@@ -155,6 +155,15 @@ export function accName(frag: ParsedFragment, control: ParsedElement): string | 
   }
 }
 
+/** True when a string holds a C0 control other than a tab, which HTML cannot carry as text. */
+export function hasControlCharacter(s: string): boolean {
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) as number;
+    if (cp < 0x20 && cp !== 0x09) return true;
+  }
+  return false;
+}
+
 /** Values that must come out as inert text and never change a generated structure. */
 export const HOSTILE: string[] = [
   '<script>alert(1)</script>',
