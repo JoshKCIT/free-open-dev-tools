@@ -426,6 +426,9 @@ interface TypedRule {
   what: string;
 }
 
+/** A floating-point number string whose value the standard's parsing rules can hold (not too large, WHATWG 2.3.4.3). */
+const isUsableFloat = (s: string): boolean => parseValidFloat(s) !== null;
+
 /** The syntax each control's min, max and starting value must have, from the section that defines its state. */
 const TYPED_RULES: Readonly<Record<string, TypedRule>> = {
   date: { valid: isValidDate, compare: 'date', what: 'a valid date string such as 2011-11-18 (WHATWG 2.3.5.2)' },
@@ -438,11 +441,15 @@ const TYPED_RULES: Readonly<Record<string, TypedRule>> = {
     what: 'a valid local date and time string such as 2011-11-18T14:54 (WHATWG 2.3.5.5)',
   },
   number: {
-    valid: isValidFloat,
+    valid: isUsableFloat,
     compare: 'number',
     what: 'a valid floating-point number such as 1.5 (WHATWG 2.3.4.3)',
   },
-  range: { valid: isValidFloat, compare: 'number', what: 'a valid floating-point number such as 1.5 (WHATWG 2.3.4.3)' },
+  range: {
+    valid: isUsableFloat,
+    compare: 'number',
+    what: 'a valid floating-point number such as 1.5 (WHATWG 2.3.4.3)',
+  },
 };
 
 /**
@@ -463,12 +470,30 @@ function checkTypedAttributes(
   if (!rule) return;
   const check = (key: 'min' | 'max' | 'value', v: string): void => {
     if (v !== '' && !rule.valid(v)) {
-      throw new MarkupError(FIELD_LABELS[key], `"${v.length > 60 ? v.slice(0, 60) + '...' : v}" is not ${rule.what}`);
+      const shown = v.length > 60 ? v.slice(0, 60) + '...' : v;
+      if (rule.compare === 'number' && isValidFloat(v)) {
+        throw new MarkupError(
+          FIELD_LABELS[key],
+          `"${shown}" is too large to be held as a number; use ${rule.what} that a browser can store (WHATWG 2.3.4.3)`,
+        );
+      }
+      throw new MarkupError(FIELD_LABELS[key], `"${shown}" is not ${rule.what}`);
     }
   };
   check('min', min);
   check('max', max);
   check('value', value);
+  // The values are valid by now, so a comparison cannot fail; if it ever does, the refusal names the field.
+  const compare = (key: 'min' | 'max' | 'value', a: string, b: string): -1 | 0 | 1 => {
+    try {
+      return compareTyped(rule.compare, a, b);
+    } catch (err) {
+      throw new MarkupError(
+        FIELD_LABELS[key],
+        `could not be compared with the other value: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
+    }
+  };
   const lowerStep = step.replace(/[A-Z]/g, (c) => c.toLowerCase());
   if (step !== '' && lowerStep !== 'any') {
     const n = parseValidFloat(step);
@@ -486,17 +511,17 @@ function checkTypedAttributes(
     }
   }
   if (control === 'time') return;
-  if (min !== '' && max !== '' && compareTyped(rule.compare, min, max) === 1) {
+  if (min !== '' && max !== '' && compare('max', min, max) === 1) {
     throw new MarkupError(
       FIELD_LABELS.max,
       `${max} is less than the min ${min}; the maximum may not be below the minimum (WHATWG 4.10.5.3.7)`,
     );
   }
   if (value !== '') {
-    if (min !== '' && compareTyped(rule.compare, value, min) === -1) {
+    if (min !== '' && compare('value', value, min) === -1) {
       warnings.push(`The starting value ${value} is below the min ${min}; the standard treats it as out of range.`);
     }
-    if (max !== '' && compareTyped(rule.compare, value, max) === 1) {
+    if (max !== '' && compare('value', value, max) === 1) {
       warnings.push(`The starting value ${value} is above the max ${max}; the standard treats it as out of range.`);
     }
   }

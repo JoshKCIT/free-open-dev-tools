@@ -820,3 +820,17 @@ it('WHATWG 4.10.5.3.6 a pattern that is not a valid regular expression on its ow
   expect(() => buildField({ ...minimalSpec('text'), pattern: 'a|b' })).not.toThrow();
   expect(() => buildField({ ...minimalSpec('text'), pattern: '[A-Z]{3}' })).not.toThrow();
 });
+
+it('WHATWG 2.3.4.3 a number too large to hold is refused naming the field instead of leaking a plain error or being written', () => {
+  const min = refusal(() => buildField({ ...minimalSpec('number'), min: '1e999', max: '5' }));
+  expect(min).toBeInstanceOf(MarkupError);
+  expect(min.field).toBe('Min');
+  const max = refusal(() => buildField({ ...minimalSpec('number'), min: '1', max: '1e999' }));
+  expect(max.field).toBe('Max');
+  const value = refusal(() => buildField({ ...minimalSpec('number'), value: '1e999' }));
+  expect(value.field).toBe('Starting value');
+  expect(refusal(() => buildField({ ...minimalSpec('range'), value: '-1e999' })).field).toBe('Starting value');
+  expect(refusal(() => buildField({ ...minimalSpec('number'), step: '1e999' })).field).toBe('Step');
+  // A large number that still fits is fine.
+  expect(buildField({ ...minimalSpec('number'), min: '1', max: '1e300' })!.html).toContain('max="1e300"');
+});
