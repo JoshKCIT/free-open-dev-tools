@@ -4,7 +4,29 @@
     "values": {
       "text": "Email the team",
       "to": "infobot@example.com",
+      "cc": "joe@example.com",
+      "bcc": "bob@example.com",
+      "subject": "Current issue",
       "body": "send current-issue"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "kind", "value": "tel" },
+    "values": {
+      "text": "Call the desk",
+      "phone": "7042",
+      "ext": "12",
+      "phoneContext": "example.com"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "kind", "value": "sms" },
+    "values": {
+      "text": "Text the desk",
+      "recipients": "+15105550101,+15105550102",
+      "smsBody": "hello there"
     },
     "attachesFile": false
   }
