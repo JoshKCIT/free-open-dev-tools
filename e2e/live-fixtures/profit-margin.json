@@ -1,0 +1,10 @@
+{
+  "id": "profit-margin",
+  "label": "Margin and markup definitions shown on the page, derived by hand: cost 60 and price 100 give a 40.00 percent margin and a 66.67 percent markup",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "margin" },
+    { "action": "fill", "field": "cost", "value": "60" },
+    { "action": "fill", "field": "price", "value": "100" }
+  ],
+  "expect": ["40.00", "66.67"]
+}

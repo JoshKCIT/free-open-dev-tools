@@ -1,0 +1,22 @@
+[
+  {
+    "mode": { "field": "mode", "value": "margin" },
+    "values": { "cost": "60", "price": "100", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "target-margin" },
+    "values": { "cost": "60", "targetMargin": "40", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "target-markup" },
+    "values": { "cost": "60", "targetMarkup": "50", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "break-even" },
+    "values": { "fixedCosts": "1000", "unitPrice": "25", "unitCost": "15", "currency": "USD" },
+    "attachesFile": false
+  }
+]
