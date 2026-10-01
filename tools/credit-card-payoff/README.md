@@ -29,7 +29,7 @@ Takes your cards, one per line with a name, a balance, a yearly interest rate an
 - Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores annual and late fees, promotional and penalty rates, new purchases, grace periods, daily compounding and minimum payments that change with the balance.
 - Each minimum is the fixed amount you type and the total monthly payment never changes, so the money freed when a card is cleared moves on to the next card.
 - Both orders pay every minimum first, never more than the card owes, and give the rest to one card at a time. This is the page's own convention, because no regulation defines either order.
-- At most 20 cards, and a plan that is still not paid off after 1,200 months (100 years) stops there and says so.
+- At most 20 cards, and a plan that is still not paid off after 1,200 months (100 years) stops there and says so; a balance that grows past 1,000,000,000,000,000,000,000,000,000,000 is stopped earlier, because it is too large to show exactly.
 - A balance and a minimum payment can have no more decimal places than the currency's smallest unit, so every month adds up to the last cent.
 - Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose.
 

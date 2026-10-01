@@ -239,6 +239,21 @@ it('a budget that never beats the interest stops at 1200 months with a not paid 
   expect(simulatePayoff(cards('Card | 10000 | 24 | 25'), new D('200.01'), 'highest-rate', 'USD').paidOff).toBe(true);
 });
 
+it('a balance that grows past 10 to the power 30 is stopped early and reported as not paid off', () => {
+  // 999999999999999 at 100 APR grows by 100 / 12 = 8.33 percent a month; a payment of 25 is nothing against that,
+  // so the total owed passes 10^30 long before month 1200 and the plan stops there instead of showing 40-digit junk.
+  const run = simulatePayoff(cards('Card | 999999999999999 | 100 | 25'), new D(25), 'highest-rate', 'USD');
+  expect(run.paidOff).toBe(false);
+  expect(run.runaway).toBe(true);
+  expect(run.months).toBeLessThan(1200);
+  expect(run.rows).toHaveLength(run.months);
+  const plan = calculatePayoff({ cards: 'Card | 999999999999999 | 100 | 25', budget: '25' })!;
+  expect(
+    plan.warnings.every((w) => /not paid off/i.test(w) && w.includes('1,000,000,000,000,000,000,000,000,000,000')),
+  ).toBe(true);
+  expect(plan.warnings).toHaveLength(2);
+});
+
 it('the payment needed to finish by a month is the smallest whole-cent budget that does it, and one cent less does not', () => {
   const parsed = cards(TWO_CARDS);
   // 1000 at 24 APR and 500 at 12 APR: 138.05 a month finishes within 12 months highest rate first and 138.04 does not;
