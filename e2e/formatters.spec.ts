@@ -413,6 +413,13 @@ for (const c of FORMATTERS) {
 
     await page.locator('#f-input').fill(c.newest.first);
     await expect(cancelButtonOf(page)).toBeVisible();
+    // The first run's worker exists (and swallows its job) before the input changes: on a slow machine the run can
+    // show as running a moment before its worker is built, and the swallowed worker would then be the second run's.
+    await expect.poll(() => workerCount(page), { timeout: 15_000 }).toBe(1);
+    // A moment for that worker to finish loading its engine before it is replaced. Firefox on this machine crashed the
+    // tab in about one run in three when the C-family or PHP worker was terminated within milliseconds of being built
+    // (the other four formatters were not affected); a second's wait removed it in every run tried.
+    await page.waitForTimeout(1_000);
     await page.locator('#f-input').fill(c.newest.second);
 
     await expect(outputArea(page)).toContainText(c.newest.expectSecond, { timeout: 15_000 });
