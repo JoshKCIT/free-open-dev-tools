@@ -22,7 +22,7 @@
     "The rate scan covers rates from -99.9999 percent to 99,900 percent; two rates closer together than one scan step, or a rate where the curve only touches zero, can be missed, so when the sign changes allow more rates than were found the result says up to that many are possible.",
     "A rate is accepted when its bracket is narrower than 1e-12 in the rate (a hundred-billionth of a percentage point) and is shown to 4 places of a percent.",
     "Between 2 and 200 cash flows are accepted, and the discount rate must be above -100 percent.",
-    "Payback is counted linearly inside the period where the running total first turns non-negative, and is not reached when the flows never recover the outlay within the periods typed.",
+    "Payback is counted linearly inside the period where the running total turns non-negative after having been negative, so a first flow of 0 is not a payback; it is 0 when the running total is never negative and is not reached when the flows never recover the outlay within the periods typed.",
     "A cash flow may have up to 15 digits before the point and 12 after, and is used exactly as typed and rounded only when shown.",
     "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
   ],

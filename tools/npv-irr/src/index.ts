@@ -200,25 +200,34 @@ interface PaybackDetail {
   amount: Dec;
 }
 
-/** The first period where the running total of `amounts` is not negative, and the part of it needed (linear inside it). */
+/**
+ * Finds the first period in which the running total of `amounts` is not negative after it has been negative (a
+ * first flow of 0 or a leading gain is not a payback), and the part of that period needed (linear inside it). When
+ * the running total is never negative there is nothing to recover and the payback is 0; when it stays negative the
+ * value is null.
+ */
 function paybackDetail(amounts: Dec[]): PaybackDetail {
   let running = ZERO;
+  let owed = false;
   for (let t = 0; t < amounts.length; t++) {
     const amount = amounts[t]!;
     const before = running;
     running = running.plus(amount);
-    if (!running.isNeg()) {
-      if (t === 0) return { value: ZERO, period: 0, before: ZERO, amount };
+    if (running.isNeg()) {
+      owed = true;
+    } else if (owed) {
       return { value: new D(t - 1).plus(before.neg().div(amount)), period: t, before, amount };
     }
   }
-  return { value: null, period: -1, before: ZERO, amount: ZERO };
+  return owed
+    ? { value: null, period: -1, before: ZERO, amount: ZERO }
+    : { value: ZERO, period: 0, before: ZERO, amount: ZERO };
 }
 
 /**
- * Periods until the running total of the flows first turns non-negative: the whole periods before it plus the
- * shortfall divided by that period's flow, so the part inside the period is counted linearly. 0 when the first flow
- * is not negative, null when the flows never recover.
+ * Periods until the running total of the flows turns non-negative after being negative: the whole periods before it
+ * plus the shortfall divided by that period's flow, so the part inside the period is counted linearly. 0 when the
+ * running total is never negative, null when the flows never recover.
  */
 export function payback(flows: Dec[]): Dec | null {
   return paybackDetail(flows).value;
@@ -331,7 +340,7 @@ function paybackWorking(
   }
   if (detail.period === 0) {
     return [
-      `  ${label}: the first flow is not negative, so the running total is never below 0 and the payback is 0 periods.`,
+      `  ${label}: the running total is never below 0, there is nothing to recover and the payback is 0 periods.`,
     ];
   }
   return [
