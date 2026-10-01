@@ -169,10 +169,11 @@ it('payback of -1000 then 400, 400, 400 is 2.5 periods and at 10 the discounted 
   // At 10 percent the present values are -1000, 363.6363..., 330.5785..., 300.5259... and the discounted running
   // totals are -636.36, -305.79 and -5.26, so the discounted payback is not reached within three periods.
   expect(discountedPayback(new D('10'), flows)).toBeNull();
-  // The same flows with a fourth 400: -5.26 + 400 / 1.1^4 = 267.9..., so it is reached in period 4,
-  // (4 - 1) + 5.2592... / 273.2053... = 3.0192... periods.
+  // The same flows with a fourth 400 reach it in period 4: the shortfall before it is 1000 - 400 x (1/1.1 + 1/1.21 + 1/1.331),
+  // which over 400 / 1.4641 is exactly 7.7 / 400 = 0.01925, so the payback is 3.01925 periods, a tie that rounds half away
+  // from zero to 3.0193.
   const longer = dec(['-1000', '400', '400', '400', '400']);
-  expect(toPlain(discountedPayback(new D('10'), longer)!, 4)).toBe('3.0192');
+  expect(toPlain(discountedPayback(new D('10'), longer)!, 4)).toBe('3.0193');
   const page = calc({ flows: '-1000\n400\n400\n400', rate: '10' });
   expect(page.summary.payback).toBe('2.50');
   expect(page.summary.discountedPayback).toBeNull();
