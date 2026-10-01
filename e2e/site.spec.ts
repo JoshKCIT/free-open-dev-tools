@@ -402,9 +402,10 @@ test.describe('the broadened catalog', () => {
   test('the Money category sits after Images, documents and archives and before Reference tables', async ({ page }) => {
     const indexOfStart = (texts: string[], start: string) => texts.findIndex((t) => t.trim().startsWith(start));
 
+    // The headings are drawn in capitals by the page style, so read the text as written in the page.
     await page.goto(rel('/catalog'));
     await expect(page.locator('h2.category-heading').first()).toBeVisible();
-    const headings = await page.locator('h2.category-heading').allInnerTexts();
+    const headings = await page.locator('h2.category-heading').allTextContents();
     const media = indexOfStart(headings, 'Images, documents and archives');
     const money = indexOfStart(headings, 'Money');
     const reference = indexOfStart(headings, 'Reference tables');
@@ -415,7 +416,7 @@ test.describe('the broadened catalog', () => {
     await page.goto(rel('/tools'));
     const filters = page.locator('.category-filters button');
     await expect(filters.first()).toBeVisible();
-    const chips = await filters.allInnerTexts();
+    const chips = await filters.allTextContents();
     const chipMedia = indexOfStart(chips, 'Images, documents and archives');
     const chipMoney = indexOfStart(chips, 'Money');
     const chipReference = indexOfStart(chips, 'Reference tables');
