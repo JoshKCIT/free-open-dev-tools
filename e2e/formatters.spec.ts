@@ -167,6 +167,16 @@ const FORMATTERS: FormatterCase[] = [
     // formatter looks for it at the end of the input: line 3, column 1.
     broken: { input: 'void main() {\n  print(1);\n', issue: 'Line 3, column 1' },
   },
+  {
+    id: 'php-formatter',
+    // The first case of the Prettier PHP plugin's own array snapshot (tests/array/__snapshots__/jsfmt.spec.mjs.snap,
+    // case arrays.php 1, tag v0.25.0, https://github.com/prettier/plugin-php/tree/v0.25.0/tests/array, MIT),
+    // printed with the default options (print width 80, indent width 4, double quotes, PHP version 8.5): a line of
+    // its published output. The same input the live fixture types.
+    valid: { input: liveFixtureInput('php-formatter') },
+    expectOutput: '$other_test = [1, 2, 123.4324, $hi];',
+    // No broken input yet: syntax errors get their line and column in the next task.
+  },
 ];
 
 /** A second valid input that differs from the first by one trailing line break, so it is a new run. */

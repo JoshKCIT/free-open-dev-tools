@@ -1,0 +1,11 @@
+[
+  {
+    "values": {
+      "input": "<?php\n\nfunction add($a, $b) {\n    return $a + $b;\n}\n",
+      "printWidth": "80",
+      "tabWidth": "4",
+      "phpVersion": "8.5"
+    },
+    "attachesFile": false
+  }
+]
