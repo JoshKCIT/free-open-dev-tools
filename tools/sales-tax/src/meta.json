@@ -1,0 +1,57 @@
+{
+  "id": "sales-tax",
+  "name": "Sales Tax, VAT & GST Calculator",
+  "summary": "Add sales tax, VAT or GST to a net amount or take it out of a gross amount, with several tax components and rounding per line or on the total.",
+  "about": "Adds tax to a list of net amounts, or takes the tax out of a list of gross amounts, using the tax rates you type: one rate for VAT or GST, or several components such as a state and a city sales tax. You choose whether the tax is rounded on each line or once on the total, and the page shows every line, the totals and the working, including the VAT fraction (for 20 percent, one sixth) that HMRC VAT Notice 700 gives for finding the VAT inside a price. No tax rate is built in: you type the rates, and which rates and rounding rule apply to you is yours to check.",
+  "supports": [
+    "Add tax to net amounts: each component's tax is the net amount times its rate, all components apply to the net amount and are not compounded on each other",
+    "Take tax out of gross amounts: the tax inside a gross amount is the gross times the rates added together over 100 plus those rates, so 2.40 including VAT at 20 percent contains 0.40 of VAT, one sixth of the price (HMRC VAT Notice 700 section 7.3.1)",
+    "The VAT fraction for a single rate, such as 1/21 for 5, 2/27 for 8, 1/11 for 10, 1/9 for 12.5, 3/23 for 15, 7/47 for 17.5, 1/6 for 20 and 1/5 for 25 percent, worked out exactly and reduced",
+    "One to 10 tax components, each with a name and a rate from 0 to 100 percent that you type",
+    "Up to 200 amount lines, one per line as an amount or a description and an amount, with the line and column named when one cannot be read",
+    "Rounding on the total (the default: each component's exact tax is added up over all lines and rounded once) or on each line (each line's tax is rounded and the total is their sum), always half away from zero to the currency's smallest unit",
+    "A table of every line with its net, the tax of each component and its gross, then the totals",
+    "The working shown: the formula, your numbers put into it and how the rounding was done",
+    "Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number"
+  ],
+  "limits": [
+    "Amounts are rounded half away from zero to the currency's smallest unit only when shown or when a rounding mode says so; every step before that keeps 40 significant digits.",
+    "Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores exemptions, thresholds, place-of-supply rules, reverse charges, reduced-rate and zero-rate decisions, and filing rules.",
+    "No tax rates or tax tables are built in: every rate is typed by you, and which rates and which rounding rule apply to you is yours to check with the tax authority that applies to you; this page never says which is correct for a place.",
+    "Several tax components each apply to the net amount and are not compounded on each other, so taking tax out of a gross amount divides by one plus the rates added together; a place where one tax is charged on top of another needs a different calculation.",
+    "The HMRC concession in VAT Notice 700 section 17.5 that lets the total VAT on an invoice be rounded down to a whole penny is not applied: every rounding on this page is half away from zero.",
+    "Up to 200 amount lines and 10 tax components are accepted and one more is refused. Each amount has at most the decimal places of the currency's smallest unit, with at most 15 digits before the point, and each rate is from 0 to 100.",
+    "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
+  ],
+  "ambiguities": [
+    "Rounding on each line and rounding on the total can differ by a minor unit: three lines of 0.05 at a rate of 10 give 0.01 of tax on each line and 0.03 in all when rounded per line, but 0.015 and so 0.02 when rounded once on the total.",
+    "When rounding on the total, the lines shown are each rounded for display but the total is rounded once from the exact sums, so the lines may not add up to the total; when rounding per line they always do.",
+    "Taking tax out of a gross amount depends on the rate being charged on the net price; the VAT inside 2.40 at 20 percent is 0.40, not 20 percent of 2.40, which would be 0.48."
+  ],
+  "standards": [
+    {
+      "label": "HMRC VAT Notice 700, section 7.3.1 VAT fractions (rate divided by 100 plus the rate; 20 percent is one sixth) and section 17.5 calculation of VAT on invoices (86.76 pence rounds to 87 pence)",
+      "url": "https://www.gov.uk/guidance/vat-guide-notice-700"
+    }
+  ],
+  "keywords": [
+    "sales tax",
+    "VAT",
+    "GST",
+    "VAT fraction",
+    "add tax",
+    "remove tax",
+    "tax inclusive",
+    "tax exclusive",
+    "gross to net",
+    "net to gross",
+    "rounding"
+  ],
+  "primaryExport": "calculateSalesTax",
+  "usage": "import { calculateSalesTax } from '@fodt/sales-tax';\n\nconst result = calculateSalesTax({ mode: 'extract', lines: '2.40', rates: 'VAT | 20', currency: 'GBP' });\nresult.summary.totals.tax; // '0.40'\nresult.summary.totals.net; // '2.00'\nresult.summary.fraction; // '1/6'",
+  "apiNotes": "`calculateSalesTax` takes the page's text values (`mode` as `add` or `extract`, `lines` one amount per line as `amount` or `description | amount`, `rates` one component per line as `rate` or `name | rate` in percent, `rounding` as `total` or `line`, and `currency`) and returns `{ summary, working }`, or `null` when both text boxes are blank, or throws `MoneyInputError` carrying the `field` that was wrong and the `line` and `column` of a bad cell. `summary` holds the `components`, one `rows` entry per line with plain decimal text for `net`, `taxes` (one per component) and `gross`, the `totals`, the `fraction` for a single component in `extract` mode and plain `notes`. `parseAmountLines(text, currency)` and `parseTaxComponents(text)` read the two text boxes, `addTax(lines, components, rounding, currency)` and `extractTax(lines, components, rounding, currency)` work on exact `Dec` values and `vatFraction(ratePercent)` returns the reduced fraction text such as `1/6`. All use this folder's own decimal.js clone with 40 significant digits and half away from zero. `money.ts` is the shared exact-decimal helper: strict text parsing, rounding, money formatting, whole-number counts, calendar dates, one-row-per-line text with line and column errors, and spreadsheet-safe CSV cells.",
+  "testNotes": "HMRC VAT Notice 700 (fetched and quoted in the test comments) gives the worked example of 2.40 including VAT at 20 percent, where the VAT is 40 pence, one sixth of the price, rate of tax divided by 100 plus the rate, and the table of VAT fractions: 5 is 1/21, 8 is 2/27, 10 is 1/11, 12.5 is 1/9, 15 is 3/23, 17.5 is 7/47, 20 is 1/6 and 25 is 1/5; section 17.5.1 gives the line rounding example of 86.76 pence rounded up to 87 pence. The notice's concession to round the total down is not applied. The notice does not say how several taxes combine, so the not-compounded rule is derived by hand: 6.25 and 2 on 100 give 6.25 and 2.00, and 108.25 gives back a net of 100. Exactness is proven by first showing that 0.1 plus 0.2 in JavaScript floating point is 0.30000000000000004 and then that amount lines of 0.10 and 0.20 at a rate of 0 give a total of exactly 0.30.",
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  }
+}
