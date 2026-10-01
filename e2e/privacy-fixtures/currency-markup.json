@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "amount": "1000", "source": "EUR", "target": "USD", "offered": "1.0780", "mid": "1.1000" },
+    "attachesFile": false
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "id": "currency-markup",
+  "label": "Regulation (EU) 2019/518 Article 3a(1) percentage mark-up, derived by hand: 1,000 EUR at 1.0780 against a 1.1000 reference is a 2.00 percent markup, 22.00 USD or 20.00 EUR",
+  "steps": [
+    { "action": "fill", "field": "amount", "value": "1000" },
+    { "action": "fill", "field": "source", "value": "EUR" },
+    { "action": "fill", "field": "target", "value": "USD" },
+    { "action": "fill", "field": "offered", "value": "1.0780" },
+    { "action": "fill", "field": "mid", "value": "1.1000" }
+  ],
+  "expect": ["2.00", "22.00", "20.00"]
+}
