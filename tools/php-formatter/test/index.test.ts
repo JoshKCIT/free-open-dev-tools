@@ -299,3 +299,26 @@ it('the formatter still formats after an input that was too large or too deeply 
   expect((await failureOf(source)).message).toMatch(/too large or too deeply/);
   expect((await formatPhp('<?php echo   1;\n'))?.output).toBe('<?php echo 1;\n');
 });
+
+// The three on-or-off options are checked before Prettier runs, and the message uses the label the page shows.
+it('a non-boolean useTabs, singleQuote or trailingCommaPHP is refused naming the page label', async () => {
+  const labelled = [
+    ['useTabs', 'Indent with tabs'],
+    ['singleQuote', 'Prefer single quotes'],
+    ['trailingCommaPHP', 'Trailing commas'],
+  ] as const;
+  for (const [name, label] of labelled) {
+    for (const bad of [null, 'false', 0, 1, {}, []]) {
+      const err = await failureOf('<?php echo 1;\n', { [name]: bad } as unknown as Partial<FormatPhpOptions>);
+      expect(err.message).toBe(`${label} must be on or off.`);
+      expect(err.line).toBeUndefined();
+      expect(err.column).toBeUndefined();
+    }
+  }
+  expect(engineControl.count).toBe(0);
+
+  // A real boolean is accepted, true or false.
+  expect(
+    (await formatPhp('<?php echo 1;\n', { useTabs: true, singleQuote: true, trailingCommaPHP: false }))?.output,
+  ).toBe('<?php echo 1;\n');
+});

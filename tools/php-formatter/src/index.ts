@@ -103,6 +103,10 @@ function validate(options: FormatPhpOptions): void {
   if (!isWholeNumberIn(options.tabWidth, TAB_WIDTH_MIN, TAB_WIDTH_MAX)) {
     throw new PhpFormatterError(`Indent width must be a whole number from ${TAB_WIDTH_MIN} to ${TAB_WIDTH_MAX}.`);
   }
+  // The three on-or-off options carry the labels the page shows for them.
+  if (typeof options.useTabs !== 'boolean') throw new PhpFormatterError('Indent with tabs must be on or off.');
+  if (typeof options.singleQuote !== 'boolean') throw new PhpFormatterError('Prefer single quotes must be on or off.');
+  if (typeof options.trailingCommaPHP !== 'boolean') throw new PhpFormatterError('Trailing commas must be on or off.');
   if (options.braceStyle !== 'per-cs' && options.braceStyle !== '1tbs') {
     throw new PhpFormatterError('Brace style must be per-cs or 1tbs.');
   }
