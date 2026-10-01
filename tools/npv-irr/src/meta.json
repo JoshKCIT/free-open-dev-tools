@@ -24,6 +24,7 @@
     "Between 2 and 200 cash flows are accepted, and the discount rate must be above -100 percent.",
     "Payback is counted linearly inside the period where the running total turns non-negative after having been negative, so a first flow of 0 is not a payback; it is 0 when the running total is never negative and is not reached when the flows never recover the outlay within the periods typed.",
     "A cash flow may have up to 15 digits before the point and 12 after, and is used exactly as typed and rounded only when shown.",
+    "A present value, running total or net present value of 1,000,000,000,000,000,000 or more, which a rate just above -100 percent can cause, is refused because it is too large to show exactly, and a label can have at most 60 characters.",
     "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
   ],
   "ambiguities": [

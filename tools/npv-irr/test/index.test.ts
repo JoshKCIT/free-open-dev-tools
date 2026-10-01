@@ -245,6 +245,12 @@ it('labels are kept, three or more sign changes say up to that many rates are po
   const rows = parseFlows('Outlay | -100\n110\n  | 5');
   expect(rows.map((r) => r.label)).toEqual(['Outlay', '', '']);
   expect(rows.map((r) => r.amount.toFixed())).toEqual(['-100', '110', '5']);
+  // A label is capped at 60 characters so a table cell stays readable.
+  expect(parseFlows(`${'a'.repeat(60)} | 1`)[0]!.label).toHaveLength(60);
+  const longLabel = refused(() => parseFlows(`${'a'.repeat(61)} | 1`));
+  expect(longLabel.line).toBe(1);
+  expect(longLabel.column).toBe(1);
+  expect(longLabel.message).toContain('60');
   // -1 + 3x - 3x^2 + x^3 = -(1 - x)^3 has one root, x = 1 (r = 0), where the curve flattens as it crosses zero.
   const triple = calc({ flows: '-1\n3\n-3\n1', rate: '10' });
   expect(triple.summary.irr.status).toBe('one');
