@@ -774,3 +774,31 @@ it('no source and no src gives a message naming the field, and the source, track
   // A field longer than 20,000 characters is refused before it is read.
   expect(refusal(() => buildMedia({ kind: 'image', src: 'a'.repeat(20001), alt: 'A' }))?.message).toContain('20,000');
 });
+
+// ---- Review fixes (phase 11 code review) ---------------------------------------------------------------------------
+
+it('WHATWG 4.8.11.11.3 a track address that starts with two slashes is flagged as possibly on another site', () => {
+  for (const url of ['//cdn.example/en.vtt', '\\\\cdn.example\\en.vtt']) {
+    const built = buildMedia({
+      kind: 'video',
+      src: 'v.webm',
+      width: '1',
+      height: '1',
+      controls: true,
+      tracks: `${url} | captions | en | English`,
+    });
+    const notes = built?.warnings.join(' ') ?? '';
+    expect(notes, url).toContain('crossorigin');
+    expect(notes, url).toContain('CORS');
+  }
+  // A plain relative address is not flagged.
+  const relative = buildMedia({
+    kind: 'video',
+    src: 'v.webm',
+    width: '1',
+    height: '1',
+    controls: true,
+    tracks: 'en.vtt | captions | en | English',
+  });
+  expect(relative?.warnings.join(' ')).not.toContain('CORS');
+});

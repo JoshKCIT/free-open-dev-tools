@@ -352,8 +352,12 @@ function withControls(tree: El[]): El[] {
   );
 }
 
-/** An address with a scheme may be on another site; data and blob addresses never are. */
+/**
+ * An address with a scheme may be on another site, and so may one that starts with two slashes (a scheme-relative
+ * address, where a backslash counts as a slash for web addresses); data and blob addresses never are.
+ */
 function mayBeCrossOrigin(address: string): boolean {
+  if (/^\s*[/\\]{2}/.test(address)) return true;
   const scheme = urlScheme(address);
   return scheme !== null && scheme !== 'data' && scheme !== 'blob';
 }
@@ -424,7 +428,7 @@ function buildTimed(spec: MediaSpec, tag: 'video' | 'audio'): Draft | null {
   }
   if (crossorigin === undefined && tracks.some((t) => mayBeCrossOrigin(t.url))) {
     warnings.push(
-      "A track address starts with a scheme, so it may be on another site. Tracks are fetched with the media element's crossorigin setting (WHATWG 4.8.11.11.3), so a track from another site needs the crossorigin attribute here and CORS headers on the file.",
+      "A track address starts with a scheme or two slashes, so it may be on another site. Tracks are fetched with the media element's crossorigin setting (WHATWG 4.8.11.11.3), so a track from another site needs the crossorigin attribute here and CORS headers on the file.",
     );
   }
   if (spec.autoplay === true && spec.muted !== true) {
