@@ -211,7 +211,18 @@ export default defineTool({
   ],
   run(values): ToolResult {
     try {
-      const kind = str(values, 'kind', 'web') as LinkKind;
+      const typedKind = str(values, 'kind', 'web');
+      if (!(LINK_KINDS as readonly string[]).includes(typedKind)) {
+        return {
+          outputs: [],
+          errors: [
+            {
+              message: `${FIELD_LABELS.kind}: "${typedKind}" is not one of the link types offered: ${LINK_KINDS.join(', ')}`,
+            },
+          ],
+        };
+      }
+      const kind = typedKind as LinkKind;
       const spec: LinkSpec = { kind };
       if (kind === 'web') {
         spec.text = str(values, 'text');
