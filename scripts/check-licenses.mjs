@@ -144,7 +144,16 @@ const MANUAL_LICENSE_OVERRIDES = {
 const normaliseLineEndings = (text) => text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 function licenceTextFor(dir, name, version) {
-  for (const candidate of ['LICENSE', 'LICENSE.md', 'LICENCE', 'LICENSE.txt', 'license', 'LICENSE-MIT']) {
+  for (const candidate of [
+    'LICENSE',
+    'LICENSE.md',
+    'LICENCE',
+    'LICENSE.txt',
+    'license',
+    'LICENSE-MIT',
+    'LICENCE.md',
+    'LICENCE.txt',
+  ]) {
     const path = join(dir, candidate);
     if (existsSync(path)) return normaliseLineEndings(readFileSync(path, 'utf8').trim());
   }
