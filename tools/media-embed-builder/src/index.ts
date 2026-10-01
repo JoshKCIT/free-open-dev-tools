@@ -1,13 +1,14 @@
 import meta from './meta.json';
 import { MarkupError, assertSafeText, el, inert, schemeWarning, serialize, urlScheme, type El } from './markup';
 import { isValidNonNegativeInteger } from './microsyntax';
+import { checkSizes, checkSrcset, parseSrcset, type Candidate } from './srcset';
 import { CORS_KEYWORDS, LOADING_KEYWORDS, PRELOAD_KEYWORDS, TRACK_KINDS, TRACK_KIND_DEFAULTS } from './spec-data';
 
 export { meta };
 export { MarkupError } from './markup';
 
 /** The media the builder writes, in the order the page lists them. */
-export const MEDIA_KINDS = ['video', 'audio'] as const;
+export const MEDIA_KINDS = ['video', 'audio', 'image', 'picture'] as const;
 export type MediaKind = (typeof MEDIA_KINDS)[number];
 
 /** The label each field has on the page; a refusal names the field by this text. */
@@ -28,6 +29,12 @@ export const FIELD_LABELS = {
   loop: 'Loop',
   playsinline: 'Play inline',
   fallback: 'Fallback text for old browsers',
+  imageSrc: 'Image address',
+  srcset: 'Srcset',
+  sizes: 'Sizes',
+  alt: 'Alt text',
+  decorative: 'Decorative image (empty alt)',
+  pictureSources: 'Picture sources',
 } as const;
 
 export interface MediaSpec {
@@ -51,6 +58,14 @@ export interface MediaSpec {
   playsinline?: boolean;
   /** Text inside the element that a browser without media support shows. */
   fallback?: string;
+  /** An image or picture: the candidate list, the sizes value and the alt text, each kept exactly as typed. */
+  srcset?: string;
+  sizes?: string;
+  alt?: string;
+  /** An image that adds no information: alt is written empty. */
+  decorative?: boolean;
+  /** A picture: one source per line, srcset | type | media | sizes. */
+  pictureSources?: string;
 }
 
 export interface BuiltMedia {
@@ -92,6 +107,13 @@ function listLines(input: string): { raw: string; line: number }[] {
     .filter(({ raw }) => raw.trim() !== '');
 }
 
+/** Refuses a list longer than the cap before any line of it is read. */
+function capLines(lines: { line: number }[], field: string, noun: string): void {
+  if (lines.length > MAX_LINES) {
+    throw new MarkupError(field, `${lines.length} ${noun}, but at most ${MAX_LINES} are written; remove some`);
+  }
+}
+
 // ---- Source lines -------------------------------------------------------------------------------------------------
 
 /** One parsed source line. An empty cell is the empty string. */
@@ -116,7 +138,9 @@ const MIME_TYPE = new RegExp(`^${MIME_TOKEN}/${MIME_TOKEN}(?:${MIME_PARAMETER})*
 export function parseSourceLines(input: string): SourceLine[] {
   assertSafeText(input, FIELD_LABELS.mediaSources, { multiline: true });
   const out: SourceLine[] = [];
-  for (const { raw, line } of listLines(input)) {
+  const lines = listLines(input);
+  capLines(lines, FIELD_LABELS.mediaSources, 'sources');
+  for (const { raw, line } of lines) {
     const cells = raw.split('|').map((c) => c.trim());
     if (cells.length > 3) {
       throw lineError(FIELD_LABELS.mediaSources, line, 'a source line has at most three cells: address | type | media');
@@ -133,16 +157,10 @@ export function parseSourceLines(input: string): SourceLine[] {
       throw lineError(
         FIELD_LABELS.mediaSources,
         line,
-        `"${type}" is not a MIME type; WHATWG 4.8.2 wants type/subtype, for example video/webm or video/mp4; codecs="avc1.42E01E"`,
+        `"${type}" is not a MIME type; WHATWG 4.8.2 wants type/subtype, for example video/webm, audio/ogg, image/avif or video/mp4; codecs="avc1.42E01E"`,
       );
     }
     out.push({ url, type, media, line });
-  }
-  if (out.length > MAX_LINES) {
-    throw new MarkupError(
-      FIELD_LABELS.mediaSources,
-      `${out.length} sources, but at most ${MAX_LINES} are written; remove some`,
-    );
   }
   return out;
 }
@@ -202,7 +220,9 @@ export function parseTrackLines(input: string): TrackLine[] {
   const out: TrackLine[] = [];
   const defaults = new Map<string, number>();
   const seen = new Map<string, number>();
-  for (const { raw, line } of listLines(input)) {
+  const lines = listLines(input);
+  capLines(lines, FIELD_LABELS.tracks, 'tracks');
+  for (const { raw, line } of lines) {
     const cells = raw.split('|').map((c) => c.trim());
     if (cells.length > 5) {
       throw lineError(
@@ -270,12 +290,6 @@ export function parseTrackLines(input: string): TrackLine[] {
     seen.set(key, line);
     out.push({ url, kind, srclang, label, isDefault, line });
   }
-  if (out.length > MAX_LINES) {
-    throw new MarkupError(
-      FIELD_LABELS.tracks,
-      `${out.length} tracks, but at most ${MAX_LINES} are written; remove some`,
-    );
-  }
   return out;
 }
 
@@ -311,14 +325,14 @@ function keyword(
 }
 
 /** Width and height are valid non-negative integers (WHATWG 2.3.4.2), or blank. */
-function dimension(value: string | undefined, field: string): string | undefined {
+function dimension(value: string | undefined, field: string, section: string): string | undefined {
   const typed = text(value);
   assertSafeText(typed, field);
   if (blank(typed)) return undefined;
   if (!isValidNonNegativeInteger(typed)) {
     throw new MarkupError(
       field,
-      `"${typed}" is not a valid non-negative integer; WHATWG 4.8.8 writes a size as whole pixels such as 640, with no sign, no decimal point and no unit`,
+      `"${typed}" is not a valid non-negative integer; WHATWG ${section} writes a size as whole pixels such as 640, with no sign, no decimal point and no unit`,
     );
   }
   return typed;
@@ -355,8 +369,8 @@ function buildTimed(spec: MediaSpec, tag: 'video' | 'audio'): Draft | null {
   assertSafeText(fallback, FIELD_LABELS.fallback);
 
   // WHATWG 4.8.9: audio has no poster, width, height or playsinline, so a value given for one is refused.
-  const width = dimension(spec.width, FIELD_LABELS.width);
-  const height = dimension(spec.height, FIELD_LABELS.height);
+  const width = dimension(spec.width, FIELD_LABELS.width, section);
+  const height = dimension(spec.height, FIELD_LABELS.height, section);
   if (tag === 'audio') {
     const given: [string, boolean][] = [
       [FIELD_LABELS.poster, !blank(poster)],
@@ -462,6 +476,194 @@ function buildTimed(spec: MediaSpec, tag: 'video' | 'audio'): Draft | null {
   return { tree, previewTree: withControls(tree), warnings };
 }
 
+// ---- Picture sources ----------------------------------------------------------------------------------------------
+
+/** One parsed source line of a picture. An empty cell is the empty string. */
+export interface PictureSourceLine {
+  /** The candidate list exactly as typed (trimmed at the cell), parsed into `candidates`. */
+  srcset: string;
+  candidates: Candidate[];
+  type: string;
+  media: string;
+  sizes: string;
+  line: number;
+}
+
+/** Runs a check on one line of a list and puts the line number in front of any refusal. */
+function onLine(line: number, check: () => void): void {
+  try {
+    check();
+  } catch (err) {
+    if (err instanceof MarkupError) throw lineError(err.field, line, err.message);
+    throw err;
+  }
+}
+
+/**
+ * One source per line, cells split on a vertical bar and trimmed: srcset, type, media, sizes. Blank lines are skipped. At
+ * most 20 sources. WHATWG 4.8.2: the srcset is required and checked as WHATWG 4.8.4.2.1 asks (see checkSrcset), the
+ * type is a MIME type, the sizes value is checked as 4.8.4.2.2 asks. `imgAllowsAutoSizes` says the img after the
+ * sources is lazy and has sizes auto, so a source may use auto and may leave its sizes out.
+ */
+export function parsePictureSourceLines(
+  input: string,
+  opts: { imgAllowsAutoSizes?: boolean } = {},
+): PictureSourceLine[] {
+  const field = FIELD_LABELS.pictureSources;
+  const auto = opts.imgAllowsAutoSizes === true;
+  assertSafeText(input, field, { multiline: true });
+  const lines = listLines(input);
+  capLines(lines, field, 'sources');
+  const out: PictureSourceLine[] = [];
+  for (const { raw, line } of lines) {
+    const cells = raw.split('|').map((c) => c.trim());
+    if (cells.length > 4) {
+      throw lineError(field, line, 'a source line has at most four cells: srcset | type | media | sizes');
+    }
+    const [srcset = '', type = '', media = '', sizes = ''] = cells;
+    if (srcset === '') {
+      throw lineError(field, line, 'the srcset is empty; WHATWG 4.8.2 needs a srcset on every source in a picture');
+    }
+    if (type !== '' && !MIME_TYPE.test(type)) {
+      throw lineError(
+        field,
+        line,
+        `"${type}" is not a MIME type; WHATWG 4.8.2 wants type/subtype, for example image/avif, image/webp or image/jpeg`,
+      );
+    }
+    let candidates: Candidate[] = [];
+    onLine(line, () => {
+      candidates = parseSrcset(srcset, field);
+      if (sizes !== '') checkSizes(sizes, field, { lazy: auto });
+      checkSrcset(candidates, field, { sizesPresent: sizes !== '' || auto, sizesField: field });
+    });
+    out.push({ srcset, candidates, type, media, sizes, line });
+  }
+  return out;
+}
+
+function pictureSourceElement(source: PictureSourceLine): El {
+  return el(
+    'source',
+    [
+      ['srcset', source.srcset],
+      ['type', source.type === '' ? undefined : source.type],
+      ['media', source.media === '' ? undefined : source.media],
+      ['sizes', source.sizes === '' ? undefined : source.sizes],
+    ],
+    [],
+  );
+}
+
+/** A media value that makes a source skippable: not blank and not all (WHATWG 4.8.2). */
+function narrowsMedia(media: string): boolean {
+  const trimmed = media.trim();
+  return trimmed !== '' && trimmed.toLowerCase() !== 'all';
+}
+
+// ---- Image and picture --------------------------------------------------------------------------------------------
+
+function buildImage(spec: MediaSpec, inPicture: boolean): Draft | null {
+  const src = text(spec.src);
+  const srcset = text(spec.srcset);
+  const sizes = text(spec.sizes);
+  const alt = text(spec.alt);
+  const pictureSources = inPicture ? text(spec.pictureSources) : '';
+  assertSafeText(src, FIELD_LABELS.imageSrc);
+  assertSafeText(srcset, FIELD_LABELS.srcset);
+  assertSafeText(sizes, FIELD_LABELS.sizes);
+  assertSafeText(alt, FIELD_LABELS.alt);
+  const width = dimension(spec.width, FIELD_LABELS.width, '4.8.3');
+  const height = dimension(spec.height, FIELD_LABELS.height, '4.8.3');
+  if ([src, srcset, sizes, alt, pictureSources].every(blank) && width === undefined && height === undefined) {
+    return null;
+  }
+
+  const loading = keyword(spec.loading, FIELD_LABELS.loading, LOADING_KEYWORDS, 'WHATWG 2.5.7');
+  const crossorigin = keyword(spec.crossorigin, FIELD_LABELS.crossorigin, CORS_KEYWORDS, 'WHATWG 2.5.4');
+  // WHATWG 4.8.3: at least one of src and srcset must be present.
+  if (blank(src) && blank(srcset)) {
+    throw new MarkupError(
+      FIELD_LABELS.imageSrc,
+      'missing, type the address of the image or a srcset list (WHATWG 4.8.3 needs at least one of src and srcset)',
+    );
+  }
+
+  // WHATWG 4.8.3: sizes may be auto only when the img is lazy; then it allows auto sizes.
+  const lazy = loading === 'lazy';
+  const trimmedSizes = sizes.trim().toLowerCase();
+  const imgAllowsAutoSizes = lazy && (trimmedSizes === 'auto' || trimmedSizes.startsWith('auto,'));
+  if (!blank(sizes)) checkSizes(sizes.trim(), FIELD_LABELS.sizes, { lazy });
+  const candidates = blank(srcset) ? [] : parseSrcset(srcset, FIELD_LABELS.srcset);
+  if (candidates.length > 0) {
+    checkSrcset(candidates, FIELD_LABELS.srcset, { sizesPresent: !blank(sizes), sizesField: FIELD_LABELS.sizes });
+  }
+
+  const sources = parsePictureSourceLines(pictureSources, { imgAllowsAutoSizes });
+  // WHATWG 4.8.2: a source with a following source, or an img with srcset after it, needs media or type.
+  sources.forEach((source, index) => {
+    const followed = index < sources.length - 1 || candidates.length > 0;
+    if (followed && source.type === '' && !narrowsMedia(source.media)) {
+      throw lineError(
+        FIELD_LABELS.pictureSources,
+        source.line,
+        'this source is followed by another source or by an img with srcset, so it needs a media value other than all, or a type; otherwise a browser could never move on to the next one (WHATWG 4.8.2)',
+      );
+    }
+  });
+
+  // WHATWG 4.8.4.4: alt is required unless the image is marked decorative (4.8.4.4.8: an empty alt).
+  const decorative = spec.decorative === true;
+  if (!decorative && blank(alt)) {
+    throw new MarkupError(
+      FIELD_LABELS.alt,
+      'missing, describe the image in words for a visitor who cannot see it, or tick Decorative image for one that adds no information (WHATWG 4.8.4.4 and 4.8.4.4.14: a generator asks the person for the alt text)',
+    );
+  }
+
+  const warnings: string[] = [];
+  const addresses: [string, string][] = [
+    [FIELD_LABELS.imageSrc, src],
+    ...candidates.map((c): [string, string] => [FIELD_LABELS.srcset, c.url]),
+    ...sources.flatMap((s) => s.candidates.map((c): [string, string] => [FIELD_LABELS.pictureSources, c.url])),
+  ];
+  for (const [field, address] of addresses) {
+    const warning = blank(address) ? null : schemeWarning(field, address);
+    if (warning !== null) warnings.push(warning);
+  }
+  if (decorative && !blank(alt)) {
+    warnings.push('This image is marked decorative, so alt is written empty and the alt text you typed is not used.');
+  }
+  if (blank(srcset) && !blank(sizes) && !(inPicture && sources.length > 0 && imgAllowsAutoSizes)) {
+    warnings.push('Sizes has no effect without a srcset list of width descriptors.');
+  }
+  if (inPicture && sources.length === 0) {
+    warnings.push('There is no source line, so the picture holds only the img; an img on its own does the same.');
+  }
+  if (width === undefined || height === undefined) {
+    warnings.push(
+      'Width and height are not both set. Giving both lets the browser reserve space for the image before it loads and avoids layout shift (WHATWG 4.8.3).',
+    );
+  }
+
+  const img = el(
+    'img',
+    [
+      ['src', blank(src) ? undefined : src],
+      ['srcset', blank(srcset) ? undefined : srcset],
+      ['sizes', blank(sizes) ? undefined : sizes],
+      ['alt', decorative ? '' : alt],
+      ['width', width],
+      ['height', height],
+      ['loading', loading],
+      ['crossorigin', crossorigin],
+    ],
+    [],
+  );
+  const tree = inPicture ? [el('picture', [], [...sources.map(pictureSourceElement), img])] : [img];
+  return { tree, warnings };
+}
+
 /**
  * Builds the media element. Returns null when every field it reads is blank, throws MarkupError naming the field and
  * the broken rule when a value is refused. One tree is built; the markup and the preview are both written from it.
@@ -472,6 +674,10 @@ export function buildMedia(spec: MediaSpec): BuiltMedia | null {
     case 'video':
     case 'audio':
       draft = buildTimed(spec, spec.kind);
+      break;
+    case 'image':
+    case 'picture':
+      draft = buildImage(spec, spec.kind === 'picture');
       break;
     default:
       throw new MarkupError(FIELD_LABELS.kind, 'not a media element this builder writes');
