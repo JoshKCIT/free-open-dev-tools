@@ -54,6 +54,7 @@ describe('pathRule', () => {
       '.planning/STATE.md',
       'eslint.config.js',
       '.gitleaksignore',
+      'docs/vendored-licenses/boolbase-LICENSE.txt',
     ]) {
       expect(pathRule(path).kind, path).toBe('nothing');
     }

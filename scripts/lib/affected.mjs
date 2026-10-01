@@ -52,6 +52,7 @@ const NOTHING = [
   [/^[^/]+\.md$/, 'documentation'],
   [/^docs\/[^/]+\.md$/, 'documentation'],
   [/^docs\/(RELEASE-MANIFEST\.json|release-manifest\.schema\.json)$/, 'the release record, written after the checks'],
+  [/^docs\/vendored-licenses\//, 'licence texts read only by the licence gate, which runs on every push'],
   [/^LICENSE$/, 'the licence text'],
   [/^\.github\/workflows\/deploy\.yml$/, 'the deploy workflow, which runs after these checks'],
   [/^\.github\/workflows\/ci\.yml$/, "these checks' own workflow; a mistake in it shows in its own run"],
