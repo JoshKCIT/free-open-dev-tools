@@ -1,0 +1,37 @@
+{
+  "id": "link-builder",
+  "name": "HTML Link Builder (mailto, tel, sms)",
+  "summary": "Build a link with the rel, target and download attributes you choose, or a correctly encoded mailto, tel or sms link.",
+  "about": "Builds one link element and shows its markup first, ready to copy, with a live preview of the same markup after it. In this edition it builds an email link: the recipients are written in the address part and the body is percent-encoded the way RFC 6068 describes, with each line break written as an encoded carriage return and line feed. The bare address is shown beside the markup so it can be used outside HTML. The preview link has no address at all, so nothing in it can be followed.",
+  "supports": [
+    "An email link (mailto) with one or more recipients and a body, percent-encoded as RFC 6068 section 5 describes: a space is written as an encoded space, each line break in the body as an encoded carriage return and line feed, and every non-ASCII letter as its UTF-8 bytes in percent-encoded form",
+    "The link text, which is the address list when you leave it blank",
+    "The bare address shown in its own block, for use outside HTML"
+  ],
+  "limits": [
+    "Everything you type is escaped before it is placed in the markup, so a tag, an event handler or a script address you type stays text; a javascript:, data: or vbscript: address is kept as typed and flagged.",
+    "The preview replaces every address you typed (src, srcset, poster, href, action, formaction, data and cite) with an inert placeholder or removes it, so nothing you typed is loaded; only the markup you copy keeps the real addresses.",
+    "Each text field is limited to 20,000 characters, and control characters other than a tab (and line breaks in the body) are refused because HTML cannot carry them."
+  ],
+  "ambiguities": [
+    "A line break inside a mailto body is written as an encoded carriage return and line feed, which is what RFC 6068 section 5 requires, whichever line break you typed."
+  ],
+  "standards": [
+    {
+      "label": "RFC 6068, The mailto URI Scheme",
+      "url": "https://www.rfc-editor.org/rfc/rfc6068"
+    },
+    {
+      "label": "HTML Living Standard, 4.5.1 The a element",
+      "url": "https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-a-element"
+    }
+  ],
+  "keywords": ["html", "link", "mailto", "anchor", "percent-encoding", "markup generator"],
+  "primaryExport": "buildLink",
+  "usage": "import { buildLink } from '@fodt/link-builder';\n\nconst link = buildLink({\n  kind: 'mailto',\n  to: 'infobot@example.com',\n  body: 'send current-issue\\nsend index',\n});\nlink?.address;\n// mailto:infobot@example.com?body=send%20current-issue%0D%0Asend%20index",
+  "apiNotes": "`buildLink(spec)` returns `{ tree, html, preview, address, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup, `preview` is the same tree with the address removed, and `address` is the bare address. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message`. `buildMailto` is the encoder behind it.",
+  "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The two-line body example of RFC 6068 section 6.1 is checked literally, and the preview link must have no href.",
+  "devDependencies": {
+    "parse5": "8.0.1"
+  }
+}
