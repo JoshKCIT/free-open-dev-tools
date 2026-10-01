@@ -23,10 +23,15 @@
   "keywords": [
     "html",
     "link",
+    "anchor",
+    "rel",
+    "noopener",
+    "nofollow",
+    "target",
+    "download",
     "mailto",
     "tel",
     "sms",
-    "anchor",
     "percent-encoding",
     "markup generator"
   ],

@@ -7,10 +7,14 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Builds one link element and shows its markup first, ready to copy, with a live preview of the same markup after it. It writes an email link (mailto), a phone link (tel) or a text message link (sms) whose address is percent-encoded the way the RFCs describe, so a subject or body with spaces, ampersands, line breaks and non-English letters arrives intact. The bare address is shown beside the markup so it can be used outside HTML. The preview link has no address at all, so nothing in it can be followed.
+Builds one link element and shows its markup first, ready to copy, with a live preview of the same markup after it. A web link carries exactly the rel, target and download attributes you choose and nothing else; an email link (mailto), a phone link (tel) or a text message link (sms) has its address percent-encoded the way the RFCs describe, so a subject or body with spaces, ampersands, line breaks and non-English letters arrives intact. The bare address is shown beside the markup so it can be used outside HTML, and the preview link has no address at all, so nothing in it can be followed. The link types are copied from the HTML Living Standard (last updated 2026-09-29) and the IANA Link Relations registry (updated 2026-06-12) on 2026-10-01; a later edition of either may differ.
 
 ## Supported
 
+- A web link whose href is kept exactly as typed, with the rel values you choose (the 16 link types the HTML Living Standard allows on an a element, plus sponsored and ugc, which are IANA registered extensions and are labelled as such), written in the order you chose and spelled as typed; an unknown or repeated value is refused and no value is ever added
+- A target (_blank, _self, _parent or _top) and a download attribute, with or without a file name, written only when you choose them, in the order href, rel, target, download
+- A warning when opener is combined with noopener or noreferrer (the standard lets noopener win), and a note, never an added value, when target _blank already makes the link open without a reference to this page
+- A warning when a web address uses the javascript:, data: or vbscript: scheme, including forms split by a tab or led by spaces; the address is kept as typed
 - An email link (mailto) with To, Cc, Bcc, a subject and a body, percent-encoded as RFC 6068 describes: a space as an encoded space, each line break in the body as an encoded carriage return and line feed, every non-ASCII letter as its UTF-8 bytes in percent-encoded form, and a percent sign, ampersand, question mark, quote or backslash in a local part encoded
 - A non-ASCII domain in an email address converted to punycode (the form RFC 6068 section 2 recommends for the widest support), with the percent-encoded UTF-8 form of RFC 6068 section 6.3 available to the package as an option
 - A line break typed into To, Cc, Bcc or the subject is refused naming the field, so no mail header can be added through the link; only the body may have line breaks (RFC 6068 section 5)
@@ -24,12 +28,17 @@ Builds one link element and shows its markup first, ready to copy, with a live p
 - The preview replaces every address you typed (src, srcset, poster, href, action, formaction, data and cite) with an inert placeholder or removes it, so nothing you typed is loaded; only the markup you copy keeps the real addresses.
 - Addresses in a Bcc field are part of the link itself, so they are visible to anyone who reads the page source or the link (RFC 6068 section 7); a link also exposes every address in it to harvesting.
 - Each text field is limited to 20,000 characters, an email link to 50 recipients across To, Cc and Bcc and a text message link to 20 recipients, and control characters other than a tab (and line breaks in a body or a recipient list) are refused because HTML cannot carry them.
+- This builder writes only the attributes you choose: it never adds a rel value, a target or a download for you, so a link you copy has exactly what you ticked and typed; where the standard implies a behaviour, a note says so instead.
+- Attributes this builder does not offer on a web link: ping, the language hint attribute, type and referrerpolicy; the page offers only the four target keywords (a target name of your own can be passed to the package), and download has no effect on mailto, tel and sms addresses, so it is not offered for them.
 - A plus sign in a subject or body is written as an encoded plus, so no handler can read it as a space; RFC 6068 section 5 allows this, and it is the one place the encoder is stricter than it has to be.
 - RFC 5724 does not say how a line break is written in a text message body; this builder writes an encoded line feed, and mail and message handlers differ in how they read a body, so test the link on the devices you care about.
 - Only the header fields Cc, Bcc, Subject and Body are offered for an email link, each at most once, in that order; other header fields, and the isub parameter of a phone number, are not offered.
 
 ## Ambiguous cases, and what this does about them
 
+- The standard treats a target of _blank as already opening the link without a reference to the page, so rel=noopener is redundant there; this builder does not add it, and says so, because adding a value you did not choose would change your markup silently.
+- The standard lets noopener win when opener is combined with noopener or noreferrer; the two are contradictory, so both are written as typed with a warning rather than one being dropped.
+- sponsored and ugc are not in the Living Standard table of link types; they are registered with IANA (records dated 2019-11-07), so they are accepted and labelled as registered extensions.
 - A line break inside an email body is written as an encoded carriage return and line feed, which RFC 6068 section 5 requires, whichever line break you typed; in a text message body it is an encoded line feed.
 - An address outside the HTML Living Standard's expression for a valid email address (4.10.5.1.5), such as a quoted local part, is written as typed and encoded with a warning rather than refused, because that expression is a stated willful violation of the RFC for addresses.
 - RFC 3966 asks for the phone-context parameter only on a local number; a global number (one starting with +) works everywhere, so typing a phone context for it is refused rather than written.
@@ -38,11 +47,14 @@ Builds one link element and shows its markup first, ready to copy, with a live p
 
 ## Defined by
 
+- [HTML Living Standard, 4.6 Links (4.6.5 following hyperlinks, 4.6.6 downloading resources, 4.6.8 link types)](https://html.spec.whatwg.org/multipage/links.html)
+- [HTML Living Standard, 4.5.1 The a element](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-a-element)
+- [HTML Living Standard, 7.3.1.7 Navigable target names](https://html.spec.whatwg.org/multipage/document-sequences.html)
+- [IANA Link Relations registry (sponsored and ugc)](https://www.iana.org/assignments/link-relations/link-relations.xhtml)
 - [RFC 6068, The mailto URI Scheme](https://www.rfc-editor.org/rfc/rfc6068)
 - [RFC 3966, The tel URI for Telephone Numbers](https://www.rfc-editor.org/rfc/rfc3966)
 - [RFC 5724, URI Scheme for Global System for Mobile Communications (GSM) Short Message Service (SMS)](https://www.rfc-editor.org/rfc/rfc5724)
 - [RFC 3986, Uniform Resource Identifier (URI): Generic Syntax](https://www.rfc-editor.org/rfc/rfc3986)
-- [HTML Living Standard, 4.5.1 The a element](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-a-element)
 - [HTML Living Standard, 4.10.5.1.5 Email state](https://html.spec.whatwg.org/multipage/input.html#email-state-(type=email))
 
 ## Use it on its own
@@ -68,6 +80,15 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ```ts
 import { buildLink } from '@fodt/link-builder';
 
+const web = buildLink({
+  kind: 'web',
+  href: 'https://example.org/',
+  rel: ['noopener', 'nofollow'],
+  target: '_blank',
+});
+web?.html;
+// <a href="https://example.org/" rel="noopener nofollow" target="_blank">https://example.org/</a>
+
 const mail = buildLink({
   kind: 'mailto',
   to: 'infobot@example.com',
@@ -75,12 +96,9 @@ const mail = buildLink({
 });
 mail?.address;
 // mailto:infobot@example.com?body=send%20current-issue%0D%0Asend%20index
-
-buildLink({ kind: 'tel', phone: '7042', phoneContext: 'example.com' })?.address;
-// tel:7042;phone-context=example.com
 ```
 
-`buildLink(spec)` returns `{ tree, html, preview, address, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup, `preview` is the same tree with the address removed, and `address` is the bare address. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message`. `buildMailto(parts, { domainEncoding })`, `buildTel(number, { ext, phoneContext })` and `buildSms(recipients, body)` are the encoders behind it, and `percentEncode`, `encodeHeaderValue` and `encodeLocalPart` are the percent-encoders themselves.
+`buildLink(spec)` returns `{ tree, html, preview, address, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup, `preview` is the same tree with the address removed, and `address` is the bare address. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message`. `parseRel(tokens)` checks rel values and returns `{ tokens, registered }`. `LINK_TYPES_ON_A`, `REGISTERED_EXTENSIONS` and `TARGET_KEYWORDS` in `spec-data.ts` hold the copied tables with their dates. `buildMailto(parts, { domainEncoding })`, `buildTel(number, { ext, phoneContext })` and `buildSms(recipients, body)` are the encoders behind the email, phone and text message links, and `percentEncode`, `encodeHeaderValue` and `encodeLocalPart` are the percent-encoders themselves.
 
 ## Dependencies
 
@@ -92,7 +110,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every generated snippet is parsed with parse5 and must report zero parse errors. The examples that RFC 6068 sections 6.1 to 6.3, RFC 3966 sections 6 and 8 and RFC 5724 section 2.5 print are checked literally, so the encoding is reproduced byte for byte, and a line break typed into a header field must be refused.
+Every generated snippet is parsed with parse5 and must report zero parse errors. The examples that RFC 6068 sections 6.1 to 6.3, RFC 3966 sections 6 and 8 and RFC 5724 section 2.5 print are checked literally, so the encoding is reproduced byte for byte, and a line break typed into a header field must be refused. The 16 link types, the two registered extensions and their dates are asserted, the rel values written are exactly those chosen, opener with noopener is flagged, and hostile text typed into every field must leave the parsed element tree unchanged.
 
 ## Licence
 
