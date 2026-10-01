@@ -1,0 +1,47 @@
+{
+  "id": "freelance-rate",
+  "name": "Freelance Rate Calculator",
+  "summary": "Work out the hourly and day rate a freelance income target needs, after expenses, a tax allowance, days off and the share of time you can bill.",
+  "about": "Turns a yearly income target into the hourly and day rate that reaches it. You type the income you want to keep after tax, your yearly business expenses, the share of your profit you set aside for tax, the working days in a year, the days off, the hours in a working day and the share of that time you can actually bill. The page shows every assumption in a table and the working with your own numbers put in, so you can check the rate by hand.",
+  "supports": [
+    "Required yearly revenue: expenses plus the income target divided by one minus the tax share, so the tax share applies to profit and not to expenses",
+    "Billable hours a year: working days minus days off, times the hours in a working day, times the share of that time you can bill",
+    "Hourly rate: required revenue divided by billable hours, and day rate: that exact hourly rate times the hours in a working day",
+    "Every assumption listed in a table next to the rates, with the tax set aside and the days actually worked",
+    "A tax share of 100 percent or more, a billable share of 0 or above 100, more than 24 hours a day and days off that use up the working days are refused, each naming the field",
+    "Revenue, hours and both rates kept exact until shown: the day rate comes from the exact hourly rate, never the rounded one",
+    "The working shown: both formulas with your numbers put in and the result before and after rounding",
+    "Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number"
+  ],
+  "limits": [
+    "Amounts are rounded half away from zero to the currency's smallest unit only when shown; every step before that keeps 40 significant digits, and the day rate is the exact hourly rate times the hours in a working day.",
+    "Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores pension contributions, insurance, unpaid invoices, late payments, rate changes during the year and any cost that is not in the yearly expenses you type.",
+    "One tax share is applied to profit (the income you want to keep after tax plus the tax on it); there are no tax bands, allowances or thresholds, and nothing is filled in for you: the share is whatever you type.",
+    "The billable share covers all time you cannot bill, such as finding clients, admin and training; this page does not split it further.",
+    "Working days are a count from 1 to 366 and days off must be fewer than the working days; the hours in a working day are above 0 and at most 24, and the billable share is above 0 and at most 100.",
+    "Amounts have at most 15 digits before the point and 12 after, and are shown with English (United States) digit grouping and decimal point whatever currency you choose."
+  ],
+  "ambiguities": [
+    "Tax allowance has more than one meaning. This page reads it as the share of your profit you set aside for tax, so the revenue you need is your expenses plus your income target divided by one minus that share. If your allowance is instead a fixed tax-free amount, this page does not model it: lower the income target by the tax you expect to owe on it, or work the tax out first and type the result as part of the expenses.",
+    "Days off can mean every day you do not work, including weekends, or only the days off inside the working days you typed. This page takes the working days you type and removes the days off from them, so type the days you would otherwise work."
+  ],
+  "standards": [],
+  "keywords": [
+    "freelance rate",
+    "hourly rate",
+    "day rate",
+    "contractor rate",
+    "billable hours",
+    "income target",
+    "self employed",
+    "consulting rate",
+    "billable share"
+  ],
+  "primaryExport": "calculateFreelance",
+  "usage": "import { calculateFreelance } from '@fodt/freelance-rate';\n\nconst result = calculateFreelance({\n  income: '60000',\n  expenses: '6000',\n  taxRate: '25',\n  workingDays: '260',\n  daysOff: '25',\n  hoursPerDay: '8',\n  billable: '75',\n  currency: 'USD',\n});\nresult.summary.hourly; // '60.99'\nresult.summary.daily; // '487.94'",
+  "apiNotes": "`calculateFreelance` takes the page's text values (`income`, `expenses`, `taxRate`, `workingDays`, `daysOff`, `hoursPerDay`, `billable` and `currency`) and returns `{ summary, assumptions, working }`, or `null` when every number is blank, or throws `MoneyInputError` carrying the `field` that was wrong. `summary` holds the hourly and day rate, the required revenue, the tax set aside and the billable hours as plain decimal text rounded for display, and `assumptions` is every figure used as `[label, value]` pairs. `requiredRevenue(income, expenses, taxPercent)`, `billableHours(workingDays, daysOff, hoursPerDay, billablePercent)` and `freelanceRates(...)` work on exact `Dec` values, a decimal.js value made by this folder's own clone with 40 significant digits and half away from zero. `money.ts` is the shared exact-decimal helper: strict text parsing, rounding, money formatting, whole-number counts, calendar dates, one-row-per-line text with line and column errors, and spreadsheet-safe CSV cells.",
+  "testNotes": "No standards body publishes a freelance rate formula, so the tests derive every figure by hand and the page shows both formulas: an income of 60,000, expenses of 6,000 and a 25 percent tax share need 60,000 divided by 0.75 plus 6,000, which is 86,000; 260 working days less 25 days off, times 8 hours, times 75 percent, is 1,410 billable hours; 86,000 over 1,410 is 60.99 an hour and times 8 is 487.94 a day, where the rounded hourly rate would give 487.92. Exactness is proven by first showing that 0.1 plus 0.2 in JavaScript floating point is 0.30000000000000004 and then that this tool's own path returns a required revenue of exactly 0.3.",
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  }
+}

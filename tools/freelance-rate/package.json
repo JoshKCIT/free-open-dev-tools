@@ -1,0 +1,51 @@
+{
+  "name": "@fodt/freelance-rate",
+  "version": "1.0.0",
+  "description": "Work out the hourly and day rate a freelance income target needs, after expenses, a tax allowance, days off and the share of time you can bill.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "freelance rate",
+    "hourly rate",
+    "day rate",
+    "contractor rate",
+    "billable hours",
+    "income target",
+    "self employed",
+    "consulting rate",
+    "billable share"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/freelance-rate"
+  }
+}
