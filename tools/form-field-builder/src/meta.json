@@ -1,0 +1,47 @@
+{
+  "id": "form-field-builder",
+  "name": "HTML Form Field Builder",
+  "summary": "Build one accessible form field of any HTML input type, a textarea or a select, with its label, name, validation attributes and autocomplete token, and preview it safely.",
+  "about": "Builds one accessible form field and shows its markup first, ready to copy, with a live preview of the same markup after it. The label is always tied to the control by a for value that equals the control's id, and the id is worked out from the name unless you type one. Nothing in the preview is loaded from an address: it shows the same elements with every address replaced.",
+  "supports": [
+    "A single-line text input with a label element tied to it by matching for and id values",
+    "An id worked out from the name (each run of spaces becomes one hyphen) that you can overwrite",
+    "A starting value for the text input",
+    "The accessible name the browser will compute for the control, with the rule it comes from"
+  ],
+  "limits": [
+    "Everything you type is escaped before it is placed in the markup, so a tag, an event handler or a script address you type stays text; a javascript:, data: or vbscript: address is kept as typed and flagged.",
+    "The preview replaces every address you typed (src, srcset, poster, href, action, formaction, data and cite) with an inert placeholder or removes it, so nothing you typed is loaded; only the markup you copy keeps the real addresses.",
+    "Each text field is limited to 20,000 characters, and control characters other than a tab (and line breaks in a multi-line field) are refused because HTML cannot carry them.",
+    "This builder writes only the attributes you choose: it never adds an autocomplete, required or aria attribute for you."
+  ],
+  "ambiguities": [
+    "The standard lets a control have no name, in which case it is not sent with the form; this builder asks for a name so the id, and with it the label tie, can be worked out from it."
+  ],
+  "standards": [
+    {
+      "label": "HTML Living Standard, 4.10.5 The input element",
+      "url": "https://html.spec.whatwg.org/multipage/input.html"
+    },
+    {
+      "label": "HTML Living Standard, 4.10.4 The label element",
+      "url": "https://html.spec.whatwg.org/multipage/forms.html"
+    },
+    {
+      "label": "Accessible Name and Description Computation 1.2",
+      "url": "https://www.w3.org/TR/accname-1.2/"
+    },
+    {
+      "label": "HTML Accessibility API Mappings 1.0",
+      "url": "https://www.w3.org/TR/html-aam-1.0/"
+    }
+  ],
+  "keywords": ["html", "form", "input", "label", "accessibility", "markup generator"],
+  "primaryExport": "buildField",
+  "usage": "import { buildField } from '@fodt/form-field-builder';\n\nconst field = buildField({ control: 'text', label: 'Full name:', name: 'fn' });\nfield?.html;\n// <label for=\"fn\">Full name:</label>\n// <input type=\"text\" id=\"fn\" name=\"fn\">",
+  "apiNotes": "`buildField(spec)` returns `{ tree, html, preview, warnings, accessibleName }`, or `null` when every field it reads is blank. `html` is the copyable markup; `preview` is the same tree with every address replaced or removed. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message`. `deriveId(name)` turns each run of ASCII whitespace into one hyphen.",
+  "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The label example of the HTML Living Standard (4.10.4) and the label rules of HTML-AAM 4.1.1 are checked literally, and hostile text typed into every field must leave the parsed element tree unchanged.",
+  "devDependencies": {
+    "parse5": "8.0.1"
+  }
+}
