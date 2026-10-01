@@ -1,0 +1,95 @@
+# Ad Campaign Metrics
+
+Work out cost per click, cost per thousand impressions, click-through rate, conversion rate, cost per acquisition and return on ad spend, with each formula shown.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Takes any of ad spend, impressions, clicks, conversions and revenue and works out every one of six ratios that the numbers you typed allow: cost per click, cost per thousand impressions, click-through rate, conversion rate, cost per acquisition and return on ad spend. Each ratio is listed with its formula and your numbers put into it, always in the same order, and a ratio that cannot be worked out yet says which numbers it still needs. Everything is calculated in exact decimal arithmetic and rounded only when shown.
+
+## Supported
+
+- Cost per click: ad spend divided by clicks
+- Cost per thousand impressions: ad spend divided by impressions, times 1,000
+- Click-through rate in percent: clicks divided by impressions, times 100
+- Conversion rate in percent: conversions divided by clicks, times 100
+- Cost per acquisition: ad spend divided by conversions
+- Return on ad spend: revenue divided by ad spend, also shown as a percent
+- Any subset of the five numbers: each ratio is worked out when its own numbers are there, and the others say what they need
+- A zero number of impressions, clicks or conversions, or zero spend, reported as a plain message naming the value that must be above 0, never Infinity
+- A warning, with the figures still worked out, when clicks are more than impressions or conversions are more than clicks
+- Counts of impressions, clicks and conversions as whole numbers of up to 15 digits, so billions stay exact
+- Ratios and percentages shown to 0 to 4 decimal places, 2 by default
+- Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number
+
+## Limits
+
+- Costs are rounded half away from zero to the larger of the currency's smallest unit and the decimal places you choose, and rates and ratios to the decimal places you choose, only when shown; every step before that keeps 40 significant digits.
+- Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores attribution windows, view-through conversions, currency conversion between spend and revenue, invoice-level adjustments and anything outside the five numbers.
+- Ad spend and revenue are amounts of 0 or more with up to 15 digits before the point and 12 after; they are taken to be in the same currency, which is only used as a label.
+- Impressions, clicks and conversions are whole numbers of 0 or more with up to 15 digits and no dot, comma or sign.
+- A ratio needs its own numbers and a denominator above 0: cost per click and conversion rate need clicks above 0, cost per thousand impressions and click-through rate need impressions above 0, cost per acquisition needs conversions above 0 and return on ad spend needs spend above 0.
+- More clicks than impressions, or more conversions than clicks, is reported as a warning because it is unusual, but the ratios are still worked out from what you typed.
+- Amounts and numbers are shown with English (United States) digit grouping and decimal point whatever currency you choose.
+
+## Ambiguous cases, and what this does about them
+
+- Conversion rate here is conversions divided by clicks; a conversion rate measured against impressions or sessions would need those numbers instead.
+- Return on ad spend is revenue divided by spend, shown both as a ratio and as a percent; some uses subtract the spend first, which this page does not do.
+- Cost per thousand impressions multiplies by 1,000 after dividing; the order does not change the exact result.
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/ad-metrics ad-metrics
+cd ad-metrics
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/ad-metrics
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { calculateAdMetrics } from '@fodt/ad-metrics';
+
+const result = calculateAdMetrics({
+  spend: '500',
+  impressions: '100000',
+  clicks: '2000',
+  conversions: '50',
+  revenue: '2000',
+  currency: 'USD',
+});
+result.rows.map((row) => `${row.name}: ${row.display}`);
+// ['Cost per click: 0.25 USD', 'Cost per thousand impressions: 5.00 USD', 'Click-through rate: 2.00 %',
+//  'Conversion rate: 2.50 %', 'Cost per acquisition: 10.00 USD', 'Return on ad spend: 4.00 (400.00 %)']
+```
+
+`calculateAdMetrics` takes the page's text values (`spend`, `impressions`, `clicks`, `conversions`, `revenue`, `decimals` from 0 to 4 and `currency`) and returns `{ summary, rows, working }`, or `null` when all five numbers are blank, or throws `MoneyInputError` carrying the `field` that was wrong. Every row is `{ id, name, formula, withNumbers, value, display, message }` in the fixed order of `AD_METRICS`; `value` is the rounded figure as plain decimal text or `null`, and `message` says what is missing or what must be above 0 when `value` is `null`. `summary.warnings` lists the unusual-input warnings and `summary.notice` is set when numbers were typed but no ratio can be worked out yet. `AD_METRICS` holds the six definitions (`id`, `name`, `formula`, `needs`, `nonZero`) in display order and `adMetrics(inputs)` works on exact `Dec` values, a decimal.js value made by this folder's own clone with 40 significant digits and half away from zero, with `null` for a number that was not typed. `money.ts` is the shared exact-decimal helper: strict text parsing, rounding, money formatting, whole-number counts, calendar dates, one-row-per-line text with line and column errors, and spreadsheet-safe CSV cells.
+
+## Dependencies
+
+- `decimal.js` 10.6.0
+
+## Tests
+
+```sh
+npm test
+```
+
+No standards body publishes these ratio formulas, so each figure is derived by hand in the test comments: 500 over 2,000 clicks is 0.25, 500 over 100,000 impressions times 1,000 is 5, 2,000 over 100,000 is 2 percent, 50 over 2,000 is 2.5 percent, 500 over 50 is 10 and 2,000 over 500 is 4. Exactness is proven by first showing that 0.3 / 0.1 in JavaScript floating point is 2.9999999999999996 and then that this tool's own path, with revenue 0.3 (the sum of 0.1 and 0.2) over spend 0.1, returns exactly 3.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
