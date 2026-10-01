@@ -51,6 +51,7 @@ export const CATEGORY_ORDER = [
   'css',
   'color',
   'media',
+  'money',
   'reference',
 ];
 

@@ -22,6 +22,7 @@ export const CATEGORY_LABELS = {
   devops: 'Build, config and CI',
   reference: 'Reference tables',
   media: 'Images, documents and archives',
+  money: 'Money',
 };
 
 /**
