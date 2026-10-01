@@ -232,7 +232,7 @@ it('cost per thousand impressions is exact: 1 spend over 3 impressions is 333.33
   expect(r.cpm!.display).toBe('333.33 USD');
   expect(byId({ decimals: '4' }, { currency: 'USD', spend: '1', impressions: '3' }).cpm!.value).toBe('333.3333');
   const exact = adMetrics({ spend: new D(1), impressions: new D(3), clicks: null, conversions: null, revenue: null });
-  expect(exact[1]!.value!.toFixed(10)).toBe('333.3333333');
+  expect(exact[1]!.value!.toFixed(10)).toBe('333.3333333333');
   // The cost is shown to the larger of the currency's smallest unit and the chosen decimal places.
   expect(byId({ decimals: '0' }, { currency: 'JPY', spend: '1', impressions: '3' }).cpm!.value).toBe('333');
   expect(byId({ decimals: '4' }, { currency: 'JPY', spend: '1', impressions: '3' }).cpm!.value).toBe('333.3333');
