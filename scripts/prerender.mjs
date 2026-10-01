@@ -39,20 +39,21 @@ const canonical = loadCatalog();
 const routes = [
   {
     path: '',
-    title: `${SITE} — browser-local developer utilities`,
+    title: `${SITE} — browser-local developer utilities and money calculators`,
     description:
-      'Free developer tools, published for anyone to use. Explore the source, download individual tools, and make them your own. Everything runs in your browser.',
+      'Free developer tools and money calculators, published for anyone to use. Explore the source, download individual tools, and make them your own. Everything runs in your browser.',
   },
   {
     path: 'tools',
     title: `All tools — ${SITE}`,
-    description: 'Search and browse every developer tool on the site. All of them process your input in the browser.',
+    description:
+      'Search and browse every developer tool and money calculator on the site. All of them process your input in the browser.',
   },
   {
     path: 'catalog',
     title: `Catalog — ${SITE}`,
     description:
-      'The full catalog of every planned tool, showing which are built and usable today. Every one of them runs entirely in your browser.',
+      'The full catalog of every developer tool and money calculator, showing which are built and usable today. Every one of them runs entirely in your browser.',
   },
   {
     path: 'privacy',

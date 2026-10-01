@@ -24,10 +24,11 @@ export default function Home() {
   return (
     <>
       <section className="hero">
-        <h1>Free developer tools, published for anyone to use.</h1>
+        <h1>Free developer tools and money calculators, published for anyone to use.</h1>
         <p className="hero-lede">
-          Explore the source, download individual tools, and make them your own. Every tool here runs in your browser,
-          is MIT licensed, and lives in a folder you can copy out and run on its own.
+          Explore the source, download individual tools, and make them your own. Every tool here, from code and data
+          utilities to loan, tax, pay and invoice calculators, runs in your browser, is MIT licensed, and lives in a
+          folder you can copy out and run on its own.
         </p>
         <div className="hero-actions">
           <Link className="button button-primary" to="/tools">

@@ -26,6 +26,10 @@ export default function Catalog() {
           )}
         </p>
         <p>
+          The catalog covers developer utilities and money calculators (loans, savings, prices, taxes, pay and
+          invoices).
+        </p>
+        <p>
           <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
             Implementation ledger
           </a>{' '}

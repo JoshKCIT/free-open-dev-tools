@@ -9,8 +9,9 @@ export default function About() {
     <div className="prose">
       <h1>About</h1>
       <p>
-        Free &amp; Open Dev Tools is a set of developer utilities that run entirely in your browser. It is free, has no
-        accounts, no adverts and no tracking, and every tool is MIT licensed source you can take and reuse.
+        Free &amp; Open Dev Tools is a set of developer utilities and money calculators that run entirely in your
+        browser. It is free, has no accounts, no adverts and no tracking, and every tool is MIT licensed source you can
+        take and reuse.
       </p>
 
       <h2>Why it exists</h2>
@@ -18,7 +19,8 @@ export default function About() {
         Developers paste sensitive things into online tools constantly: tokens, config files, customer records, internal
         schemas. Most of those tools give you no way to tell whether the input left your machine. This one is built so
         that the answer is checkable rather than a matter of trust, and so the code behind each tool is small enough to
-        actually read.
+        actually read. The same goes for salaries, balances, prices and invoices, which are as private here as the
+        tokens and configs above.
       </p>
 
       <h2>How a tool is built here</h2>
