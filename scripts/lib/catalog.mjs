@@ -1,6 +1,6 @@
 /**
  * Shared helper for the tool catalog. `docs/catalog.json` is the source of
- * truth for the 151-tool list; every build script reads it through here.
+ * truth for the 167-tool list; every build script reads it through here.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';

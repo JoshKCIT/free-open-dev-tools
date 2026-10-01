@@ -101,7 +101,7 @@ test.describe('progress and cancel stay inert until a tool opts in', () => {
    * progress element in the tree unconditionally.
    */
   test('no tool page renders a Cancel button or a progress element before any run starts', async ({ page }) => {
-    // 151 sequential navigations comfortably fit the default 45s budget
+    // 167 sequential navigations comfortably fit the default 45s budget
     // against a local build, but not against a deployed site's real network
     // latency on every browser project (raised in 09-07).
     test.setTimeout(180_000);
@@ -276,7 +276,7 @@ test.describe('accessibility', () => {
   });
 
   test('every form control has an accessible name', async ({ page }) => {
-    // Same reason as the Cancel/progress sweep above: 151 navigations need
+    // Same reason as the Cancel/progress sweep above: 167 navigations need
     // more than the default 45s budget against a deployed site's real
     // network latency (raised in 09-07).
     test.setTimeout(180_000);
@@ -339,16 +339,16 @@ test.describe('public copy carries no derivation story', () => {
     expect(await page.locator('main a[href^="http"]').count()).toBe(1);
   });
 
-  test('the catalog page renders all 151 catalog entries', async ({ page }) => {
+  test('the catalog page renders all 167 catalog entries', async ({ page }) => {
     await page.goto(rel('/catalog'));
-    expect(await page.locator('.tool-card').count()).toBe(151);
+    expect(await page.locator('.tool-card').count()).toBe(167);
   });
 
   test('no catalog card reads Planned once every entry is built', async ({ page }) => {
     await page.goto(rel('/catalog'));
     await expect(page.locator('.tool-card').first()).toBeVisible();
     const plannedPills = page.locator('.tool-card .pill-neutral', { hasText: 'Planned' });
-    expect(await plannedPills.count(), 'no card may read Planned now that the catalog is complete at 151').toBe(0);
+    expect(await plannedPills.count(), 'no card may read Planned now that the catalog is complete at 167').toBe(0);
   });
 
   test('the home page statistics row holds exactly three items', async ({ page }) => {
@@ -384,4 +384,43 @@ test.describe('public copy carries no derivation story', () => {
       }
     });
   }
+});
+
+test.describe('the broadened catalog', () => {
+  test('the home, about and catalog pages describe developer utilities and money calculators', async ({ page }) => {
+    for (const path of ['/', '/about', '/catalog']) {
+      await page.goto(rel(path));
+      await expect(page.locator('main').first()).toBeVisible();
+      const text = (await page.locator('main').first().innerText()).toLowerCase();
+      expect(text, `${path} names money calculators`).toContain('money calculators');
+      expect(text, `${path} names developer tools or utilities`).toContain('developer');
+    }
+    await page.goto(rel('/'));
+    expect(await page.locator('.stat-row > div').count(), 'the home statistics row still holds three items').toBe(3);
+  });
+
+  test('the Money category sits after Images, documents and archives and before Reference tables', async ({ page }) => {
+    const indexOfStart = (texts: string[], start: string) => texts.findIndex((t) => t.trim().startsWith(start));
+
+    await page.goto(rel('/catalog'));
+    await expect(page.locator('h2.category-heading').first()).toBeVisible();
+    const headings = await page.locator('h2.category-heading').allInnerTexts();
+    const media = indexOfStart(headings, 'Images, documents and archives');
+    const money = indexOfStart(headings, 'Money');
+    const reference = indexOfStart(headings, 'Reference tables');
+    expect(media, 'the catalog has an Images, documents and archives heading').toBeGreaterThanOrEqual(0);
+    expect(money, 'the catalog has a Money heading').toBeGreaterThan(media);
+    expect(reference, 'the catalog has a Reference tables heading').toBeGreaterThan(money);
+
+    await page.goto(rel('/tools'));
+    const filters = page.locator('.category-filters button');
+    await expect(filters.first()).toBeVisible();
+    const chips = await filters.allInnerTexts();
+    const chipMedia = indexOfStart(chips, 'Images, documents and archives');
+    const chipMoney = indexOfStart(chips, 'Money');
+    const chipReference = indexOfStart(chips, 'Reference tables');
+    expect(chipMedia, 'the category filter has an Images, documents and archives button').toBeGreaterThanOrEqual(0);
+    expect(chipMoney, 'the category filter has a Money button after it').toBeGreaterThan(chipMedia);
+    expect(chipReference, 'the category filter has a Reference tables button after Money').toBeGreaterThan(chipMoney);
+  });
 });
