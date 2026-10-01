@@ -12,9 +12,9 @@ Formats Python source with the Ruff formatter compiled to WebAssembly and run in
 ## Supported
 
 - Python source of any version Ruff 0.15.20 parses, including match statements, type parameters and f-strings
-- Line length from 1 to 320 characters, with Ruff's own default of 88
+- Line length from 1 to 65535 characters, with Ruff's own default of 88
 - Quote style double, single or preserve (each string keeps the quotes it was written with)
-- Indent with spaces or tabs, with an indent width from 1 to 16 (Ruff's own default is 4 spaces)
+- Indent with spaces or tabs, with an indent width from 1 to 255 (Ruff's own default is 4 spaces)
 - A magic trailing comma keeps a collection exploded over several lines, as Ruff does by default
 - A syntax error is reported with its line and column, and no formatted code is shown
 
@@ -23,7 +23,7 @@ Formats Python source with the Ruff formatter compiled to WebAssembly and run in
 - A run that takes longer than 10 seconds is stopped with a message, so a pathological input cannot freeze the page.
 - Line and column count characters as you see them; Ruff reports a byte position, which is converted.
 - Only the first syntax error is reported.
-- Line length must be a whole number from 1 to 320 and indent width a whole number from 1 to 16; Ruff's documentation only says line length must be greater than 0, so the upper bounds are this page's own.
+- Line length must be a whole number from 1 to 65535 and indent width a whole number from 1 to 255, the ranges in Ruff's settings schema; anything else is refused before the formatter runs.
 - Formatting follows the style of Ruff 0.15.20, which aims at Black compatibility but is not identical to it everywhere.
 - Only the formatter is run: imports are not sorted, unused code is not removed and no lint rule is applied.
 - A source nested hundreds of brackets deep is refused with a plain message instead of crashing the page.

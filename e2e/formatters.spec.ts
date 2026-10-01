@@ -124,6 +124,14 @@ const FORMATTERS: FormatterCase[] = [
     // operator, nothing after it), line 5 the lone closing brace where an operand must follow, column 1.
     broken: { input: 'package main\n\nfunc main() {\n\tx :=\n}\n', issue: 'Line 5, column 1' },
   },
+  {
+    id: 'python-formatter',
+    // Ruff's own quote_style.py fixture, formatted with the default options (double quotes): a line of Output 2 of
+    // format@quote_style.py.snap (Ruff 0.15.20, https://github.com/astral-sh/ruff/tree/0.15.20/crates/ruff_python_formatter,
+    // MIT). The fixture's input is the one the live fixture types.
+    valid: { input: liveFixtureInput('python-formatter') },
+    expectOutput: 'rb"br double"',
+  },
 ];
 
 /** A second valid input that differs from the first by one trailing line break, so it is a new run. */

@@ -1,0 +1,10 @@
+[
+  {
+    "values": {
+      "input": "def add(a, b):\n    return a + b\n",
+      "lineLength": "88",
+      "indentWidth": "4"
+    },
+    "attachesFile": false
+  }
+]
