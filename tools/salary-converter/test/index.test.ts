@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, test } from 'vitest';
 import { PAY_PERIODS, calculatePay, convertPay, meta, yearlyFactor, type PayPeriod, type PayTexts } from '../src/index';
 import { D, MoneyInputError, roundTo } from '../src/money';
 
@@ -167,4 +167,23 @@ it('0.1 plus 0.2 is exactly 0.3 through this tool', () => {
   const r = calc({ amount: '0.1', period: 'weekly', hoursPerWeek: '1', daysPerWeek: '1', weeksPerYear: '3' });
   expect(r.summary.yearly).toBe('0.30');
   expect(r.working).toContain('yearly pay = 0.1 x 3 = 0.3');
+});
+
+test('hours a week below a quarter hour and weeks a year below 1 are refused naming the field', () => {
+  expect(refused(() => calc({ weeksPerYear: '0.000000000001' })).field).toBe('Weeks a year');
+  expect(refused(() => calc({ weeksPerYear: '0.99' })).field).toBe('Weeks a year');
+  expect(refused(() => calc({ weeksPerYear: '0.99' })).message).toMatch(/at least 1/);
+  expect(row(calc({ weeksPerYear: '1' }), 'weekly')).toBe('52000.00');
+  expect(refused(() => calc({ hoursPerWeek: '0.000000000001' })).field).toBe('Hours a week');
+  expect(refused(() => calc({ hoursPerWeek: '0.24' })).field).toBe('Hours a week');
+  expect(refused(() => calc({ hoursPerWeek: '0.24' })).message).toMatch(/at least 0\.25/);
+  expect(row(calc({ hoursPerWeek: '0.25' }), 'hourly')).toBe('4000.00');
+});
+
+test('a figure of 1,000,000,000,000,000,000 or more is refused as too large to show exactly', () => {
+  const err = refused(() =>
+    calc({ amount: '999999999999999', period: 'hourly', hoursPerWeek: '168', weeksPerYear: '53' }),
+  );
+  expect(err.message).toMatch(/too large to show exactly/);
+  expect(row(calc({ amount: '25', period: 'hourly' }), 'yearly')).toBe('52000.00');
 });

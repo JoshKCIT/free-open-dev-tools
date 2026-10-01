@@ -24,7 +24,7 @@ export default defineTool({
       label: 'Hours a week',
       type: 'text',
       default: '40',
-      help: 'Hours you work in a week, above 0 and at most 168. A working-time choice you can change.',
+      help: 'Hours you work in a week, from 0.25 to 168. A working-time choice you can change.',
     },
     {
       name: 'daysPerWeek',
@@ -38,7 +38,7 @@ export default defineTool({
       label: 'Weeks a year',
       type: 'text',
       default: '52',
-      help: 'Weeks you are paid for in a year, above 0 and at most 53, for example 52 or 52.175. A working-time choice you can change.',
+      help: 'Weeks you are paid for in a year, from 1 to 53, for example 52 or 52.175. A working-time choice you can change.',
     },
     {
       name: 'currency',

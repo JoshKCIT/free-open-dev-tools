@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, test } from 'vitest';
 import {
   billableHours,
   calculateFreelance,
@@ -185,4 +185,33 @@ it('0.1 plus 0.2 is exactly 0.3 through this tool', () => {
   });
   expect(r.working).toContain('= 0.3');
   expect(r.summary.hourly).toBe('0.30');
+});
+
+test('hours in a working day below a quarter hour and a billable share below 1 percent are refused naming the field', () => {
+  const HOURS = 'Hours in a working day';
+  const BILLABLE = 'Share of working time you can bill (percent)';
+  // 0.000000000001 hours a day and a 0.000000000001 percent billable share used to give a 43-digit hourly rate.
+  expect(refused(() => calc({ hoursPerDay: '0.000000000001' })).field).toBe(HOURS);
+  expect(refused(() => calc({ hoursPerDay: '0.24' })).field).toBe(HOURS);
+  expect(refused(() => calc({ hoursPerDay: '0.24' })).message).toMatch(/at least 0\.25/);
+  expect(calc({ hoursPerDay: '0.25' }).summary.hours).toBe('44.06');
+  expect(refused(() => calc({ billable: '0.000000000001' })).field).toBe(BILLABLE);
+  expect(refused(() => calc({ billable: '0.99' })).field).toBe(BILLABLE);
+  expect(refused(() => calc({ billable: '0.99' })).message).toMatch(/at least 1 percent/);
+  expect(calc({ billable: '1' }).summary.hours).toBe('18.8');
+});
+
+test('a rate of 1,000,000,000,000,000,000 or more is refused as too large to show exactly', () => {
+  const err = refused(() =>
+    calc({
+      income: '999999999999999',
+      expenses: '999999999999999',
+      taxRate: '99.9',
+      hoursPerDay: '0.25',
+      billable: '1',
+    }),
+  );
+  expect(err.message).toMatch(/too large to show exactly/);
+  // The ordinary example is untouched.
+  expect(calc().summary.hourly).toBe('60.99');
 });

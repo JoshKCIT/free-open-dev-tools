@@ -45,14 +45,14 @@ export default defineTool({
       label: 'Hours in a working day',
       type: 'text',
       placeholder: '8',
-      help: 'Above 0 and at most 24.',
+      help: 'From 0.25 to 24.',
     },
     {
       name: 'billable',
       label: 'Share of working time you can bill (percent)',
       type: 'text',
       placeholder: '75',
-      help: 'Above 0 and at most 100. Finding clients, admin and training are time you cannot bill.',
+      help: 'From 1 to 100. Finding clients, admin and training are time you cannot bill.',
     },
     {
       name: 'currency',

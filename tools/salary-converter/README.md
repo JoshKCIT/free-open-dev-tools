@@ -13,7 +13,7 @@ Converts one pay figure into every other pay period. Type an amount and say whet
 
 - Yearly, monthly, fortnightly (every two weeks), weekly, daily and hourly pay, all shown for the one amount you type
 - Every figure comes from the exact yearly amount and is rounded only when shown: the fortnightly figure is the yearly amount over half the weeks in a year, not a rounded hourly rate times the hours in two weeks
-- Your own working time: hours a week above 0 and at most 168, days a week from 1 to 7 and weeks a year above 0 and at most 53, such as 40 hours and 52.175 weeks, which is 2,087 hours a year
+- Your own working time: hours a week from 0.25 to 168, days a week from 1 to 7 and weeks a year from 1 to 53, such as 40 hours and 52.175 weeks, which is 2,087 hours a year
 - Amounts rounded half away from zero to the currency's smallest unit: a rate of exactly half a cent over rounds up, so 18.845 shows as 18.85
 - The working shown: the periods in a year for each choice, the yearly amount and each division with the result before and after rounding
 - Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number
@@ -24,7 +24,7 @@ Converts one pay figure into every other pay period. Type an amount and say whet
 - Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores tax, social contributions, overtime, unpaid leave, bonuses, pay rises during the year and any pay rule of an employer or a country.
 - A month is one twelfth of the year and a fortnight is half of a week's share of the year, so the weeks a year you type set the weekly, fortnightly and hourly figures while the monthly figure does not depend on them.
 - Some payroll rules round the hourly rate to the smallest unit first and then multiply it, which gives a slightly different fortnightly or weekly figure; this page never rounds between steps.
-- The pay may have at most 15 digits before the point and 12 after; hours a week, days a week and weeks a year are decimals typed as digits with an optional dot, and nothing is looked up for you.
+- The pay may have at most 15 digits before the point and 12 after; hours a week (0.25 to 168), days a week (1 to 7) and weeks a year (1 to 53) are decimals typed as digits with an optional dot, a figure of 1,000,000,000,000,000,000 or more is refused as too large to show exactly, and nothing is looked up for you.
 - Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose.
 
 ## Ambiguous cases, and what this does about them

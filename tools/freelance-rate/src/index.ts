@@ -18,6 +18,11 @@ export type { Dec };
 
 /** Decimal places used for the unrounded figures in the working. */
 const WORKING_PLACES = 10;
+/** A figure at or above this is refused: it is too large to show exactly with 40 significant digits. */
+const TOO_LARGE = new D('1e18');
+/** The shortest working day and the smallest billable share accepted: below these the rate is not a real-life rate. */
+const MIN_HOURS_PER_DAY = new D('0.25');
+const MIN_BILLABLE_PERCENT = new D(1);
 
 const FIELD_INCOME = 'Target yearly income after tax';
 const FIELD_EXPENSES = 'Yearly business expenses';
@@ -47,8 +52,8 @@ export function requiredRevenue(income: Dec, expenses: Dec, taxPercent: Dec): De
 
 /**
  * The hours a year that can be billed: (working days - days off) x hours in a working day x billable share / 100.
- * Working days are 1 to 366, days off are 0 and fewer than the working days, hours a day are above 0 and at most 24,
- * the billable share is above 0 and at most 100.
+ * Working days are 1 to 366, days off are 0 and fewer than the working days, hours a day are 0.25 to 24,
+ * the billable share is 1 to 100.
  */
 export function billableHours(workingDays: number, daysOff: number, hoursPerDay: Dec, billablePercent: Dec): Dec {
   if (!Number.isInteger(workingDays) || workingDays < 1 || workingDays > 366) {
@@ -60,11 +65,11 @@ export function billableHours(workingDays: number, daysOff: number, hoursPerDay:
       `must be fewer than the ${workingDays} working days, or no days would be left to work`,
     );
   }
-  if (!hoursPerDay.gt(0) || hoursPerDay.gt(24)) {
-    throw new MoneyInputError(FIELD_HOURS, 'must be above 0 and at most 24');
+  if (hoursPerDay.lt(MIN_HOURS_PER_DAY) || hoursPerDay.gt(24)) {
+    throw new MoneyInputError(FIELD_HOURS, 'must be at least 0.25 and at most 24');
   }
-  if (!billablePercent.gt(0) || billablePercent.gt(100)) {
-    throw new MoneyInputError(FIELD_BILLABLE, 'must be above 0 and at most 100 percent');
+  if (billablePercent.lt(MIN_BILLABLE_PERCENT) || billablePercent.gt(100)) {
+    throw new MoneyInputError(FIELD_BILLABLE, 'must be at least 1 percent and at most 100 percent');
   }
   return new D(workingDays - daysOff).times(hoursPerDay).times(billablePercent.div(100));
 }
@@ -187,6 +192,12 @@ export function calculateFreelance(texts: FreelanceTexts): FreelanceResult | nul
   const billable = parseDecimal(texts.billable ?? '', FIELD_BILLABLE);
 
   const r = freelanceRates(income, expenses, taxPercent, workingDays, daysOff, hoursPerDay, billable);
+  if ([r.revenue, r.profit, r.tax, r.hourly, r.daily].some((x) => x.gte(TOO_LARGE))) {
+    throw new MoneyInputError(
+      FIELD_INCOME,
+      'these numbers give a rate or a revenue of 1,000,000,000,000,000,000 or more, which is too large to show exactly, check the income, expenses, tax share, hours and billable share',
+    );
+  }
   const money = (x: Dec) => toPlain(x, dp);
   const shown = (x: Dec) => formatMoney(x, currency);
   const hoursText = (x: Dec) => roundTo(x, 2).toFixed();

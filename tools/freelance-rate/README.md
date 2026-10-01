@@ -15,7 +15,7 @@ Turns a yearly income target into the hourly and day rate that reaches it. You t
 - Billable hours a year: working days minus days off, times the hours in a working day, times the share of that time you can bill
 - Hourly rate: required revenue divided by billable hours, and day rate: that exact hourly rate times the hours in a working day
 - Every assumption listed in a table next to the rates, with the tax set aside and the days actually worked
-- A tax share of 100 percent or more, a billable share of 0 or above 100, more than 24 hours a day and days off that use up the working days are refused, each naming the field
+- A tax share of 100 percent or more, a billable share below 1 or above 100, a working day shorter than 0.25 or longer than 24 hours and days off that use up the working days are refused, each naming the field
 - Revenue, hours and both rates kept exact until shown: the day rate comes from the exact hourly rate, never the rounded one
 - The working shown: both formulas with your numbers put in and the result before and after rounding
 - Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number
@@ -26,7 +26,7 @@ Turns a yearly income target into the hourly and day rate that reaches it. You t
 - Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores pension contributions, insurance, unpaid invoices, late payments, rate changes during the year and any cost that is not in the yearly expenses you type.
 - One tax share is applied to profit (the income you want to keep after tax plus the tax on it); there are no tax bands, allowances or thresholds, and nothing is filled in for you: the share is whatever you type.
 - The billable share covers all time you cannot bill, such as finding clients, admin and training; this page does not split it further.
-- Working days are a count from 1 to 366 and days off must be fewer than the working days; the hours in a working day are above 0 and at most 24, and the billable share is above 0 and at most 100.
+- Working days are a count from 1 to 366 and days off must be fewer than the working days; the hours in a working day are from 0.25 to 24, the billable share is from 1 to 100 percent, and a rate or revenue of 1,000,000,000,000,000,000 or more is refused as too large to show exactly.
 - Amounts have at most 15 digits before the point and 12 after, and are shown with English (United States) digit grouping and decimal point whatever currency you choose.
 
 ## Ambiguous cases, and what this does about them

@@ -17,6 +17,11 @@ export type { Dec };
 
 /** Decimal places used for the unrounded figures in the working. */
 const WORKING_PLACES = 10;
+/** A figure at or above this is refused: it is too large to show exactly with 40 significant digits. */
+const TOO_LARGE = new D('1e18');
+/** The smallest working week and working year accepted: below these the figures are not real-life pay. */
+const MIN_HOURS_PER_WEEK = new D('0.25');
+const MIN_WEEKS_PER_YEAR = new D(1);
 
 const FIELD_AMOUNT = 'Pay';
 const FIELD_PERIOD = 'Pay is given per';
@@ -37,16 +42,16 @@ export const PAY_PERIODS: readonly { id: PayPeriod; label: string }[] = [
   { id: 'hourly', label: 'Hourly' },
 ];
 
-/** Hours a week above 0 and at most 168, days a week 1 to 7, weeks a year above 0 and at most 53. */
+/** Hours a week 0.25 to 168, days a week 1 to 7, weeks a year 1 to 53. */
 function checkTime(hoursPerWeek: Dec, daysPerWeek: Dec, weeksPerYear: Dec): void {
-  if (!hoursPerWeek.gt(0) || hoursPerWeek.gt(168)) {
-    throw new MoneyInputError(FIELD_HOURS, 'must be above 0 and at most 168, the hours in a week');
+  if (hoursPerWeek.lt(MIN_HOURS_PER_WEEK) || hoursPerWeek.gt(168)) {
+    throw new MoneyInputError(FIELD_HOURS, 'must be at least 0.25 and at most 168, the hours in a week');
   }
   if (daysPerWeek.lt(1) || daysPerWeek.gt(7)) {
     throw new MoneyInputError(FIELD_DAYS, 'must be from 1 to 7');
   }
-  if (!weeksPerYear.gt(0) || weeksPerYear.gt(53)) {
-    throw new MoneyInputError(FIELD_WEEKS, 'must be above 0 and at most 53');
+  if (weeksPerYear.lt(MIN_WEEKS_PER_YEAR) || weeksPerYear.gt(53)) {
+    throw new MoneyInputError(FIELD_WEEKS, 'must be at least 1 and at most 53');
   }
 }
 
@@ -163,6 +168,12 @@ export function calculatePay(texts: PayTexts): PayResult | null {
   const weeksPerYear = parseDecimal(texts.weeksPerYear ?? '', FIELD_WEEKS);
 
   const converted = convertPay(amount, period.id, hoursPerWeek, daysPerWeek, weeksPerYear);
+  if ([converted.yearly, ...converted.rows.map((r) => r.amount)].some((x) => x.gte(TOO_LARGE))) {
+    throw new MoneyInputError(
+      FIELD_AMOUNT,
+      'this pay gives a figure of 1,000,000,000,000,000,000 or more, which is too large to show exactly, check the pay and the working time',
+    );
+  }
   const money = (x: Dec) => toPlain(x, dp);
   const typedFactor = converted.rows.find((r) => r.period === period.id)!.factor;
 
