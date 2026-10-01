@@ -179,6 +179,14 @@ it('payback of -1000 then 400, 400, 400 is 2.5 periods and at 10 the discounted 
   expect(page.summary.discountedPayback).toBeNull();
   expect(page.rows.map((r) => r.discountedRunningTotal)).toEqual(['-1000.00', '-636.36', '-305.79', '-5.26']);
   expect(page.rows.map((r) => r.runningTotal)).toEqual(['-1000.00', '-600.00', '-200.00', '200.00']);
+  // A first flow of 0 is not a payback: the OMB net flows (0, then -10, -20, -25, -20, 10, 30, 35, ...) are owed until the
+  // running total reaches -75, -65, -35 and then 0 in period 7, so the payback is (7 - 1) + 35 / 35 = 7 periods.
+  expect(payback(dec(OMB_NET))!.toFixed()).toBe('7');
+  const omb = calc({ flows: OMB_NET.join('\n'), rate: '3.1' });
+  expect(omb.summary.payback).toBe('7.00');
+  // Discounted at 3.1 percent the running total is -7.199071... after period 7 and 20.216590... after period 8, whose present
+  // value is 27.415661..., so the discounted payback is 7 + 7.199071 / 27.415661 = 7.2626... periods.
+  expect(omb.summary.discountedPayback).toBe('7.26');
   // A flow that is not negative at the start pays back in no time.
   expect(payback(dec(['5', '-2', '1']))!.toFixed()).toBe('0');
 });
