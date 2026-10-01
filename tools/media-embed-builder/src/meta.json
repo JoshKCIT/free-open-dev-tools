@@ -1,0 +1,38 @@
+{
+  "id": "media-embed-builder",
+  "name": "HTML Media Embed Builder",
+  "summary": "Build video, audio and responsive image markup with several sources, caption and subtitle tracks, a poster, controls and lazy loading, previewed without loading anything.",
+  "about": "Builds a video element with its caption and subtitle tracks and shows the markup first, ready to copy, with a live preview of the same markup after it. The track lines follow the HTML Living Standard: each has an address, a kind, a language and a label, and the preview shows a player without loading the video or any track. The standard was read on 2026-10-01 (last updated 2026-09-29); a later edition may differ.",
+  "supports": [
+    "A video element with one address and any number of track lines, each written as address | kind | language | label | default",
+    "Track elements written with their attributes in the order kind, src, srclang and label, as the standard's own example writes them",
+    "Markup first and an inert preview of the same element second, with any warning in a note"
+  ],
+  "limits": [
+    "Everything you type is escaped before it is placed in the markup, so a tag, an event handler or a script address you type stays text; a javascript:, data: or vbscript: address is kept as typed and flagged.",
+    "The preview replaces every address you typed (src, srcset, poster and every track address) with an inert placeholder or removes it, so nothing you typed is loaded; only the markup you copy keeps the real addresses.",
+    "Each text field is limited to 20,000 characters, and control characters other than a tab (and line breaks in a text area) are refused because HTML cannot carry them.",
+    "This first version writes a video with one address and its tracks only; sources, audio, images and the other attributes follow."
+  ],
+  "ambiguities": [
+    "The standard's example gives four tracks; this page offers as many lines as you type, and the first two of the example are the ones the first-use example reproduces."
+  ],
+  "standards": [
+    {
+      "label": "HTML Living Standard, 4.8.8 The video element",
+      "url": "https://html.spec.whatwg.org/multipage/media.html#the-video-element"
+    },
+    {
+      "label": "HTML Living Standard, 4.8.10 The track element",
+      "url": "https://html.spec.whatwg.org/multipage/media.html#the-track-element"
+    }
+  ],
+  "keywords": ["html", "video", "audio", "track", "subtitles", "captions", "picture", "srcset", "markup generator"],
+  "primaryExport": "buildMedia",
+  "usage": "import { buildMedia } from '@fodt/media-embed-builder';\n\nconst video = buildMedia({\n  kind: 'video',\n  src: 'brave.webm',\n  tracks: 'brave.en.vtt | subtitles | en | English',\n  controls: true,\n});\nvideo?.html;\n// <video src=\"brave.webm\" controls>\n//   <track kind=\"subtitles\" src=\"brave.en.vtt\" srclang=\"en\" label=\"English\">\n// </video>",
+  "apiNotes": "`buildMedia(spec)` returns `{ tree, html, preview, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup and `preview` is the same tree with every address removed and controls always shown. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message`.",
+  "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The track example of WHATWG 4.8.10 is checked literally, and the preview must carry no address the visitor typed.",
+  "devDependencies": {
+    "parse5": "8.0.1"
+  }
+}
