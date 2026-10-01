@@ -1,0 +1,29 @@
+[
+  {
+    "mode": { "field": "mode", "value": "prices" },
+    "values": {
+      "buyPrice": "100",
+      "sellPrice": "150",
+      "quantity": "10",
+      "buyFees": "5",
+      "sellFees": "5",
+      "startDate": "2021-01-01",
+      "endDate": "2025-12-31",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "values" },
+    "values": {
+      "startValue": "1000",
+      "endValue": "1500",
+      "buyFees": "0",
+      "sellFees": "0",
+      "startDate": "2021-01-01",
+      "endDate": "2025-12-31",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  }
+]

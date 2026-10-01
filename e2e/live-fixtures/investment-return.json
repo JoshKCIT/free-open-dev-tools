@@ -1,0 +1,12 @@
+{
+  "id": "investment-return",
+  "label": "SEC Form N-1A Item 26(b)(1), P(1+T)^n = ERV: 1,000 growing to 1,500 over exactly 5 years (2021-01-01 to 2025-12-31) is 8.45 percent a year",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "values" },
+    { "action": "fill", "field": "startValue", "value": "1000" },
+    { "action": "fill", "field": "endValue", "value": "1500" },
+    { "action": "fill", "field": "startDate", "value": "2021-01-01" },
+    { "action": "fill", "field": "endDate", "value": "2025-12-31" }
+  ],
+  "expect": ["8.45", "50.00"]
+}
