@@ -1,6 +1,13 @@
 [
   {
-    "values": { "amount": "162000", "rate": "3.875", "years": "30", "currency": "USD" },
+    "values": {
+      "amount": "162000",
+      "rate": "3.875",
+      "years": "30",
+      "extra": "25",
+      "firstPayment": "2026-01-31",
+      "currency": "USD"
+    },
     "attachesFile": false
   }
 ]

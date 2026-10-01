@@ -6,5 +6,5 @@
     { "action": "fill", "field": "rate", "value": "3.875" },
     { "action": "fill", "field": "years", "value": "30" }
   ],
-  "expect": ["761.78", "360"]
+  "expect": ["761.78", "360", "112,243.70"]
 }
