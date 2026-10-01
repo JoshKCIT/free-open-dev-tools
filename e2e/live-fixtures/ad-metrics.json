@@ -1,0 +1,10 @@
+{
+  "id": "ad-metrics",
+  "label": "Ratio definitions shown on the page, derived by hand: 500 spend over 2,000 clicks is a cost per click of 0.25, and over 100,000 impressions a cost per thousand of 5.00",
+  "steps": [
+    { "action": "fill", "field": "spend", "value": "500" },
+    { "action": "fill", "field": "impressions", "value": "100000" },
+    { "action": "fill", "field": "clicks", "value": "2000" }
+  ],
+  "expect": ["0.25", "5.00"]
+}

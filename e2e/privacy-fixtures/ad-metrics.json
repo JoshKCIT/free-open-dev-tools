@@ -1,0 +1,13 @@
+[
+  {
+    "values": {
+      "spend": "500",
+      "impressions": "100000",
+      "clicks": "2000",
+      "conversions": "50",
+      "revenue": "2000",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  }
+]
