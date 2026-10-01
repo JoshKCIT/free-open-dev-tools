@@ -27,8 +27,7 @@
     "track",
     "subtitles",
     "captions",
-    "picture",
-    "srcset",
+    "source",
     "markup generator"
   ],
   "scripts": {

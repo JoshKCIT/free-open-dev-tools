@@ -663,3 +663,65 @@ test('media-embed-builder: hostile text in every field comes out as text, runs n
     expect(markup, `${entry.kind}: the markup holds the text escaped`).toContain('&lt;script&gt;');
   }
 });
+
+test('media-embed-builder: addresses typed into every video and audio field are never requested and never reach the preview', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/media-embed-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const cases: { kind: string; fields: Record<string, string>; needle: string; poster: boolean }[] = [
+    {
+      kind: 'video',
+      fields: {
+        src: '',
+        mediaSources: `${VISITOR_URL} | video/webm`,
+        poster: VISITOR_URL,
+        tracks: `${VISITOR_URL} | captions | en | English`,
+      },
+      needle: '<video',
+      poster: true,
+    },
+    {
+      kind: 'audio',
+      fields: {
+        src: '',
+        mediaSources: `${VISITOR_URL} | audio/ogg`,
+        tracks: `${VISITOR_URL} | captions | en | English`,
+      },
+      needle: '<audio',
+      poster: false,
+    },
+  ];
+
+  for (const { kind, fields, needle, poster } of cases) {
+    const requests = await withRequestRecorder(page, async () => {
+      await page.locator('#f-kind').selectOption(kind);
+      for (const [field, value] of Object.entries(fields)) await page.locator(`#f-${field}`).fill(value);
+      await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText(needle);
+      await settle(page);
+    });
+    expect(requests, `${kind}: an address typed into a field must never be requested: ${requests.join(', ')}`).toEqual(
+      [],
+    );
+
+    const srcdocs = await previewSrcdocs(page);
+    expect(srcdocs.length, `${kind}: the preview must render in a frame`).toBeGreaterThan(0);
+    for (const srcdoc of srcdocs) {
+      expect(await scanPreview(page, srcdoc), `${kind}: the preview carries no address`).toEqual([]);
+      expect(srcdoc, `${kind}: the preview holds no part of the typed address`).not.toContain('example.invalid');
+    }
+    const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+    expect(markup, `${kind}: the copyable markup keeps the address exactly as typed`).toContain(VISITOR_URL);
+    if (poster) expect(markup, `${kind}: the poster is copied as typed`).toContain(`poster="${VISITOR_URL}"`);
+    expect(markup, `${kind}: the track address is copied as typed`).toContain(
+      `<track kind="captions" src="${VISITOR_URL}"`,
+    );
+
+    const preview = page.frameLocator('iframe.preview-frame').first();
+    await expect(
+      preview.locator(`${kind}[controls]`),
+      `${kind}: the preview holds the element with controls`,
+    ).toHaveCount(1);
+  }
+});

@@ -6,7 +6,25 @@
     },
     "values": {
       "src": "brave.webm",
-      "tracks": "brave.en.vtt | subtitles | en | English\nbrave.en.hoh.vtt | captions | en | English for the Hard of Hearing"
+      "mediaSources": "",
+      "poster": "poster.jpg",
+      "width": "640",
+      "height": "360",
+      "tracks": "brave.en.vtt | subtitles | en | English\nbrave.en.hoh.vtt | captions | en | English for the Hard of Hearing",
+      "fallback": "Your browser cannot play this video"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "kind",
+      "value": "audio"
+    },
+    "values": {
+      "src": "",
+      "mediaSources": "song.ogg | audio/ogg\nsong.mp3 | audio/mpeg",
+      "tracks": "song.en.vtt | captions | en | English",
+      "fallback": "Your browser cannot play this audio"
     },
     "attachesFile": false
   }
