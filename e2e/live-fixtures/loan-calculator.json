@@ -1,0 +1,10 @@
+{
+  "id": "loan-calculator",
+  "label": "CFPB sample Loan Estimate H-24(B), 12 CFR 1026 Appendix H: 162,000 at 3.875 percent for 30 years pays 761.78 a month",
+  "steps": [
+    { "action": "fill", "field": "amount", "value": "162000" },
+    { "action": "fill", "field": "rate", "value": "3.875" },
+    { "action": "fill", "field": "years", "value": "30" }
+  ],
+  "expect": ["761.78", "360"]
+}
