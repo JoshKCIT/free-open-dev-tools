@@ -131,6 +131,9 @@ const FORMATTERS: FormatterCase[] = [
     // MIT). The fixture's input is the one the live fixture types.
     valid: { input: liveFixtureInput('python-formatter') },
     expectOutput: 'rb"br double"',
+    // Counted by hand: in `def f(:` the letters d, e, f, a space and f are columns 1 to 5, the opening parenthesis is
+    // column 6 and the colon, where a parameter or the closing parenthesis must be, is column 7 on line 1.
+    broken: { input: 'def f(:\n  pass\n', issue: 'Line 1, column 7' },
   },
 ];
 

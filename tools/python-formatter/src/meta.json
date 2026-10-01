@@ -21,11 +21,16 @@
     "A source nested hundreds of brackets deep is refused with a plain message instead of crashing the page."
   ],
   "ambiguities": [
-    "Ruff leaves a docstring's own quotes alone only when changing them would change the text, so quote style does not rewrite every string",
-    "A string that already contains the other kind of quote keeps its quotes under every quote style, because swapping them would need escapes"
+    "Quote style is a preference, not a rule: Ruff keeps a string's quotes when changing them would add escapes, and a docstring is written with double quotes unless the quote style is to keep them as written",
+    "Adjacent string literals on one line are joined into one string when they fit, as Ruff 0.15.20 does, so the output can have fewer strings than the input",
+    "The line length is a target, not a hard limit: a line that cannot be broken, such as a long string, stays longer than the limit",
+    "Tab indentation is written as tab characters; the indent width then only decides how wide a tab counts when lines are measured against the line length"
   ],
   "standards": [
-    { "label": "Ruff formatter documentation", "url": "https://docs.astral.sh/ruff/formatter/" },
+    {
+      "label": "Ruff formatter documentation",
+      "url": "https://docs.astral.sh/ruff/formatter/"
+    },
     {
       "label": "Python language reference, lexical analysis",
       "url": "https://docs.python.org/3/reference/lexical_analysis.html"
@@ -35,8 +40,10 @@
   "primaryExport": "formatPython",
   "usage": "import { createRequire } from 'node:module';\nimport { readFileSync } from 'node:fs';\nimport { loadEngine, formatPython } from '@fodt/python-formatter';\n\nconst require = createRequire(import.meta.url);\nloadEngine(readFileSync(require.resolve('@wasm-fmt/ruff_fmt/wasm')));\n\nformatPython(\"x = 'a'\\n\", { quoteStyle: 'double' });\n// { output: 'x = \"a\"\\n', inputBytes: 8, outputBytes: 8 }",
   "apiNotes": "`loadEngine(wasm)` hands the Ruff WebAssembly bytes (or a compiled module) to the engine once; calling it again does nothing. `formatPython(source, options?)` returns `{ output, inputBytes, outputBytes }`, or `null` for blank or whitespace-only source without calling the engine. The options are `lineLength` (88), `quoteStyle` ('double', 'single' or 'preserve'), `indentStyle` ('space' or 'tab') and `indentWidth` (4). It throws `PythonFormatterError` for every failure, never returning partly formatted code; the error carries `line` and `column` (both 1-based, the column counted in characters) when Ruff located a syntax error. `positionFromByteOffset(source, byteOffset)` is the conversion it uses.",
-  "testNotes": "The oracle is Ruff's own published formatter test data at tag 0.15.20 (crates/ruff_python_formatter): the quote_style fixture is formatted with each of its three option sets and compared byte for byte with the outputs of its snapshot. The vendored fixtures keep Ruff's licence and a record of where they came from. Error positions in the tests are counted by hand from each test's input.",
-  "dependencies": { "@wasm-fmt/ruff_fmt": "0.15.20" },
+  "testNotes": "The oracle is Ruff's own published formatter test data at tag 0.15.20 (crates/ruff_python_formatter): the quote_style snapshot is reproduced for all three quote styles, the tab_width snapshot for indent widths 2, 4 and 8, the docstring_tab_indentation and fmt_on_off indent snapshots for tab indentation (and spaces at width 1), the fluent snapshot for a line width of 8, and the skip_magic_trailing_comma snapshot for the default, which respects the magic trailing comma. Every output is compared byte for byte. The case that needs an option the page does not offer (magic trailing comma ignored) is vendored but listed as not reproduced. The vendored fixtures keep Ruff's licence and a record of where they came from. Error positions in the tests are counted by hand from each test's input, including an accented letter, an emoji and CRLF, CR and LF line endings.",
+  "dependencies": {
+    "@wasm-fmt/ruff_fmt": "0.15.20"
+  },
   "bundledData": [
     {
       "name": "Ruff 0.15.20 formatter",

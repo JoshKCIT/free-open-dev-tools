@@ -86,16 +86,38 @@ function validate(options: FormatPythonOptions): void {
 }
 
 /**
- * Maps everything the engine can throw to one PythonFormatterError. Ruff throws a plain string, not an
- * Error; a stack overflow or a WebAssembly trap on a pathologically deep input arrives as a RangeError or a
- * WebAssembly.RuntimeError.
+ * Turns a UTF-8 byte offset into the line and column a visitor sees: the line number counts every CRLF, CR
+ * and LF as one line break, and the column is the number of characters (Unicode code points, so an emoji
+ * counts once) before the offset on its line, plus one. Ruff reports its positions as byte offsets into the
+ * UTF-8 text of the source.
  */
-function describeEngineFailure(err: unknown): PythonFormatterError {
+export function positionFromByteOffset(source: string, byteOffset: number): { line: number; column: number } {
+  const head = new TextDecoder().decode(new TextEncoder().encode(source).subarray(0, Math.max(0, byteOffset)));
+  const lines = head.split(/\r\n|\r|\n/);
+  const last = lines[lines.length - 1] ?? '';
+  return { line: lines.length, column: Array.from(last).length + 1 };
+}
+
+/**
+ * Maps everything the engine can throw to one PythonFormatterError. Ruff throws a plain string, not an
+ * Error: a syntax error ends with `at byte range START..END` (a UTF-8 byte range), converted to the line and
+ * column of START; a source nested too deeply says so in the same shape and gets the plain message with no
+ * position. A stack overflow or a WebAssembly trap on a pathologically deep input arrives as a RangeError or
+ * a WebAssembly.RuntimeError.
+ */
+function describeEngineFailure(err: unknown, source: string): PythonFormatterError {
   if (err instanceof RangeError || (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.RuntimeError)) {
     return new PythonFormatterError(TOO_LARGE_MESSAGE);
   }
   const message = typeof err === 'string' ? err : err instanceof Error ? err.message : '';
   if (message.trim() === '') return new PythonFormatterError(FAILED_MESSAGE);
+
+  const ranged = /^(.*) at byte range (\d+)\.\.(\d+)$/s.exec(message);
+  if (ranged) {
+    const text = ranged[1] ?? '';
+    if (text.startsWith('Source is too deeply nested')) return new PythonFormatterError(TOO_LARGE_MESSAGE);
+    return new PythonFormatterError(text.split('\n')[0] ?? text, positionFromByteOffset(source, Number(ranged[2])));
+  }
   return new PythonFormatterError(message);
 }
 
@@ -118,7 +140,7 @@ export function formatPython(source: string, options: Partial<FormatPythonOption
       indent_width: chosen.indentWidth,
     });
   } catch (err) {
-    throw describeEngineFailure(err);
+    throw describeEngineFailure(err, source);
   }
 
   return { output, inputBytes: byteLength(source), outputBytes: byteLength(output) };
