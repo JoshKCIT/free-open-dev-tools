@@ -24,6 +24,7 @@ Formats PHP code with Prettier 3.9.9 and its PHP plugin 0.25.0, run in a backgro
 - The PHP version is always one the plugin lists, 8.5 by default; the plugin's automatic detection reads files on disk and is not available in a browser.
 - Line and column in an error count characters as you see them; the plugin counts columns from zero in UTF-16 code units, so the column shown is that number plus one, with a character outside the basic multilingual plane, such as an emoji, counted once.
 - Only the first syntax error is reported.
+- Code must start with `<?php`: text outside PHP tags is treated as HTML and left as it is, so source with no opening tag comes back unchanged.
 - The print width must be a whole number from 20 to 200 and the indent width a whole number from 1 to 16 (limits of this page, not of Prettier).
 - Only the options on this page can be chosen; the deprecated PSR-2 brace style, the plugin's other options and configuration files are not offered.
 - A source nested thousands of levels deep (for example 300 nested arrays) is refused with a plain message instead of crashing the page.

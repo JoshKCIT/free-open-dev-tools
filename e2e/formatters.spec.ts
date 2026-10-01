@@ -446,3 +446,29 @@ test('php-formatter: the single quote option and the trailing comma default reac
       "<?php echo link_to_route(\n    'frontend.users.user.show',\n    $users['name'],\n    $users['_id'],\n); ?>\n",
     );
 });
+
+test('php-formatter: source with no opening tag shows a note above the output, and source with one does not', async ({
+  page,
+}) => {
+  await openFormatter(page, 'php-formatter');
+  const note = outputArea(page).locator('.note-info');
+  const block = outputArea(page).locator('pre.output').first();
+
+  // Text outside PHP tags is inline HTML to the plugin: it comes back as it went in, and the page says why.
+  await page.locator('#f-input').fill('echo   1;\n');
+  await expect(note).toContainText('no <?php', { timeout: 15_000 });
+  await expect.poll(async () => (await block.textContent()) ?? '', { timeout: 15_000 }).toBe('echo   1;\n');
+  const noteBox = await note.boundingBox();
+  const blockBox = await block.boundingBox();
+  expect(noteBox!.y).toBeLessThan(blockBox!.y);
+
+  // With an opening tag the code is formatted and there is no note.
+  await page.locator('#f-input').fill('<?php echo   1;\n');
+  await expect.poll(async () => (await block.textContent()) ?? '', { timeout: 15_000 }).toBe('<?php echo 1;\n');
+  expect(await note.count()).toBe(0);
+
+  // The short echo tag counts as an opening tag too.
+  await page.locator('#f-input').fill('<p><?= $x ?></p>\n');
+  await expect(block).toBeVisible({ timeout: 15_000 });
+  expect(await note.count()).toBe(0);
+});

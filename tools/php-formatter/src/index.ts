@@ -91,6 +91,14 @@ function byteLength(text: string): number {
   return new TextEncoder().encode(text).length;
 }
 
+/**
+ * True when the source contains a PHP opening tag, `<?php` or the short echo tag `<?=`. The plugin treats text
+ * outside PHP tags as inline HTML and returns it unchanged, so source without a tag comes back exactly as it went in.
+ */
+export function hasPhpOpeningTag(source: string): boolean {
+  return /<\?(?:php|=)/i.test(source);
+}
+
 function isWholeNumberIn(value: unknown, min: number, max: number): boolean {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }

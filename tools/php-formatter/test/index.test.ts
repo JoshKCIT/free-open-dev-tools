@@ -1,6 +1,13 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import phpPlugin from '@prettier/plugin-php/standalone';
-import { formatPhp, PhpFormatterError, PHP_VERSIONS, meta as toolMeta, type FormatPhpOptions } from '../src/index';
+import {
+  formatPhp,
+  hasPhpOpeningTag,
+  PhpFormatterError,
+  PHP_VERSIONS,
+  meta as toolMeta,
+  type FormatPhpOptions,
+} from '../src/index';
 import { PUBLISHED_CASES, type PublishedCase } from './fixtures/prettier-plugin-php/golden';
 
 // Prettier's own entry is wrapped only to COUNT calls and to RECORD the options it is called with, so a test can
@@ -321,4 +328,23 @@ it('a non-boolean useTabs, singleQuote or trailingCommaPHP is refused naming the
   expect(
     (await formatPhp('<?php echo 1;\n', { useTabs: true, singleQuote: true, trailingCommaPHP: false }))?.output,
   ).toBe('<?php echo 1;\n');
+});
+
+// Text outside PHP tags is inline HTML to the plugin and comes back as it was, so the folder says so in its limits and
+// gives the page a way to tell the visitor.
+it('the limits say code must start with <?php and text outside PHP tags is left as it is', () => {
+  expect(
+    toolMeta.limits.some((l) => l.includes('<?php') && l.includes('treated as HTML') && l.includes('left as it is')),
+  ).toBe(true);
+});
+
+it('hasPhpOpeningTag is true only when the source contains <?php or <?=', async () => {
+  expect(hasPhpOpeningTag('<?php echo 1;\n')).toBe(true);
+  expect(hasPhpOpeningTag('<html>\n<?= $x ?>\n</html>')).toBe(true);
+  expect(hasPhpOpeningTag('<?PHP echo 1;')).toBe(true);
+  expect(hasPhpOpeningTag('echo 1;\n')).toBe(false);
+  expect(hasPhpOpeningTag('<div>no tag</div>')).toBe(false);
+  expect(hasPhpOpeningTag('')).toBe(false);
+  // The case the note is for: code with no opening tag comes back byte for byte.
+  expect((await formatPhp('echo   1;\n'))?.output).toBe('echo   1;\n');
 });

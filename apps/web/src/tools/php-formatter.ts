@@ -1,4 +1,4 @@
-import { meta, PhpFormatterError, PHP_VERSIONS, type PhpBraceStyle } from '@fodt/php-formatter';
+import { meta, hasPhpOpeningTag, PhpFormatterError, PHP_VERSIONS, type PhpBraceStyle } from '@fodt/php-formatter';
 import { phpFormatterInWorker, PhpFormatterRunError } from '../lib/run-php-formatter-in-worker';
 import { defineTool, bool, num, str, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
@@ -95,15 +95,23 @@ export default defineTool({
     try {
       const result = await phpFormatterInWorker({ type: 'php-formatter-job', source: input, options }, ctx);
 
-      const outputs: OutputBlock[] = [
-        {
-          kind: 'code',
-          label: 'Formatted PHP',
-          language: 'php',
-          value: result.output,
-          download: 'formatted.php',
-        },
-      ];
+      const outputs: OutputBlock[] = [];
+      // Text outside PHP tags is inline HTML to the plugin, so source with no opening tag comes back as it went in.
+      if (!hasPhpOpeningTag(input)) {
+        outputs.push({
+          kind: 'note',
+          tone: 'info',
+          value:
+            'This source has no <?php (or <?=) opening tag, so it is treated as plain text and left as it is. Start the code with <?php to have it formatted.',
+        });
+      }
+      outputs.push({
+        kind: 'code',
+        label: 'Formatted PHP',
+        language: 'php',
+        value: result.output,
+        download: 'formatted.php',
+      });
 
       return {
         outputs,
