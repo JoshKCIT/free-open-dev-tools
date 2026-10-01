@@ -331,7 +331,8 @@ export function buildLink(spec: LinkSpec): BuiltLink | null {
   const attrs: [string, string | true | null][] = [['href', draft.address]];
   if (draft.rel !== undefined && draft.rel.length > 0) attrs.push(['rel', draft.rel.join(' ')]);
   if (draft.target) attrs.push(['target', draft.target]);
-  if (draft.download === true || draft.download === '') attrs.push(['download', true]);
+  if (draft.download === true || (typeof draft.download === 'string' && draft.download.trim() === ''))
+    attrs.push(['download', true]);
   else if (typeof draft.download === 'string') attrs.push(['download', draft.download]);
   const tree = [el('a', attrs, [shown])];
   return {

@@ -430,3 +430,14 @@ it('an unknown link kind is refused naming the Link type field instead of silent
   // The four known kinds still build.
   expect(buildLink({ kind: 'mailto', to: 'a@example.com' })).not.toBeNull();
 });
+
+it('HTML 4.6.6 a download name that is only whitespace is written as a bare download attribute', () => {
+  const link = buildLink({ kind: 'web', href: 'https://example.com/a.zip', text: 'Get it', download: '  ' });
+  expect(link).not.toBeNull();
+  expect(link!.html).toContain(' download>');
+  expect(link!.html).not.toContain('download="');
+  // A real name is still written as typed.
+  expect(
+    buildLink({ kind: 'web', href: 'https://example.com/a.zip', text: 'Get it', download: 'a.zip' })!.html,
+  ).toContain('download="a.zip"');
+});
