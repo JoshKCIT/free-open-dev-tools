@@ -1,4 +1,4 @@
-import { it, expect, describe } from 'vitest';
+import { it, expect, describe, test } from 'vitest';
 import {
   annualPercentageYield,
   calculateSavings,
@@ -285,4 +285,16 @@ it('0.1 plus 0.2 is exactly 0.3 through this tool', () => {
   expect(plan.summary.finalBalance).toBe('0.30');
   expect(plan.summary.totalDeposits).toBe('0.20');
   expect(plan.summary.totalInterest).toBe('0.00');
+});
+
+test('an annual percentage yield for interest that loses the whole principal or more is refused instead of returning NaN', () => {
+  // growth = 1 + interest / principal. Minus 1,500 on 1,000 gives growth -0.5, and a fractional power of a negative
+  // number is NaN; minus 1,000 gives growth 0, a total loss with no yield.
+  const loss = refused(() => annualPercentageYield(new D('-1500'), new D(1000), 182));
+  expect(loss.field).toBe('Interest');
+  expect(loss.message).toMatch(/more than minus the principal/);
+  expect(refused(() => annualPercentageYield(new D('-1000'), new D(1000), 365)).field).toBe('Interest');
+  // A loss that leaves something is still a yield, and the existing figures are untouched.
+  expect(annualPercentageYield(new D('-500'), new D(1000), 365).eq(-50)).toBe(true);
+  expect(annualPercentageYield(new D('61.68'), new D(1000), 365).eq('6.168')).toBe(true);
 });

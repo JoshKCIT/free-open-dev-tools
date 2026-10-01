@@ -111,6 +111,12 @@ export function annualPercentageYield(interest: Dec, principal: Dec, days: numbe
   if (!principal.gt(0)) throw new MoneyInputError('Principal', 'must be more than 0');
   if (!Number.isInteger(days) || days < 1) throw new MoneyInputError('Days in term', 'type a whole number of days');
   const growth = interest.div(principal).plus(1);
+  if (!growth.gt(0)) {
+    throw new MoneyInputError(
+      'Interest',
+      'must be more than minus the principal, a loss of the whole principal or more has no yield',
+    );
+  }
   return growth.pow(new D(365).div(days)).minus(1).times(100);
 }
 
