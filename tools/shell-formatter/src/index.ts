@@ -73,7 +73,25 @@ export function loadEngine(wasm: BufferSource | WebAssembly.Module): void {
 }
 
 const TOO_LARGE_MESSAGE = 'This input is too large or too deeply nested for the formatter.';
+const STOPPED_MESSAGE =
+  'The shell formatter engine stopped after an earlier input that was too large or too deeply nested. Load the engine again in a new worker or process to format more.';
 const FAILED_MESSAGE = 'The formatter failed on this input.';
+
+// One stack overflow or WebAssembly trap leaves the shfmt instance broken for good: every later call traps too, even
+// on a valid script, and the package offers no way to start a new instance. So the first trap is remembered here and
+// every later call says so, instead of blaming that input for being too large. Reloading this module (a new worker or
+// process) starts clean. After a trap one tiny valid script is run to see whether the instance really is broken, so a
+// failure that leaves the engine usable (an engine that is wrapped, or a different build) is not remembered.
+let engineStopped = false;
+
+function engineStillWorks(): boolean {
+  try {
+    engineFormat('echo hi\n', FILE_NAMES.bash, {});
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Checks every option before the engine runs, naming the field exactly as the page labels it. */
 function validate(options: FormatShellOptions): void {
@@ -106,6 +124,7 @@ function characterColumn(source: string, line: number, byteColumn: number): numb
  */
 function describeEngineFailure(err: unknown, source: string): ShellFormatterError {
   if (err instanceof RangeError || (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.RuntimeError)) {
+    if (!engineStillWorks()) engineStopped = true;
     return new ShellFormatterError(TOO_LARGE_MESSAGE);
   }
   const message = typeof err === 'string' ? err : err instanceof Error ? err.message : '';
@@ -124,12 +143,15 @@ function describeEngineFailure(err: unknown, source: string): ShellFormatterErro
 /**
  * Formats a shell script with shfmt, reading it as the chosen dialect. Returns `null` for blank or
  * whitespace-only source without calling the engine. Throws `ShellFormatterError` for every failure and never
- * returns partly formatted code. `loadEngine` must have been called first.
+ * returns partly formatted code. `loadEngine` must have been called first. After one input that was too large or too
+ * deeply nested the engine is broken for the rest of the process, so every later call throws a ShellFormatterError
+ * saying it must be loaded again in a new worker or process.
  */
 export function formatShell(source: string, options: Partial<FormatShellOptions> = {}): FormatShellResult | null {
   const chosen: FormatShellOptions = { ...DEFAULT_OPTIONS, ...options };
   validate(chosen);
   if (source.trim() === '') return null;
+  if (engineStopped) throw new ShellFormatterError(STOPPED_MESSAGE);
 
   let output: string;
   try {

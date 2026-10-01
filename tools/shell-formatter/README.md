@@ -27,6 +27,7 @@ Formats shell scripts with shfmt, the formatter of the mvdan/sh parser, compiled
 - Indent 0 means tabs, as shfmt does by default; the indent must be a whole number from 0 to 16.
 - Only the dialect and the indent can be chosen; shfmt's other switches (binary operators at the start of a line, indented case branches, spaces after redirect operators, functions with the brace on its own line, simplify) are not offered.
 - A script nested thousands of levels deep (for example 2000 command substitutions inside each other) is refused with a plain message instead of crashing the page.
+- After one input that was too large or too deeply nested the shfmt engine is stopped for good: every later call in the same process says so and asks for a new worker or process, because the package cannot start a new engine instance. The page uses a new worker for every run, so it is not affected.
 
 ## Ambiguous cases, and what this does about them
 

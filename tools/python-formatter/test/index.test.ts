@@ -269,3 +269,10 @@ it('engine failures that are not syntax errors get a plain message and no positi
     expect(err.column).toBeUndefined();
   }
 });
+
+// Probed: unlike shfmt and clang-format, the Ruff instance survives a too deeply nested input, so no "stopped" state
+// is kept.
+it('the engine still formats after an input that was too large or too deeply nested', () => {
+  expect(failureOf('['.repeat(300)).message).toMatch(/too large or too deeply/);
+  expect(formatPython('x   = 1\n')?.output).toBe('x = 1\n');
+});

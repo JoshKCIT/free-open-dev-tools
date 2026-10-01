@@ -242,3 +242,13 @@ it('a 5000 term expression gives the too large or too deeply nested message with
   expect(error.line).toBeUndefined();
   expect(error.column).toBeUndefined();
 });
+
+// Probed: unlike shfmt and clang-format, the dart_fmt instance survives a stack overflow, so no "stopped" state is kept.
+it('the engine still formats after an input that was too large or too deeply nested', async () => {
+  vi.resetModules();
+  const fresh = await import('../src/index');
+  fresh.loadEngine(wasmBytes());
+  const source = `var x = ${Array.from({ length: 5000 }, () => '1').join(' + ')};\n`;
+  expect(() => fresh.formatDart(source)).toThrow('This input is too large or too deeply nested for the formatter.');
+  expect(fresh.formatDart('var x=1;\n')?.output).toBe('var x = 1;\n');
+});

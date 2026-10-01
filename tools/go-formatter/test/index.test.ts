@@ -254,3 +254,9 @@ it('an engine failure that is not a syntax error gives a plain message and never
   // After a failure the next call formats normally: nothing is left over.
   expect(formatGo('package main\nfunc main(){}\n')!.output).toBe('package main\n\nfunc main() {}\n');
 });
+
+// Probed: unlike shfmt and clang-format, the gofmt instance survives a stack overflow, so no "stopped" state is kept.
+it('the engine still formats after an input that was too large or too deeply nested', () => {
+  expect(failureOf(`package main\n\nvar x = 1${' + 1'.repeat(20000)}\n`).message).toMatch(/too large or too deeply/);
+  expect(formatGo('package main\nvar x=1\n')?.output).toBe('package main\n\nvar x = 1\n');
+});

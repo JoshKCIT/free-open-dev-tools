@@ -325,3 +325,38 @@ it('2000 nested parentheses give the too large or too deeply nested message with
   expect(error.line).toBeUndefined();
   expect(error.column).toBeUndefined();
 });
+
+// One trap leaves the clang-format instance broken for good (every later call traps too, even on a valid program),
+// and the package offers no way to start a new instance. So the folder remembers the trap and says so, instead of
+// blaming each later input for being too large.
+it('after a too large input every later call says the engine stopped and must be loaded again', async () => {
+  vi.resetModules();
+  const fresh = await import('../src/index');
+  fresh.loadEngine(wasmBytes());
+  expect(() => fresh.formatCFamily(`int x = ${'('.repeat(2000)}1${')'.repeat(2000)};\n`)).toThrow(
+    'This input is too large or too deeply nested for the formatter.',
+  );
+
+  for (const options of [{}, { language: 'java' as const }, { preset: 'Google' as const }]) {
+    let caught: unknown;
+    try {
+      fresh.formatCFamily('int main(){return 0;}\n', options);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(fresh.CFamilyFormatterError);
+    const error = caught as CFamilyFormatterError;
+    expect(error.message).toMatch(/stopped after an earlier input that was too large or too deeply nested/);
+    expect(error.message).toMatch(/new worker or process/);
+    expect(error.message).not.toMatch(/^This input is too large/);
+    expect(error.line).toBeUndefined();
+  }
+  expect(fresh.formatCFamily('  \n')).toBeNull();
+  expect(() => fresh.formatCFamily('int x;\n', { indentWidth: 99 })).toThrow(
+    'Indent width must be a whole number from 1 to 16.',
+  );
+});
+
+it('the limits say the engine must be loaded again after a too large input', () => {
+  expect(toolMeta.limits.some((l) => l.includes('new worker or process'))).toBe(true);
+});

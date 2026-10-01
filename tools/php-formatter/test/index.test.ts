@@ -292,3 +292,10 @@ it('300 nested arrays give the too large or too deeply nested message with no po
   expect(err.line).toBeUndefined();
   expect(err.column).toBeUndefined();
 });
+
+// Prettier runs as plain JavaScript, so a stack overflow leaves nothing broken behind it.
+it('the formatter still formats after an input that was too large or too deeply nested', async () => {
+  const source = `<?php\n$a = ${'['.repeat(300)}${']'.repeat(300)};\n`;
+  expect((await failureOf(source)).message).toMatch(/too large or too deeply/);
+  expect((await formatPhp('<?php echo   1;\n'))?.output).toBe('<?php echo 1;\n');
+});

@@ -262,3 +262,37 @@ it('2000 nested command substitutions give the too large or too deeply nested me
   expect(error.line).toBeUndefined();
   expect(error.column).toBeUndefined();
 });
+
+// One trap leaves the shfmt instance broken for good (every later call traps too, even on a valid script), and the
+// package offers no way to start a new instance. So the folder remembers the trap and says so, instead of blaming
+// each later input for being too large.
+it('after a too large input every later call says the engine stopped and must be loaded again', async () => {
+  vi.resetModules();
+  const fresh = await import('../src/index');
+  fresh.loadEngine(wasmBytes());
+  expect(() => fresh.formatShell(`echo ${'$('.repeat(2000)}x${')'.repeat(2000)}\n`)).toThrow(
+    'This input is too large or too deeply nested for the formatter.',
+  );
+  const afterTrap = engineControl.count;
+
+  let caught: unknown;
+  try {
+    fresh.formatShell('echo   hi\n');
+  } catch (err) {
+    caught = err;
+  }
+  expect(caught).toBeInstanceOf(fresh.ShellFormatterError);
+  const error = caught as ShellFormatterError;
+  expect(error.message).toMatch(/stopped after an earlier input that was too large or too deeply nested/);
+  expect(error.message).toMatch(/new worker or process/);
+  expect(error.message).not.toMatch(/^This input is too large/);
+  expect(error.line).toBeUndefined();
+  // The stopped engine is not called again, and blank input and refused options behave as before.
+  expect(engineControl.count).toBe(afterTrap);
+  expect(fresh.formatShell('  \n')).toBeNull();
+  expect(() => fresh.formatShell('echo hi\n', { indent: 99 })).toThrow('Indent must be a whole number from 0 to 16.');
+});
+
+it('the limits say the engine must be loaded again after a too large input', () => {
+  expect(toolMeta.limits.some((l) => l.includes('new worker or process'))).toBe(true);
+});

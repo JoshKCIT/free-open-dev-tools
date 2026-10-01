@@ -87,7 +87,26 @@ export function styleFor(preset: CFamilyPreset, indentWidth?: number): string {
 }
 
 const TOO_LARGE_MESSAGE = 'This input is too large or too deeply nested for the formatter.';
+const STOPPED_MESSAGE =
+  'The C-family formatter engine stopped after an earlier input that was too large or too deeply nested. Load the engine again in a new worker or process to format more.';
 const FAILED_MESSAGE = 'The formatter failed on this input.';
+
+// One stack overflow or WebAssembly trap leaves the clang-format instance broken for good: every later call traps
+// too, even on a valid program, and the package offers no way to start a new instance. So the first trap is
+// remembered here and every later call says so, instead of blaming that input for being too large. Reloading this
+// module (a new worker or process) starts clean. After a trap one tiny valid program is run to see whether the instance
+// really is broken, so a failure that leaves the engine usable (an engine that is wrapped, or a different build) is not
+// remembered.
+let engineStopped = false;
+
+function engineStillWorks(): boolean {
+  try {
+    engineFormat('int x;\n', 'input.cpp', 'LLVM');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Checks every option before the engine runs, naming the field exactly as the page labels it. */
 function validate(options: FormatCFamilyOptions): void {
@@ -112,6 +131,7 @@ function validate(options: FormatCFamilyOptions): void {
  */
 function describeEngineFailure(err: unknown): CFamilyFormatterError {
   if (err instanceof RangeError || (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.RuntimeError)) {
+    if (!engineStillWorks()) engineStopped = true;
     return new CFamilyFormatterError(TOO_LARGE_MESSAGE);
   }
   const message = typeof err === 'string' ? err : err instanceof Error ? err.message : '';
@@ -121,12 +141,15 @@ function describeEngineFailure(err: unknown): CFamilyFormatterError {
 /**
  * Formats source with clang-format, reading it as the chosen language under the chosen preset. Returns `null`
  * for blank or whitespace-only source without calling the engine. Throws `CFamilyFormatterError` for every
- * failure and never returns partly formatted code. `loadEngine` must have been called first.
+ * failure and never returns partly formatted code. `loadEngine` must have been called first. After one input that
+ * was too large or too deeply nested the engine is broken for the rest of the process, so every later call throws a
+ * CFamilyFormatterError saying it must be loaded again in a new worker or process.
  */
 export function formatCFamily(source: string, options: Partial<FormatCFamilyOptions> = {}): FormatCFamilyResult | null {
   const chosen: FormatCFamilyOptions = { ...DEFAULT_OPTIONS, ...options };
   validate(chosen);
   if (source.trim() === '') return null;
+  if (engineStopped) throw new CFamilyFormatterError(STOPPED_MESSAGE);
 
   const language = C_FAMILY_LANGUAGES.find((l) => l.value === chosen.language);
   let output: string;

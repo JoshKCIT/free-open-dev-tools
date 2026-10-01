@@ -25,6 +25,7 @@ Formats C, C++, C#, Java, Objective-C and Protocol Buffers source with clang-for
 - The language comes from your choice, not from the code: a C file formatted as Java may be changed in ways that are wrong for C.
 - The indent width must be a whole number from 1 to 16; leave it blank to use the preset's own width.
 - A source nested thousands of levels deep (for example 2000 nested parentheses) is refused with a plain message instead of crashing the page.
+- After one input that was too large or too deeply nested the clang-format engine is stopped for good: every later call in the same process says so and asks for a new worker or process, because the package cannot start a new engine instance. The page uses a new worker for every run, so it is not affected.
 - The engine is about 2.5 MB of WebAssembly, so this page is larger than most and takes a moment longer to load.
 
 ## Ambiguous cases, and what this does about them
