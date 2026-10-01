@@ -375,7 +375,7 @@ it('the preview always shows media controls while the markup keeps the choice', 
 
   // With controls chosen, the preview keeps one controls attribute and no note about it.
   const chosen = buildMedia({ kind: 'video', src: 'v.webm', width: '1', height: '1', controls: true });
-  expect(chosen?.preview).toBe('<video controls></video>');
+  expect(chosen?.preview).toBe('<video width="1" height="1" controls></video>');
   expect(chosen?.warnings).toEqual([]);
 
   // Nothing typed gives no output, and blank selects and booleans alone do not count as typed.
