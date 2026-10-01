@@ -1,0 +1,10 @@
+{
+  "id": "semantic-html-builder",
+  "label": "WHATWG 4.5.14 time example: a global date and time with milliseconds",
+  "steps": [
+    { "action": "select", "field": "element", "value": "time" },
+    { "action": "fill", "field": "content", "value": "18 November 2011" },
+    { "action": "fill", "field": "datetime", "value": "2011-11-18T14:54:39.929Z" }
+  ],
+  "expect": ["<time datetime=\"2011-11-18T14:54:39.929Z\">"]
+}

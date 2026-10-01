@@ -385,3 +385,66 @@ test('link-builder: clicking the link in the preview requests nothing and leaves
     expect(countAfter, `the ${entry.kind} preview still holds the same elements`).toBe(countBefore);
   }
 });
+
+/**
+ * The values each semantic-html-builder element is typed with in the browser tests. A field that takes any text gets the
+ * hostile value; a field whose syntax is checked (a date, a number, a keyword) gets a valid value, so the page still
+ * builds an element and the markup can be read.
+ */
+const ELEMENTS_UNDER_TEST: { element: string; free: string[]; valid: Record<string, string> }[] = [
+  { element: 'time', free: ['content'], valid: { datetime: '2011-11-18' } },
+];
+
+/** Selects an element and fills its fields, then waits for the result to settle. */
+async function buildSemanticElementOnPage(
+  page: Page,
+  entry: (typeof ELEMENTS_UNDER_TEST)[number],
+  freeValue: string,
+): Promise<void> {
+  await page.locator('#f-element').selectOption(entry.element);
+  for (const [field, value] of Object.entries(entry.valid)) await page.locator(`#f-${field}`).fill(value);
+  for (const field of entry.free) await page.locator(`#f-${field}`).fill(freeValue);
+  await settle(page);
+}
+
+test('semantic-html-builder: hostile text in every field comes out as text, runs nothing and requests nothing', async ({
+  page,
+}) => {
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
+
+  await page.goto(rel('/tools/semantic-html-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  for (const entry of ELEMENTS_UNDER_TEST) {
+    const requests = await withRequestRecorder(page, async () => {
+      await buildSemanticElementOnPage(page, entry, HOSTILE);
+    });
+
+    expect(dialogs, `${entry.element}: no dialog may be raised by rendering the markup or the preview`).toEqual([]);
+    const xssMark = await page.evaluate(() => (window as unknown as { __fodtXss?: unknown }).__fodtXss);
+    expect(xssMark, `${entry.element}: nothing typed may reach or run in the top-level window`).toBe(undefined);
+    expect(requests, `${entry.element}: no request may be made while typing: ${requests.join(', ')}`).toEqual([]);
+
+    const frames = page.locator('iframe.preview-frame');
+    const frameCount = await frames.count();
+    expect(frameCount, `${entry.element}: the preview must render in a frame`).toBeGreaterThan(0);
+    for (let i = 0; i < frameCount; i++) {
+      expect(
+        await frames.nth(i).getAttribute('sandbox'),
+        `${entry.element}: a preview frame must carry an empty sandbox attribute`,
+      ).toBe('');
+    }
+    for (const srcdoc of await previewSrcdocs(page)) {
+      expect(await scanPreview(page, srcdoc), `${entry.element}: the preview must carry no address or handler`).toEqual(
+        [],
+      );
+    }
+
+    const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+    expect(markup, `${entry.element}: the markup holds the text escaped`).toContain('&lt;script&gt;');
+  }
+});
