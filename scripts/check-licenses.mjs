@@ -285,46 +285,78 @@ problems.push(...bundledProblems);
 /**
  * The gate above reads package.json, so a compiled engine hides inside a permissively licensed wrapper: the wrapper says
  * MIT while the WebAssembly inside it carries a standard library, a runtime or a parser under terms nobody read. A
- * dependency that ships a .wasm file must therefore come with a bundledData notice, in the tool that declares it, for
- * the engine compiled inside. Read-only, and independent of how the notices file is rendered. Nested node_modules are
- * not searched (they are their own packages, covered by the walk above) and the search stops six levels down.
+ * package that ships a .wasm file must therefore be named by one of the `bundledData` notices of the tool that reaches
+ * it, whether the tool declares the package itself or only a wrapper that depends on it. The decision is per package,
+ * not per tool: a notice about a word list, or about another engine, does not cover a package it does not name. A notice
+ * names a package when the package name appears in the entry's `name`, `source` or `attribution` text, compared without
+ * regard to case or punctuation (so `@wasm-fmt/gofmt 0.7.3` and `fake-engine` / `Fake engine` both match). Read-only,
+ * and independent of how the notices file is rendered. Nested node_modules are not searched (they are their own packages,
+ * covered by the transitive walk above). A package tree deeper than the search limit is a reported problem, never a
+ * silent "no wasm file here".
  */
-const WASM_SEARCH_DEPTH = 6;
+const WASM_SEARCH_DEPTH = 10;
 
+/** `{ files, tooDeep }`: the .wasm files under `dir` (relative paths) and whether a folder lay below the depth limit. */
 function findWasmFiles(dir, depth = 0) {
-  if (depth > WASM_SEARCH_DEPTH) return [];
-  const found = [];
+  const files = [];
+  let tooDeep = false;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules') continue;
-      for (const inner of findWasmFiles(join(dir, entry.name), depth + 1)) found.push(`${entry.name}/${inner}`);
+      if (depth >= WASM_SEARCH_DEPTH) {
+        tooDeep = true;
+        continue;
+      }
+      const inner = findWasmFiles(join(dir, entry.name), depth + 1);
+      for (const file of inner.files) files.push(`${entry.name}/${file}`);
+      if (inner.tooDeep) tooDeep = true;
     } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.wasm')) {
-      found.push(entry.name);
+      files.push(entry.name);
     }
   }
-  return found.sort();
+  return { files: files.sort(), tooDeep };
 }
 
-function wasmNoticeProblems() {
+/** Lower case, with every run of punctuation and spaces folded to one space and the ends padded, for whole-word search. */
+const foldForNameSearch = (text) =>
+  ` ${String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()} `;
+
+/** True when one of the tool's bundledData entries names the package in its name, source or attribution text. */
+function noticeNamesPackage(bundledData, packageName) {
+  const wanted = foldForNameSearch(packageName);
+  return bundledData.some((entry) =>
+    [entry?.name, entry?.source, entry?.attribution].some((text) => foldForNameSearch(text ?? '').includes(wanted)),
+  );
+}
+
+function wasmNoticeProblems(runtimeDependencies) {
   const found = [];
-  const toolsDir = join(ROOT, 'tools');
-  for (const id of readdirSync(toolsDir).filter((d) => statSync(join(toolsDir, d)).isDirectory())) {
-    const pkg = JSON.parse(readFileSync(join(toolsDir, id, 'package.json'), 'utf8'));
-    let declaresNotice = false;
-    try {
-      const meta = JSON.parse(readFileSync(join(toolsDir, id, 'src', 'meta.json'), 'utf8'));
-      declaresNotice = Array.isArray(meta.bundledData) && meta.bundledData.length > 0;
-    } catch {
-      // No meta.json (or one that does not parse, which the catalog gate reports) declares no notice.
-    }
-    if (declaresNotice) continue;
-    for (const name of Object.keys(pkg.dependencies ?? {}).sort()) {
-      const dir = resolveFrom(join(toolsDir, id), name);
-      if (!dir) continue; // not installed: reported by the walk above
-      const [file] = findWasmFiles(dir);
-      if (file) {
+  for (const dep of runtimeDependencies) {
+    if (!dep.dir) continue; // not installed: reported by the walk above
+    const toolIds = [...dep.origins].filter((o) => o.startsWith('tools/')).map((o) => o.slice('tools/'.length));
+    if (toolIds.length === 0) continue;
+    const { files, tooDeep } = findWasmFiles(dep.dir);
+    if (files.length === 0 && !tooDeep) continue;
+    const reached = dep.direct ? '' : ` (reached through ${[...dep.via].sort().join(', ')})`;
+    for (const id of toolIds.sort()) {
+      let bundledData = [];
+      try {
+        const meta = JSON.parse(readFileSync(join(ROOT, 'tools', id, 'src', 'meta.json'), 'utf8'));
+        if (Array.isArray(meta.bundledData)) bundledData = meta.bundledData;
+      } catch {
+        // No meta.json (or one that does not parse, which the catalog gate reports) declares no notice.
+      }
+      if (tooDeep) {
         found.push(
-          `${id} declares ${name}, which ships compiled WebAssembly (${file}), but declares no bundledData notice for the engine compiled inside it.`,
+          `${id} reaches ${dep.name}${reached}, which has folders more than ${WASM_SEARCH_DEPTH} levels deep, below the search limit for WebAssembly files. Raise WASM_SEARCH_DEPTH in scripts/check-licenses.mjs and check it.`,
+        );
+      }
+      if (files.length > 0 && !noticeNamesPackage(bundledData, dep.name)) {
+        found.push(
+          `${id} reaches ${dep.name}${reached}, which ships compiled WebAssembly (${files[0]}), but no bundledData notice of ${id} names ${dep.name} (put the package name in the entry's name, source or attribution).`,
         );
       }
     }
@@ -332,7 +364,7 @@ function wasmNoticeProblems() {
   return found;
 }
 
-problems.push(...wasmNoticeProblems());
+problems.push(...wasmNoticeProblems(dependencies));
 
 const lines = [];
 lines.push('# Third-party notices');

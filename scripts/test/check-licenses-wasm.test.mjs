@@ -115,3 +115,139 @@ test('a dependency without a wasm file needs no bundled engine notice', () => {
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+/**
+ * The rules below decide per dependency, not per tool: a notice only covers a WebAssembly package when it names that
+ * package. They use the helpers above plus these two, which let a test choose the tool's dependencies and notices.
+ */
+function writeNotice(root, fileName) {
+  writeFileSync(
+    join(root, 'tools', 'fake-tool', 'src', fileName),
+    'Permissive licence text of the bundled item, used only by this test.\n',
+  );
+}
+
+function bundledEntry(name, attribution, noticeFile) {
+  return {
+    name,
+    source: 'https://example.invalid/item',
+    licence: 'CC0-1.0',
+    licenceUrl: 'https://example.invalid/item/LICENSE',
+    attribution,
+    noticeFile,
+  };
+}
+
+function declareToolWith(root, dependencies, bundledData) {
+  const toolDir = join(root, 'tools', 'fake-tool');
+  writeFileSync(
+    join(toolDir, 'package.json'),
+    JSON.stringify({ name: '@fodt/fake-tool', version: '1.0.0', dependencies }),
+  );
+  const meta = { id: 'fake-tool', name: 'Fake Tool' };
+  if (bundledData) meta.bundledData = bundledData;
+  writeFileSync(join(toolDir, 'src', 'meta.json'), JSON.stringify(meta));
+}
+
+/** Writes a fake installed MIT package that itself depends on other packages. */
+function writeWrapperPackage(root, name, dependencies) {
+  const dir = join(root, 'node_modules', name);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version: '1.0.0', license: 'MIT', dependencies }));
+  writeFileSync(join(dir, 'LICENSE'), `MIT licence text for ${name}@1.0.0, used only by this test.\n`);
+}
+
+test('a bundled data entry about something else does not cover a dependency that ships a wasm file', () => {
+  const root = makeFixtureRoot();
+  try {
+    writeFakePackage(root, 'fake-engine', 'dist/engine.wasm');
+    writeNotice(root, 'word-list-NOTICE.txt');
+    declareToolWith(root, { 'fake-engine': '1.0.0' }, [
+      bundledEntry(
+        'Attribution word list',
+        'A list of plain English words, unrelated to any engine.',
+        'src/word-list-NOTICE.txt',
+      ),
+    ]);
+    const { status, output } = runCheckLicenses(root);
+    expect(status, output).not.toBe(0);
+    expect(output).toContain('fake-tool');
+    expect(output).toContain('fake-engine');
+    expect(output).toContain('engine.wasm');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a wasm package reached only through a wrapper dependency is found', () => {
+  const root = makeFixtureRoot();
+  try {
+    writeWrapperPackage(root, 'fake-wrapper', { 'fake-engine': '1.0.0' });
+    writeFakePackage(root, 'fake-engine', 'dist/engine.wasm');
+    declareToolWith(root, { 'fake-wrapper': '1.0.0' }, null);
+    const { status, output } = runCheckLicenses(root);
+    expect(status, output).not.toBe(0);
+    expect(output).toContain('fake-tool');
+    expect(output).toContain('fake-engine');
+    expect(output).toContain('fake-wrapper');
+    expect(output).toContain('engine.wasm');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a bundled data entry that names the wasm package covers it, even when it is reached through a wrapper', () => {
+  const root = makeFixtureRoot();
+  try {
+    writeWrapperPackage(root, 'fake-wrapper', { '@fake-scope/fake-engine': '1.0.0' });
+    writeFakePackage(root, '@fake-scope/fake-engine', 'dist/engine.wasm');
+    writeNotice(root, 'engine-NOTICE.txt');
+    declareToolWith(root, { 'fake-wrapper': '1.0.0' }, [
+      bundledEntry(
+        'Fake engine library',
+        'Copyright the engine authors. Compiled into the WebAssembly module that @fake-scope/fake-engine 1.0.0 ships.',
+        'src/engine-NOTICE.txt',
+      ),
+    ]);
+    const { status, output } = runCheckLicenses(root);
+    expect(status, output).toBe(0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('one notice covers only the wasm package it names when a tool reaches two', () => {
+  const root = makeFixtureRoot();
+  try {
+    writeFakePackage(root, 'fake-engine', 'dist/engine.wasm');
+    writeFakePackage(root, 'other-engine', 'build/other.wasm');
+    writeNotice(root, 'engine-NOTICE.txt');
+    declareToolWith(root, { 'fake-engine': '1.0.0', 'other-engine': '1.0.0' }, [
+      bundledEntry(
+        'Engine library',
+        'Compiled into the WebAssembly module of fake-engine 1.0.0.',
+        'src/engine-NOTICE.txt',
+      ),
+    ]);
+    const { status, output } = runCheckLicenses(root);
+    expect(status, output).not.toBe(0);
+    expect(output).toContain('other-engine');
+    expect(output).not.toMatch(/fake-tool reaches fake-engine/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('reaching the search depth limit is reported, not treated as no wasm file', () => {
+  const root = makeFixtureRoot();
+  try {
+    writeFakePackage(root, 'fake-deep', 'a/b/c/d/e/f/g/h/i/j/k/l/engine.wasm');
+    declareToolWith(root, { 'fake-deep': '1.0.0' }, null);
+    const { status, output } = runCheckLicenses(root);
+    expect(status, output).not.toBe(0);
+    expect(output).toContain('fake-deep');
+    expect(output).toMatch(/too deep|depth/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -8440,7 +8440,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 Licence: BSD-3-Clause ([full text](https://github.com/mozilla/pdf.js/blob/v6.3.289/external/wasm/jbig2/LICENSE))
 
-Attribution: Copyright 2014 The PDFium Authors; PDF.js wrapper Copyright 2026 Mozilla Foundation
+Attribution: Copyright 2014 The PDFium Authors; PDF.js wrapper Copyright 2026 Mozilla Foundation. The module ships in pdfjs-dist 6.3.289.
 
 ```text
 Copyright 2026 Mozilla Foundation
@@ -8658,7 +8658,7 @@ limitations under the License.
 
 Licence: BSD-2-Clause ([full text](https://github.com/mozilla/pdf.js/blob/v6.3.289/external/wasm/openjpeg/LICENSE))
 
-Attribution: Copyright 2002-2014 Universite catholique de Louvain (UCL), Belgium and others
+Attribution: Copyright 2002-2014 Universite catholique de Louvain (UCL), Belgium and others. The module ships in pdfjs-dist 6.3.289.
 
 ```text
 Copyright (c) 2024, Mozilla Foundation
@@ -8728,7 +8728,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Licence: MIT ([full text](https://github.com/mozilla/pdf.js/blob/v6.3.289/external/wasm/qcms/LICENSE))
 
-Attribution: Copyright (C) 2009-2024 Mozilla Corporation; Copyright (C) 1998-2007 Marti Maria
+Attribution: Copyright (C) 2009-2024 Mozilla Corporation; Copyright (C) 1998-2007 Marti Maria. The module ships in pdfjs-dist 6.3.289.
 
 ```text
 MIT License

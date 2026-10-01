@@ -47,9 +47,9 @@ This folder ships a data file that is not an npm dependency, so it travels with 
 copied out on its own:
 
 - **PDF.js standard font data (Foxit fonts from PDFium)** (BSD-3-Clause) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/standard_fonts). Copyright 2014 PDFium Authors. All rights reserved.
-- **PDF.js JBIG2 wasm decoder** (BSD-3-Clause) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/wasm). Copyright 2014 The PDFium Authors; PDF.js wrapper Copyright 2026 Mozilla Foundation
-- **PDF.js OpenJPEG wasm decoder** (BSD-2-Clause) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/wasm). Copyright 2002-2014 Universite catholique de Louvain (UCL), Belgium and others
-- **PDF.js qcms wasm decoder** (MIT) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/wasm). Copyright (C) 2009-2024 Mozilla Corporation; Copyright (C) 1998-2007 Marti Maria
+- **PDF.js JBIG2 wasm decoder** (BSD-3-Clause) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/wasm). Copyright 2014 The PDFium Authors; PDF.js wrapper Copyright 2026 Mozilla Foundation. The module ships in pdfjs-dist 6.3.289.
+- **PDF.js OpenJPEG wasm decoder** (BSD-2-Clause) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/wasm). Copyright 2002-2014 Universite catholique de Louvain (UCL), Belgium and others. The module ships in pdfjs-dist 6.3.289.
+- **PDF.js qcms wasm decoder** (MIT) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/wasm). Copyright (C) 2009-2024 Mozilla Corporation; Copyright (C) 1998-2007 Marti Maria. The module ships in pdfjs-dist 6.3.289.
 - **PDF.js CMYK ICC profile (CGATS001Compat-v2-micro)** (CC0-1.0) — [source](https://github.com/mozilla/pdf.js/tree/v6.3.289/external/iccs). Public domain (CC0-1.0), bundled by the pdf.js project
 
 ## Use it on its own
