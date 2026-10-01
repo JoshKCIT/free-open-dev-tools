@@ -1237,5 +1237,12 @@
     "category": "code",
     "tier": 2,
     "summary": "Format PHP code with Prettier and its PHP plugin, choosing width, indent, quotes, braces and trailing commas, with syntax errors shown by line and column."
+  },
+  {
+    "id": "sqlite-viewer",
+    "name": "SQLite Database Viewer",
+    "category": "json-data",
+    "tier": 3,
+    "summary": "Browse a SQLite database's tables and schema, run SQL on an in-memory copy, export results and download the changed file."
   }
 ]
