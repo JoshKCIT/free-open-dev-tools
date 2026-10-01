@@ -296,15 +296,29 @@ function refuseWebOnly(spec: LinkSpec): void {
 export function buildLink(spec: LinkSpec): BuiltLink | null {
   const text = spec.text ?? '';
   assertSafeText(text, FIELD_LABELS.text);
-  if (spec.kind !== 'web') refuseWebOnly(spec);
-  const draft =
-    spec.kind === 'web'
-      ? buildWebDraft(spec)
-      : spec.kind === 'tel'
-        ? buildTelDraft(spec)
-        : spec.kind === 'sms'
-          ? buildSmsDraft(spec)
-          : buildMailtoDraft(spec);
+  let draft: Draft | null;
+  switch (spec.kind) {
+    case 'web':
+      draft = buildWebDraft(spec);
+      break;
+    case 'tel':
+      refuseWebOnly(spec);
+      draft = buildTelDraft(spec);
+      break;
+    case 'sms':
+      refuseWebOnly(spec);
+      draft = buildSmsDraft(spec);
+      break;
+    case 'mailto':
+      refuseWebOnly(spec);
+      draft = buildMailtoDraft(spec);
+      break;
+    default:
+      throw new MarkupError(
+        FIELD_LABELS.kind,
+        `"${String(spec.kind)}" is not one of the link types offered: ${LINK_KINDS.join(', ')}`,
+      );
+  }
   if (draft === null) return null;
 
   const shown = text.trim() !== '' ? text : draft.defaultText;

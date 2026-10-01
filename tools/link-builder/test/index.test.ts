@@ -412,3 +412,21 @@ it('download, rel and target are refused for mailto, tel and sms links naming th
     expect(buildLink({ ...base, rel: [], target: '', download: undefined })).not.toBeNull();
   }
 });
+
+// ---- Review fixes (phase 11 code review) ---------------------------------------------------------------------------
+
+it('an unknown link kind is refused naming the Link type field instead of silently building a mailto link', () => {
+  for (const kind of ['', 'ftp', 'MAILTO', 'constructor']) {
+    let caught: unknown;
+    try {
+      buildLink({ kind: kind as LinkSpec['kind'], to: 'a@example.com' });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught, JSON.stringify(kind)).toBeInstanceOf(MarkupError);
+    expect((caught as MarkupError).field).toBe('Link type');
+    expect((caught as MarkupError).message).toContain('web, mailto, tel, sms');
+  }
+  // The four known kinds still build.
+  expect(buildLink({ kind: 'mailto', to: 'a@example.com' })).not.toBeNull();
+});
