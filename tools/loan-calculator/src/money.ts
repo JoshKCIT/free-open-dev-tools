@@ -7,7 +7,11 @@
  *  - a strict reader for typed amounts that accepts plain decimal text only and says which field was wrong;
  *  - rounding half away from zero, and fixed-place printing that never shows a negative zero;
  *  - currency minor units and amount formatting through the browser's Intl.NumberFormat (ISO 4217 codes),
- *    formatting from decimal text so no amount passes through a JavaScript number.
+ *    formatting from decimal text so no amount passes through a JavaScript number;
+ *  - whole-number counts with a stated range, and ISO 8601 calendar dates read and moved in UTC
+ *    (months added to the first date and clamped to the month's length);
+ *  - one-row-per-line text with cells split on a vertical bar, every problem reported with line and column;
+ *  - spreadsheet-safe CSV cells (RFC 4180 quoting, formula characters neutralised).
  */
 import Decimal from 'decimal.js';
 
@@ -201,7 +205,7 @@ export function formatIsoDate(d: CalendarDate): string {
 export function addMonthsClamped(start: CalendarDate, months: number): CalendarDate {
   const total = start.year * 12 + (start.month - 1) + months;
   const year = Math.floor(total / 12);
-  const month = (total % 12) + 1;
+  const month = (((total % 12) + 12) % 12) + 1;
   return { year, month, day: Math.min(start.day, daysInMonth(year, month)) };
 }
 
@@ -217,4 +221,108 @@ export function daysBetween(a: CalendarDate, b: CalendarDate): number {
   if (days < 0)
     throw new MoneyInputError('End date', `${formatIsoDate(b)} is before the start date ${formatIsoDate(a)}`);
   return days;
+}
+
+/** One row of typed data: its 1-based line number (blank lines counted), its trimmed cells and each cell's 1-based start column. */
+export type Row = { line: number; cells: string[]; starts: number[] };
+
+export interface RowSpec {
+  /** Column headings in order, used in messages. */
+  columns: readonly string[];
+  /** How many cells a row must have; the columns after that may be left off. */
+  required: number;
+  /** The most non-blank rows accepted. */
+  maxRows: number;
+}
+
+/**
+ * Splits typed text into rows: one per line, cells separated by a vertical bar, cells trimmed. Blank lines are
+ * skipped but still counted in line numbers. A column points at the first character of the trimmed cell (or
+ * where an empty cell sits). Empty text is no rows. A row with too few or too many cells, or more rows than
+ * `maxRows`, is refused with the line and column.
+ */
+export function parseRows(text: string, field: string, spec: RowSpec): Row[] {
+  const format = spec.columns.join(' | ');
+  const rows: Row[] = [];
+  const lines = text.split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const line = (lines[index] ?? '').replace(/\r$/, '');
+    if (isBlank(line)) continue;
+    const lineNumber = index + 1;
+    if (rows.length >= spec.maxRows) {
+      throw new MoneyInputError(field, `at most ${spec.maxRows} rows are accepted, this has more`, {
+        line: lineNumber,
+        column: 1,
+      });
+    }
+    const cells: string[] = [];
+    const starts: number[] = [];
+    let offset = 0;
+    for (const raw of line.split('|')) {
+      const trimmed = raw.trim();
+      const leading = trimmed === '' ? 0 : raw.length - raw.trimStart().length;
+      cells.push(trimmed);
+      starts.push(offset + leading + 1);
+      offset += raw.length + 1;
+    }
+    if (cells.length < spec.required) {
+      throw new MoneyInputError(
+        field,
+        `expected ${spec.required} cells separated by | like ${format}, found ${cells.length}`,
+        {
+          line: lineNumber,
+          column: line.length + 1,
+        },
+      );
+    }
+    if (cells.length > spec.columns.length) {
+      throw new MoneyInputError(
+        field,
+        `expected at most ${spec.columns.length} cells separated by | like ${format}, found ${cells.length}`,
+        {
+          line: lineNumber,
+          column: starts[spec.columns.length] ?? 1,
+        },
+      );
+    }
+    rows.push({ line: lineNumber, cells, starts });
+  }
+  return rows;
+}
+
+/** The text of a cell, or empty text when the row has no cell there. */
+export function cellText(row: Row, index: number): string {
+  return row.cells[index] ?? '';
+}
+
+/** Reads a cell as an exact decimal; a problem names the line, the cell's column and the column heading. */
+export function cellDecimal(
+  row: Row,
+  index: number,
+  field: string,
+  column: string,
+  opts: ParseDecimalOptions = {},
+): Dec {
+  const start =
+    row.starts[index] ?? (row.starts[row.starts.length - 1] ?? 0) + cellText(row, row.cells.length - 1).length + 1;
+  try {
+    return parseDecimal(cellText(row, index), field, opts);
+  } catch (err) {
+    if (err instanceof MoneyInputError) {
+      throw new MoneyInputError(field, `${column}: ${err.message}`, { line: row.line, column: start });
+    }
+    throw err;
+  }
+}
+
+/**
+ * Prepares a text cell for a CSV file (RFC 4180). A text cell that starts with =, +, -, @, a tab or a carriage
+ * return could run as a formula in a spreadsheet, so it gets a leading apostrophe; a cell holding a plain number
+ * is left alone. Cells with a comma, a quote or a line break are wrapped in quotes with inner quotes doubled.
+ */
+export function csvCell(text: string): string {
+  if (PLAIN_DECIMAL.test(text)) return text;
+  const neutralised = /^[=+\-@\t\r]/.test(text);
+  const value = neutralised ? `'${text}` : text;
+  return neutralised || /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

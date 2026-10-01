@@ -274,6 +274,9 @@ it('ISO 8601 calendar dates are read in UTC, impossible dates are refused, and m
   ]);
   expect(formatIsoDate(addMonthsClamped(parseIsoDate('2024-11-30', 'Date'), 3))).toBe('2025-02-28');
   expect(formatIsoDate(addMonthsClamped(parseIsoDate('2024-12-15', 'Date'), 1))).toBe('2025-01-15');
+  // Going back works too: one month before 31 January 2024 is 31 December 2023, two is 30 November.
+  expect(formatIsoDate(addMonthsClamped(jan31, -1))).toBe('2023-12-31');
+  expect(formatIsoDate(addMonthsClamped(jan31, -2))).toBe('2023-11-30');
 
   // Days are added in UTC, so a clock change in the viewer's own time zone cannot move a date.
   const before = process.env.TZ;
