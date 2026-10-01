@@ -251,3 +251,42 @@ test('form-field-builder: clicking every control in the preview requests nothing
     expect(countAfter, `the ${kind} preview still holds the same elements`).toBe(countBefore);
   }
 });
+
+test('link-builder: hostile text in every field comes out as text, runs nothing and requests nothing', async ({
+  page,
+}) => {
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
+
+  await page.goto(rel('/tools/link-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const requests = await withRequestRecorder(page, async () => {
+    await page.locator('#f-kind').selectOption('mailto');
+    for (const field of ['text', 'to', 'body']) await page.locator(`#f-${field}`).fill(HOSTILE);
+    await settle(page);
+  });
+
+  expect(dialogs, 'no dialog may be raised by rendering the markup or the preview').toEqual([]);
+  const xssMark = await page.evaluate(() => (window as unknown as { __fodtXss?: unknown }).__fodtXss);
+  expect(xssMark, 'nothing typed may reach or run in the top-level window').toBe(undefined);
+  expect(requests, `no request may be made while typing: ${requests.join(', ')}`).toEqual([]);
+
+  const frames = page.locator('iframe.preview-frame');
+  const frameCount = await frames.count();
+  expect(frameCount, 'the preview must render in a frame').toBeGreaterThan(0);
+  for (let i = 0; i < frameCount; i++) {
+    expect(await frames.nth(i).getAttribute('sandbox'), 'a preview frame must carry an empty sandbox attribute').toBe(
+      '',
+    );
+  }
+  for (const srcdoc of await previewSrcdocs(page)) {
+    expect(await scanPreview(page, srcdoc)).toEqual([]);
+  }
+
+  const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+  expect(markup).toContain('&lt;script&gt;');
+});

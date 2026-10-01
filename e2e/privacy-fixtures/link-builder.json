@@ -1,0 +1,11 @@
+[
+  {
+    "mode": { "field": "kind", "value": "mailto" },
+    "values": {
+      "text": "Email the team",
+      "to": "infobot@example.com",
+      "body": "send current-issue"
+    },
+    "attachesFile": false
+  }
+]

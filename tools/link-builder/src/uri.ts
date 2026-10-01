@@ -7,8 +7,6 @@
  *
  * Pure functions only: no DOM, no clock, no network, no storage.
  */
-import { MarkupError } from './markup';
-
 const UNRESERVED = /[A-Za-z0-9\-._~]/;
 
 /** RFC 6068 section 2 some-delims without the plus sign, which this encoder always writes as an encoded plus. */
@@ -62,12 +60,13 @@ function normalizeBreaks(text: string, to: string): string {
   return text.replace(/\r\n|\r|\n/g, to);
 }
 
-/** One address written for the address part of an email link: split at its last at sign, each side encoded. */
-function encodeAddress(address: string, field: string): string {
+/**
+ * One address written for the address part of an email link: split at its last at sign, each side encoded. An address
+ * is always written as typed (encoded); whether it is a valid address is for the caller to warn about.
+ */
+function encodeAddress(address: string): string {
   const at = address.lastIndexOf('@');
-  if (at < 1 || at === address.length - 1) {
-    throw new MarkupError(field, `"${address}" is not an address: it needs text, an at sign and a domain`);
-  }
+  if (at === -1) return encodeLocalPart(address);
   return `${encodeLocalPart(address.slice(0, at))}@${encodeLocalPart(address.slice(at + 1))}`;
 }
 
@@ -78,7 +77,7 @@ export interface MailtoParts {
 
 /** The address of an email link, as RFC 6068 section 2 writes it, with the ampersands left bare. */
 export function buildMailto(parts: MailtoParts): string {
-  const recipients = (parts.to ?? []).map((address) => encodeAddress(address, 'To'));
+  const recipients = (parts.to ?? []).map(encodeAddress);
   const fields: string[] = [];
   const body = parts.body ?? '';
   if (body !== '') fields.push(`body=${encodeHeaderValue(normalizeBreaks(body, '\r\n'))}`);

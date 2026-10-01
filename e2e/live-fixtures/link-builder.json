@@ -1,0 +1,10 @@
+{
+  "id": "link-builder",
+  "label": "RFC 6068 section 6.1 example: a two-line body joined by an encoded line break",
+  "steps": [
+    { "action": "select", "field": "kind", "value": "mailto" },
+    { "action": "fill", "field": "to", "value": "infobot@example.com" },
+    { "action": "fill", "field": "body", "value": "send current-issue\nsend index" }
+  ],
+  "expect": ["href=\"mailto:infobot@example.com?body=send%20current-issue%0D%0Asend%20index\""]
+}
