@@ -1,0 +1,40 @@
+{
+  "id": "semantic-html-builder",
+  "name": "Semantic HTML Element Builder",
+  "summary": "Build details and summary, dialog, meter, progress, quotations with citations, figures with captions, time, abbreviations and the text-level tags, with a preview.",
+  "about": "Builds one semantic HTML element and shows its markup first, ready to copy, with a live preview of the same markup after it. You pick the element and the page offers only what the HTML Living Standard defines for it. This first edition writes the time element: the machine-readable value, whether you type it in the datetime attribute or leave it as the text, is checked against every form the standard allows (a year, a month, a date, a time, a local or global date and time, a week, a time-zone offset or a duration), so an impossible date such as 2011-13-45 is refused instead of copied. The preview shows the element without loading anything you typed. The standard was read on 2026-10-01 (last updated 2026-09-29); a later edition may differ.",
+  "supports": [
+    "A time element whose datetime attribute, or its text when no attribute is typed, matches one of the forms WHATWG 4.5.14 lists: a month, date, yearless date, time, local date and time, time-zone offset, global date and time, week, year or duration",
+    "Every date and time example of the standard is accepted, and impossible values are refused naming the field: month 13, February 29 in a common year, hour 24, second 60, four fraction digits and a minus zero offset",
+    "Numbers, dates and times are read as ASCII digits only, in the letter case the grammar writes; digits of other scripts are refused",
+    "Markup first and an inert preview of the same element second, with any warning in a note"
+  ],
+  "limits": [
+    "Everything you type is escaped before it is placed in the markup, so a tag, an event handler or a script address you type stays text; a javascript:, data: or vbscript: address is kept as typed and flagged.",
+    "The preview replaces every address you typed (src, srcset, poster, href, action, formaction, data and cite) with an inert placeholder or removes it, so nothing you typed is loaded; only the markup you copy keeps the real addresses.",
+    "Each text field is limited to 20,000 characters, and control characters other than a tab (and line breaks in a text area) are refused because HTML cannot carry them.",
+    "The builder writes one element per run and writes only the attributes you choose; it never adds an attribute for you."
+  ],
+  "ambiguities": [
+    "A time element may carry the machine-readable value in its datetime attribute or, when there is none, in its text; this builder checks whichever one holds the value, and refuses text that is not a valid value when no datetime is typed.",
+    "A year in the standard is four or more ASCII digits that are not all zero, so 0037 is a valid year while 37 is not."
+  ],
+  "standards": [
+    {
+      "label": "HTML Living Standard, 4.5.14 The time element",
+      "url": "https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-time-element"
+    },
+    {
+      "label": "HTML Living Standard, 2.3.5 Dates and times",
+      "url": "https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#dates-and-times"
+    }
+  ],
+  "keywords": ["html", "semantic", "time", "datetime", "markup generator"],
+  "primaryExport": "buildElement",
+  "usage": "import { buildElement } from '@fodt/semantic-html-builder';\n\nconst built = buildElement({\n  element: 'time',\n  content: '18 November 2011',\n  datetime: '2011-11-18T14:54:39.929Z',\n});\nbuilt?.html;\n// <time datetime=\"2011-11-18T14:54:39.929Z\">18 November 2011</time>",
+  "apiNotes": "`buildElement(spec)` returns `{ tree, html, preview, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup and `preview` is the same tree with every address removed. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message`.",
+  "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The date and time examples of WHATWG 2.3.5 and 4.5.14 are checked literally, impossible values must be refused, and hostile text typed into every field must leave the parsed element tree unchanged.",
+  "devDependencies": {
+    "parse5": "8.0.1"
+  }
+}
