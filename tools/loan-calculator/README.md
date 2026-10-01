@@ -1,0 +1,84 @@
+# Loan & Mortgage Calculator
+
+Work out the payment per period, total interest, payoff date and full repayment schedule of a loan, with optional extra payments.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Works out the regular payment on a fixed-rate loan or mortgage from the amount, the yearly interest rate and the term. The page shows the payment formula with your own numbers put in, so you can check the result by hand. Every amount and rate is read as typed text and added up with exact decimal arithmetic, so 0.1 plus 0.2 is exactly 0.3 and nothing drifts by a cent.
+
+## Supported
+
+- Payment per month from a loan amount, a yearly interest rate in percent and a term in years, by the standard annuity formula
+- A zero interest rate, which pays the amount divided by the number of payments
+- A term of a whole number of months from one month to 50 years, with up to two decimal places in the years
+- The working shown: the formula, your numbers put into it, the exact payment and the rounded payment
+- Any currency code your browser knows, with the right number of decimal places for that currency
+- Exact decimal arithmetic with decimal.js: no amount or rate ever passes through a JavaScript floating-point number
+
+## Limits
+
+- The payment is rounded once to the currency's smallest unit, half away from zero; every step before that keeps 40 significant digits.
+- Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores lender fees, mortgage insurance, taxes and escrow, rate changes over time and day counts other than equal periods.
+- Interest is charged in equal periods: the yearly rate is divided by the number of payments a year, not accrued day by day.
+- A term is limited to 50 years, so a schedule never holds more than 2,600 payments.
+- Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose.
+
+## Ambiguous cases, and what this does about them
+
+- Interest is charged once per equal period: the nominal yearly rate divided by the number of periods a year, which is how the US consumer-credit rule 12 CFR 1026 Appendix J (b)(5) counts unit-periods. A lender that accrues interest daily will quote slightly different figures.
+- Real loan documents round the payment to the cent and let the final payment absorb the difference; this tool shows the unrounded payment next to the rounded one so the gap is visible.
+
+## Defined by
+
+- [ISO/IEC 26300-2:2015 (OpenFormula, OASIS ODF 1.2 part 2) sections 6.12.36 PMT, 6.12.23 IPMT and 6.12.37 PPMT](https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part2.html)
+- [12 CFR 1026 Appendix J, annual percentage rate computations for closed-end credit](https://www.consumerfinance.gov/rules-policy/regulations/1026/j/)
+- [CFPB sample Loan Estimate H-24(B), fixed rate loan](https://files.consumerfinance.gov/f/201403_cfpb_loan-estimate_fixed-rate-loan-sample-H24B.pdf)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/loan-calculator loan-calculator
+cd loan-calculator
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/loan-calculator
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { calculateLoan } from '@fodt/loan-calculator';
+
+const result = calculateLoan({ amount: '162000', rate: '3.875', years: '30', currency: 'USD' });
+result.summary.payment; // '761.78'
+result.summary.payments; // 360
+```
+
+`calculateLoan` takes the page's text values and returns `{ summary, working }`, or throws `MoneyInputError` carrying the `field` that was wrong. `paymentPerPeriod(principal, annualPercent, payments, perYear)` returns the exact, unrounded payment as a `Dec` (a decimal.js value made by this folder's own clone, 40 significant digits, half away from zero). `money.ts` is the shared exact-decimal helper: strict text parsing, rounding and money formatting.
+
+## Dependencies
+
+- `decimal.js` 10.6.0
+
+## Tests
+
+```sh
+npm test
+```
+
+The payment is checked against the figure printed on the CFPB sample Loan Estimate H-24(B) (162000 at 3.875 percent for 30 years pays 761.78 a month) and against the OpenFormula PMT Rate 0 equation. Exactness is proven by first showing that 0.1 + 0.2 in JavaScript floating point is 0.30000000000000004 and then that this tool's own path returns exactly 0.3. Section numbers cited here were read from the specification text.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
