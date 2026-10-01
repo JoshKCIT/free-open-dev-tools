@@ -5,6 +5,14 @@ import { URI_FIELD_LABELS, buildMailto, buildSms, buildTel } from './uri';
 
 export { meta };
 export { MarkupError } from './markup';
+export {
+  IANA_REGISTRY_UPDATED,
+  LINK_TYPES_ON_A,
+  REGISTERED_EXTENSIONS,
+  SPEC_FETCHED,
+  SPEC_LAST_UPDATED,
+  TARGET_KEYWORDS,
+} from './spec-data';
 
 /** The kinds of link the builder writes. */
 export const LINK_KINDS = ['web', 'mailto', 'tel', 'sms'] as const;

@@ -252,6 +252,36 @@ test('form-field-builder: clicking every control in the preview requests nothing
   }
 });
 
+/**
+ * The values each link-builder kind is typed with in the browser tests. A field that takes any text gets the hostile
+ * value; a field whose syntax is checked (a phone number, an extension, a rel value, a recipient) gets a valid value, so
+ * the page still builds a link and the markup can be read.
+ */
+const LINK_KINDS_UNDER_TEST: {
+  kind: string;
+  free: string[];
+  valid: Record<string, string>;
+  checks?: string[];
+}[] = [
+  { kind: 'web', free: ['text', 'href', 'downloadName'], valid: { relOther: 'license' }, checks: ['download'] },
+  { kind: 'mailto', free: ['text', 'to', 'cc', 'bcc', 'subject', 'body'], valid: {} },
+  { kind: 'tel', free: ['text'], valid: { phone: '+1-201-555-0123', ext: '12' } },
+  { kind: 'sms', free: ['text', 'smsBody'], valid: { recipients: '+15105550101' } },
+];
+
+/** Selects a link type and fills its fields, then waits for the result to settle. */
+async function buildLinkOnPage(
+  page: Page,
+  entry: (typeof LINK_KINDS_UNDER_TEST)[number],
+  freeValue: string,
+): Promise<void> {
+  await page.locator('#f-kind').selectOption(entry.kind);
+  for (const field of entry.checks ?? []) await page.locator(`#f-${field}`).check();
+  for (const [field, value] of Object.entries(entry.valid)) await page.locator(`#f-${field}`).fill(value);
+  for (const field of entry.free) await page.locator(`#f-${field}`).fill(freeValue);
+  await settle(page);
+}
+
 test('link-builder: hostile text in every field comes out as text, runs nothing and requests nothing', async ({
   page,
 }) => {
@@ -264,29 +294,94 @@ test('link-builder: hostile text in every field comes out as text, runs nothing 
   await page.goto(rel('/tools/link-builder'));
   await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
 
+  for (const entry of LINK_KINDS_UNDER_TEST) {
+    const requests = await withRequestRecorder(page, async () => {
+      await buildLinkOnPage(page, entry, HOSTILE);
+    });
+
+    expect(dialogs, `${entry.kind}: no dialog may be raised by rendering the markup or the preview`).toEqual([]);
+    const xssMark = await page.evaluate(() => (window as unknown as { __fodtXss?: unknown }).__fodtXss);
+    expect(xssMark, `${entry.kind}: nothing typed may reach or run in the top-level window`).toBe(undefined);
+    expect(requests, `${entry.kind}: no request may be made while typing: ${requests.join(', ')}`).toEqual([]);
+
+    const frames = page.locator('iframe.preview-frame');
+    const frameCount = await frames.count();
+    expect(frameCount, `${entry.kind}: the preview must render in a frame`).toBeGreaterThan(0);
+    for (let i = 0; i < frameCount; i++) {
+      expect(
+        await frames.nth(i).getAttribute('sandbox'),
+        `${entry.kind}: a preview frame must carry an empty sandbox attribute`,
+      ).toBe('');
+    }
+    for (const srcdoc of await previewSrcdocs(page)) {
+      expect(await scanPreview(page, srcdoc), `${entry.kind}: the preview must carry no address or handler`).toEqual(
+        [],
+      );
+    }
+
+    const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+    expect(markup, `${entry.kind}: the markup holds the text escaped`).toContain('&lt;script&gt;');
+  }
+});
+
+test('link-builder: a web address typed into the link is never requested, never reaches the preview and is copied exactly as typed', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/link-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
   const requests = await withRequestRecorder(page, async () => {
-    await page.locator('#f-kind').selectOption('mailto');
-    for (const field of ['text', 'to', 'body']) await page.locator(`#f-${field}`).fill(HOSTILE);
+    await page.locator('#f-kind').selectOption('web');
+    await page.locator('#f-download').check();
+    await page.locator('#f-text').fill('Word');
+    await page.locator('#f-relOther').fill('license');
+    await page.locator('#f-downloadName').fill('report.pdf');
+    await page.locator('#f-href').fill(VISITOR_URL);
     await settle(page);
+    await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText(VISITOR_URL);
   });
+  expect(requests, `an address typed into a field must never be requested: ${requests.join(', ')}`).toEqual([]);
 
-  expect(dialogs, 'no dialog may be raised by rendering the markup or the preview').toEqual([]);
-  const xssMark = await page.evaluate(() => (window as unknown as { __fodtXss?: unknown }).__fodtXss);
-  expect(xssMark, 'nothing typed may reach or run in the top-level window').toBe(undefined);
-  expect(requests, `no request may be made while typing: ${requests.join(', ')}`).toEqual([]);
-
-  const frames = page.locator('iframe.preview-frame');
-  const frameCount = await frames.count();
-  expect(frameCount, 'the preview must render in a frame').toBeGreaterThan(0);
-  for (let i = 0; i < frameCount; i++) {
-    expect(await frames.nth(i).getAttribute('sandbox'), 'a preview frame must carry an empty sandbox attribute').toBe(
-      '',
-    );
-  }
-  for (const srcdoc of await previewSrcdocs(page)) {
+  const srcdocs = await previewSrcdocs(page);
+  expect(srcdocs.length, 'the preview must render in a frame').toBeGreaterThan(0);
+  for (const srcdoc of srcdocs) {
     expect(await scanPreview(page, srcdoc)).toEqual([]);
+    expect(srcdoc, 'the preview holds no part of the typed address').not.toContain('example.invalid');
   }
-
   const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
-  expect(markup).toContain('&lt;script&gt;');
+  expect(markup, 'the copyable markup keeps the address exactly as typed').toContain(
+    'href="https://example.invalid/nothing-sent?q=1#f"',
+  );
+  expect(markup.trim(), 'only the chosen attributes are written').toBe(
+    '<a href="https://example.invalid/nothing-sent?q=1#f" rel="license" download="report.pdf">Word</a>',
+  );
+});
+
+test('link-builder: clicking the link in the preview requests nothing and leaves the preview in place', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/link-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  for (const entry of LINK_KINDS_UNDER_TEST) {
+    // A web link is built with a real-shaped address in its address field; the others take plain words.
+    await buildLinkOnPage(page, entry, entry.kind === 'web' ? VISITOR_URL : 'plain');
+    const handle = await page.locator('iframe.preview-frame').first().elementHandle();
+    const frame = await handle!.contentFrame();
+    expect(frame, `the ${entry.kind} preview frame can be reached`).not.toBeNull();
+    const links = frame!.locator('a');
+    const total = await links.count();
+    expect(total, `the ${entry.kind} preview holds a link`).toBeGreaterThan(0);
+    const countBefore = await frame!.evaluate(() => document.body.querySelectorAll('*').length);
+
+    const requests = await withRequestRecorder(page, async () => {
+      for (let i = 0; i < total; i++) await links.nth(i).click({ timeout: 5_000 });
+      await page.waitForTimeout(300);
+    });
+    expect(requests, `clicking in the ${entry.kind} preview must request nothing: ${requests.join(', ')}`).toEqual([]);
+    expect(frame!.url(), `the ${entry.kind} preview stays on its own document`).toBe('about:srcdoc');
+    expect(await frame!.locator('a').count(), `the ${entry.kind} preview still holds its link`).toBe(total);
+    const countAfter = await frame!.evaluate(() => document.body.querySelectorAll('*').length);
+    expect(countAfter, `the ${entry.kind} preview still holds the same elements`).toBe(countBefore);
+  }
 });

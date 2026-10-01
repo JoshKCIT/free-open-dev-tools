@@ -3,29 +3,49 @@ import {
   buildLink,
   MarkupError,
   LINK_KINDS,
+  LINK_TYPES_ON_A,
+  TARGET_KEYWORDS,
   FIELD_LABELS,
   type LinkKind,
   type LinkSpec,
 } from '@fodt/link-builder';
-import { defineTool, str, type Field, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
+import { defineTool, bool, str, type Field, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
 
 const KIND_LABELS: Record<LinkKind, string> = {
+  web: 'Web address',
   mailto: 'Email (mailto)',
   tel: 'Phone call (tel)',
   sms: 'Text message (sms)',
 };
 
+/** The five link types that have a checkbox each, in the order their values are written. */
+const REL_BOXES = [
+  { name: 'relNoopener', value: 'noopener', label: 'rel noopener' },
+  { name: 'relNoreferrer', value: 'noreferrer', label: 'rel noreferrer' },
+  { name: 'relNofollow', value: 'nofollow', label: 'rel nofollow' },
+  { name: 'relSponsored', value: 'sponsored', label: 'rel sponsored (IANA registered)' },
+  { name: 'relUgc', value: 'ugc', label: 'rel ugc (IANA registered)' },
+] as const;
+
+/** The other link types the standard allows on a link, copied into the package from its link type table. */
+const OTHER_REL = LINK_TYPES_ON_A.map((t) => t.value).filter((v) => !REL_BOXES.some((b) => b.value === v));
+
 /** Whether the chosen link type uses a field, so a value typed before switching type never reaches a run. */
 function whenKind(...kinds: LinkKind[]): (values: Values) => boolean {
-  return (values) => kinds.includes(str(values, 'kind', 'mailto') as LinkKind);
+  return (values) => kinds.includes(str(values, 'kind', 'web') as LinkKind);
 }
 
-/** The fields each link type reads, in the order the page shows them. */
-const READS: Record<LinkKind, Exclude<keyof LinkSpec, 'kind'>[]> = {
+/** The fields each email, phone and text message link reads, in the order the page shows them. */
+const READS = {
   mailto: ['text', 'to', 'cc', 'bcc', 'subject', 'body'],
   tel: ['text', 'phone', 'ext', 'phoneContext'],
   sms: ['text', 'recipients', 'smsBody'],
-};
+} as const;
+
+/** Splits the Other rel values field on ASCII whitespace; the package checks each value. */
+function otherRelTokens(value: string): string[] {
+  return value.split(/[ \t\r\n]+/).filter((token) => token !== '');
+}
 
 export default defineTool({
   id: 'link-builder',
@@ -35,7 +55,7 @@ export default defineTool({
       name: 'kind',
       label: FIELD_LABELS.kind,
       type: 'select',
-      default: 'mailto',
+      default: 'web',
       options: LINK_KINDS.map((kind) => ({ value: kind, label: KIND_LABELS[kind] })),
     },
     {
@@ -43,6 +63,55 @@ export default defineTool({
       label: FIELD_LABELS.text,
       type: 'text',
       help: 'Leave blank to use the address, number or recipients.',
+    },
+    {
+      name: 'href',
+      label: FIELD_LABELS.href,
+      type: 'text',
+      mono: true,
+      placeholder: 'https://example.org/',
+      help: 'Written exactly as you type it.',
+      visible: whenKind('web'),
+    },
+    ...REL_BOXES.map((box): Field => ({
+      name: box.name,
+      label: box.label,
+      type: 'checkbox',
+      default: false,
+      visible: whenKind('web'),
+    })),
+    {
+      name: 'relOther',
+      label: 'Other rel values',
+      type: 'text',
+      mono: true,
+      placeholder: 'license',
+      help: `Space-separated, in the order you want them after the ticked ones. The other link types the standard allows here: ${OTHER_REL.join(', ')}.`,
+      visible: whenKind('web'),
+    },
+    {
+      name: 'target',
+      label: FIELD_LABELS.target,
+      type: 'select',
+      default: '',
+      options: [{ value: '', label: '(none)' }, ...TARGET_KEYWORDS.map((k) => ({ value: k, label: k }))],
+      visible: whenKind('web'),
+    },
+    {
+      name: 'download',
+      label: 'Download instead of opening',
+      type: 'checkbox',
+      default: false,
+      visible: whenKind('web'),
+    },
+    {
+      name: 'downloadName',
+      label: FIELD_LABELS.downloadName,
+      type: 'text',
+      mono: true,
+      placeholder: 'report.pdf',
+      help: 'Optional. Leave blank to write the download attribute with no file name.',
+      visible: (values) => whenKind('web')(values) && bool(values, 'download'),
     },
     {
       name: 'to',
@@ -121,8 +190,12 @@ export default defineTool({
       help: 'Everything except letters, digits and - . _ ~ is percent-encoded; line breaks become an encoded line feed.',
       visible: whenKind('sms'),
     },
-  ] satisfies Field[],
+  ],
   examples: [
+    {
+      label: 'WHATWG 4.6.8: a link to a licence, with rel license and nothing else added',
+      values: { kind: 'web', href: 'https://example.org/licence', text: 'Licence', relOther: 'license' },
+    },
     {
       label: 'RFC 6068 section 6.1: a two-line body',
       values: { kind: 'mailto', to: 'infobot@example.com', body: 'send current-issue\nsend index' },
@@ -138,9 +211,24 @@ export default defineTool({
   ],
   run(values): ToolResult {
     try {
-      const kind = str(values, 'kind', 'mailto') as LinkKind;
+      const kind = str(values, 'kind', 'web') as LinkKind;
       const spec: LinkSpec = { kind };
-      for (const name of READS[kind]) spec[name] = str(values, name);
+      if (kind === 'web') {
+        spec.text = str(values, 'text');
+        spec.href = str(values, 'href');
+        // The ticked boxes in their fixed order, then the typed values; the package refuses anything it does not know.
+        spec.rel = [
+          ...REL_BOXES.filter((box) => bool(values, box.name)).map((box) => box.value as string),
+          ...otherRelTokens(str(values, 'relOther')),
+        ];
+        spec.target = str(values, 'target');
+        if (bool(values, 'download')) {
+          const name = str(values, 'downloadName');
+          spec.download = name.trim() === '' ? true : name;
+        }
+      } else {
+        for (const name of READS[kind]) spec[name] = str(values, name);
+      }
       const link = buildLink(spec);
       if (link === null) return { outputs: [] };
 

@@ -1,5 +1,15 @@
 [
   {
+    "mode": { "field": "kind", "value": "web" },
+    "values": {
+      "text": "Licence",
+      "href": "https://example.org/",
+      "relOther": "license",
+      "downloadName": "report.pdf"
+    },
+    "attachesFile": false
+  },
+  {
     "mode": { "field": "kind", "value": "mailto" },
     "values": {
       "text": "Email the team",
