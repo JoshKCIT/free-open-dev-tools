@@ -1,0 +1,13 @@
+{
+  "id": "sqlite-viewer",
+  "label": "SQLite datatype documentation: an INTEGER keeps all 64 bits, so 9007199254740993 is exact",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "sql",
+      "value": "create table t(a integer, b text); insert into t values (9007199254740993, 'exact'); select a, b from t;"
+    },
+    { "action": "run" }
+  ],
+  "expect": ["9007199254740993", "exact"]
+}

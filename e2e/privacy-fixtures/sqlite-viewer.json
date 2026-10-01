@@ -1,0 +1,7 @@
+[
+  { "attachesFile": true },
+  {
+    "values": { "sql": "create table t(a); insert into t values (1); select * from t;" },
+    "attachesFile": false
+  }
+]
