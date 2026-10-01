@@ -1,0 +1,25 @@
+{
+  "id": "media-embed-builder",
+  "label": "WHATWG 4.8.10 track example: English subtitles and captions for the hard of hearing",
+  "steps": [
+    {
+      "action": "select",
+      "field": "kind",
+      "value": "video"
+    },
+    {
+      "action": "fill",
+      "field": "src",
+      "value": "brave.webm"
+    },
+    {
+      "action": "fill",
+      "field": "tracks",
+      "value": "brave.en.vtt | subtitles | en | English\nbrave.en.hoh.vtt | captions | en | English for the Hard of Hearing"
+    }
+  ],
+  "expect": [
+    "<video src=\"brave.webm\"",
+    "<track kind=\"captions\" src=\"brave.en.hoh.vtt\" srclang=\"en\" label=\"English for the Hard of Hearing\">"
+  ]
+}

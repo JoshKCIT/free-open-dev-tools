@@ -598,3 +598,68 @@ test('semantic-html-builder: addresses typed into the citation and image fields 
     );
   }
 });
+
+/** Media kinds the media page is driven through, with the fields each one fills; `HOSTILE` stands for the free text. */
+const MEDIA_UNDER_TEST: { kind: string; fields: Record<string, string>; needle: string }[] = [
+  {
+    kind: 'video',
+    fields: { src: 'HOSTILE', tracks: 'brave.en.vtt | subtitles | en | HOSTILE' },
+    needle: '<video',
+  },
+];
+
+/** Selects a media kind and fills its fields, replacing HOSTILE with the given text, then waits for the result. */
+async function buildMediaOnPage(
+  page: Page,
+  entry: (typeof MEDIA_UNDER_TEST)[number],
+  freeValue: string,
+): Promise<void> {
+  await page.locator('#f-kind').selectOption(entry.kind);
+  for (const [field, value] of Object.entries(entry.fields)) {
+    await page.locator(`#f-${field}`).fill(value.split('HOSTILE').join(freeValue));
+  }
+  await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText(entry.needle);
+  await settle(page);
+}
+
+test('media-embed-builder: hostile text in every field comes out as text, runs nothing and requests nothing', async ({
+  page,
+}) => {
+  const dialogs: string[] = [];
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    void dialog.dismiss();
+  });
+
+  await page.goto(rel('/tools/media-embed-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  for (const entry of MEDIA_UNDER_TEST) {
+    const requests = await withRequestRecorder(page, async () => {
+      await buildMediaOnPage(page, entry, HOSTILE);
+    });
+
+    expect(dialogs, `${entry.kind}: no dialog may be raised by rendering the markup or the preview`).toEqual([]);
+    const xssMark = await page.evaluate(() => (window as unknown as { __fodtXss?: unknown }).__fodtXss);
+    expect(xssMark, `${entry.kind}: nothing typed may reach or run in the top-level window`).toBe(undefined);
+    expect(requests, `${entry.kind}: no request may be made while typing: ${requests.join(', ')}`).toEqual([]);
+
+    const frames = page.locator('iframe.preview-frame');
+    const frameCount = await frames.count();
+    expect(frameCount, `${entry.kind}: the preview must render in a frame`).toBeGreaterThan(0);
+    for (let i = 0; i < frameCount; i++) {
+      expect(
+        await frames.nth(i).getAttribute('sandbox'),
+        `${entry.kind}: a preview frame must carry an empty sandbox attribute`,
+      ).toBe('');
+    }
+    for (const srcdoc of await previewSrcdocs(page)) {
+      expect(await scanPreview(page, srcdoc), `${entry.kind}: the preview must carry no address or handler`).toEqual(
+        [],
+      );
+    }
+
+    const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+    expect(markup, `${entry.kind}: the markup holds the text escaped`).toContain('&lt;script&gt;');
+  }
+});

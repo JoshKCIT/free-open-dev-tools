@@ -1,0 +1,13 @@
+[
+  {
+    "mode": {
+      "field": "kind",
+      "value": "video"
+    },
+    "values": {
+      "src": "brave.webm",
+      "tracks": "brave.en.vtt | subtitles | en | English\nbrave.en.hoh.vtt | captions | en | English for the Hard of Hearing"
+    },
+    "attachesFile": false
+  }
+]
