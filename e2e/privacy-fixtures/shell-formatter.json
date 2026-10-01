@@ -1,0 +1,35 @@
+[
+  {
+    "mode": {
+      "field": "dialect",
+      "value": "posix"
+    },
+    "values": {
+      "input": "if [ -f /etc/hosts ]; then\n  echo found\nfi\n",
+      "indent": "0"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "dialect",
+      "value": "bash"
+    },
+    "values": {
+      "input": "if [ -f /etc/hosts ]; then\n  echo found\nfi\n",
+      "indent": "0"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "dialect",
+      "value": "mksh"
+    },
+    "values": {
+      "input": "if [ -f /etc/hosts ]; then\n  echo found\nfi\n",
+      "indent": "0"
+    },
+    "attachesFile": false
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "id": "shell-formatter",
+  "label": "shfmt flags fixture: indent 2",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "indent",
+      "value": "2"
+    },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "foo() {\n\tbar &&\n\t\tbaz\n\n\tcase $i in\n\tj)\n\t\tz\n\t\t;;\n\tesac\n\n\tspace >redirs\n\n\tkeep    padding\n}\n"
+    }
+  ],
+  "expect": ["foo() { bar && baz", "space >redirs keep padding }"]
+}

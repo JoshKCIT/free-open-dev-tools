@@ -135,6 +135,16 @@ const FORMATTERS: FormatterCase[] = [
     // column 6 and the colon, where a parameter or the closing parenthesis must be, is column 7 on line 1.
     broken: { input: 'def f(:\n  pass\n', issue: 'Line 1, column 7' },
   },
+  {
+    id: 'shell-formatter',
+    // shfmt's own flags.txtar fixture (mvdan/sh v3.13.1, https://github.com/mvdan/sh/blob/v3.13.1/cmd/shfmt/testdata/script/flags.txtar,
+    // BSD-3-Clause), formatted with the default dialect and indent: a line of the published output (the default differs
+    // from the keep-padding golden only in the padding line).
+    valid: { input: liveFixtureInput('shell-formatter') },
+    expectOutput: 'space >redirs',
+    // Counted by hand: the unfinished `if` starts the script, so it is line 1, column 1.
+    broken: { input: 'if true; then\n  echo hi\n', issue: 'Line 1, column 1' },
+  },
 ];
 
 /** A second valid input that differs from the first by one trailing line break, so it is a new run. */
@@ -275,4 +285,21 @@ test('go-formatter: when the input changes during a run only the newest input is
   await expect(outputArea(page)).not.toContainText('package alpha');
   expect(await outputArea(page).locator('pre.output').count()).toBe(1);
   expect(await page.evaluate(() => (window.__FODT_FORMATTER_WORKERS__ ?? []).length)).toBeGreaterThanOrEqual(2);
+});
+
+test('shell-formatter: a mksh coprocess formats under mksh and is refused under bash in this browser', async ({
+  page,
+}) => {
+  await openFormatter(page, 'shell-formatter');
+
+  // flags.txtar (mvdan/sh v3.13.1) section input-mksh: `coprocess |&` is valid only in mksh. Counted by hand:
+  // coprocess is nine letters, a space is column 10, so the `|&` that has no statement after it is column 11.
+  await page.locator('#f-input').fill('coprocess |&\n');
+  await page.locator('#f-dialect').selectOption('mksh');
+  await expect(outputArea(page).locator('pre.output')).toContainText('coprocess |&', { timeout: 15_000 });
+  expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
+
+  await page.locator('#f-dialect').selectOption('bash');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Line 1, column 11', { timeout: 15_000 });
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
 });
