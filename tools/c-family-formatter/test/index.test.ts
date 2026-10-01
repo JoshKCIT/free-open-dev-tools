@@ -83,13 +83,13 @@ it('blank or whitespace-only source is not sent to the engine and gives no resul
 it('loadEngine can be called twice and the engine prints nothing to the console', async () => {
   // Loading again must not throw, and formatting afterwards still works.
   expect(() => loadEngine(wasmBytes())).not.toThrow();
-  expect(formatCFamily('int  main( ){return 0;}')?.output).toBe('int main() { return 0; }\n');
+  expect(formatCFamily(F.INDENT_WIDTH_DOC_INPUT, { indentWidth: 3 })?.output).toBe(F.INDENT_WIDTH_DOC_OUTPUT);
 
   // A first load in a fresh copy of the package, with the console spies already in place, prints nothing either.
   vi.resetModules();
   const fresh = await import('../src/index');
   fresh.loadEngine(wasmBytes());
-  expect(fresh.formatCFamily('int  main( ){return 0;}')?.output).toBe('int main() { return 0; }\n');
+  expect(fresh.formatCFamily(F.INDENT_WIDTH_DOC_INPUT, { indentWidth: 3 })?.output).toBe(F.INDENT_WIDTH_DOC_OUTPUT);
 
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
