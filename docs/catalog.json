@@ -1167,5 +1167,33 @@
     "category": "money",
     "tier": 2,
     "summary": "Convert pay between yearly, monthly, fortnightly, weekly, daily and hourly amounts for chosen hours per week and weeks per year."
+  },
+  {
+    "id": "form-field-builder",
+    "name": "HTML Form Field Builder",
+    "category": "code",
+    "tier": 1,
+    "summary": "Build one accessible form field of any HTML input type, a textarea or a select, with its label, name, validation attributes and autocomplete token, and preview it safely."
+  },
+  {
+    "id": "media-embed-builder",
+    "name": "HTML Media Embed Builder",
+    "category": "code",
+    "tier": 1,
+    "summary": "Build video, audio and responsive image markup with several sources, caption and subtitle tracks, a poster, controls and lazy loading, previewed without loading anything."
+  },
+  {
+    "id": "semantic-html-builder",
+    "name": "Semantic HTML Element Builder",
+    "category": "code",
+    "tier": 1,
+    "summary": "Build details and summary, dialog, meter, progress, quotations with citations, figures with captions, time, abbreviations and the text-level tags, with a preview."
+  },
+  {
+    "id": "link-builder",
+    "name": "HTML Link Builder (mailto, tel, sms)",
+    "category": "code",
+    "tier": 1,
+    "summary": "Build a link with the rel, target and download attributes you choose, or a correctly encoded mailto, tel or sms link."
   }
 ]
