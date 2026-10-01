@@ -61,7 +61,7 @@ it('the usage example in meta.json shows what the code returns', () => {
 
 // OPM, Computing Hourly Rates of Pay Using the 2,087-Hour Divisor, Example: "the annual rate of basic pay of a GS-13,
 // step 1, employee ... is $89,033. ... The employee's hourly rate of basic pay is $42.66 ($89,033/2,087 hours)."
-// 40 hours a week at 52.175 weeks a year is 2,087 hours. 89033 / 2087 = 42.66117..., which shows as 42.66.
+// 40 hours a week at 52.175 weeks a year is 2,087 hours. 89033 / 2087 = 42.660757..., which shows as 42.66.
 it('OPM 2087-hour divisor: 89033 a year at 40 hours a week and 52.175 weeks is 42.66 an hour', () => {
   expect(yearlyFactor('hourly', new D(40), new D(5), new D('52.175')).toFixed()).toBe('2087');
   const r = calc({ amount: '89033', hoursPerWeek: '40', weeksPerYear: '52.175' });
@@ -69,7 +69,7 @@ it('OPM 2087-hour divisor: 89033 a year at 40 hours a week and 52.175 weeks is 4
   const hourly = convertPay(new D(89033), 'yearly', new D(40), new D(5), new D('52.175')).rows.find(
     (x) => x.period === 'hourly',
   )!;
-  expect(hourly.amount.toFixed(6)).toBe('42.661236');
+  expect(hourly.amount.toFixed(6)).toBe('42.660757');
 });
 
 // OPM, same fact sheet: "Rates must be rounded to the nearest cent, counting one-half cent and over as the next higher
@@ -87,7 +87,7 @@ it('OPM rounding rule: half a cent and over rounds up, 18.845 is 18.85', () => {
 
 // By hand: the same sheet multiplies the rounded hourly rate 42.66 by 80 hours to get 3,412.80 every two weeks. Here
 // nothing is rounded between steps: 89033 / 26.0875 = 3412.8604..., which shows as 3412.86. 80 hours a fortnight at the
-// exact 42.661236... an hour is the same 3412.86.
+// exact 42.660757... an hour is the same 3412.86.
 it('no rounding between steps: the fortnightly figure is 3412.86, not the 3412.80 that a rounded hourly rate times 80 gives', () => {
   const r = calc({ amount: '89033', hoursPerWeek: '40', weeksPerYear: '52.175' });
   expect(row(r, 'fortnightly')).toBe('3412.86');
