@@ -359,6 +359,7 @@ function parseOptionLines(raw: string, kind: 'select' | 'radio'): OptionLine[] {
   const field = FIELD_LABELS.options;
   const cap = kind === 'select' ? MAX_SELECT_OPTIONS : MAX_RADIO_OPTIONS;
   const out: OptionLine[] = [];
+  const firstLineOf = new Map<string, number>();
   raw.split(/\r\n|\r|\n/).forEach((line, i) => {
     if (line.trim() === '') return;
     const n = i + 1;
@@ -376,6 +377,16 @@ function parseOptionLines(raw: string, kind: 'select' | 'radio'): OptionLine[] {
         `line ${n} has an empty value; every radio button in a group needs its own value (WHATWG 4.10.5.1.16)`,
       );
     }
+    // A repeated value would make a starting value match more than one option, so the second use is refused.
+    const effective = value ?? text;
+    const earlier = firstLineOf.get(effective);
+    if (earlier !== undefined) {
+      throw new MarkupError(
+        field,
+        `line ${n} repeats the value "${effective}" already used on line ${earlier}; give every option of a ${kind} its own value so a starting value picks exactly one`,
+      );
+    }
+    firstLineOf.set(effective, n);
     out.push({ value: kind === 'radio' && !hasBar ? text : value, text, line: n });
   });
   if (out.length > cap) {

@@ -834,3 +834,18 @@ it('WHATWG 2.3.4.3 a number too large to hold is refused naming the field instea
   // A large number that still fits is fine.
   expect(buildField({ ...minimalSpec('number'), min: '1', max: '1e300' })!.html).toContain('max="1e300"');
 });
+
+it('WHATWG 4.10.7 a select or radio group with two options of the same value is refused naming the second line', () => {
+  const select = refusal(() =>
+    buildField({ ...minimalSpec('select'), options: 'a | Alpha\nb | Beta\na | Again', value: 'a' }),
+  );
+  expect(select.field).toBe('Options');
+  expect(select.message).toContain('line 3');
+  expect(select.message).toContain('line 1');
+  const radio = refusal(() => buildField({ ...minimalSpec('radio'), options: 'a | Alpha\nb | Beta\nb | Again' }));
+  expect(radio.field).toBe('Options');
+  expect(radio.message).toContain('line 3');
+  // Values that differ only by case are different values, so exactly one option is marked selected.
+  const ok = buildField({ ...minimalSpec('select'), options: 'a | Alpha\nA | Capital', value: 'a' })!;
+  expect(ok.html.match(/ selected>/g)).toHaveLength(1);
+});
