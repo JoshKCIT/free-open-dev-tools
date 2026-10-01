@@ -808,3 +808,15 @@ it('hostile text in every free-text field leaves the parsed field tree unchanged
   expect(findAll(parse(everything.html).frag, 'input')).toHaveLength(1);
   expect(findAll(parse(everything.html).frag, 'script')).toHaveLength(0);
 });
+
+// ---- Review fixes (phase 11 code review) ---------------------------------------------------------------------------
+
+it('WHATWG 4.10.5.3.6 a pattern that is not a valid regular expression on its own is refused even when the wrapped form compiles', () => {
+  // a)|(b compiles inside ^(?:...)$ as a group that closes early and opens another, but is not a Pattern by itself.
+  const e = refusal(() => buildField({ ...minimalSpec('text'), pattern: 'a)|(b' }));
+  expect(e.field).toBe('Pattern');
+  expect(e.message).toContain('4.10.5.3.6');
+  // Ordinary patterns, including an alternation, still build.
+  expect(() => buildField({ ...minimalSpec('text'), pattern: 'a|b' })).not.toThrow();
+  expect(() => buildField({ ...minimalSpec('text'), pattern: '[A-Z]{3}' })).not.toThrow();
+});

@@ -502,19 +502,37 @@ function checkTypedAttributes(
   }
 }
 
-/**
- * WHATWG 4.10.5.3.6: the pattern must match the JavaScript Pattern production with the v flag, and is compiled wrapped
- * in a group between a start and an end anchor. It is only compiled here, never run against any text, so no pattern
- * can stall the page.
- */
-function checkPattern(pattern: string): void {
+/** Whether this JavaScript engine compiles regular expressions with the v flag; found out once. */
+const SUPPORTS_V_FLAG: boolean = (() => {
   try {
-    new RegExp('^(?:' + pattern + ')$', 'v');
+    new RegExp('', 'v');
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+/**
+ * WHATWG 4.10.5.3.6: the pattern must match the JavaScript Pattern production on its own, and is compiled with the v
+ * flag wrapped in a group between a start and an end anchor. Both forms are compiled here, because a value such as
+ * a)|(b is only valid once wrapped. The pattern is only compiled, never run against any text, so no pattern can stall
+ * the page. An engine without the v flag falls back to the u flag and a note says so.
+ */
+function checkPattern(pattern: string, warnings: string[]): void {
+  const flags = SUPPORTS_V_FLAG ? 'v' : 'u';
+  try {
+    new RegExp(pattern, flags);
+    new RegExp('^(?:' + pattern + ')$', flags);
   } catch (err) {
     const why = err instanceof Error ? err.message.slice(0, 160) : 'it does not compile';
     throw new MarkupError(
       FIELD_LABELS.pattern,
       `is not a valid regular expression; the standard compiles it with the v flag: ${why} (WHATWG 4.10.5.3.6)`,
+    );
+  }
+  if (!SUPPORTS_V_FLAG) {
+    warnings.push(
+      'This browser cannot compile a pattern with the v flag the standard names, so the pattern was only checked with the u flag; a rule that is stricter under v may be missed (WHATWG 4.10.5.3.6).',
     );
   }
 }
@@ -631,7 +649,7 @@ export function buildField(spec: FieldSpec): BuiltField | null {
     );
   }
   if (t('pattern') !== '') {
-    checkPattern(t('pattern'));
+    checkPattern(t('pattern'), warnings);
     if (t('title') === '') {
       warnings.push(
         'The pattern has no title; a title should describe the pattern so a visitor knows what is expected (WHATWG 4.10.5.3.6).',
