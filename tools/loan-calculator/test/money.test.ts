@@ -18,6 +18,10 @@ import {
   addMonthsClamped,
   addDays,
   daysBetween,
+  parseRows,
+  cellDecimal,
+  cellText,
+  csvCell,
 } from '../src/money';
 
 /** Runs `fn` and returns the MoneyInputError it throws, failing the test if it throws anything else or nothing. */
@@ -300,4 +304,115 @@ it('day counts between two dates include leap days and an end before the start i
   expect(daysBetween(d('1900-01-01'), d('2200-12-31'))).toBe(301 * 365 + 73 - 1);
   const err = refused(() => daysBetween(d('2024-03-01'), d('2024-02-28')));
   expect(err.message).toMatch(/before/);
+});
+
+const CARDS = { columns: ['name', 'balance', 'APR', 'minimum'], required: 4, maxRows: 20 } as const;
+
+it('rows are one per line split on the vertical bar, blank lines are skipped and a bad cell is reported with its line and column', () => {
+  const rows = parseRows('Card A | 1000 | 24 | 25\n\nCard B | 500 | 12 | 25', 'Cards', CARDS);
+  // Rows come back in the order typed, and line numbers count the blank line: Card B is on line 3.
+  expect(rows.map((r) => r.line)).toEqual([1, 3]);
+  expect(rows[0]!.cells).toEqual(['Card A', '1000', '24', '25']);
+  expect(rows[1]!.cells).toEqual(['Card B', '500', '12', '25']);
+  // Columns are 1-based and point at the first character of each trimmed cell: "Card A | 1000 | 24 | 25".
+  expect(rows[0]!.starts).toEqual([1, 10, 17, 22]);
+  expect(cellText(rows[0]!, 0)).toBe('Card A');
+  expect(cellText(rows[0]!, 9)).toBe('');
+  expect(cellDecimal(rows[0]!, 1, 'Cards', 'balance').toFixed()).toBe('1000');
+  expect(cellDecimal(rows[0]!, 2, 'Cards', 'APR').toFixed()).toBe('24');
+
+  // Windows line ends, blank lines made of spaces and a final line without a line end all work.
+  const windows = parseRows('\r\n  \r\nA | 1 | 2 | 3\r\nB | 4 | 5 | 6\r\n', 'Cards', CARDS);
+  expect(windows.map((r) => r.line)).toEqual([3, 4]);
+  expect(windows[1]!.cells[3]).toBe('6');
+  // Nothing typed is no rows, not an error.
+  expect(parseRows('', 'Cards', CARDS)).toEqual([]);
+  expect(parseRows('  \n \n', 'Cards', CARDS)).toEqual([]);
+
+  // A bad number names the line, the column where the cell starts and the column heading.
+  const comma = parseRows('Card A | 1000 | 24 | 25\n\nCard B | 12,5 | 12 | 25', 'Cards', CARDS);
+  const err = refused(() => cellDecimal(comma[1]!, 1, 'Cards', 'balance'));
+  expect(err.field).toBe('Cards');
+  expect(err.line).toBe(3);
+  expect(err.column).toBe(10);
+  expect(err.message).toContain('balance');
+  // A negative cell is refused unless the caller allows it, and an empty cell is reported as missing.
+  expect(refused(() => cellDecimal(parseRows('A | -5 | 1 | 1', 'Cards', CARDS)[0]!, 1, 'Cards', 'balance')).line).toBe(
+    1,
+  );
+  expect(
+    cellDecimal(parseRows('A | -5 | 1 | 1', 'Cards', CARDS)[0]!, 1, 'Cards', 'balance', {
+      allowNegative: true,
+    }).toFixed(),
+  ).toBe('-5');
+  const empty = refused(() => cellDecimal(parseRows('A || 1 | 1', 'Cards', CARDS)[0]!, 1, 'Cards', 'balance'));
+  expect(empty.message).toMatch(/missing/);
+  expect(empty.column).toBe(4);
+
+  // Too few cells: line and the column where the next cell would go, with the expected format named.
+  const few = refused(() => parseRows('Card A | 1000 | 24', 'Cards', CARDS));
+  expect(few.field).toBe('Cards');
+  expect(few.line).toBe(1);
+  expect(few.column).toBe(19);
+  expect(few.message).toContain('name | balance | APR | minimum');
+  // Too many cells: the column of the first extra one.
+  const many = refused(() => parseRows('ok | 1 | 2 | 3\nCard A | 1000 | 24 | 25 | 9', 'Cards', CARDS));
+  expect(many.line).toBe(2);
+  expect(many.column).toBe(27);
+  // Optional trailing columns may be left off.
+  const optional = parseRows('A | 1 | 2', 'Cards', { ...CARDS, required: 3 });
+  expect(optional[0]!.cells).toEqual(['A', '1', '2']);
+  expect(cellText(optional[0]!, 3)).toBe('');
+});
+
+it('a row list longer than its cap is refused with the cap named', () => {
+  const lines = Array.from({ length: 21 }, (_, i) => `Card ${i + 1} | 100 | 10 | 5`);
+  const err = refused(() => parseRows(lines.join('\n'), 'Cards', CARDS));
+  expect(err.field).toBe('Cards');
+  expect(err.message).toContain('20');
+  expect(err.line).toBe(21);
+  // Exactly the cap is fine, and blank lines never count towards it.
+  expect(parseRows(lines.slice(0, 20).join('\n\n'), 'Cards', CARDS)).toHaveLength(20);
+});
+
+it('when Intl.supportedValuesOf is missing a well formed code the formatter accepts is used and a malformed one is still refused', () => {
+  const original = Object.getOwnPropertyDescriptor(Intl, 'supportedValuesOf');
+  try {
+    Object.defineProperty(Intl, 'supportedValuesOf', { value: undefined, configurable: true, writable: true });
+    expect(currencyCodes()).toBeNull();
+    expect(parseCurrency('eur', 'Currency')).toBe('EUR');
+    expect(parseCurrency(' jpy ', 'Currency')).toBe('JPY');
+    for (const bad of ['EURO', 'EU', 'E1R', 'U$D', '€', '']) {
+      expect(refused(() => parseCurrency(bad, 'Currency')).field, bad).toBe('Currency');
+    }
+    // Formatting still works without the list.
+    expect(formatMoney(new D('1234.5'), 'EUR')).toBe('€1,234.50');
+  } finally {
+    if (original) Object.defineProperty(Intl, 'supportedValuesOf', original);
+    else delete (Intl as { supportedValuesOf?: unknown }).supportedValuesOf;
+  }
+  // With the list restored, the list is used again.
+  expect(currencyCodes()).not.toBeNull();
+});
+
+it('a CSV text cell starting with an equals sign, plus, minus or at sign is neutralised and numbers are left alone', () => {
+  // OWASP CSV injection: a text cell that starts with = + - @ (or a tab or carriage return) can run as a formula
+  // when the file is opened in a spreadsheet, so it gets a leading apostrophe and is quoted.
+  expect(csvCell('=SUM(A1)')).toBe(`"'=SUM(A1)"`);
+  expect(csvCell('+1+1x')).toBe(`"'+1+1x"`);
+  expect(csvCell('-cmd|x')).toBe(`"'-cmd|x"`);
+  expect(csvCell('@SUM(1)')).toBe(`"'@SUM(1)"`);
+  expect(csvCell('\tcmd')).toBe(`"'\tcmd"`);
+  expect(csvCell('=1,2')).toBe(`"'=1,2"`);
+  // RFC 4180 quoting: commas, quotes and line breaks put the cell in quotes, and a quote is doubled.
+  expect(csvCell('Coffee, large')).toBe('"Coffee, large"');
+  expect(csvCell('say "hi"')).toBe('"say ""hi"""');
+  expect(csvCell('two\nlines')).toBe('"two\nlines"');
+  expect(csvCell('two\r\nlines')).toBe('"two\r\nlines"');
+  // Plain text, empty text and numbers (including signed ones) are left alone.
+  expect(csvCell('Coffee')).toBe('Coffee');
+  expect(csvCell('')).toBe('');
+  for (const number of ['12.50', '-5', '+5', '.5', '1234', '-0.005']) expect(csvCell(number)).toBe(number);
+  // A dash on its own is not a number.
+  expect(csvCell('-')).toBe(`"'-"`);
 });
