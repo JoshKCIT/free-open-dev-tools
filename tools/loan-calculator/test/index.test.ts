@@ -1,5 +1,5 @@
 import { it, expect, describe } from 'vitest';
-import { calculateLoan, paymentPerPeriod, meta } from '../src/index';
+import { calculateLoan, paymentPerPeriod, periodsPerYear, scheduleCsv, MAX_TERM_YEARS, meta } from '../src/index';
 import { D, MoneyInputError } from '../src/money';
 
 /** Runs `fn` and returns the MoneyInputError it throws, failing the test if it throws anything else or nothing. */
@@ -107,4 +107,228 @@ it('a missing or malformed amount, rate or term is reported naming the field', (
   }
   // The unmodified input still works.
   expect(calculateLoan(ok).summary.payments).toBe('12');
+});
+
+/** Adds up a column of plain decimal strings exactly. */
+function sum(values: string[]): string {
+  return values.reduce((total, v) => total.plus(v), new D(0)).toFixed();
+}
+
+const THOUSAND = { amount: '1000', rate: '12', years: '1', currency: 'USD' };
+
+it('12 CFR 1026 Appendix J (b)(5): monthly, fortnightly and weekly payments use 12, 26 and 52 periods a year', () => {
+  // 12 CFR 1026 Appendix J (b)(5)(ii) "If the unit-period is a month, there are 12 unit-periods per year" and
+  // (b)(5)(iv) "If the unit-period is a week or a multiple of a week, the number of unit-periods per year shall be
+  // 52 divided by the number of weeks per unit-period", so a fortnight is 26. Fetched 2026-10-01 from
+  // https://www.consumerfinance.gov/rules-policy/regulations/1026/j/
+  expect(MAX_TERM_YEARS).toBe(50);
+  expect(periodsPerYear('monthly')).toBe(12);
+  expect(periodsPerYear('fortnightly')).toBe(26);
+  expect(periodsPerYear('weekly')).toBe(52);
+  // At no interest the payment is the amount over the payments: 1000 / 12 = 83.33, 1000 / 26 = 38.46, 1000 / 52 = 19.23.
+  const flat = { amount: '1000', rate: '0', years: '1', currency: 'USD' };
+  expect(calculateLoan({ ...flat, frequency: 'monthly' }).summary).toMatchObject({ payments: '12', payment: '83.33' });
+  expect(calculateLoan({ ...flat, frequency: 'fortnightly' }).summary).toMatchObject({
+    payments: '26',
+    payment: '38.46',
+  });
+  expect(calculateLoan({ ...flat, frequency: 'weekly' }).summary).toMatchObject({ payments: '52', payment: '19.23' });
+  // The yearly rate is divided by that count: 5.2 percent a year is 0.001 a week.
+  expect(calculateLoan({ ...flat, rate: '5.2', frequency: 'weekly' }).working).toContain(
+    '5.2 / 100 / 52 = 0.001000000000',
+  );
+  expect(calculateLoan({ ...flat, rate: '5.2', frequency: 'fortnightly' }).working).toContain('5.2 / 100 / 26');
+  // Half a year is 13 fortnightly payments; a quarter year is not a whole number of them.
+  expect(calculateLoan({ ...flat, years: '0.5', frequency: 'fortnightly' }).summary.payments).toBe('13');
+  const err = refused(() => calculateLoan({ ...flat, years: '0.25', frequency: 'fortnightly' }));
+  expect(err.field).toBe('Term (years)');
+  expect(err.message).toMatch(/whole number of fortnightly payments/);
+});
+
+it('OpenFormula 6.12.23 IPMT and 6.12.37 PPMT: row 1 of 1000 at 12 for one year monthly is 10.00 interest and 78.85 principal', () => {
+  // Hand derivation (OpenFormula 6.12.36 PMT, 6.12.23 IPMT "the interest rate multiplied by the balance at the
+  // beginning of the period", 6.12.37 PPMT):
+  //   r = 12 / 100 / 12 = 0.01 a month, n = 12
+  //   (1 + r)^12 = 1.126825, 1 - 1/1.126825 = 0.112551, payment = 1000 * 0.01 / 0.112551 = 88.8488, so 88.85 rounded
+  //   row 1 interest  = 1000 * 0.01 = 10.00
+  //   row 1 principal = 88.85 - 10.00 = 78.85
+  //   row 1 balance   = 1000 - 78.85 = 921.15
+  const loan = calculateLoan(THOUSAND);
+  expect(loan.summary.payment).toBe('88.85');
+  expect(loan.rows[0]).toEqual({
+    number: 1,
+    payment: '88.85',
+    interest: '10.00',
+    principal: '78.85',
+    balance: '921.15',
+  });
+  // Row 2: interest = 921.15 * 0.01 = 9.2115 -> 9.21, principal = 88.85 - 9.21 = 79.64, balance = 921.15 - 79.64 = 841.51.
+  expect(loan.rows[1]).toEqual({
+    number: 2,
+    payment: '88.85',
+    interest: '9.21',
+    principal: '79.64',
+    balance: '841.51',
+  });
+  expect(loan.working).toContain('6.12.23');
+  expect(loan.working).toContain('6.12.37');
+});
+
+it('the last row carries the rounding residue so the rows sum exactly to the total paid and the total interest', () => {
+  // 1000 at 12 for one year: the payment 88.85 was rounded up, so the last row pays less. Hand derivation of row 12:
+  // the balance owing before it is 87.96 (the principal of the last row), interest = 87.96 * 0.01 = 0.8796 -> 0.88,
+  // payment = 87.96 + 0.88 = 88.84. Total interest 66.19 was recomputed independently in integer cents.
+  const small = calculateLoan(THOUSAND);
+  const last = small.rows[small.rows.length - 1]!;
+  expect(small.rows).toHaveLength(12);
+  expect(last).toEqual({ number: 12, payment: '88.84', interest: '0.88', principal: '87.96', balance: '0.00' });
+  expect(small.summary.totalInterest).toBe('66.19');
+  expect(small.summary.totalPaid).toBe('1066.19');
+  expect(sum(small.rows.map((r) => r.payment))).toBe(small.summary.totalPaid);
+  expect(sum(small.rows.map((r) => r.interest))).toBe(small.summary.totalInterest);
+  expect(sum(small.rows.map((r) => r.principal))).toBe('1000');
+
+  // The CFPB loan: payment 761.78 rounded down, so the last of 360 rows pays 764.68 (recomputed independently in
+  // integer cents: total interest 112243.70, total paid 274243.70).
+  const cfpb = calculateLoan({ amount: '162000', rate: '3.875', years: '30', currency: 'USD' });
+  expect(cfpb.rows).toHaveLength(360);
+  expect(cfpb.rows[359]).toMatchObject({ number: 360, payment: '764.68', balance: '0.00' });
+  expect(cfpb.summary.totalInterest).toBe('112243.70');
+  expect(cfpb.summary.totalPaid).toBe('274243.70');
+  expect(sum(cfpb.rows.map((r) => r.payment))).toBe('274243.70');
+  expect(sum(cfpb.rows.map((r) => r.interest))).toBe('112243.70');
+  expect(sum(cfpb.rows.map((r) => r.principal))).toBe('162000');
+  // Every row is internally consistent: principal = payment - interest, and the balance falls by the principal.
+  let balance = new D('162000');
+  for (const row of cfpb.rows) {
+    expect(new D(row.payment).minus(row.interest).toFixed(2), String(row.number)).toBe(new D(row.principal).toFixed(2));
+    balance = balance.minus(row.principal);
+    expect(balance.toFixed(2), String(row.number)).toBe(row.balance);
+  }
+});
+
+it('CFPB H-24(B) principal paid after 60 payments rounds to 15773', () => {
+  // CFPB sample Loan Estimate H-24(B): "In 5 Years ... $15,773 Principal you will have paid off". Five years is 60
+  // payments. With each row's interest rounded to the cent the balance after row 60 is 146,227.42, so the principal
+  // paid is 162000 - 146227.42 = 15772.58, which is 15773 to the dollar (unrounded rows give 15,772.86, also 15773).
+  const cfpb = calculateLoan({ amount: '162000', rate: '3.875', years: '30', currency: 'USD' });
+  const after60 = cfpb.rows[59]!;
+  expect(after60.number).toBe(60);
+  expect(after60.balance).toBe('146227.42');
+  const paid = new D('162000').minus(after60.balance);
+  expect(paid.toFixed(2)).toBe('15772.58');
+  expect(paid.toDecimalPlaces(0, D.ROUND_HALF_UP).toFixed(0)).toBe('15773');
+});
+
+it('an extra payment each period shortens the loan: 1000 at 12 for one year with 20 extra ends after 10 payments with 54.31 interest', () => {
+  // Each period pays 88.85 + 20 = 108.85 and the extra goes to principal. Row 1: interest 10.00, principal
+  // 108.85 - 10.00 = 98.85, balance 901.15. The last row (10) owes 73.92 before it: interest 73.92 * 0.01 = 0.7392
+  // -> 0.74, payment 73.92 + 0.74 = 74.66. Total interest 54.31 was recomputed independently in integer cents.
+  const loan = calculateLoan({ ...THOUSAND, extra: '20' });
+  expect(loan.rows).toHaveLength(10);
+  expect(loan.summary.payments).toBe('10');
+  expect(loan.summary.scheduledPayments).toBe('12');
+  expect(loan.rows[0]).toEqual({
+    number: 1,
+    payment: '108.85',
+    interest: '10.00',
+    principal: '98.85',
+    balance: '901.15',
+  });
+  expect(loan.rows[9]).toEqual({ number: 10, payment: '74.66', interest: '0.74', principal: '73.92', balance: '0.00' });
+  expect(loan.summary.totalInterest).toBe('54.31');
+  expect(sum(loan.rows.map((r) => r.principal))).toBe('1000');
+  expect(sum(loan.rows.map((r) => r.payment))).toBe(loan.summary.totalPaid);
+  expect(new D(loan.summary.totalInterest).lt(calculateLoan(THOUSAND).summary.totalInterest)).toBe(true);
+  // An extra payment bigger than the whole balance ends the schedule on the first row, paying just what is owed.
+  const huge = calculateLoan({ ...THOUSAND, extra: '5000' });
+  expect(huge.rows).toHaveLength(1);
+  expect(huge.rows[0]).toEqual({
+    number: 1,
+    payment: '1010.00',
+    interest: '10.00',
+    principal: '1000.00',
+    balance: '0.00',
+  });
+});
+
+it('12 CFR 1026 Appendix J (b)(3)(iv): payments due on the 31st fall on the last day of shorter months and the payoff date is the last payment date', () => {
+  // Appendix J (b)(3)(iv): "If payments (or advances) are scheduled for the 29th or 30th of each month, the last day
+  // of February shall be used when applicable." Months are counted from the first date, not chained.
+  const monthly = calculateLoan({ ...THOUSAND, firstPayment: '2024-01-31' });
+  expect(monthly.rows.slice(0, 4).map((r) => r.date)).toEqual(['2024-01-31', '2024-02-29', '2024-03-31', '2024-04-30']);
+  expect(monthly.rows[11]!.date).toBe('2024-12-31');
+  expect(monthly.summary.payoffDate).toBe('2024-12-31');
+  expect(monthly.summary.payoffText).toBe('2024-12-31');
+  // A fortnight adds 14 days and a week adds 7.
+  const fortnightly = calculateLoan({ ...THOUSAND, frequency: 'fortnightly', firstPayment: '2024-01-31' });
+  expect(fortnightly.rows.slice(0, 3).map((r) => r.date)).toEqual(['2024-01-31', '2024-02-14', '2024-02-28']);
+  expect(fortnightly.summary.payoffDate).toBe(fortnightly.rows[fortnightly.rows.length - 1]!.date);
+  const weekly = calculateLoan({ ...THOUSAND, frequency: 'weekly', firstPayment: '2024-01-31' });
+  expect(weekly.rows.slice(0, 3).map((r) => r.date)).toEqual(['2024-01-31', '2024-02-07', '2024-02-14']);
+  expect(weekly.rows).toHaveLength(52);
+  // 51 weeks of 7 days after 31 January 2024 is 2025-01-22.
+  expect(weekly.summary.payoffDate).toBe('2025-01-22');
+  // Without a first date there are no dates and the payoff reads as a count and a length of time.
+  const undated = calculateLoan(THOUSAND);
+  expect(undated.rows[0]).not.toHaveProperty('date');
+  expect(undated.summary.payoffDate).toBeUndefined();
+  expect(undated.summary.payoffText).toBe('after 12 payments (about 1 year)');
+  expect(calculateLoan({ amount: '162000', rate: '3.875', years: '30' }).summary.payoffText).toBe(
+    'after 360 payments (about 30 years)',
+  );
+  expect(calculateLoan({ amount: '1000', rate: '0', years: '0.25' }).summary.payoffText).toBe(
+    'after 3 payments (about 3 months)',
+  );
+});
+
+it('a term that is not a whole number of payments, a term over 50 years and a negative extra payment are refused naming the field', () => {
+  const ok = { amount: '1000', rate: '5', years: '1', currency: 'USD' };
+  const cases: [Record<string, string>, string, RegExp?][] = [
+    [{ years: '0.37' }, 'Term (years)', /whole number of monthly payments/],
+    [{ years: '1.1' }, 'Term (years)', /whole number of monthly payments/],
+    [{ years: '51' }, 'Term (years)', /50/],
+    [{ years: '50.25' }, 'Term (years)', /50/],
+    [{ years: '1000' }, 'Term (years)', /50/],
+    [{ years: '-98765' }, 'Term (years)'],
+    [{ extra: '-5' }, 'Extra payment each period (optional)'],
+    [{ extra: '5,5' }, 'Extra payment each period (optional)'],
+    [{ firstPayment: '2024-02-30' }, 'First payment date (optional, YYYY-MM-DD)'],
+    [{ firstPayment: '31/01/2024' }, 'First payment date (optional, YYYY-MM-DD)'],
+    [{ frequency: 'daily' }, 'Payment frequency'],
+    // A loan so small that its payment rounds to nothing cannot be shown as a schedule.
+    [{ amount: '1', years: '50' }, 'Loan amount', /smallest unit/],
+  ];
+  for (const [patch, field, message] of cases) {
+    const err = refused(() => calculateLoan({ ...ok, ...patch }));
+    expect(err.field, JSON.stringify(patch)).toBe(field);
+    if (message) expect(err.message, JSON.stringify(patch)).toMatch(message);
+  }
+  // The longest accepted terms stay inside 2,600 rows and end with a zero balance.
+  const longest = calculateLoan({ ...ok, years: '50', frequency: 'weekly', extra: '' });
+  expect(longest.rows).toHaveLength(2600);
+  expect(longest.rows[2599]!.balance).toBe('0.00');
+  expect(calculateLoan({ ...ok, years: '50' }).rows).toHaveLength(600);
+  // Blank optional fields mean none.
+  expect(calculateLoan({ ...ok, extra: '  ', firstPayment: '' }).rows).toHaveLength(12);
+});
+
+it('the schedule CSV lists every row with the same rounded figures as the table', () => {
+  const loan = calculateLoan({ ...THOUSAND, firstPayment: '2024-01-31' });
+  const lines = loan.csv.split('\r\n');
+  expect(lines[0]).toBe('Payment,Date,Payment amount,Interest,Principal,Balance');
+  expect(lines.pop()).toBe('');
+  expect(lines).toHaveLength(13);
+  expect(lines[1]).toBe('1,2024-01-31,88.85,10.00,78.85,921.15');
+  expect(lines[12]).toBe('12,2024-12-31,88.84,0.88,87.96,0.00');
+  loan.rows.forEach((row, i) => {
+    expect(lines[i + 1]).toBe([row.number, row.date, row.payment, row.interest, row.principal, row.balance].join(','));
+  });
+  expect(scheduleCsv(loan.rows)).toBe(loan.csv);
+  // Without dates the Date column is left out.
+  const undated = calculateLoan(THOUSAND);
+  expect(undated.csv.split('\r\n')[0]).toBe('Payment,Payment amount,Interest,Principal,Balance');
+  expect(undated.csv.split('\r\n')[1]).toBe('1,88.85,10.00,78.85,921.15');
+  // Only digits, dots, dashes and commas: nothing a spreadsheet could read as a formula.
+  expect(loan.csv).not.toMatch(/["=@+]/);
 });

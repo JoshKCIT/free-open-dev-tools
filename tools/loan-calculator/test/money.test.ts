@@ -12,6 +12,12 @@ import {
   formatMoney,
   currencyCodes,
   parseCurrency,
+  parseCount,
+  parseIsoDate,
+  formatIsoDate,
+  addMonthsClamped,
+  addDays,
+  daysBetween,
 } from '../src/money';
 
 /** Runs `fn` and returns the MoneyInputError it throws, failing the test if it throws anything else or nothing. */
@@ -184,4 +190,114 @@ it('a currency code must be one the browser reports, and a malformed or unknown 
   }
   const blank = refused(() => parseCurrency('  ', 'Currency (ISO 4217 code)'));
   expect(blank.message).toMatch(/^missing, type a code such as USD/);
+});
+
+it('whole-number counts are accepted only inside their stated range, so the large negative tracer the browser harness types is refused', () => {
+  expect(parseCount('12', 'Months', 1, 600)).toBe(12);
+  expect(parseCount(' 007 ', 'Months', 1, 600)).toBe(7);
+  expect(parseCount('1', 'Months', 1, 600)).toBe(1);
+  expect(parseCount('600', 'Months', 1, 600)).toBe(600);
+  expect(parseCount('0', 'Rows', 0, 20)).toBe(0);
+
+  for (const bad of [
+    '0',
+    '601',
+    '-98765',
+    '-987654321',
+    '1.5',
+    '1e3',
+    '1,000',
+    '+5',
+    '12 months',
+    'abc',
+    '1000000000000',
+  ]) {
+    const err = refused(() => parseCount(bad, 'Months', 1, 600));
+    expect(err.field, bad).toBe('Months');
+    expect(err.message, bad).toContain('1 to 600');
+  }
+  // The harness types a large negative integer such as -98765432109 into count-like fields; it must never loop or pass.
+  const tracer = refused(() => parseCount('-98765432109', 'Years', 1, 50));
+  expect(tracer.field).toBe('Years');
+  // Even a huge upper bound cannot admit a digit string longer than 9 digits.
+  expect(() => parseCount('1234567890', 'Rows', 1, 999999999999)).toThrow(MoneyInputError);
+  // Blank is missing, with an example.
+  const blank = refused(() => parseCount('  ', 'Months', 1, 600));
+  expect(blank.message).toMatch(/^missing, type a whole number such as /);
+});
+
+it('ISO 8601 calendar dates are read in UTC, impossible dates are refused, and months added to the 31st fall back to the last day of shorter months', () => {
+  // ISO 8601 calendar date YYYY-MM-DD; 2024 is a leap year, 2023 and 1900 are not.
+  const jan31 = parseIsoDate('2024-01-31', 'First payment date');
+  expect(jan31).toEqual({ year: 2024, month: 1, day: 31 });
+  expect(formatIsoDate(jan31)).toBe('2024-01-31');
+  expect(formatIsoDate(parseIsoDate(' 1900-01-01 ', 'Date'))).toBe('1900-01-01');
+  expect(formatIsoDate(parseIsoDate('2200-12-31', 'Date'))).toBe('2200-12-31');
+  expect(formatIsoDate(parseIsoDate('2024-02-29', 'Date'))).toBe('2024-02-29');
+
+  for (const bad of [
+    '2023-02-29',
+    '1900-02-29',
+    '2024-02-30',
+    '2024-04-31',
+    '2024-13-01',
+    '2024-00-10',
+    '2024-01-00',
+    '1899-12-31',
+    '2201-01-01',
+    '2024-1-5',
+    '20240131',
+    '2024/01/31',
+    '31-01-2024',
+    '2024-01-31T00:00:00Z',
+  ]) {
+    const err = refused(() => parseIsoDate(bad, 'First payment date'));
+    expect(err.field, bad).toBe('First payment date');
+  }
+  expect(refused(() => parseIsoDate('', 'First payment date')).message).toMatch(/^missing, type a date such as /);
+
+  // Months are added to the first date, not chained: 31 January, 29 February 2024, 31 March, 30 April.
+  const months = [0, 1, 2, 3, 12, 13, 24, 25].map((m) => formatIsoDate(addMonthsClamped(jan31, m)));
+  expect(months).toEqual([
+    '2024-01-31',
+    '2024-02-29',
+    '2024-03-31',
+    '2024-04-30',
+    '2025-01-31',
+    '2025-02-28',
+    '2026-01-31',
+    '2026-02-28',
+  ]);
+  expect(formatIsoDate(addMonthsClamped(parseIsoDate('2024-11-30', 'Date'), 3))).toBe('2025-02-28');
+  expect(formatIsoDate(addMonthsClamped(parseIsoDate('2024-12-15', 'Date'), 1))).toBe('2025-01-15');
+
+  // Days are added in UTC, so a clock change in the viewer's own time zone cannot move a date.
+  const before = process.env.TZ;
+  try {
+    for (const tz of ['UTC', 'Europe/London', 'America/Los_Angeles', 'Pacific/Auckland']) {
+      process.env.TZ = tz;
+      expect(formatIsoDate(addDays(parseIsoDate('2024-03-30', 'Date'), 1)), tz).toBe('2024-03-31');
+      expect(formatIsoDate(addDays(parseIsoDate('2024-03-30', 'Date'), 2)), tz).toBe('2024-04-01');
+      expect(formatIsoDate(addDays(parseIsoDate('2024-10-26', 'Date'), 2)), tz).toBe('2024-10-28');
+      expect(formatIsoDate(addDays(parseIsoDate('2024-02-28', 'Date'), 1)), tz).toBe('2024-02-29');
+      expect(formatIsoDate(addDays(parseIsoDate('2024-12-31', 'Date'), 1)), tz).toBe('2025-01-01');
+      expect(formatIsoDate(addDays(parseIsoDate('2024-01-01', 'Date'), -1)), tz).toBe('2023-12-31');
+    }
+  } finally {
+    if (before === undefined) delete process.env.TZ;
+    else process.env.TZ = before;
+  }
+});
+
+it('day counts between two dates include leap days and an end before the start is refused', () => {
+  const d = (text: string) => parseIsoDate(text, 'Date');
+  expect(daysBetween(d('2024-02-28'), d('2024-03-01'))).toBe(2); // 29 February 2024 exists
+  expect(daysBetween(d('2023-02-28'), d('2023-03-01'))).toBe(1);
+  expect(daysBetween(d('2024-01-01'), d('2025-01-01'))).toBe(366);
+  expect(daysBetween(d('2023-01-01'), d('2024-01-01'))).toBe(365);
+  expect(daysBetween(d('2024-05-05'), d('2024-05-05'))).toBe(0);
+  // 1900-01-01 to 2200-12-31: 301 years of 365 days, plus 73 leap days (every fourth year 1904 to 2196 except 2100), less 1.
+  expect(daysBetween(d('1900-01-01'), d('2200-12-31'))).toBe(301 * 365 + 73 - 1);
+  const err = refused(() => daysBetween(d('2024-03-01'), d('2024-02-28')));
+  expect(err.message).toMatch(/before/);
 });
