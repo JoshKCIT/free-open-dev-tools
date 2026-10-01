@@ -16,7 +16,7 @@
     "Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores tiered, capped or volume fees, currency conversion fees, refund and dispute fees, taxes on fees and any charge that is not typed as the percentage or the fixed fee.",
     "One percentage fee and one fixed fee apply to each payment; nothing is filled in for you, so a fee that does not apply is typed as 0.",
     "The payment, the amount you want to receive and the fixed fee may have no more decimal places than the currency's smallest unit; the percentage fee is at least 0 and below 100 with at most 12 decimal places.",
-    "The search for the smallest charge starts at the exact gross-up and takes at most a few single-unit steps; if it did not settle within 20 steps this page says so instead of guessing.",
+    "The search for the smallest charge starts at the exact gross-up and then halves the range of possible charges, so it settles even at a percentage fee just under 100, where the charge is many times the amount wanted.",
     "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
   ],
   "ambiguities": [

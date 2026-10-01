@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, test } from 'vitest';
 import { amountToCharge, calculateFees, feeOn, meta, searchCharge, type FeeTexts } from '../src/index';
 import { D, MoneyInputError } from '../src/money';
 
@@ -172,4 +172,42 @@ it('0.1 plus 0.2 is exactly 0.3 through this tool', () => {
   expect(r.summary.received).toBe('1.70');
   expect(r.working).toContain('2 x 10 / 100 = 0.2');
   expect(r.working).toContain('0.2 + 0.1 = 0.3');
+});
+
+// Whole-cent check with BigInt and no decimal library: for a percentage fee of `numerator / denominator` of the charge
+// (no fixed fee), the fee in cents is the half-up rounding of charge x numerator / denominator, and what is received is
+// the charge minus that fee.
+function receivedCents(chargeCents: bigint, numerator: bigint, denominator: bigint): bigint {
+  const fee = (chargeCents * numerator * 2n + denominator) / (2n * denominator);
+  return chargeCents - fee;
+}
+
+test('to receive 100 with a percentage fee of 98 percent the charge is found and one cent less does not receive 100', () => {
+  const found = searchCharge(new D(100), new D('98'), new D(0), 'USD');
+  const chargeCents = BigInt(found.charge.times(100).toFixed());
+  expect(receivedCents(chargeCents, 98n, 100n) >= 10000n).toBe(true);
+  expect(receivedCents(chargeCents - 1n, 98n, 100n) < 10000n).toBe(true);
+  expect(found.received.times(100).toFixed()).toBe(receivedCents(chargeCents, 98n, 100n).toString());
+  const { summary } = receive('100', '98', '0');
+  expect(summary.charge).toBe(found.charge.toFixed(2));
+  expect(summary.received).toBe(found.received.toFixed(2));
+});
+
+test('to receive 100 with a percentage fee of 99.9999999999 percent the charge is found and one cent less does not', () => {
+  const found = searchCharge(new D(100), new D('99.9999999999'), new D(0), 'USD');
+  const chargeCents = BigInt(found.charge.times(100).toFixed());
+  const numerator = 999999999999n;
+  const denominator = 1000000000000n;
+  expect(receivedCents(chargeCents, numerator, denominator) >= 10000n).toBe(true);
+  expect(receivedCents(chargeCents - 1n, numerator, denominator) < 10000n).toBe(true);
+  // 100 / (1 - 0.999999999999) = 100,000,000,000,000: the charge is about that, and no error is raised.
+  expect(found.charge.gt('90000000000000') && found.charge.lt('110000000000000')).toBe(true);
+  const { summary, working } = receive('100', '99.9999999999', '0');
+  expect(summary.charge).toBe(found.charge.toFixed(2));
+  // The working lists a few charges, not a line for every one of the billions of units searched.
+  expect(working.split('\n').length).toBeLessThan(40);
+});
+
+test('the limits text no longer promises a search that gives up after 20 steps', () => {
+  expect(meta.limits.join(' ')).not.toMatch(/20 steps/);
 });

@@ -17,8 +17,8 @@ export type { Dec };
 
 /** Decimal places used for the unrounded figures in the working. */
 const WORKING_PLACES = 10;
-/** The most single-unit moves the search for the smallest charge may make before it gives up. */
-const MAX_STEPS = 20;
+/** The most single-unit steps from the first guess to the answer that are listed one by one in the working. */
+const MAX_LISTED_STEPS = 20;
 
 const FIELD_MODE = 'Work out';
 const FIELD_AMOUNT = 'Payment amount';
@@ -70,10 +70,13 @@ export interface ChargeSearch {
 }
 
 /**
- * The smallest charge that leaves at least `target` after the rounded fee. It starts from the exact gross-up rounded up
- * to the smallest unit, moves up one unit while the amount received is below the target, and moves down one unit while
- * that still leaves at least the target. The amount received never falls as the charge rises by one unit, so the first
- * charge found this way is the smallest. At most 20 single-unit moves are made before it gives up.
+ * The smallest charge that leaves at least `target` after the rounded fee. The amount received never falls as the charge
+ * rises by one smallest unit (the fee rises by less than one unit and rounding keeps order), so the answer is found by
+ * halving: the exact gross-up rounded up to the smallest unit is the first guess, the rounding of the fee can move the
+ * answer by at most half a unit of received money, which is half a unit divided by (1 - percentage / 100) units of
+ * charge, and the search halves that window until one unit is left. It always settles, even at a percentage fee of
+ * 99.999999999 percent where the answer is billions of units from the first guess. `checked` lists the first guess and
+ * the charges around the answer, the same list a one-unit-at-a-time walk would show when the answer is close.
  */
 export function searchCharge(target: Dec, percent: Dec, fixed: Dec, currency: string): ChargeSearch {
   checkRates(percent, fixed);
@@ -89,33 +92,46 @@ export function searchCharge(target: Dec, percent: Dec, fixed: Dec, currency: st
     const fee = roundTo(raw, dp);
     return { charge, rawFee: raw, fee, received: charge.minus(fee) };
   };
-  const giveUp = () =>
-    new MoneyInputError(
-      FIELD_TARGET,
-      `could not settle on a charge within ${MAX_STEPS} steps of one smallest unit, check the fees you typed`,
-    );
+  const works = (units: Dec): boolean => check(units.div(scale)).received.gte(target);
 
+  // Window in whole units of charge: below `low` nothing works, from `high` on everything works.
+  const startUnits = start.times(scale);
+  const margin = new D(0.5)
+    .div(new D(1).minus(percent.div(100)))
+    .ceil()
+    .plus(1);
+  let low = D.max(startUnits.minus(margin), new D(0));
+  let high = startUnits.plus(margin);
+  if (!works(high)) {
+    throw new MoneyInputError(FIELD_TARGET, 'could not settle on a charge, check the fees you typed');
+  }
+  while (high.minus(low).gt(1)) {
+    const mid = low.plus(high).div(2).floor();
+    if (works(mid)) high = mid;
+    else low = mid;
+  }
+  const answer = check(high.div(scale));
+
+  // The charges shown: the first guess, then each unit from it to the answer and the one just below the answer. When
+  // the answer is more than a few units away only the first guess and the neighbours of the answer are shown.
   const checked: ChargeCheck[] = [check(start)];
-  let current = checked[0]!;
-  let steps = 0;
-  while (current.received.lt(target)) {
-    if (++steps > MAX_STEPS) throw giveUp();
-    current = check(current.charge.plus(unit));
-    checked.push(current);
-  }
-  if (steps === 0) {
-    // the start already works: see whether one unit less still does
-    for (;;) {
-      const lower = current.charge.minus(unit);
-      if (!lower.gt(0)) break;
-      if (++steps > MAX_STEPS) throw giveUp();
-      const tried = check(lower);
-      checked.push(tried);
-      if (tried.received.lt(target)) break;
-      current = tried;
+  const distance = high.minus(startUnits);
+  if (distance.abs().lte(MAX_LISTED_STEPS)) {
+    const direction = distance.gte(0) ? 1 : -1;
+    for (
+      let u = startUnits.plus(direction);
+      direction > 0 ? u.lte(high) : u.gte(high.minus(1));
+      u = u.plus(direction)
+    ) {
+      if (u.gt(0)) checked.push(check(u.div(scale)));
     }
+    if (distance.isZero() && startUnits.gt(1)) checked.push(check(start.minus(unit)));
+  } else {
+    if (distance.gt(0)) checked.push(check(high.minus(1).div(scale)));
+    checked.push(answer);
+    if (distance.lt(0) && high.gt(1)) checked.push(check(high.minus(1).div(scale)));
   }
-  return { exact, start, charge: current.charge, fee: current.fee, received: current.received, checked };
+  return { exact, start, charge: answer.charge, fee: answer.fee, received: answer.received, checked };
 }
 
 /** The smallest charge that leaves at least `target` after the rounded fee (see `searchCharge`). */
@@ -272,7 +288,7 @@ export function calculateFees(texts: FeeTexts): FeeResult | null {
     '  first guess = (amount wanted + fixed fee) / (1 - percentage fee / 100), rounded up to the smallest unit',
     '  fee = charge x percentage fee / 100 + fixed fee, rounded once, half away from zero, to the smallest unit',
     '  amount received = charge - fee',
-    '  the charge is moved one smallest unit at a time until it is the smallest one that leaves at least the amount wanted',
+    '  the charge is moved until it is the smallest one, in whole smallest units, that leaves at least the amount wanted',
     '',
     'With your numbers:',
     `  first guess = (${sum.toFixed()} + ${fixed.toFixed()}) / (1 - ${percent.toFixed()} / 100) = ${exactText(found.exact)}, rounded up to ${money(found.start)}`,
