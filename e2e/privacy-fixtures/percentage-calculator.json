@@ -1,0 +1,27 @@
+[
+  {
+    "mode": { "field": "mode", "value": "of" },
+    "values": { "percent": "15", "value": "80" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "what" },
+    "values": { "part": "12", "whole": "80" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "change" },
+    "values": { "from": "80", "to": "100" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "discount" },
+    "values": { "price": "80", "discount": "15" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "stacked" },
+    "values": { "price": "100", "discounts": "20\n10" },
+    "attachesFile": false
+  }
+]

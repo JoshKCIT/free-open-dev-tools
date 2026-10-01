@@ -1,0 +1,10 @@
+{
+  "id": "percentage-calculator",
+  "label": "Discount arithmetic shown on the page, derived by hand: 80 with 15 percent off is 68.00",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "discount" },
+    { "action": "fill", "field": "price", "value": "80" },
+    { "action": "fill", "field": "discount", "value": "15" }
+  ],
+  "expect": ["68.00"]
+}
