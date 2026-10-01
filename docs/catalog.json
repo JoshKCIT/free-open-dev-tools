@@ -1216,5 +1216,12 @@
     "category": "code",
     "tier": 2,
     "summary": "Format shell scripts for POSIX sh, bash or mksh with shfmt and a chosen indent, with syntax errors shown by line and column."
+  },
+  {
+    "id": "c-family-formatter",
+    "name": "C, C++, C#, Java, Objective-C & Protobuf Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Format C, C++, C#, Java, Objective-C and Protocol Buffers source with clang-format under a named style preset and a chosen indent width."
   }
 ]
