@@ -1,0 +1,51 @@
+{
+  "name": "@fodt/percentage-calculator",
+  "version": "1.0.0",
+  "description": "Answer everyday percentage questions: a percent of a number, what percent one number is of another, percent change, a discounted price and stacked discounts.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "percentage",
+    "percent of",
+    "percent change",
+    "percentage increase",
+    "percentage decrease",
+    "discount",
+    "stacked discounts",
+    "sale price",
+    "what percent"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/percentage-calculator"
+  }
+}
