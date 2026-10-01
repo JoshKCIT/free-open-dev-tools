@@ -639,17 +639,55 @@ const SITE02_CONTROLS: [string, string][] = [
   ['loan-calculator', 'decimal.js'],
   ['markdown-formatter', 'prettier'],
   ['go-formatter', '@wasm-fmt/gofmt'],
+  // The other five code formatters: each engine package must be seen on its own page. Prettier and its PHP plugin are
+  // plain JavaScript and the other four are WebAssembly engines inlined into the page chunk, so a blind spot for either
+  // kind of package shows here.
+  ['python-formatter', '@wasm-fmt/ruff_fmt'],
+  ['shell-formatter', '@wasm-fmt/shfmt'],
+  ['c-family-formatter', '@wasm-fmt/clang-format'],
+  ['dart-formatter', '@wasm-fmt/dart_fmt'],
+  ['php-formatter', 'prettier'],
+  ['php-formatter', '@prettier/plugin-php'],
 ];
 
-/** Declared (tool, package) pairs whose package is never loaded as a module on that tool's page. Each has a reason. */
-const SITE02_UNSEEN_EXEMPT: { tool: string; pkg: string; reason: string }[] = [
+/**
+ * Declared (tool, package) pairs whose package is never loaded as a module on that tool's page. Each has a reason and
+ * names its evidence: `marker` is a string that occurs in the installed package's `dataFile` and must also occur in the
+ * text of the JavaScript the tool's page loads, so an exemption holds only while the package's data really is bundled.
+ */
+const SITE02_UNSEEN_EXEMPT: { tool: string; pkg: string; reason: string; marker: string; dataFile: string }[] = [
   {
     tool: 'mime-types',
     pkg: 'mime-db',
     reason:
       'the tool imports only mime-db/db.json and mime-db/package.json, which are JSON data files; the table is bundled into the tool page chunk, but the build writes no source-map entry for a JSON module, so the package never appears in any map',
+    // A media type that only mime-db's table lists: neither the tool's own code nor its tests contain it.
+    marker: 'x-conference/x-cooltalk',
+    dataFile: 'db.json',
   },
 ];
+
+/** Problems with an exemption: its marker must be in the package's own data file and in the text of a JavaScript file the page loads. */
+async function exemptionEvidenceProblems(
+  request: APIRequestContext,
+  exemption: (typeof SITE02_UNSEEN_EXEMPT)[number],
+  pageUrls: string[],
+): Promise<string[]> {
+  const label = `exemption ${exemption.tool} / ${exemption.pkg}`;
+  const dir = findInstalledDir(realpathSync(join(root, 'tools', exemption.tool)), exemption.pkg);
+  if (!dir) return [`${label}: the package is not installed`];
+  const data = existsSync(join(dir, exemption.dataFile)) ? readFileSync(join(dir, exemption.dataFile), 'utf8') : '';
+  if (!data.includes(exemption.marker)) {
+    return [
+      `${label}: the marker is not in ${exemption.pkg}/${exemption.dataFile}, so it is no evidence of the package`,
+    ];
+  }
+  for (const url of [...new Set(pageUrls)].sort(byText)) {
+    const response = await request.get(url);
+    if (response.ok() && (await response.text()).includes(exemption.marker)) return [];
+  }
+  return [`${label}: no JavaScript file the page loads contains the marker, so the package is not shown to be bundled`];
+}
 
 function getCrawl(browser: Browser, baseURL: string): Promise<CrawlState> {
   if (!crawlPromise) crawlPromise = crawlAllPages(browser, baseURL);
@@ -841,6 +879,15 @@ test.describe('the complete 177-tool catalog loads clean JavaScript', () => {
       }
     }
     const exempt = new Set(SITE02_UNSEEN_EXEMPT.map((e) => `${e.tool}\n${e.pkg}`));
+    // An exemption stands only while its evidence holds: the package's own data is in the page's JavaScript.
+    const evidenceContext = await browser.newContext();
+    for (const exemption of SITE02_UNSEEN_EXEMPT) {
+      const result = crawl.pages.get(exemption.tool);
+      const mapped = crawl.toolChunkPathnames.get(exemption.tool) ?? [];
+      const urls = [...(result?.jsPathnames ?? []), ...mapped].map((p) => new URL(p, origin).toString());
+      problems.push(...(await exemptionEvidenceProblems(evidenceContext.request, exemption, urls)));
+    }
+    await evidenceContext.close();
     for (const id of ALL_IDS) {
       for (const pkg of declared.get(id) ?? []) {
         if (loadedByPage.get(`/tools/${id}`)?.packages.has(pkg)) continue;
