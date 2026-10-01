@@ -92,3 +92,22 @@ test('a deep dependency with no licence file fails the licence gate, and an unin
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('a licence file named in lower case, such as license.md, is found on every platform', () => {
+  const root = makeFixtureRoot();
+  try {
+    const dir = join(root, 'node_modules', 'fake-lower');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'fake-lower', version: '1.0.0', license: 'MIT' }));
+    writeFileSync(join(dir, 'license.md'), 'Lower-case licence text of fake-lower, used only by this test.\n');
+    declareDependency(root, 'fake-lower');
+    const result = runCheckLicenses(root);
+    expect(result.output).not.toContain('ships no licence file');
+    expect(result.status).toBe(0);
+    expect(readFileSync(join(root, 'docs', 'THIRD-PARTY.md'), 'utf8')).toContain(
+      'Lower-case licence text of fake-lower',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

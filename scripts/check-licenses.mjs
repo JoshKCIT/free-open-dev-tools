@@ -198,20 +198,27 @@ const MANUAL_LICENSE_OVERRIDES = {
 // with the rest of the document and with what git actually stores.
 const normaliseLineEndings = (text) => text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
+// Compared without regard to letter case: a package may ship `license.md`, and a
+// case-insensitive file system (Windows, macOS) would find it under `LICENSE.md`
+// while CI's Linux runner would not, so the gate must not depend on the platform.
+const LICENCE_FILE_NAMES = [
+  'license',
+  'license.md',
+  'licence',
+  'license.txt',
+  'license-mit',
+  'license-mit.txt',
+  'licence.md',
+  'licence.txt',
+];
+
 function licenceTextFor(dir, name, version) {
-  for (const candidate of [
-    'LICENSE',
-    'LICENSE.md',
-    'LICENCE',
-    'LICENSE.txt',
-    'license',
-    'LICENSE-MIT',
-    'LICENSE-MIT.txt',
-    'LICENCE.md',
-    'LICENCE.txt',
-  ]) {
-    const path = join(dir, candidate);
-    if (existsSync(path)) return normaliseLineEndings(readFileSync(path, 'utf8').trim());
+  const present = new Map(readdirSync(dir).map((entry) => [entry.toLowerCase(), entry]));
+  for (const candidate of LICENCE_FILE_NAMES) {
+    const entry = present.get(candidate);
+    if (entry && statSync(join(dir, entry)).isFile()) {
+      return normaliseLineEndings(readFileSync(join(dir, entry), 'utf8').trim());
+    }
   }
   const overridePath = MANUAL_LICENSE_OVERRIDES[`${name}@${version}`];
   if (overridePath) {
