@@ -1,0 +1,50 @@
+{
+  "name": "@fodt/dart-formatter",
+  "version": "1.0.0",
+  "description": "Format Dart code with the dart_style formatter at a chosen line width, with syntax errors shown by line and column.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "dart",
+    "flutter",
+    "dart_style",
+    "dart format",
+    "format",
+    "formatter",
+    "pretty-print",
+    "wasm"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@wasm-fmt/dart_fmt": "0.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/dart-formatter"
+  }
+}
