@@ -1,0 +1,63 @@
+{
+  "id": "invoice-maker",
+  "name": "Invoice & Quote Maker",
+  "summary": "Fill in seller, buyer, line items, discount and tax, and download an invoice or quote as a PDF.",
+  "about": "Builds an invoice or a quote as a PDF in your browser. You type who it is from and to, a number, the dates, one line item per row with a quantity and a unit price, an optional discount and tax rate and optional notes. The page shows the line amounts, the subtotal, the discount, the tax and the total, worked out exactly so that they add up to the cent, and gives you a PDF to download. The PDF is written in the page by the PDF library this site already ships, with the fonts built into every PDF reader, so no font file is downloaded; text those fonts cannot write is refused by name instead of being changed. Nothing is stored or sent anywhere, and a reload starts with an empty form.",
+  "supports": [
+    "An invoice or a quote, on A4 or US Letter paper, with a title, a number, an issue date and an optional due date (or valid until date)",
+    "Seller and customer details typed one line each, and optional notes, up to 20 lines and 2,000 characters in each box",
+    "Up to 200 line items, one per line as description, quantity and unit price, with the line and column named when one cannot be read",
+    "A quantity above 0 with up to 4 decimal places and a unit price with at most the decimal places of the currency's smallest unit",
+    "Each line amount rounded to the smallest unit of the currency, the subtotal as the sum of those rounded amounts, an optional discount in percent and an optional tax rate in percent with a name of your choice such as VAT or GST",
+    "Tax rounded once on the discounted subtotal (the default) or on each line and added up, always half away from zero, so the subtotal, discount, tax and total shown add up exactly",
+    "Pages that fill in order: a row that does not fit at the foot of a page moves whole to the next page with the table heading repeated, long words are broken to stay inside the page and every page says Page N of M",
+    "The same input always gives the same file, byte for byte: no date or program name is stamped into it",
+    "Text refused before any file is written when the PDF's built-in fonts cannot write it, with the character, its code point and the field (and line) named",
+    "Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number"
+  ],
+  "limits": [
+    "Amounts are rounded half away from zero to the currency's smallest unit only when shown or when the tax rounding mode says so; every step before that keeps 40 significant digits.",
+    "Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores the invoice content rules of any country, tax registration, payment terms law, exemptions and any tax rate or rounding rule that applies to you.",
+    "The PDF uses only the fonts built into every PDF reader (Helvetica), which write Western European text: text outside that set, such as Chinese, Japanese, Korean, Arabic or Cyrillic letters, emoji, arrows, tabs and other control characters, is refused naming the character, its code point (such as U+65E5) and the field, and no file is written.",
+    "Nothing is stored: there is no draft saving, nothing is kept in your browser between visits, nothing goes in the address bar and a reload starts with an empty form, so download the PDF before you leave.",
+    "No tax rate is built in: the discount and tax rates are typed by you, each from 0 to 100 percent, and the currency is the code you type (USD until you change it), written as a code in the PDF with the amounts as plain digits.",
+    "Up to 200 line items are accepted and one more is refused; each box of seller, customer or notes text holds at most 20 lines and 2,000 characters, a description at most 500 characters, a number at most 40 characters and a tax name at most 30.",
+    "The tests that read the PDF back use pdfjs-dist, which needs Node 22.13 or later; the page itself needs only a current browser.",
+    "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
+  ],
+  "ambiguities": [
+    "Tax rounded on the total and tax rounded on each line can differ by a smallest unit: three lines of 0.05 at a tax rate of 10 give 0.01 on each line and 0.03 in all when rounded per line, but 0.015 and so 0.02 when rounded once on the discounted subtotal.",
+    "With a discount, each line's share of the discount is taken as the same percentage of that line when tax is rounded per line, while the discount line shown is the percentage of the subtotal rounded once; the two can differ by a smallest unit, and the total always uses the discount line and the tax line shown.",
+    "A line with a unit price of 0 is accepted and shown as 0.00; a quantity of 0 is refused."
+  ],
+  "standards": [
+    {
+      "label": "ISO 32000-1:2008 Document management, Portable document format, Part 1: PDF 1.7 (the file header in 7.5.2 and WinAnsiEncoding in Annex D)",
+      "url": "https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf"
+    }
+  ],
+  "keywords": [
+    "invoice",
+    "quote",
+    "estimate",
+    "pdf",
+    "billing",
+    "line items",
+    "discount",
+    "VAT",
+    "GST",
+    "sales tax",
+    "receipt"
+  ],
+  "primaryExport": "calculateInvoice",
+  "usage": "import { calculateInvoice } from '@fodt/invoice-maker';\n\nconst result = await calculateInvoice({\n  number: '2026-001',\n  issueDate: '2026-10-01',\n  seller: 'Example Studio',\n  buyer: 'Example Client',\n  items: 'Widget | 2 | 19.99\\nSetup | 1 | 5.00',\n  discount: '10',\n  taxRate: '20',\n});\nresult?.totals.total; // '48.58'\nresult?.fileName; // 'invoice-2026-001.pdf'\nresult?.bytes; // the PDF file as a Uint8Array",
+  "apiNotes": "`calculateInvoice` is async and takes the page's text values (`kind` as `invoice` or `quote`, `number`, `issueDate` and `dueDate` as YYYY-MM-DD, the `seller`, `buyer` and `notes` boxes one line per line, `items` one row per line as `description | quantity | unit price`, `discount` and `taxRate` in percent, `taxLabel`, `rounding` as `total` or `line`, `currency` and `pageSize` as `A4` or `Letter`). It returns `{ totals, rows, bytes, fileName, pages, working, kind, notes }`, or `null` when every box is blank, or throws `MoneyInputError` carrying the `field` that was wrong and the `line` and `column` of a bad cell or character. `parseItems(text, currency)` reads the rows, `invoiceTotals(items, discountPercent, taxPercent, rounding, currency)` works on exact `Dec` values and `buildInvoicePdf(model)` in `pdf.ts` writes the file; `assertWritable(text, field, charset, position)` refuses a character the built-in fonts cannot write and `downloadName(kind, number)` keeps only letters, digits, dots, dashes and underscores. The PDF library is imported statically as `@cantoo/pdf-lib`, and all of it uses this folder's own decimal.js clone with 40 significant digits and half away from zero. `money.ts` is the shared exact-decimal helper: strict text parsing, rounding, money formatting, whole-number counts, calendar dates, one-row-per-line text with line and column errors, and spreadsheet-safe CSV cells.",
+  "testNotes": "ISO 32000-1 (fetched and quoted in the test comments) fixes the file header, a percent sign and PDF- followed by the version, and WinAnsiEncoding in Annex D, the character set the built-in fonts write; the tests read each file back with the independent pdfjs-dist reader rather than trusting the library that wrote it. The totals are derived by hand: 2 lines of 19.99 is 39.98 and one of 5.00 gives a subtotal of 44.98, 10 percent off is 4.498 shown as 4.50, tax at 20 percent on 40.48 is 8.096 shown as 8.10 and the total is 48.58. Exactness is proven by first showing that 0.1 plus 0.2 in JavaScript floating point is 0.30000000000000004 and then that lines of 0.10 and 0.20 give a subtotal of exactly 0.30.",
+  "dependencies": {
+    "decimal.js": "10.6.0",
+    "@cantoo/pdf-lib": "2.11.1"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "6.3.289"
+  }
+}

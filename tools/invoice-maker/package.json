@@ -1,0 +1,55 @@
+{
+  "name": "@fodt/invoice-maker",
+  "version": "1.0.0",
+  "description": "Fill in seller, buyer, line items, discount and tax, and download an invoice or quote as a PDF.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "invoice",
+    "quote",
+    "estimate",
+    "pdf",
+    "billing",
+    "line items",
+    "discount",
+    "VAT",
+    "GST",
+    "sales tax",
+    "receipt"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0",
+    "@cantoo/pdf-lib": "2.11.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "pdfjs-dist": "6.3.289"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/invoice-maker"
+  }
+}
