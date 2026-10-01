@@ -639,10 +639,11 @@ it('WHATWG 4.10.5 min, max and step must use the syntax of the chosen type, and 
   expect(buildField({ ...minimalSpec('number'), min: '0', max: '10', value: '-1' })!.warnings.join(' ')).toContain(
     'below the min',
   );
-  // A colour is a hash and six hexadecimal digits (WHATWG 2.3.6).
+  // The live standard (4.10.5.1.14) asks for a CSS color as the value of a color input, not only a hash and six
+  // hexadecimal digits, so every typed value is written as typed and none is refused for its syntax.
   expect(buildField({ ...minimalSpec('color'), value: '#00FF7f' })!.html).toContain('value="#00FF7f"');
-  expect(refusal(() => buildField({ ...minimalSpec('color'), value: 'red' })).field).toBe('Starting value');
-  expect(refusal(() => buildField({ ...minimalSpec('color'), value: '#fff' })).field).toBe('Starting value');
+  expect(buildField({ ...minimalSpec('color'), value: 'rebeccapurple' })!.html).toContain('value="rebeccapurple"');
+  expect(buildField({ ...minimalSpec('color'), value: 'rgb(0 255 127)' })!.html).toContain('value="rgb(0 255 127)"');
 });
 
 it('minlength and maxlength count UTF-16 code units, so an emoji counts as two and a value longer than maxlength is refused', () => {

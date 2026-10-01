@@ -639,12 +639,6 @@ export function buildField(spec: FieldSpec): BuiltField | null {
     }
   }
   checkTypedAttributes(control, t('min'), t('max'), t('step'), raw.value, warnings);
-  if (control === 'color' && raw.value !== '' && !/^#[0-9A-Fa-f]{6}$/.test(raw.value)) {
-    throw new MarkupError(
-      FIELD_LABELS.value,
-      `"${raw.value}" is not a valid simple color: a hash and six hexadecimal digits, such as #00ff7f (WHATWG 2.3.6)`,
-    );
-  }
   if (control === 'image' && t('src') !== '') {
     const risky = schemeWarning(FIELD_LABELS.src, t('src'));
     if (risky) warnings.push(risky);

@@ -41,7 +41,7 @@ Builds one accessible form field and shows its markup first, ready to copy, with
 - A starting value that is longer than the maxlength, or non-empty and shorter than the minlength, is refused although the standard only applies those limits to what a visitor types; characters are counted as UTF-16 code units, so an emoji counts as two.
 - A starting value for a radio group or a select names the option to check or select by its value; if no option has that value it is refused rather than ignored.
 - A starting value below the min or above the max is written as typed with a note, because the standard treats it as out of range rather than as a markup error; a time range is not checked this way because it may wrap round midnight.
-- The starting value of a colour input must be a hash and six hexadecimal digits (WHATWG 2.3.6); other value syntaxes, such as a valid email address or an absolute URL, are not checked.
+- The standard asks for a CSS color as the starting value of a colour input (4.10.5.1.14), a grammar this builder does not parse, so a colour value, like a valid email address or an absolute URL elsewhere, is written as typed without a syntax check.
 
 ## Defined by
 
