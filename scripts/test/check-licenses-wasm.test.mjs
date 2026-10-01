@@ -31,7 +31,7 @@ function writeFakePackage(root, name, wasmFile) {
     const file = join(dir, wasmFile);
     mkdirSync(join(file, '..'), { recursive: true });
     // The eight bytes every WebAssembly module starts with.
-    writeFileSync(file, Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]));
+    writeFileSync(file, new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]));
   }
 }
 
