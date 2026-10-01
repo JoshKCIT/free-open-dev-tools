@@ -1,0 +1,36 @@
+[
+  {
+    "mode": { "field": "kind", "value": "invoice" },
+    "values": {
+      "number": "2026-001",
+      "issueDate": "2026-10-01",
+      "dueDate": "2026-10-31",
+      "seller": "Example Studio\n1 High Street",
+      "buyer": "Example Client\n2 Low Road",
+      "items": "Widget | 2 | 19.99\nSetup | 1 | 5.00",
+      "discount": "10",
+      "taxRate": "20",
+      "taxLabel": "VAT",
+      "notes": "Thank you for your business.",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "kind", "value": "quote" },
+    "values": {
+      "number": "Q-17",
+      "issueDate": "2026-10-01",
+      "dueDate": "2026-10-15",
+      "seller": "Example Studio\n1 High Street",
+      "buyer": "Example Client\n2 Low Road",
+      "items": "Consulting | 3.5 | 120.00\nTravel | 1 | 45.50",
+      "discount": "5",
+      "taxRate": "19",
+      "taxLabel": "GST",
+      "notes": "Valid for 14 days.",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  }
+]

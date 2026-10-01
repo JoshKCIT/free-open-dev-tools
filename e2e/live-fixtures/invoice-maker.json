@@ -1,0 +1,14 @@
+{
+  "id": "invoice-maker",
+  "label": "Invoice totals shown on the page, derived by hand: 2 x 19.99 and 1 x 5.00 with 10 percent off and 20 percent tax total 48.58",
+  "steps": [
+    { "action": "fill", "field": "number", "value": "2026-001" },
+    { "action": "fill", "field": "issueDate", "value": "2026-10-01" },
+    { "action": "fill", "field": "seller", "value": "Example Studio" },
+    { "action": "fill", "field": "buyer", "value": "Example Client" },
+    { "action": "fill", "field": "items", "value": "Widget | 2 | 19.99\nSetup | 1 | 5.00" },
+    { "action": "fill", "field": "discount", "value": "10" },
+    { "action": "fill", "field": "taxRate", "value": "20" }
+  ],
+  "expect": ["44.98", "4.50", "8.10", "48.58"]
+}
