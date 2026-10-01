@@ -15,8 +15,8 @@ export class DartFormatterError extends Error {
   readonly line?: number;
   readonly column?: number;
 
-  constructor(message: string, detail: { line?: number; column?: number } = {}) {
-    super(message);
+  constructor(message: string, detail: { line?: number; column?: number; cause?: unknown } = {}) {
+    super(message, detail.cause === undefined ? undefined : { cause: detail.cause });
     this.name = 'DartFormatterError';
     if (typeof detail.line === 'number' && typeof detail.column === 'number') {
       this.line = detail.line;
@@ -46,6 +46,9 @@ const FILE_NAME = 'input.dart';
 
 const NO_GARBAGE_COLLECTION_MESSAGE =
   'This browser cannot run the Dart formatter (it needs WebAssembly garbage collection).';
+// What the engine's own compile error says when the cause is a missing WebAssembly feature (garbage collection and the
+// struct, array and reference types it adds).
+const MISSING_FEATURE_TEXT = /garbage|\bgc\b|struct|array|\bref\b|reference|heap type/i;
 const TOO_LARGE_MESSAGE = 'This input is too large or too deeply nested for the formatter.';
 const FAILED_MESSAGE = 'The formatter failed on this input.';
 
@@ -53,11 +56,16 @@ function byteLength(text: string): number {
   return new TextEncoder().encode(text).length;
 }
 
+// Bytes already compiled and handed to the engine: giving the same bytes again compiles nothing.
+const loadedInputs = new WeakSet<object>();
+
 /**
  * Hands the dart_fmt WebAssembly bytes (or an already compiled module) to the engine. The engine keeps the
- * first instance it is given, so calling this again is harmless. The engine is compiled by dart2wasm and needs
- * WebAssembly garbage collection: where that is missing the module cannot be compiled, which surfaces as a
- * WebAssembly.CompileError and becomes a plain message here.
+ * first instance it is given, so calling this again is harmless, and calling it again with the very same bytes
+ * does not even compile them again. The engine is compiled by dart2wasm and needs WebAssembly garbage collection:
+ * where that is missing the module cannot be compiled, which surfaces as a WebAssembly.CompileError. When the
+ * engine's text names a missing feature that becomes a plain message here (the engine's own error stays the
+ * `cause`); any other compile failure, such as a corrupt file, keeps the engine's text in the message.
  *
  * Bytes are compiled here with no `builtins` option, so every `wasm:js-string` helper the module imports comes
  * from the package's own JavaScript. The package's own load asks for the engine's built-in string helpers, and
@@ -65,11 +73,18 @@ function byteLength(text: string): number {
  * must likewise be compiled with no `builtins` option.
  */
 export function loadEngine(wasm: BufferSource | WebAssembly.Module): void {
+  if (typeof wasm === 'object' && wasm !== null && loadedInputs.has(wasm)) return;
   try {
     initSync(wasm instanceof WebAssembly.Module ? wasm : new WebAssembly.Module(wasm));
+    if (typeof wasm === 'object' && wasm !== null) loadedInputs.add(wasm);
   } catch (err) {
     if (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.CompileError) {
-      throw new DartFormatterError(NO_GARBAGE_COLLECTION_MESSAGE);
+      throw new DartFormatterError(
+        MISSING_FEATURE_TEXT.test(err.message)
+          ? NO_GARBAGE_COLLECTION_MESSAGE
+          : `The Dart formatter engine could not be loaded: ${err.message} (a browser without WebAssembly garbage collection cannot run it).`,
+        { cause: err },
+      );
     }
     throw err;
   }

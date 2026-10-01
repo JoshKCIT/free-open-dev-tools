@@ -259,3 +259,46 @@ it('a line width set to undefined uses the default of 80', () => {
   expect(formatDart('var x=1;\n', { lineWidth: undefined })).toEqual(none);
   expect(none?.output).toBe('var x = 1;\n');
 });
+
+it('a compile error that does not name garbage collection keeps the engine text in the message', () => {
+  // A corrupt or truncated engine file, or a browser policy that forbids compiling WebAssembly, is not the missing
+  // garbage collection support the plain message is about: the engine's own text must reach the visitor.
+  engineControl.initError = new WebAssembly.CompileError('WebAssembly.Module(): expected magic word 00 61 73 6d');
+  let caught: unknown;
+  try {
+    loadEngine(wasmBytes());
+  } catch (err) {
+    caught = err;
+  }
+  engineControl.initError = undefined;
+  expect(caught).toBeInstanceOf(DartFormatterError);
+  const error = caught as DartFormatterError;
+  expect(error.message).toContain('expected magic word 00 61 73 6d');
+  expect(error.message).toContain('garbage collection');
+  expect(error.line).toBeUndefined();
+  expect(error.column).toBeUndefined();
+
+  // The garbage collection case keeps its plain message, and the engine's text stays reachable as the cause.
+  const engineError = new WebAssembly.CompileError('WebAssembly.Module(): invalid value type (garbage collection)');
+  engineControl.initError = engineError;
+  try {
+    loadEngine(wasmBytes());
+  } catch (err) {
+    caught = err;
+  }
+  engineControl.initError = undefined;
+  expect((caught as DartFormatterError).message).toBe(
+    'This browser cannot run the Dart formatter (it needs WebAssembly garbage collection).',
+  );
+  expect((caught as DartFormatterError).cause).toBe(engineError);
+});
+
+it('loading the same bytes again does not compile them again', () => {
+  const bytes = wasmBytes();
+  loadEngine(bytes);
+  expect(engineControl.lastInitArgument).toBeInstanceOf(WebAssembly.Module);
+  engineControl.lastInitArgument = undefined;
+  loadEngine(bytes);
+  expect(engineControl.lastInitArgument).toBeUndefined();
+  expect(formatDart('var x=1;\n')?.output).toBe('var x = 1;\n');
+});
