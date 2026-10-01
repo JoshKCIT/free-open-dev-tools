@@ -1,0 +1,9 @@
+{
+  "id": "form-field-builder",
+  "label": "WHATWG 4.10.4 label example: Full name with the name fn",
+  "steps": [
+    { "action": "fill", "field": "label", "value": "Full name:" },
+    { "action": "fill", "field": "name", "value": "fn" }
+  ],
+  "expect": ["<label for=\"fn\">Full name:</label>", "name=\"fn\""]
+}

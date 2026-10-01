@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "control", "value": "text" },
+    "values": { "label": "Full name:", "name": "fn", "id": "fn", "value": "Ada" },
+    "attachesFile": false
+  }
+]
