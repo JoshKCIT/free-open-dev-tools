@@ -1,11 +1,35 @@
-import { meta, SqliteViewerError, type SqliteRunOptions } from '@fodt/sqlite-viewer';
+import {
+  meta,
+  checkDatabaseSize,
+  SqliteViewerError,
+  type SqliteColumnInfo,
+  type SqliteRunOptions,
+} from '@fodt/sqlite-viewer';
 import { sqliteViewerInWorker, SqliteViewerRunError } from '../lib/run-sqlite-viewer-in-worker';
-import { defineTool, bool, files, formatBytes, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import {
+  defineTool,
+  bool,
+  files,
+  formatBytes,
+  str,
+  type DownloadableFile,
+  type OutputBlock,
+  type ToolResult,
+} from '../lib/tool-ui';
 
 /** The first 80 characters of a statement on one line, for a result's label. */
 function statementLabel(statement: string): string {
   const flat = statement.replace(/\s+/g, ' ').trim();
   return flat.length > 80 ? `${flat.slice(0, 80)}…` : flat;
+}
+
+/** One column of the schema table: its name and type, then the facts that matter. */
+function columnText(column: SqliteColumnInfo): string {
+  const parts = [column.name, column.type].filter((part) => part !== '');
+  if (column.pk > 0) parts.push('PRIMARY KEY');
+  if (column.notnull) parts.push('NOT NULL');
+  if (column.dflt_value !== '') parts.push(`DEFAULT ${column.dflt_value}`);
+  return parts.join(' ');
 }
 
 export default defineTool({
@@ -83,10 +107,43 @@ export default defineTool({
     };
 
     try {
+      // Refused before any byte of the file is read.
+      if (file) checkDatabaseSize(file.size);
       const bytes = file ? new Uint8Array(await file.arrayBuffer()) : null;
       const result = await sqliteViewerInWorker({ type: 'sqlite-viewer-job', bytes, sql, options }, ctx);
 
       const outputs: OutputBlock[] = [];
+      if (result.statements === 0) {
+        // Blank SQL: show what the database holds.
+        if (result.schema.length === 0) {
+          outputs.push({
+            kind: 'note',
+            tone: 'info',
+            value: 'This database has no tables, views, indexes or triggers.',
+          });
+        } else {
+          outputs.push({
+            kind: 'table',
+            label: 'Schema',
+            table: {
+              headers: ['Type', 'Name', 'Table', 'Columns'],
+              rows: result.schema.map((entry) => [
+                entry.type,
+                entry.name,
+                entry.table,
+                entry.columns.map(columnText).join(', '),
+              ]),
+              mono: [1, 2, 3],
+            },
+          });
+          outputs.push({
+            kind: 'code',
+            label: 'CREATE statements',
+            language: 'sql',
+            value: result.schema.map((entry) => `${entry.sql};`).join('\n\n'),
+          });
+        }
+      }
       result.results.forEach((set, index) => {
         outputs.push({
           kind: 'table',
@@ -98,11 +155,31 @@ export default defineTool({
         }
       });
 
+      if (result.statements > 0 && result.results.length === 0) {
+        outputs.push({
+          kind: 'note',
+          tone: 'info',
+          value: `Ran ${result.statements} ${result.statements === 1 ? 'statement' : 'statements'}. None returned rows.`,
+        });
+      }
+
+      const downloads: DownloadableFile[] = result.exports.map((e) => ({
+        name: e.name,
+        mime: e.mime,
+        content: e.content,
+      }));
+      if (result.database) {
+        downloads.push({ name: 'changed.sqlite', mime: 'application/vnd.sqlite3', content: result.database });
+      }
+      if (downloads.length > 0) outputs.push({ kind: 'files', label: 'Downloads', files: downloads });
+
       return {
         outputs,
+        ...(result.warnings.length > 0 ? { warnings: result.warnings } : {}),
         stats: [
           ['Database', file ? formatBytes(file.size) : 'empty in-memory database'],
           ['Statements run', String(result.statements)],
+          ['Rows changed', String(result.changes)],
         ],
       };
     } catch (err) {

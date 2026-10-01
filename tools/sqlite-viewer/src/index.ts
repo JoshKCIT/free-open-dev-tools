@@ -1,5 +1,6 @@
 import initSqlJs from 'sql.js';
 import meta from './meta.json';
+import { formatCsv } from './csv';
 
 export { meta };
 
@@ -107,16 +108,115 @@ export function loadEngine(wasmBinary: Uint8Array): Promise<void> {
 
 type Cell = number | bigint | string | Uint8Array | null;
 
+/** Uppercase hex of the first `count` bytes, the way SQLite's own hex() writes it. */
+function hexOf(bytes: Uint8Array, count: number): string {
+  let hex = '';
+  const shown = Math.min(bytes.length, count);
+  for (let i = 0; i < shown; i++) hex += (bytes[i] as number).toString(16).padStart(2, '0');
+  return hex.toUpperCase();
+}
+
 /** The text shown for one value: NULL, an integer of any size, a REAL in its shortest form, text, or a BLOB as X'hex'. */
 function showCell(value: Cell): string {
   if (value === null) return 'NULL';
   if (typeof value === 'bigint') return value.toString();
   if (typeof value === 'number') return String(value);
   if (typeof value === 'string') return value;
-  let hex = '';
-  const shown = Math.min(value.length, 32);
-  for (let i = 0; i < shown; i++) hex += (value[i] as number).toString(16).padStart(2, '0');
-  return `X'${hex.toUpperCase()}${value.length > 32 ? '…' : ''}' (${value.length} bytes)`;
+  return `X'${hexOf(value, 32)}${value.length > 32 ? '…' : ''}' (${value.length} bytes)`;
+}
+
+/** The text of one value in a CSV field: NULL is an empty field and a BLOB is written whole, as X'hex'. */
+function csvCell(value: Cell): string {
+  if (value === null) return '';
+  if (value instanceof Uint8Array) return `X'${hexOf(value, value.length)}'`;
+  return String(value);
+}
+
+/** The largest integer magnitude a JSON reader that uses doubles keeps exactly: 2 to the 53. */
+const LARGEST_EXACT_INTEGER = 9007199254740992n;
+
+/** Column names made unique for a JSON object: the second a is a_2, the third a_3, never colliding with another name. */
+function uniqueNames(columns: string[]): { names: string[]; renamed: Map<string, string[]> } {
+  const taken = new Set(columns);
+  const seen = new Set<string>();
+  const counts = new Map<string, number>();
+  const renamed = new Map<string, string[]>();
+  const names = columns.map((column) => {
+    if (!seen.has(column)) {
+      seen.add(column);
+      return column;
+    }
+    let count = counts.get(column) ?? 1;
+    let candidate: string;
+    do {
+      count += 1;
+      candidate = `${column}_${count}`;
+    } while (taken.has(candidate));
+    counts.set(column, count);
+    taken.add(candidate);
+    renamed.set(column, [...(renamed.get(column) ?? []), candidate]);
+    return candidate;
+  });
+  return { names, renamed };
+}
+
+function plural(count: number, one: string, many: string): string {
+  return count === 1 ? one : many;
+}
+
+/** One result as CSV per RFC 4180: records end with CRLF, the header comes first, no line break after the last record. */
+function csvExport(n: number, columns: string[], rows: Cell[][]): SqliteExport {
+  return {
+    name: `query-${n}.csv`,
+    mime: 'text/csv;charset=utf-8',
+    content: formatCsv([columns, ...rows.map((row) => row.map(csvCell))]),
+  };
+}
+
+/** One result as a JSON array of objects keyed by column; what cannot be kept exactly as a JSON number becomes text. */
+function jsonExport(n: number, columns: string[], rows: Cell[][], warnings: string[]): SqliteExport {
+  const { names, renamed } = uniqueNames(columns);
+  for (const [column, later] of renamed) {
+    warnings.push(
+      `Result ${n} repeats the column name ${column}, so the JSON export writes the later ones as ${later.join(', ')}.`,
+    );
+  }
+  let largeIntegers = 0;
+  let nonFinite = 0;
+  const objects = rows.map((row) => {
+    // No prototype, so a column named __proto__ is an ordinary key.
+    const object = Object.create(null) as Record<string, unknown>;
+    row.forEach((value, i) => {
+      const key = names[i] as string;
+      if (value === null) object[key] = null;
+      else if (typeof value === 'bigint') {
+        if (value <= LARGEST_EXACT_INTEGER && value >= -LARGEST_EXACT_INTEGER) object[key] = Number(value);
+        else {
+          largeIntegers += 1;
+          object[key] = value.toString();
+        }
+      } else if (typeof value === 'number') {
+        if (Number.isFinite(value)) object[key] = value;
+        else {
+          nonFinite += 1;
+          object[key] = String(value);
+        }
+      } else if (typeof value === 'string') object[key] = value;
+      else object[key] = `X'${hexOf(value, value.length)}'`;
+    });
+    return object;
+  });
+  if (largeIntegers > 0) {
+    warnings.push(
+      `Result ${n}: ${largeIntegers} ${plural(largeIntegers, 'integer', 'integers')} outside plus or minus ${LARGEST_EXACT_INTEGER} ${plural(largeIntegers, 'is', 'are')} written as ${plural(largeIntegers, 'a string', 'strings')} in the JSON export, so no reader rounds ${plural(largeIntegers, 'it', 'them')}.`,
+    );
+  }
+  if (nonFinite > 0) {
+    warnings.push(
+      `Result ${n}: ${nonFinite} ${plural(nonFinite, 'number', 'numbers')} that JSON cannot hold (Infinity) ${plural(nonFinite, 'is', 'are')} written as text in the JSON export.`,
+    );
+  }
+  return { name: `query-${n}.json`, mime: 'application/json', content: JSON.stringify(objects, null, 2) };
 }
 
 /** One row of the current statement with 64-bit integers as exact bigint (the declarations omit the option). */
@@ -168,6 +268,19 @@ function totalChanges(db: SqlDatabase): number {
   return Number(db.exec('select total_changes()')[0]?.values[0]?.[0] ?? 0);
 }
 
+/** The size of a file for the refusal sentence, rounded up so a file over the limit never reads as the limit itself. */
+function sizeText(byteLength: number): string {
+  return `${(Math.ceil((byteLength / 1048576) * 10) / 10).toFixed(1)} MiB`;
+}
+
+/** Refuses a database over 100 MiB with a plain sentence. Called with the file's size before any byte of it is read. */
+export function checkDatabaseSize(byteLength: number): void {
+  if (byteLength <= MAX_DATABASE_BYTES) return;
+  throw new SqliteViewerError(
+    `This file is ${sizeText(byteLength)}. The limit is 100 MiB because the database is copied into memory up to three times while it is open.`,
+  );
+}
+
 /**
  * Opens a fresh in-memory copy of `bytes` (an empty database for null), runs every statement of `sql` in order and
  * returns each result as text. The caller's array is never changed. Blank SQL returns the schema only. Every engine
@@ -176,11 +289,15 @@ function totalChanges(db: SqlDatabase): number {
  */
 export function runSqlite(bytes: Uint8Array | null, sql: string, options: SqliteRunOptions): SqliteRunResult {
   if (!engine) throw new SqliteViewerError('The SQLite engine has not been loaded yet.');
+  if (bytes) checkDatabaseSize(bytes.byteLength);
+  const wantsExport = options.exportFormat !== 'none';
   let db: SqlDatabase | undefined;
   try {
     db = bytes && bytes.byteLength > 0 ? new engine.Database(bytes) : new engine.Database();
     const changesBefore = totalChanges(db);
     const results: SqliteResultSet[] = [];
+    const exports: SqliteExport[] = [];
+    const warnings: string[] = [];
     let statements = 0;
     if (sql.trim() !== '') {
       for (const statement of db.iterateStatements(sql)) {
@@ -192,10 +309,27 @@ export function runSqlite(bytes: Uint8Array | null, sql: string, options: Sqlite
           continue;
         }
         const rows: string[][] = [];
+        const exportRows: Cell[][] = [];
         let total = 0;
         while (statement.step()) {
           total += 1;
-          if (total <= options.displayRows) rows.push(readRow(statement).map(showCell));
+          const shown = total <= options.displayRows;
+          const exported = wantsExport && total <= MAX_EXPORT_ROWS;
+          if (!shown && !exported) continue;
+          const row = readRow(statement);
+          if (shown) rows.push(row.map(showCell));
+          if (exported) exportRows.push(row);
+        }
+        if (wantsExport) {
+          const n = results.length + 1;
+          if (total > MAX_EXPORT_ROWS) {
+            warnings.push(`Result ${n} has ${total} rows. Its export holds the first ${MAX_EXPORT_ROWS}.`);
+          }
+          exports.push(
+            options.exportFormat === 'csv'
+              ? csvExport(n, columns, exportRows)
+              : jsonExport(n, columns, exportRows, warnings),
+          );
         }
         results.push({
           statement: statement.getSQL().trim(),
@@ -209,7 +343,9 @@ export function runSqlite(bytes: Uint8Array | null, sql: string, options: Sqlite
     }
     const changes = totalChanges(db) - changesBefore;
     const schema = readSchema(db);
-    return { schema, results, changes, statements, exports: [], warnings: [] };
+    // Last, because exporting a database closes and reopens it inside the engine.
+    const database = options.includeDatabase ? db.export() : undefined;
+    return { schema, results, changes, statements, exports, ...(database ? { database } : {}), warnings };
   } catch (err) {
     if (err instanceof SqliteViewerError) throw err;
     if (err instanceof Error && (err.name === 'RuntimeError' || /^Aborted/.test(err.message))) throw err;

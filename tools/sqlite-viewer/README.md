@@ -32,6 +32,7 @@ Opens a SQLite database file in your browser, lists its tables, views, indexes a
 - SQLite has no date or time type: a column shows whatever text or number is stored in it, and nothing is converted
 - A BLOB is shown as X'hex' with its first 32 bytes and its length; longer values are cut for display only, never in an export
 - NULL is shown as the word NULL, which looks the same as a text value that spells NULL
+- In a CSV export NULL is an empty field, and in a JSON export it is null; a BLOB is written whole as X'hex' in both
 - The schema shown is the database as it is when the run finishes, so a table you create in the same run is listed
 
 ## Defined by
