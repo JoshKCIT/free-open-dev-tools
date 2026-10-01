@@ -1,0 +1,11 @@
+{
+  "id": "depreciation",
+  "label": "IRS Publication 946 (2025), straight line method: a 5,100 patent over 17 years with no salvage gives 300 a year",
+  "steps": [
+    { "action": "select", "field": "method", "value": "straight" },
+    { "action": "fill", "field": "cost", "value": "5100" },
+    { "action": "fill", "field": "salvage", "value": "0" },
+    { "action": "fill", "field": "life", "value": "17" }
+  ],
+  "expect": ["300.00"]
+}

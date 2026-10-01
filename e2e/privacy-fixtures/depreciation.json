@@ -1,0 +1,18 @@
+[
+  {
+    "mode": { "field": "method", "value": "declining" },
+    "values": { "cost": "10000", "salvage": "1000", "life": "5", "factor": "2", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "method", "value": "units" },
+    "values": {
+      "cost": "10000",
+      "salvage": "1000",
+      "units": "1000\n2000\n3000",
+      "totalUnits": "6000",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  }
+]
