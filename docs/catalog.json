@@ -1209,5 +1209,12 @@
     "category": "code",
     "tier": 2,
     "summary": "Format Python code with the Ruff formatter, choosing line length, quote style and indent, with syntax errors shown by line and column."
+  },
+  {
+    "id": "shell-formatter",
+    "name": "Shell Script Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Format shell scripts for POSIX sh, bash or mksh with shfmt and a chosen indent, with syntax errors shown by line and column."
   }
 ]
