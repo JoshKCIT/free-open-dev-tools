@@ -252,3 +252,10 @@ it('the engine still formats after an input that was too large or too deeply nes
   expect(() => fresh.formatDart(source)).toThrow('This input is too large or too deeply nested for the formatter.');
   expect(fresh.formatDart('var x=1;\n')?.output).toBe('var x = 1;\n');
 });
+
+// An option left undefined means "not chosen": it must not override the default and fail with a range message.
+it('a line width set to undefined uses the default of 80', () => {
+  const none = formatDart('var x=1;\n');
+  expect(formatDart('var x=1;\n', { lineWidth: undefined })).toEqual(none);
+  expect(none?.output).toBe('var x = 1;\n');
+});

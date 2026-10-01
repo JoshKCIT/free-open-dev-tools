@@ -119,13 +119,18 @@ function describeEngineFailure(err: unknown, source: string): DartFormatterError
   return new DartFormatterError(message.split('\n').find((l) => l.trim() !== '') ?? FAILED_MESSAGE);
 }
 
+/** Drops options set to `undefined`, so an option that was not chosen keeps its default instead of replacing it. */
+function withoutUndefined<T extends object>(options: T): Partial<T> {
+  return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 /**
  * Formats Dart source with dart_style at the chosen line width. Returns `null` for blank or whitespace-only
  * source without calling the engine. Throws `DartFormatterError` for every failure and never returns partly
  * formatted code. `loadEngine` must have been called first.
  */
 export function formatDart(source: string, options: Partial<FormatDartOptions> = {}): FormatDartResult | null {
-  const chosen: FormatDartOptions = { ...DEFAULT_OPTIONS, ...options };
+  const chosen: FormatDartOptions = { ...DEFAULT_OPTIONS, ...withoutUndefined(options) };
   validate(chosen);
   if (source.trim() === '') return null;
 

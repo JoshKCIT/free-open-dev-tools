@@ -348,3 +348,19 @@ it('hasPhpOpeningTag is true only when the source contains <?php or <?=', async 
   // The case the note is for: code with no opening tag comes back byte for byte.
   expect((await formatPhp('echo   1;\n'))?.output).toBe('echo   1;\n');
 });
+
+// An option left undefined means "not chosen": it must not override the default and fail with a range or on-or-off message.
+it('options set to undefined use their defaults', async () => {
+  const none = await formatPhp('<?php echo   1;\n');
+  const undefinedOptions: Partial<FormatPhpOptions> = {
+    printWidth: undefined,
+    tabWidth: undefined,
+    useTabs: undefined,
+    singleQuote: undefined,
+    trailingCommaPHP: undefined,
+    braceStyle: undefined,
+    phpVersion: undefined,
+  };
+  expect(await formatPhp('<?php echo   1;\n', undefinedOptions)).toEqual(none);
+  expect(none?.output).toBe('<?php echo 1;\n');
+});

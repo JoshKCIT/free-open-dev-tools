@@ -140,6 +140,11 @@ function describeEngineFailure(err: unknown, source: string): ShellFormatterErro
   return new ShellFormatterError(message);
 }
 
+/** Drops options set to `undefined`, so an option that was not chosen keeps its default instead of replacing it. */
+function withoutUndefined<T extends object>(options: T): Partial<T> {
+  return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 /**
  * Formats a shell script with shfmt, reading it as the chosen dialect. Returns `null` for blank or
  * whitespace-only source without calling the engine. Throws `ShellFormatterError` for every failure and never
@@ -148,7 +153,7 @@ function describeEngineFailure(err: unknown, source: string): ShellFormatterErro
  * saying it must be loaded again in a new worker or process.
  */
 export function formatShell(source: string, options: Partial<FormatShellOptions> = {}): FormatShellResult | null {
-  const chosen: FormatShellOptions = { ...DEFAULT_OPTIONS, ...options };
+  const chosen: FormatShellOptions = { ...DEFAULT_OPTIONS, ...withoutUndefined(options) };
   validate(chosen);
   if (source.trim() === '') return null;
   if (engineStopped) throw new ShellFormatterError(STOPPED_MESSAGE);

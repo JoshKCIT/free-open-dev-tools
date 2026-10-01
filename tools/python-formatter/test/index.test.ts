@@ -276,3 +276,17 @@ it('the engine still formats after an input that was too large or too deeply nes
   expect(failureOf('['.repeat(300)).message).toMatch(/too large or too deeply/);
   expect(formatPython('x   = 1\n')?.output).toBe('x = 1\n');
 });
+
+// An option left undefined means "not chosen": it must not override the default and fail with a range message.
+it('options set to undefined use their defaults', () => {
+  const none = formatPython('x   = 1\n');
+  expect(
+    formatPython('x   = 1\n', {
+      lineLength: undefined,
+      indentWidth: undefined,
+      quoteStyle: undefined,
+      indentStyle: undefined,
+    }),
+  ).toEqual(none);
+  expect(formatPython("x = 'a'\n", { quoteStyle: undefined })?.output).toBe('x = "a"\n');
+});

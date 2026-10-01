@@ -163,6 +163,11 @@ function describeFailure(err: unknown, source: string): PhpFormatterError {
   return new PhpFormatterError(firstLine);
 }
 
+/** Drops options set to `undefined`, so an option that was not chosen keeps its default instead of replacing it. */
+function withoutUndefined<T extends object>(options: T): Partial<T> {
+  return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 /**
  * Formats PHP source with Prettier and the PHP plugin. Returns `null` for blank or whitespace-only source without
  * calling Prettier. Throws `PhpFormatterError` for every failure and never returns partly formatted code. The PHP
@@ -172,7 +177,7 @@ export async function formatPhp(
   source: string,
   options: Partial<FormatPhpOptions> = {},
 ): Promise<FormatPhpResult | null> {
-  const chosen: FormatPhpOptions = { ...DEFAULT_OPTIONS, ...options };
+  const chosen: FormatPhpOptions = { ...DEFAULT_OPTIONS, ...withoutUndefined(options) };
   validate(chosen);
   if (source.trim() === '') return null;
 

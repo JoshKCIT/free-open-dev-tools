@@ -243,6 +243,15 @@ it('engine failures that are not syntax errors get a plain message and no positi
   }
 });
 
+// An option left undefined means "not chosen": it must not override the default and fail with a range message.
+it('options set to undefined use their defaults', () => {
+  const none = formatShell('if true; then\n  echo hi\nfi\n');
+  expect(formatShell('if true; then\n  echo hi\nfi\n', { indent: undefined, dialect: undefined })).toEqual(none);
+  expect(none?.output).toBe('if true; then\n\techo hi\nfi\n');
+});
+
+// The tests from here on trap the real engine, which every later test in this file would then share (an installed
+// package is not reloaded by vi.resetModules), so they stay last.
 // This test comes last on purpose, and loads its own copy of the package: a WebAssembly trap leaves the engine
 // instance unusable (every later call traps too), which is why each page run uses a new worker.
 it('2000 nested command substitutions give the too large or too deeply nested message with no position', async () => {

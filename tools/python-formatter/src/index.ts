@@ -121,13 +121,18 @@ function describeEngineFailure(err: unknown, source: string): PythonFormatterErr
   return new PythonFormatterError(message);
 }
 
+/** Drops options set to `undefined`, so an option that was not chosen keeps its default instead of replacing it. */
+function withoutUndefined<T extends object>(options: T): Partial<T> {
+  return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 /**
  * Formats Python source with the Ruff formatter. Returns `null` for blank or whitespace-only source without
  * calling the engine. Throws `PythonFormatterError` for every failure and never returns partly formatted
  * code. `loadEngine` must have been called first.
  */
 export function formatPython(source: string, options: Partial<FormatPythonOptions> = {}): FormatPythonResult | null {
-  const chosen: FormatPythonOptions = { ...DEFAULT_OPTIONS, ...options };
+  const chosen: FormatPythonOptions = { ...DEFAULT_OPTIONS, ...withoutUndefined(options) };
   validate(chosen);
   if (source.trim() === '') return null;
 
