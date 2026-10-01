@@ -1,0 +1,86 @@
+# PHP Formatter
+
+Format PHP code with Prettier and its PHP plugin, choosing width, indent, quotes, braces and trailing commas, with syntax errors shown by line and column.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Formats PHP code with Prettier 3.9.9 and its PHP plugin 0.25.0, run in a background worker in your browser. You choose the print width, the indent width, tabs or spaces, single or double quotes, trailing commas, the brace style and the PHP version the code targets. A syntax error is reported with its line and column instead of any formatted code. Nothing is sent anywhere.
+
+## Supported
+
+- PHP source files, with or without the opening tag, formatted by the Prettier PHP plugin
+- A print width from 20 to 200 and an indent width from 1 to 16, with spaces or with tabs
+- Single or double quotes for strings, and trailing commas in multi-line arrays and argument lists
+- Brace style: the PER Coding Style (the default) or the one true brace style
+- A PHP version from 5.0 to 8.5 that the output should stay valid for; 8.5 is the default
+- A syntax error is reported with its line and column, and no formatted code is shown
+
+## Limits
+
+- A run that takes longer than 10 seconds is stopped with a message, so a pathological input cannot freeze the page.
+- The PHP version is always one the plugin lists, 8.5 by default; the plugin's automatic detection reads files on disk and is not available in a browser.
+- Line and column in an error count characters as you see them; the plugin counts columns from zero in UTF-16 code units, so the column shown is that number plus one, with a character outside the basic multilingual plane, such as an emoji, counted once.
+- Only the first syntax error is reported.
+- The print width must be a whole number from 20 to 200 and the indent width a whole number from 1 to 16 (limits of this page, not of Prettier).
+- Only the options on this page can be chosen; the deprecated PSR-2 brace style, the plugin's other options and configuration files are not offered.
+- A source nested thousands of levels deep (for example 300 nested arrays) is refused with a plain message instead of crashing the page.
+
+## Ambiguous cases, and what this does about them
+
+- The plugin's own default PHP version is automatic detection from a composer file; this page uses the newest version the plugin lists, 8.5, because there is no file system to read, so output can differ from a command line run that detects an older version
+- A PHP version that is not on the plugin's list is refused rather than rounded to the nearest one
+- The first syntax error reported is the first the parser finds, which is not always the one the author meant
+
+## Defined by
+
+- [PER Coding Style 2.0](https://www.php-fig.org/per/coding-style/)
+- [Prettier PHP plugin](https://github.com/prettier/plugin-php/tree/v0.25.0)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/php-formatter php-formatter
+cd php-formatter
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/php-formatter
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { formatPhp } from '@fodt/php-formatter';
+
+await formatPhp('<?php $a=[1,2,3];', { printWidth: 80, singleQuote: true });
+// { output: ..., inputBytes: ..., outputBytes: ... }
+```
+
+`formatPhp(source, options?)` is asynchronous and returns `{ output, inputBytes, outputBytes }`, or `null` for blank or whitespace-only source without calling Prettier. The options are `printWidth` (20 to 200, default 80), `tabWidth` (1 to 16, default 4), `useTabs` (default false), `singleQuote` (default false), `trailingCommaPHP` (default true), `braceStyle` (`per-cs` or `1tbs`, default `per-cs`) and `phpVersion` (a version from `PHP_VERSIONS`, default 8.5). `phpVersion` is always passed to the plugin as a concrete version: auto and composer are refused. It throws `PhpFormatterError` for every failure and never returns partly formatted code; the error carries `line` and `column` (both 1-based, the column counted in characters) when the parser located a syntax error.
+
+## Dependencies
+
+- `@prettier/plugin-php` 0.25.0
+- `prettier` 3.9.9
+
+## Tests
+
+```sh
+npm test
+```
+
+The oracle is the plugin's own published jest snapshots at v0.25.0 (tests/array and the other snapshot directories): each case's options block, input and output are vendored with the licence, and every case whose options the page offers reproduces with an explicit PHP version. Error positions in the tests are counted by hand from each test's input.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).

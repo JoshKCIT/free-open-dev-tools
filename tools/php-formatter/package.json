@@ -1,0 +1,51 @@
+{
+  "name": "@fodt/php-formatter",
+  "version": "1.0.0",
+  "description": "Format PHP code with Prettier and its PHP plugin, choosing width, indent, quotes, braces and trailing commas, with syntax errors shown by line and column.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "php",
+    "prettier",
+    "plugin-php",
+    "format",
+    "formatter",
+    "pretty-print",
+    "per coding style",
+    "psr-12"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@prettier/plugin-php": "0.25.0",
+    "prettier": "3.9.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/php-formatter"
+  }
+}
