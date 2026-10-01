@@ -1358,6 +1358,150 @@
       "tier": 3,
       "summary": "Create and extract ZIP archives and extract TAR and gzip archives in the browser.",
       "implemented": true
+    },
+    {
+      "id": "loan-calculator",
+      "name": "Loan & Mortgage Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out the payment per period, total interest, payoff date and full repayment schedule of a loan, with optional extra payments.",
+      "implemented": true
+    },
+    {
+      "id": "credit-card-payoff",
+      "name": "Credit Card Payoff Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "See how long several card balances take to clear at a chosen monthly payment, or the payment that clears them by a chosen month, highest rate first or smallest balance first.",
+      "implemented": true
+    },
+    {
+      "id": "compound-interest",
+      "name": "Compound Interest & Savings Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Grow a starting amount and regular deposits at a stated rate and compounding frequency, with the final balance and a year-by-year table.",
+      "implemented": true
+    },
+    {
+      "id": "investment-return",
+      "name": "Investment Return Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out profit or loss, return on investment and annualised return from buy and sell prices or start and end values, quantities, fees and dates.",
+      "implemented": true
+    },
+    {
+      "id": "profit-margin",
+      "name": "Profit Margin, Markup & Break-even",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Turn cost and price into profit, margin and markup, find the price for a target margin or markup, and count break-even units.",
+      "implemented": true
+    },
+    {
+      "id": "percentage-calculator",
+      "name": "Percentage & Discount Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Answer everyday percentage questions: a percent of a number, what percent one number is of another, percent change, a discounted price and stacked discounts.",
+      "implemented": true
+    },
+    {
+      "id": "sales-tax",
+      "name": "Sales Tax, VAT & GST Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Add sales tax, VAT or GST to a net amount or take it out of a gross amount, with several tax components and rounding per line or on the total.",
+      "implemented": true
+    },
+    {
+      "id": "freelance-rate",
+      "name": "Freelance Rate Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out the hourly and day rate a freelance income target needs, after expenses, a tax allowance, days off and the share of time you can bill.",
+      "implemented": true
+    },
+    {
+      "id": "payment-fees",
+      "name": "Payment Fee Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out the fee on a payment and the amount received from a percentage and fixed fee you type in, or the amount to charge to receive a chosen sum.",
+      "implemented": true
+    },
+    {
+      "id": "currency-markup",
+      "name": "Currency Conversion Markup",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Compare an offered exchange rate with a reference mid-market rate you type in, and see the markup as a percentage and the hidden cost in each currency.",
+      "implemented": true
+    },
+    {
+      "id": "ad-metrics",
+      "name": "Ad Campaign Metrics",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out cost per click, cost per thousand impressions, click-through rate, conversion rate, cost per acquisition and return on ad spend, with each formula shown.",
+      "implemented": true
+    },
+    {
+      "id": "stock-metrics",
+      "name": "Stock Ratios & Margin Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out earnings per share, price to earnings ratio, dividend yield and payout ratio, and the price that triggers a margin call.",
+      "implemented": true
+    },
+    {
+      "id": "invoice-maker",
+      "name": "Invoice & Quote Maker",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Fill in seller, buyer, line items, discount and tax, and download an invoice or quote as a PDF.",
+      "implemented": true
+    },
+    {
+      "id": "npv-irr",
+      "name": "NPV, IRR & Payback Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Work out net present value, internal rate of return, payback and discounted payback for a series of cash flows.",
+      "implemented": true
+    },
+    {
+      "id": "depreciation",
+      "name": "Depreciation Calculator",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Build a depreciation schedule by straight line, declining balance with a switch to straight line, sum of the years digits or units of production.",
+      "implemented": true
+    },
+    {
+      "id": "salary-converter",
+      "name": "Salary & Hourly Pay Converter",
+      "category": "money",
+      "categoryLabel": "Money",
+      "tier": 2,
+      "summary": "Convert pay between yearly, monthly, fortnightly, weekly, daily and hourly amounts for chosen hours per week and weeks per year.",
+      "implemented": true
     }
   ]
 }

@@ -61,6 +61,19 @@ importers:
         specifier: ^6.0.7
         version: 6.4.3(@types/node@22.20.4)(terser@5.51.2)(yaml@2.9.1)
 
+  tools/ad-metrics:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/aes-encryption:
     dependencies:
       '@noble/hashes':
@@ -340,6 +353,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/compound-interest:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/compression-tester:
     devDependencies:
       typescript:
@@ -360,6 +386,19 @@ importers:
       css-tree:
         specifier: ^3.2.1
         version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/credit-card-payoff:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -539,6 +578,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/currency-markup:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/data-convert:
     dependencies:
       smol-toml:
@@ -611,6 +663,19 @@ importers:
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/depreciation:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -739,6 +804,19 @@ importers:
       css-tree:
         specifier: ^3.2.1
         version: 3.2.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/freelance-rate:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -1027,6 +1105,38 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/investment-return:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/invoice-maker:
+    dependencies:
+      '@cantoo/pdf-lib':
+        specifier: 2.11.1
+        version: 2.11.1(html-entities@2.6.0)
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      pdfjs-dist:
+        specifier: 6.3.289
+        version: 6.3.289
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/ip-ptr:
     devDependencies:
       typescript:
@@ -1239,6 +1349,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/loan-calculator:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/lorem-ipsum:
     devDependencies:
       typescript:
@@ -1384,6 +1507,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/npv-irr:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/number-base:
     devDependencies:
       typescript:
@@ -1495,6 +1631,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/payment-fees:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/pdf-merge:
     dependencies:
       '@cantoo/pdf-lib':
@@ -1543,6 +1692,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/percentage-calculator:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/php-unserialize:
     devDependencies:
       typescript:
@@ -1557,6 +1719,19 @@ importers:
       '@xmldom/xmldom':
         specifier: 0.9.12
         version: 0.9.12
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/profit-margin:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -1663,6 +1838,32 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/salary-converter:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/sales-tax:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/schema-markup:
     devDependencies:
       schema-dts:
@@ -1732,6 +1933,19 @@ importers:
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@types/sql.js@1.4.11)(sql.js@1.14.2)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/stock-metrics:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

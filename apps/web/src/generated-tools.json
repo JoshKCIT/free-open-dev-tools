@@ -1,4 +1,26 @@
 {
+  "ad-metrics": {
+    "id": "ad-metrics",
+    "name": "Ad Campaign Metrics",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "ad metrics",
+      "cost per click",
+      "CPC",
+      "CPM",
+      "click-through rate",
+      "CTR",
+      "conversion rate",
+      "cost per acquisition",
+      "CPA",
+      "return on ad spend",
+      "ROAS"
+    ]
+  },
   "aes-encryption": {
     "id": "aes-encryption",
     "name": "AES Encrypt & Decrypt",
@@ -352,6 +374,27 @@
       "blend"
     ]
   },
+  "compound-interest": {
+    "id": "compound-interest",
+    "name": "Compound Interest & Savings Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "compound interest",
+      "savings calculator",
+      "future value",
+      "regular deposit",
+      "compounding frequency",
+      "annual percentage yield",
+      "APY",
+      "effective annual yield",
+      "year by year",
+      "FV"
+    ]
+  },
   "compression-tester": {
     "id": "compression-tester",
     "name": "Compression Size Tester",
@@ -382,6 +425,27 @@
       "apca",
       "accessibility",
       "a11y"
+    ]
+  },
+  "credit-card-payoff": {
+    "id": "credit-card-payoff",
+    "name": "Credit Card Payoff Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "credit card payoff",
+      "debt payoff",
+      "debt avalanche",
+      "debt snowball",
+      "highest rate first",
+      "smallest balance first",
+      "minimum payment",
+      "months to pay off",
+      "interest",
+      "APR"
     ]
   },
   "cron-expression": {
@@ -584,6 +648,26 @@
       "api client"
     ]
   },
+  "currency-markup": {
+    "id": "currency-markup",
+    "name": "Currency Conversion Markup",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "currency conversion",
+      "exchange rate",
+      "markup",
+      "mid-market rate",
+      "hidden cost",
+      "foreign exchange",
+      "card fees",
+      "bank rate",
+      "reference rate"
+    ]
+  },
   "data-convert": {
     "id": "data-convert",
     "name": "JSON, YAML & TOML Converter",
@@ -704,6 +788,27 @@
       "auth",
       "sha256",
       "md5"
+    ]
+  },
+  "depreciation": {
+    "id": "depreciation",
+    "name": "Depreciation Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "depreciation",
+      "straight line",
+      "declining balance",
+      "double declining balance",
+      "sum of the years digits",
+      "units of production",
+      "book value",
+      "salvage value",
+      "useful life",
+      "depreciation schedule"
     ]
   },
   "docker-compose-validator": {
@@ -868,6 +973,26 @@
       "generator",
       "preview",
       "layout"
+    ]
+  },
+  "freelance-rate": {
+    "id": "freelance-rate",
+    "name": "Freelance Rate Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "freelance rate",
+      "hourly rate",
+      "day rate",
+      "contractor rate",
+      "billable hours",
+      "income target",
+      "self employed",
+      "consulting rate",
+      "billable share"
     ]
   },
   "git-command-builder": {
@@ -1247,6 +1372,50 @@
       "page size"
     ]
   },
+  "investment-return": {
+    "id": "investment-return",
+    "name": "Investment Return Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "investment return",
+      "return on investment",
+      "ROI",
+      "annualised return",
+      "annualized return",
+      "profit and loss",
+      "total return",
+      "holding period",
+      "cost basis",
+      "average annual total return"
+    ]
+  },
+  "invoice-maker": {
+    "id": "invoice-maker",
+    "name": "Invoice & Quote Maker",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0",
+      "@cantoo/pdf-lib": "2.11.1"
+    },
+    "keywords": [
+      "invoice",
+      "quote",
+      "estimate",
+      "pdf",
+      "billing",
+      "line items",
+      "discount",
+      "VAT",
+      "GST",
+      "sales tax",
+      "receipt"
+    ]
+  },
   "ip-ptr": {
     "id": "ip-ptr",
     "name": "IP to PTR Record",
@@ -1561,6 +1730,27 @@
       "diff"
     ]
   },
+  "loan-calculator": {
+    "id": "loan-calculator",
+    "name": "Loan & Mortgage Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "loan calculator",
+      "mortgage calculator",
+      "monthly payment",
+      "amortisation",
+      "amortization schedule",
+      "extra payment",
+      "payoff date",
+      "interest",
+      "PMT",
+      "repayment"
+    ]
+  },
   "lorem-ipsum": {
     "id": "lorem-ipsum",
     "name": "Lorem Ipsum Generator",
@@ -1742,6 +1932,27 @@
       "basic auth"
     ]
   },
+  "npv-irr": {
+    "id": "npv-irr",
+    "name": "NPV, IRR & Payback Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "net present value",
+      "NPV",
+      "internal rate of return",
+      "IRR",
+      "payback period",
+      "discounted payback",
+      "cash flows",
+      "discount rate",
+      "capital budgeting",
+      "present value"
+    ]
+  },
   "number-base": {
     "id": "number-base",
     "name": "Number Base Converter",
@@ -1862,6 +2073,26 @@
       "guessability"
     ]
   },
+  "payment-fees": {
+    "id": "payment-fees",
+    "name": "Payment Fee Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "payment fee",
+      "processing fee",
+      "transaction fee",
+      "percentage fee",
+      "fixed fee",
+      "amount received",
+      "gross up",
+      "net amount",
+      "charge to receive"
+    ]
+  },
   "pdf-merge": {
     "id": "pdf-merge",
     "name": "PDF Merge",
@@ -1913,6 +2144,26 @@
       "convert"
     ]
   },
+  "percentage-calculator": {
+    "id": "percentage-calculator",
+    "name": "Percentage & Discount Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "percentage",
+      "percent of",
+      "percent change",
+      "percentage increase",
+      "percentage decrease",
+      "discount",
+      "stacked discounts",
+      "sale price",
+      "what percent"
+    ]
+  },
   "php-unserialize": {
     "id": "php-unserialize",
     "name": "PHP Unserialize",
@@ -1939,6 +2190,26 @@
       "png",
       "image",
       "mockup"
+    ]
+  },
+  "profit-margin": {
+    "id": "profit-margin",
+    "name": "Profit Margin, Markup & Break-even",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "profit margin",
+      "markup",
+      "break-even",
+      "break even units",
+      "gross margin",
+      "target price",
+      "contribution margin",
+      "selling price",
+      "cost plus pricing"
     ]
   },
   "qr-generator": {
@@ -2057,6 +2328,49 @@
       "roman to integer"
     ]
   },
+  "salary-converter": {
+    "id": "salary-converter",
+    "name": "Salary & Hourly Pay Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "salary converter",
+      "hourly to yearly",
+      "yearly to hourly",
+      "pay converter",
+      "annual salary",
+      "weekly pay",
+      "fortnightly pay",
+      "monthly salary",
+      "day rate",
+      "hourly pay"
+    ]
+  },
+  "sales-tax": {
+    "id": "sales-tax",
+    "name": "Sales Tax, VAT & GST Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "sales tax",
+      "VAT",
+      "GST",
+      "VAT fraction",
+      "add tax",
+      "remove tax",
+      "tax inclusive",
+      "tax exclusive",
+      "gross to net",
+      "net to gross",
+      "rounding"
+    ]
+  },
   "schema-markup": {
     "id": "schema-markup",
     "name": "JSON-LD Schema Builder",
@@ -2167,6 +2481,27 @@
       "mysql",
       "sqlite",
       "sql server"
+    ]
+  },
+  "stock-metrics": {
+    "id": "stock-metrics",
+    "name": "Stock Ratios & Margin Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "earnings per share",
+      "EPS",
+      "price to earnings",
+      "P/E ratio",
+      "dividend yield",
+      "payout ratio",
+      "margin call",
+      "maintenance margin",
+      "initial margin",
+      "stock ratios"
     ]
   },
   "string-escape": {

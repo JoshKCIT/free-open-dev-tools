@@ -13,7 +13,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@bbob/parser](https://github.com/JiLiZART/bbob) | 4.4.1 | MIT | direct | tools/bbcode |
 | [@bbob/plugin-helper](https://github.com/JiLiZART/bbob) | 4.4.1 | MIT | transitive (via @bbob/parser) | tools/bbcode |
 | [@bbob/types](https://github.com/JiLiZART/bbob) | 4.4.1 | MIT | transitive (via @bbob/parser) | tools/bbcode |
-| [@cantoo/pdf-lib](https://pdf-lib.js.org) | 2.11.1 | MIT | direct | tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
+| [@cantoo/pdf-lib](https://pdf-lib.js.org) | 2.11.1 | MIT | direct | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [@eslint-community/regexpp](https://github.com/eslint-community/regexpp#readme) | 4.12.2 | MIT | direct | tools/regex-tester |
 | [@jridgewell/source-map](https://github.com/jridgewell/sourcemaps/tree/main/packages/source-map) | 0.3.11 | MIT | transitive (via terser) | tools/html-formatter, tools/js-formatter |
 | [@mixmark-io/domino](https://github.com/mixmark-io/domino) | 2.2.0 | BSD-2-Clause | transitive (via turndown) | tools/markdown-html |
@@ -41,8 +41,9 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [css-tree]() | 3.2.1 | MIT | transitive (via csso, svgo) | tools/css-formatter, tools/html-formatter, tools/svg-optimizer |
 | [css-what](https://github.com/fb55/css-what) | 7.0.0 | BSD-2-Clause | transitive (via svgo) | tools/svg-optimizer |
 | [csso]() | 5.0.5 | MIT | direct | tools/css-formatter, tools/html-formatter, tools/svg-optimizer |
-| [culori]() | 4.0.2 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
+| [culori]() | 4.0.2 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [debug](git://github.com/debug-js/debug) | 4.4.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
+| [decimal.js](https://github.com/MikeMcl/decimal.js) | 10.6.0 | MIT | direct | tools/ad-metrics, tools/compound-interest, tools/credit-card-payoff, tools/currency-markup, tools/depreciation, tools/freelance-rate, tools/investment-return, tools/invoice-maker, tools/loan-calculator, tools/npv-irr, tools/payment-fees, tools/percentage-calculator, tools/profit-margin, tools/salary-converter, tools/sales-tax, tools/stock-metrics |
 | [decode-named-character-reference]() | 1.3.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [devlop]() | 1.1.0 | MIT | transitive (via mdast-util-from-markdown, micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [dijkstrajs](https://github.com/tcort/dijkstrajs) | 1.0.3 | MIT | transitive (via qrcode) | tools/qr-generator |
@@ -57,7 +58,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
-| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
+| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-formatter, tools/graphql-to-typescript |
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
@@ -97,7 +98,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [micromark-util-types]() | 2.0.2 | MIT | transitive (via mdast-util-from-markdown, micromark, micromark-extension-gfm) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [mime-db]() | 1.54.0 | MIT | direct | tools/mime-types |
 | [nearley](https://github.com/hardmath123/nearley) | 2.20.1 | MIT | transitive (via sql-formatter) | tools/sql-formatter |
-| [node-html-better-parser](https://github.com/Sharcoux/node-html-parser) | 1.5.9 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
+| [node-html-better-parser](https://github.com/Sharcoux/node-html-parser) | 1.5.9 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [param-case](https://github.com/blakeembrey/change-case/tree/master/packages/param-case#readme) | 3.0.4 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
 | [path-expression-matcher](https://github.com/NaturalIntelligence/path-expression-matcher#readme) | 1.6.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [pdfjs-dist](https://mozilla.github.io/pdf.js/) | 6.3.289 | Apache-2.0 | direct | tools/pdf-to-image |
@@ -119,7 +120,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [strnum](https://github.com/NaturalIntelligence/strnum) | 2.4.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [svgo](https://svgo.dev) | 4.1.0 | MIT | direct | tools/svg-optimizer |
 | [terser](https://terser.org) | 5.51.2 | BSD-2-Clause | direct | tools/html-formatter, tools/js-formatter |
-| [tslib](https://www.typescriptlang.org/) | 2.8.1 | 0BSD | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/pdf-merge, tools/pdf-split |
+| [tslib](https://www.typescriptlang.org/) | 2.8.1 | 0BSD | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [turndown](https://github.com/mixmark-io/turndown) | 7.2.4 | MIT | direct | tools/markdown-html |
 | [typescript](https://www.typescriptlang.org/) | 5.9.3 | Apache-2.0 | direct | tools/js-formatter, tools/ts-to-js |
 | [unist-util-stringify-position]() | 4.0.0 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
@@ -1377,6 +1378,35 @@ THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### decimal.js 10.6.0
+
+Licence: MIT
+
+```text
+The MIT Licence.
+
+Copyright (c) 2025 Michael Mclaughlin
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
