@@ -1,0 +1,20 @@
+[
+  {
+    "mode": { "field": "mode", "value": "time" },
+    "values": {
+      "cards": "Card A | 1000 | 24 | 25\nCard B | 500 | 12 | 25",
+      "budget": "200",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "target" },
+    "values": {
+      "cards": "Card A | 1000 | 24 | 25\nCard B | 500 | 12 | 25",
+      "months": "12",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  }
+]

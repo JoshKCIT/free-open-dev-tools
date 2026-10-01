@@ -396,6 +396,8 @@ export function calculatePayoff(texts: PayoffTexts): PayoffResult | null {
     'Appendix M1 (b)(4)(ix) assumes payments go to lower-APR balances first when an issuer prints its minimum-payment disclosures. That is a convention for those disclosures, not either order offered here.',
   ];
   const money = (x: Dec) => x.toFixed(dp);
+  /** For sentences read by a person: with the currency's symbol and digit grouping. */
+  const shown = (x: Dec) => formatMoney(x, currency);
 
   const orders: OrderResult[] = ORDERS.map(({ order, label }) => {
     let payment: Dec;
@@ -412,7 +414,7 @@ export function calculatePayoff(texts: PayoffTexts): PayoffResult | null {
       payment = needed;
       if (payment.eq(minimums)) {
         notes.push(
-          `${label}: the minimum payments alone (${money(minimums)} a month) clear every card within ${targetMonths} months, so that is the smallest payment that can be used.`,
+          `${label}: the minimum payments alone (${shown(minimums)} a month) clear every card within ${targetMonths} months, so that is the smallest payment that can be used.`,
         );
       }
     }
@@ -420,8 +422,8 @@ export function calculatePayoff(texts: PayoffTexts): PayoffResult | null {
     if (!run.paidOff) {
       warnings.push(
         run.runaway
-          ? `${label}: not paid off. The balance grows faster than ${money(payment)} a month pays it down and was stopped at month ${run.months} when it passed 1,000,000,000,000,000,000,000,000,000,000.`
-          : `${label}: not paid off after ${COMMA.format(MAX_MONTHS)} months (100 years). ${money(payment)} a month does not beat the interest, so the balance never clears; a larger monthly payment is needed.`,
+          ? `${label}: not paid off. The balance grows faster than ${shown(payment)} a month pays it down and was stopped at month ${run.months} when it passed 1,000,000,000,000,000,000,000,000,000,000.`
+          : `${label}: not paid off after ${COMMA.format(MAX_MONTHS)} months (100 years). ${shown(payment)} a month does not beat the interest, so the balance never clears; a larger monthly payment is needed.`,
       );
     }
     return {
@@ -448,10 +450,10 @@ export function calculatePayoff(texts: PayoffTexts): PayoffResult | null {
   const firstMonth = live.map((card) => {
     const exact = card.balance.times(card.apr).div(MONTHLY_DIVISOR);
     const rounded = roundTo(exact, dp);
-    const shown = exact.eq(rounded)
+    const result = exact.eq(rounded)
       ? rounded.toFixed(dp)
       : `${toPlain(exact, 12)} (to 12 places), rounded to ${rounded.toFixed(dp)}`;
-    return `    ${card.name}: ${card.balance.toFixed()} x ${card.apr.toFixed()} / 100 / 12 = ${shown}`;
+    return `    ${card.name}: ${card.balance.toFixed()} x ${card.apr.toFixed()} / 100 / 12 = ${result}`;
   });
 
   const working = [

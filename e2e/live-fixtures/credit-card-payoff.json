@@ -1,0 +1,10 @@
+{
+  "id": "credit-card-payoff",
+  "label": "12 CFR 1026 Appendix M1 and M2 monthly convention, derived by hand: one card of 1000 at 12 APR paying 100 a month clears in 11 months with 58.98 interest",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "time" },
+    { "action": "fill", "field": "cards", "value": "Card | 1000 | 12 | 25" },
+    { "action": "fill", "field": "budget", "value": "100" }
+  ],
+  "expect": ["58.98", "11"]
+}
