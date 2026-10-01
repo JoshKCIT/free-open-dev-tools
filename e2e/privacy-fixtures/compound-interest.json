@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "start": "1000", "deposit": "100", "rate": "5", "years": "10", "currency": "USD" },
+    "attachesFile": false
+  }
+]

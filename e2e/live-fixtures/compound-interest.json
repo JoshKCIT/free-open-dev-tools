@@ -1,0 +1,13 @@
+{
+  "id": "compound-interest",
+  "label": "OpenFormula 6.12.20 FV, derived by hand: 100 deposited at the end of each month at 12 percent for 12 months ends at 1,268.25",
+  "steps": [
+    { "action": "fill", "field": "start", "value": "0" },
+    { "action": "fill", "field": "deposit", "value": "100" },
+    { "action": "select", "field": "timing", "value": "end" },
+    { "action": "fill", "field": "rate", "value": "12" },
+    { "action": "select", "field": "compounding", "value": "12" },
+    { "action": "fill", "field": "years", "value": "1" }
+  ],
+  "expect": ["1,268.25"]
+}
