@@ -27,6 +27,23 @@ async function settle(page: Page): Promise<void> {
   });
 }
 
+/**
+ * Waits until the first markup block shows `needle`, which only the markup under test can contain (the previous kind's
+ * markup also holds the escaped hostile text, so that cannot prove the page has caught up), then settles and asserts the
+ * page is showing no error. A page that refuses the typed values fails here, with its own message.
+ */
+async function expectBuiltMarkup(page: Page, needle: string | RegExp, what: string): Promise<void> {
+  await expect(
+    page.locator('section[aria-label="Output"] pre.output').first(),
+    `${what}: the markup it builds`,
+  ).toContainText(needle);
+  await settle(page);
+  const problems = await page
+    .locator('section[aria-label="Output"] .issue-list, section[aria-label="Output"] .note-error')
+    .allInnerTexts();
+  expect(problems, `${what}: the page must show no error`).toEqual([]);
+}
+
 /** Every request made while `action` runs, other than data: and blob: addresses. */
 async function withRequestRecorder(page: Page, action: () => Promise<void>): Promise<string[]> {
   const requests: string[] = [];
@@ -262,11 +279,19 @@ const LINK_KINDS_UNDER_TEST: {
   free: string[];
   valid: Record<string, string>;
   checks?: string[];
+  /** Text that only this kind's markup contains, so the test knows the page has caught up with the typed values. */
+  needle: string;
 }[] = [
-  { kind: 'web', free: ['text', 'href', 'downloadName'], valid: { relOther: 'license' }, checks: ['download'] },
-  { kind: 'mailto', free: ['text', 'to', 'cc', 'bcc', 'subject', 'body'], valid: {} },
-  { kind: 'tel', free: ['text'], valid: { phone: '+1-201-555-0123', ext: '12' } },
-  { kind: 'sms', free: ['text', 'smsBody'], valid: { recipients: '+15105550101' } },
+  {
+    kind: 'web',
+    free: ['text', 'href', 'downloadName'],
+    valid: { relOther: 'license' },
+    checks: ['download'],
+    needle: 'rel="license"',
+  },
+  { kind: 'mailto', free: ['text', 'to', 'cc', 'bcc', 'subject', 'body'], valid: {}, needle: 'href="mailto:' },
+  { kind: 'tel', free: ['text'], valid: { phone: '+1-201-555-0123', ext: '12' }, needle: 'href="tel:' },
+  { kind: 'sms', free: ['text', 'smsBody'], valid: { recipients: '+15105550101' }, needle: 'href="sms:' },
 ];
 
 /** Selects a link type and fills its fields, then waits for the result to settle. */
@@ -279,7 +304,7 @@ async function buildLinkOnPage(
   for (const field of entry.checks ?? []) await page.locator(`#f-${field}`).check();
   for (const [field, value] of Object.entries(entry.valid)) await page.locator(`#f-${field}`).fill(value);
   for (const field of entry.free) await page.locator(`#f-${field}`).fill(freeValue);
-  await settle(page);
+  await expectBuiltMarkup(page, entry.needle, `link-builder ${entry.kind}`);
 }
 
 test('link-builder: hostile text in every field comes out as text, runs nothing and requests nothing', async ({
@@ -425,7 +450,8 @@ async function buildSemanticElementOnPage(
   await page.locator('#f-element').selectOption(entry.element);
   for (const [field, value] of Object.entries(entry.valid)) await page.locator(`#f-${field}`).fill(value);
   for (const field of entry.free) await page.locator(`#f-${field}`).fill(freeValue);
-  await settle(page);
+  // Every element writes its own start tag, which the previous element's markup does not contain.
+  await expectBuiltMarkup(page, new RegExp(`<${entry.element}[ >]`), `semantic-html-builder ${entry.element}`);
 }
 
 test('semantic-html-builder: hostile text in every field comes out as text, runs nothing and requests nothing', async ({
