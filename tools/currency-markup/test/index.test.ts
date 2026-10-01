@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, test } from 'vitest';
 import { calculateMarkup, markup, meta, type MarkupTexts } from '../src/index';
 import { D, MoneyInputError } from '../src/money';
 
@@ -188,4 +188,19 @@ it('the working shows the formulas with the typed numbers and cites the regulati
   expect(working).toContain('(1.1000 - 1.0780) / 1.1000 x 100');
   expect(working).toContain('half away from zero');
   expect(working).not.toMatch(/recommend|best|you should/i);
+});
+
+test('an amount with more decimal places than the source currency has is refused naming the amount field', () => {
+  // 1000.555 yen would show as 1,001 yen while the result used 1000.555, so the visible numbers would not agree.
+  const jpy = { source: 'JPY', target: 'USD', offered: '0.0067', mid: '0.0068' };
+  const err = refused(() => calc({ ...jpy, amount: '1000.555' }));
+  expect(err.field).toBe('Amount in the source currency');
+  expect(err.message).toMatch(/JPY has 0 decimal places/);
+  // A currency with two places refuses a third, and one with three places accepts three.
+  expect(refused(() => calc({ amount: '10.001' })).field).toBe('Amount in the source currency');
+  expect(calc({ amount: '10.00' }).summary.amount).toBe('10.00');
+  expect(calc({ amount: '1000', ...jpy }).summary.amount).toBe('1000');
+  expect(calc({ amount: '0.125', source: 'BHD', target: 'USD' }).summary.amount).toBe('0.125');
+  // Trailing zeros past the places are the same number, so they are accepted.
+  expect(calc({ amount: '1000.000', ...jpy }).summary.amount).toBe('1000');
 });

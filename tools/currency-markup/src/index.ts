@@ -147,6 +147,12 @@ export function calculateMarkup(texts: MarkupTexts): MarkupResult | null {
   );
 
   const amount = parseDecimal(amountText, FIELD_AMOUNT);
+  if (amount.dp() > sourceDecimals) {
+    throw new MoneyInputError(
+      FIELD_AMOUNT,
+      `${source} has ${sourceDecimals} decimal place${sourceDecimals === 1 ? '' : 's'}, so type at most that many`,
+    );
+  }
   if (!amount.gt(0)) throw new MoneyInputError(FIELD_AMOUNT, 'must be above zero, type an amount such as 1000');
   const offered = parseRate(texts.offered, FIELD_OFFERED, '1.0780');
   const mid = parseRate(texts.mid, FIELD_MID, '1.1000');

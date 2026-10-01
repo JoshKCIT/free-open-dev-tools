@@ -19,7 +19,7 @@
     "No exchange rate is built in, looked up or fetched: both the rate you were offered and the reference rate are typed by you, and a rate of zero or a blank rate is refused by name.",
     "Rates are read as units of the target currency per one unit of the source currency, as the labels say; a rate typed the other way round (source per target) gives a wrong answer, so check the direction before you type.",
     "One conversion at a time: the amount is converted once from the source currency to the target currency, with no fees added and nothing carried over from earlier conversions.",
-    "An amount or a rate may have at most 15 digits before the point and 12 after, the amount must be above zero and each rate must be above zero.",
+    "An amount or a rate may have at most 15 digits before the point and 12 after, the amount must be above zero and each rate must be above zero; the amount can have no more decimal places than the source currency's smallest unit (none for yen), so the amount shown is the amount converted.",
     "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
   ],
   "ambiguities": [
