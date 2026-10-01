@@ -58,10 +58,15 @@ function byteLength(text: string): number {
  * first instance it is given, so calling this again is harmless. The engine is compiled by dart2wasm and needs
  * WebAssembly garbage collection: where that is missing the module cannot be compiled, which surfaces as a
  * WebAssembly.CompileError and becomes a plain message here.
+ *
+ * Bytes are compiled here with no `builtins` option, so every `wasm:js-string` helper the module imports comes
+ * from the package's own JavaScript. The package's own load asks for the engine's built-in string helpers, and
+ * with those Node 22.23 and Node 24 trap on every format ("illegal cast" inside `length`). A module passed in
+ * must likewise be compiled with no `builtins` option.
  */
 export function loadEngine(wasm: BufferSource | WebAssembly.Module): void {
   try {
-    initSync(wasm);
+    initSync(wasm instanceof WebAssembly.Module ? wasm : new WebAssembly.Module(wasm));
   } catch (err) {
     if (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.CompileError) {
       throw new DartFormatterError(NO_GARBAGE_COLLECTION_MESSAGE);

@@ -13,12 +13,14 @@ const engineControl = vi.hoisted(() => ({
   lastFileName: undefined as undefined | string,
   lastConfig: undefined as undefined | Record<string, unknown>,
   initError: undefined as unknown,
+  lastInitArgument: undefined as unknown,
 }));
 vi.mock('@wasm-fmt/dart_fmt/web', async (importOriginal) => {
   const real = await importOriginal<typeof import('@wasm-fmt/dart_fmt/web')>();
   return {
     ...real,
     initSync: (...args: Parameters<typeof real.initSync>) => {
+      engineControl.lastInitArgument = args[0];
       if (engineControl.initError !== undefined) throw engineControl.initError;
       return real.initSync(...args);
     },
@@ -157,6 +159,14 @@ it('line width outside 1 to 1000 is refused naming the field', () => {
   expect(formatDart('var x=1;\n', { lineWidth: 1000 })?.output).toBe('var x = 1;\n');
   formatDart('var x=1;\n');
   expect(engineControl.lastConfig).toEqual({ line_width: 80 });
+});
+
+it('bytes are compiled before the engine sees them, so it never asks for the built-in string helpers', () => {
+  // The package compiles raw bytes with `builtins: ['js-string']`, and with those Node 22.23 and Node 24 trap on
+  // every format ("illegal cast"). Handing the engine an already compiled module keeps its own string helpers.
+  loadEngine(wasmBytes());
+  expect(engineControl.lastInitArgument).toBeInstanceOf(WebAssembly.Module);
+  expect(formatDart('var x=1;\n')?.output).toBe('var x = 1;\n');
 });
 
 it('blank or whitespace-only source is not sent to the engine and gives no result', () => {
