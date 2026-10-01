@@ -6,16 +6,22 @@ import * as F from './fixtures/dart-style/golden';
 
 // The engine entry is wrapped only to COUNT calls and to RECORD the configuration it is called with, so a test can
 // prove blank input and refused options never reach the engine and that the line width arrives under the engine's
-// own option name. Otherwise the wrapper calls straight through; it is a spy, never an oracle.
+// own option name, and to make loading fail on demand with the error a browser without WebAssembly garbage
+// collection gives. Otherwise the wrapper calls straight through; it is a spy, never an oracle.
 const engineControl = vi.hoisted(() => ({
   count: 0,
   lastFileName: undefined as undefined | string,
   lastConfig: undefined as undefined | Record<string, unknown>,
+  initError: undefined as unknown,
 }));
 vi.mock('@wasm-fmt/dart_fmt/web', async (importOriginal) => {
   const real = await importOriginal<typeof import('@wasm-fmt/dart_fmt/web')>();
   return {
     ...real,
+    initSync: (...args: Parameters<typeof real.initSync>) => {
+      if (engineControl.initError !== undefined) throw engineControl.initError;
+      return real.initSync(...args);
+    },
     format: (...args: Parameters<typeof real.format>) => {
       engineControl.count += 1;
       engineControl.lastFileName = args[1];
@@ -38,6 +44,7 @@ beforeEach(() => {
   engineControl.count = 0;
   engineControl.lastFileName = undefined;
   engineControl.lastConfig = undefined;
+  engineControl.initError = undefined;
   consoleSpies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) =>
     vi.spyOn(console, method).mockImplementation(() => undefined),
   );
@@ -85,11 +92,12 @@ it('a dart_style fixture at 80 columns reproduces, so the line width option is h
   }
   expect(engineControl.lastConfig).toEqual({ line_width: 80 });
 
-  // The width is read from the option: the first case's first line is 83 characters, so it wraps at 80 as published
+  // The width is read from the option: the first case's first line is over 80 characters, so it wraps at 80 as published
   // and stays on one line when the width is 120.
   const first = F.DEFAULT_WIDTH_UNIT_CASES[0];
   const firstLine = first?.input.split('\n')[0] ?? '';
-  expect(firstLine.length).toBe(83);
+  expect(firstLine.length).toBeGreaterThan(80);
+  expect(firstLine.length).toBeLessThan(120);
   expect(formatDart(first?.input ?? '', { lineWidth: 120 })?.output.split('\n')[0]).toBe(firstLine);
   expect(formatDart(first?.input ?? '', { lineWidth: 80 })?.output.split('\n')[0]).not.toBe(firstLine);
 });
@@ -176,32 +184,37 @@ it('meta pins dart_fmt exactly and declares the dart_style and Dart SDK licence 
   expect(first('Dart SDK runtime and core libraries')).toContain('Copyright 2012, the Dart project authors');
 });
 
-// The two tests below load their own copy of the package. The first because a failed load must not leave this
-// file's engine in a half state, the second because a stack overflow in a WebAssembly engine may leave an instance
-// unusable (every later call can trap too), which is why each page run uses a new worker. The overflow test is last.
-
-it('an engine that cannot compile here gives a plain message naming WebAssembly garbage collection', async () => {
-  vi.resetModules();
-  const fresh = await import('../src/index');
-  // Bytes that are not a WebAssembly module fail with the same WebAssembly.CompileError a browser without
-  // WebAssembly garbage collection gives for this module, which is what the package maps.
+it('an engine that cannot compile here gives a plain message naming WebAssembly garbage collection', () => {
+  // A browser without WebAssembly garbage collection cannot compile this module: loading fails with a
+  // WebAssembly.CompileError (the wrapper's own load code does not catch it). The wrapped engine entry raises that
+  // error on demand, since the engine of this Node already has garbage collection.
+  engineControl.initError = new WebAssembly.CompileError(
+    'WebAssembly.Module(): invalid value type (garbage collection)',
+  );
   let caught: unknown;
   try {
-    fresh.loadEngine(new Uint8Array(16));
+    loadEngine(wasmBytes());
   } catch (err) {
     caught = err;
   }
-  expect(caught).toBeInstanceOf(fresh.DartFormatterError);
+  expect(caught).toBeInstanceOf(DartFormatterError);
   const error = caught as DartFormatterError;
   expect(error.message).toBe('This browser cannot run the Dart formatter (it needs WebAssembly garbage collection).');
   expect(error.line).toBeUndefined();
   expect(error.column).toBeUndefined();
 
-  // Loading the real engine afterwards still works: the failed attempt left nothing behind.
-  fresh.loadEngine(wasmBytes());
-  expect(fresh.formatDart('var x=1;\n')?.output).toBe('var x = 1;\n');
+  // Any other failure to load is not hidden behind that message.
+  engineControl.initError = new TypeError('not a buffer');
+  expect(() => loadEngine(wasmBytes())).toThrow(TypeError);
+  engineControl.initError = undefined;
+
+  // With the failure gone, loading and formatting work again.
+  loadEngine(wasmBytes());
+  expect(formatDart('var x=1;\n')?.output).toBe('var x = 1;\n');
 });
 
+// This test comes last on purpose, and loads its own copy of the package: a stack overflow in a WebAssembly engine
+// may leave an instance unusable (every later call can trap too), which is why each page run uses a new worker.
 it('a 5000 term expression gives the too large or too deeply nested message with no position', async () => {
   vi.resetModules();
   const fresh = await import('../src/index');
