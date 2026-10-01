@@ -41,7 +41,7 @@ Builds an invoice or a quote as a PDF in your browser. You type who it is from a
 
 ## Defined by
 
-- [ISO 32000-1:2008 Document management, Portable document format, Part 1: PDF 1.7 (the file header in 7.5.2 and WinAnsiEncoding in Annex D)](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf)
+- [ISO 32000-1:2008 Document management, Portable document format, Part 1: PDF 1.7 (the file header in 7.5.2 and WinAnsiEncoding in Annex D)](https://www.iso.org/standard/51502.html)
 
 ## Use it on its own
 

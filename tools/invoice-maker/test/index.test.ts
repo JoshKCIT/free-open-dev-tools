@@ -52,9 +52,7 @@ it('meta: id, name, pinned dependencies, the two required sentences in limits an
   expect(meta.limits.some((l: string) => /Nothing is stored/i.test(l))).toBe(true);
   expect(meta.limits.some((l: string) => /refused naming the character/i.test(l))).toBe(true);
   expect(meta.standards).toHaveLength(1);
-  expect(meta.standards[0]?.url).toBe(
-    'https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf',
-  );
+  expect(meta.standards[0]?.url).toBe('https://www.iso.org/standard/51502.html');
   expect(MAX_ITEMS).toBe(200);
 });
 
