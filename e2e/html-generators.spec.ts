@@ -393,6 +393,10 @@ test('link-builder: clicking the link in the preview requests nothing and leaves
  */
 const ELEMENTS_UNDER_TEST: { element: string; free: string[]; valid: Record<string, string> }[] = [
   { element: 'time', free: ['content'], valid: { datetime: '2011-11-18' } },
+  { element: 'details', free: ['summary', 'paragraphs', 'group'], valid: {} },
+  { element: 'dialog', free: ['paragraphs', 'closeLabel'], valid: { id: 'sure' } },
+  { element: 'meter', free: ['label', 'title', 'content'], valid: { value: '0.5' } },
+  { element: 'progress', free: ['label', 'content'], valid: { value: '5', max: '10' } },
 ];
 
 /** Selects an element and fills its fields, then waits for the result to settle. */
@@ -447,4 +451,81 @@ test('semantic-html-builder: hostile text in every field comes out as text, runs
     const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
     expect(markup, `${entry.element}: the markup holds the text escaped`).toContain('&lt;script&gt;');
   }
+});
+
+test('semantic-html-builder: a meter and a progress bar built by the page are found by role and label in this browser', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/semantic-html-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const requests = await withRequestRecorder(page, async () => {
+    await page.locator('#f-element').selectOption('meter');
+    await page.locator('#f-label').fill('Disk usage');
+    await page.locator('#f-value').fill('0.6');
+    await page.locator('#f-content').fill('60 percent');
+    await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText('<meter');
+    await settle(page);
+    const meterFrame = page.frameLocator('iframe.preview-frame').first();
+    await expect(meterFrame.getByRole('meter', { name: 'Disk usage', exact: true })).toHaveCount(1);
+    await expect(meterFrame.getByLabel('Disk usage', { exact: true })).toHaveCount(1);
+
+    await page.locator('#f-element').selectOption('progress');
+    await page.locator('#f-label').fill('Upload');
+    await page.locator('#f-value').fill('70');
+    await page.locator('#f-max').fill('100');
+    await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText('<progress');
+    await settle(page);
+    const progressFrame = page.frameLocator('iframe.preview-frame').first();
+    await expect(progressFrame.getByRole('progressbar', { name: 'Upload', exact: true })).toHaveCount(1);
+    await expect(progressFrame.getByLabel('Upload', { exact: true })).toHaveCount(1);
+  });
+  expect(requests, `no request may be made while building the gauges: ${requests.join(', ')}`).toEqual([]);
+});
+
+test('semantic-html-builder: clicking the summary and the dialog close button in the preview requests nothing and leaves the preview in place', async ({
+  page,
+}, testInfo) => {
+  await page.goto(rel('/tools/semantic-html-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  // details: clicking the summary may open or close it, but the frame stays on its own document with its details.
+  await page.locator('#f-element').selectOption('details');
+  await page.locator('#f-summary').fill('More');
+  await page.locator('#f-paragraphs').fill('Hidden text');
+  await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText('<details');
+  await settle(page);
+  let handle = await page.locator('iframe.preview-frame').first().elementHandle();
+  let frame = await handle!.contentFrame();
+  expect(frame, 'the details preview frame can be reached').not.toBeNull();
+  let requests = await withRequestRecorder(page, async () => {
+    await frame!.locator('summary').click({ timeout: 5_000 });
+    await page.waitForTimeout(300);
+  });
+  expect(requests, `clicking the summary must request nothing: ${requests.join(', ')}`).toEqual([]);
+  expect(frame!.url(), 'the details preview stays on its own document').toBe('about:srcdoc');
+  expect(await frame!.locator('details').count(), 'the preview still holds its details').toBe(1);
+
+  // dialog: the close button may close the dialog (some browsers) or do nothing, but never navigates or requests.
+  await page.locator('#f-element').selectOption('dialog');
+  await page.locator('#f-paragraphs').fill('Hello there');
+  await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText('<dialog');
+  await settle(page);
+  handle = await page.locator('iframe.preview-frame').first().elementHandle();
+  frame = await handle!.contentFrame();
+  expect(frame, 'the dialog preview frame can be reached').not.toBeNull();
+  expect(await frame!.locator('dialog[open]').count(), 'the preview shows the dialog open').toBe(1);
+  requests = await withRequestRecorder(page, async () => {
+    await frame!.getByRole('button', { name: 'Close', exact: true }).click({ timeout: 5_000 });
+    await page.waitForTimeout(300);
+  });
+  expect(requests, `clicking the close button must request nothing: ${requests.join(', ')}`).toEqual([]);
+  expect(frame!.url(), 'the dialog preview stays on its own document').toBe('about:srcdoc');
+  expect(await frame!.locator('dialog').count(), 'the preview still holds its dialog').toBe(1);
+  const closed = (await frame!.locator('dialog[open]').count()) === 0;
+  testInfo.annotations.push({
+    type: 'dialog-closed-by-preview-button',
+    description: `${testInfo.project.name}: ${closed}`,
+  });
+  console.log(`dialog-closed-by-preview-button ${testInfo.project.name}: ${closed}`);
 });

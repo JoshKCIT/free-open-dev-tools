@@ -1,5 +1,50 @@
 [
   {
+    "mode": { "field": "element", "value": "details" },
+    "values": {
+      "summary": "More",
+      "paragraphs": "Hidden text",
+      "group": "faq"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "dialog" },
+    "values": {
+      "paragraphs": "Are you sure",
+      "closeLabel": "Got it",
+      "id": "sure"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "meter" },
+    "values": {
+      "label": "Disk usage",
+      "id": "disk",
+      "value": "0.6",
+      "min": "0",
+      "max": "1",
+      "low": "0.25",
+      "high": "0.75",
+      "optimum": "0.1",
+      "title": "fraction",
+      "content": "60 percent"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "element", "value": "progress" },
+    "values": {
+      "label": "Upload",
+      "id": "upload",
+      "value": "70",
+      "max": "100",
+      "content": "70 percent"
+    },
+    "attachesFile": false
+  },
+  {
     "mode": { "field": "element", "value": "time" },
     "values": {
       "content": "18 November 2011",
