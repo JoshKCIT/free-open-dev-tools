@@ -141,3 +141,80 @@ export function parseCurrency(text: string, field: string): string {
   }
   return code;
 }
+
+/**
+ * Reads a whole number made of digits only (no sign, dot or comma) that lies between `min` and `max`.
+ * The only place a typed digit string becomes a JavaScript number, and only for counts, never for amounts.
+ */
+export function parseCount(text: string, field: string, min: number, max: number): number {
+  if (isBlank(text)) throw new MoneyInputError(field, `missing, type a whole number such as ${min}`);
+  const t = text.trim();
+  const range = `type a whole number from ${min} to ${max}`;
+  // At most 9 digits, so a long digit string can never reach an unsafe or infinite value.
+  if (!/^\d{1,9}$/.test(t)) throw new MoneyInputError(field, `${range}, digits only`);
+  const count = Number(t);
+  if (count < min || count > max) throw new MoneyInputError(field, range);
+  return count;
+}
+
+/** A calendar date with no time of day and no time zone. `month` is 1 to 12. */
+export type CalendarDate = { year: number; month: number; day: number };
+
+const MIN_YEAR = 1900;
+const MAX_YEAR = 2200;
+const MS_PER_DAY = 86_400_000;
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function pad(value: number, width: number): string {
+  return String(value).padStart(width, '0');
+}
+
+/** Reads an ISO 8601 calendar date (YYYY-MM-DD) between 1900-01-01 and 2200-12-31. No clock, no time zone. */
+export function parseIsoDate(text: string, field: string): CalendarDate {
+  if (isBlank(text)) throw new MoneyInputError(field, 'missing, type a date such as 2026-01-31');
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
+  if (!match) throw new MoneyInputError(field, 'type a date as year-month-day, for example 2026-01-31');
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < MIN_YEAR || year > MAX_YEAR) {
+    throw new MoneyInputError(field, `the year must be from ${MIN_YEAR} to ${MAX_YEAR}`);
+  }
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
+    throw new MoneyInputError(field, `${text.trim()} is not a real calendar date`);
+  }
+  return { year, month, day };
+}
+
+/** Prints a date as YYYY-MM-DD. */
+export function formatIsoDate(d: CalendarDate): string {
+  return `${pad(d.year, 4)}-${pad(d.month, 2)}-${pad(d.day, 2)}`;
+}
+
+/**
+ * Adds whole months to the first date and clamps the day to the length of the month it lands in, so 31 January
+ * gives 29 February 2024, then 31 March. Always counted from the first date, never chained from the previous one.
+ */
+export function addMonthsClamped(start: CalendarDate, months: number): CalendarDate {
+  const total = start.year * 12 + (start.month - 1) + months;
+  const year = Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  return { year, month, day: Math.min(start.day, daysInMonth(year, month)) };
+}
+
+/** Adds whole days (negative to go back) in UTC, so a clock change in the viewer's time zone cannot move a date. */
+export function addDays(start: CalendarDate, days: number): CalendarDate {
+  const moved = new Date(Date.UTC(start.year, start.month - 1, start.day + days));
+  return { year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() };
+}
+
+/** Whole days from `a` to `b`, leap days included. An end before the start is refused. */
+export function daysBetween(a: CalendarDate, b: CalendarDate): number {
+  const days = Math.round((Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / MS_PER_DAY);
+  if (days < 0)
+    throw new MoneyInputError('End date', `${formatIsoDate(b)} is before the start date ${formatIsoDate(a)}`);
+  return days;
+}

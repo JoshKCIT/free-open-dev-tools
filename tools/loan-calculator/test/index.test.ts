@@ -22,6 +22,35 @@ describe('meta', () => {
     expect(meta.limits.some((l: string) => /half away from zero/i.test(l))).toBe(true);
     expect(meta.limits.some((l: string) => /not financial, tax or legal advice; it ignores /i.test(l))).toBe(true);
   });
+
+  it('the usage example in meta.json shows what the code returns', () => {
+    const loan = calculateLoan({
+      amount: '162000',
+      rate: '3.875',
+      years: '30',
+      currency: 'USD',
+      firstPayment: '2026-01-31',
+    });
+    expect(loan.summary.payment).toBe('761.78');
+    expect(loan.summary.totalInterest).toBe('112243.70');
+    expect(loan.summary.payoffDate).toBe('2055-12-31');
+    expect(loan.rows[0]).toEqual({
+      number: 1,
+      date: '2026-01-31',
+      payment: '761.78',
+      interest: '523.13',
+      principal: '238.65',
+      balance: '161761.35',
+    });
+    for (const line of [
+      "loan.summary.payment; // '761.78'",
+      "loan.summary.totalInterest; // '112243.70'",
+      "loan.summary.payoffDate; // '2055-12-31'",
+      "loan.rows[0]; // { number: 1, date: '2026-01-31', payment: '761.78', interest: '523.13', principal: '238.65', balance: '161761.35' }",
+    ]) {
+      expect(meta.usage).toContain(line);
+    }
+  });
 });
 
 it('OpenFormula 26300 6.12.36 PMT: CFPB H-24(B) sample 162000 at 3.875 for 30 years pays 761.78 a month', () => {
@@ -111,7 +140,7 @@ it('a missing or malformed amount, rate or term is reported naming the field', (
 
 /** Adds up a column of plain decimal strings exactly. */
 function sum(values: string[]): string {
-  return values.reduce((total, v) => total.plus(v), new D(0)).toFixed();
+  return values.reduce((total, v) => total.plus(v), new D(0)).toFixed(2);
 }
 
 const THOUSAND = { amount: '1000', rate: '12', years: '1', currency: 'USD' };
@@ -186,7 +215,7 @@ it('the last row carries the rounding residue so the rows sum exactly to the tot
   expect(small.summary.totalPaid).toBe('1066.19');
   expect(sum(small.rows.map((r) => r.payment))).toBe(small.summary.totalPaid);
   expect(sum(small.rows.map((r) => r.interest))).toBe(small.summary.totalInterest);
-  expect(sum(small.rows.map((r) => r.principal))).toBe('1000');
+  expect(sum(small.rows.map((r) => r.principal))).toBe('1000.00');
 
   // The CFPB loan: payment 761.78 rounded down, so the last of 360 rows pays 764.68 (recomputed independently in
   // integer cents: total interest 112243.70, total paid 274243.70).
@@ -197,7 +226,7 @@ it('the last row carries the rounding residue so the rows sum exactly to the tot
   expect(cfpb.summary.totalPaid).toBe('274243.70');
   expect(sum(cfpb.rows.map((r) => r.payment))).toBe('274243.70');
   expect(sum(cfpb.rows.map((r) => r.interest))).toBe('112243.70');
-  expect(sum(cfpb.rows.map((r) => r.principal))).toBe('162000');
+  expect(sum(cfpb.rows.map((r) => r.principal))).toBe('162000.00');
   // Every row is internally consistent: principal = payment - interest, and the balance falls by the principal.
   let balance = new D('162000');
   for (const row of cfpb.rows) {
@@ -237,7 +266,7 @@ it('an extra payment each period shortens the loan: 1000 at 12 for one year with
   });
   expect(loan.rows[9]).toEqual({ number: 10, payment: '74.66', interest: '0.74', principal: '73.92', balance: '0.00' });
   expect(loan.summary.totalInterest).toBe('54.31');
-  expect(sum(loan.rows.map((r) => r.principal))).toBe('1000');
+  expect(sum(loan.rows.map((r) => r.principal))).toBe('1000.00');
   expect(sum(loan.rows.map((r) => r.payment))).toBe(loan.summary.totalPaid);
   expect(new D(loan.summary.totalInterest).lt(calculateLoan(THOUSAND).summary.totalInterest)).toBe(true);
   // An extra payment bigger than the whole balance ends the schedule on the first row, paying just what is owed.
@@ -304,10 +333,13 @@ it('a term that is not a whole number of payments, a term over 50 years and a ne
     expect(err.field, JSON.stringify(patch)).toBe(field);
     if (message) expect(err.message, JSON.stringify(patch)).toMatch(message);
   }
-  // The longest accepted terms stay inside 2,600 rows and end with a zero balance.
-  const longest = calculateLoan({ ...ok, years: '50', frequency: 'weekly', extra: '' });
-  expect(longest.rows).toHaveLength(2600);
-  expect(longest.rows[2599]!.balance).toBe('0.00');
+  // The longest accepted term stays inside 2,600 rows and ends with a zero balance. (A payment rounded up to the
+  // cent can clear a loan a few payments early, so the count is checked as a range, not exactly.)
+  const longest = calculateLoan({ ...ok, amount: '1000000', years: '50', frequency: 'weekly', extra: '' });
+  expect(longest.rows.length).toBeLessThanOrEqual(2600);
+  expect(longest.rows.length).toBeGreaterThan(2590);
+  expect(longest.rows[longest.rows.length - 1]!.balance).toBe('0.00');
+  expect(longest.summary.scheduledPayments).toBe('2600');
   expect(calculateLoan({ ...ok, years: '50' }).rows).toHaveLength(600);
   // Blank optional fields mean none.
   expect(calculateLoan({ ...ok, extra: '  ', firstPayment: '' }).rows).toHaveLength(12);
