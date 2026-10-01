@@ -1,0 +1,9 @@
+{
+  "id": "npv-irr",
+  "label": "OMB Circular A-94 (2023) Appendix B: ten years at a 3.1 percent discount rate give discounted net benefits of 61.55",
+  "steps": [
+    { "action": "fill", "field": "flows", "value": "0\n-10\n-20\n-25\n-20\n10\n30\n35\n35\n35\n20" },
+    { "action": "fill", "field": "rate", "value": "3.1" }
+  ],
+  "expect": ["61.55"]
+}

@@ -168,7 +168,7 @@ export function irr(flows: Dec[]): IrrResult {
     } else if (!previousValue.isZero() && previousValue.isPos() !== value.isPos()) {
       let low = previous;
       let high = current;
-      let lowPositive = previousValue.isPos();
+      const lowPositive = previousValue.isPos();
       let exact: Dec | null = null;
       while (high.minus(low).gte(TOLERANCE)) {
         const middle = low.plus(high).div(2);
