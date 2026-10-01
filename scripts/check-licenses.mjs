@@ -9,8 +9,8 @@
  * Also writes docs/THIRD-PARTY.md, so the attribution file cannot drift away
  * from what is actually installed or bundled.
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, realpathSync } from 'node:fs';
+import { join, resolve, basename, dirname } from 'node:path';
 import { ROOT as REPO_ROOT } from './lib/catalog.mjs';
 import { collectBundledData, renderBundledDataSection } from './lib/bundled-data.mjs';
 
@@ -52,44 +52,91 @@ const ALLOWED = new Set([
 const BLOCKED = [/GPL/i, /AGPL/i, /LGPL/i, /MPL/i, /EPL/i, /CDDL/i, /SSPL/i, /BUSL/i, /Commons-Clause/i, /UNLICENSED/i];
 
 function collectRuntimeDependencies() {
+  // One entry per installed copy (its real folder), not per name: two versions of a package that both reach a visitor
+  // each need their own notice. A declared package that is not installed has no folder and is keyed by its name.
   const wanted = new Map();
 
-  const add = (name, range, origin, direct, via) => {
-    const entry = wanted.get(name) ?? { name, ranges: new Set(), origins: new Set(), direct: false, via: new Set() };
+  const add = (name, range, origin, direct, via, dir) => {
+    const key = dir ? realpathSync(dir) : `missing:${name}`;
+    const entry = wanted.get(key) ?? {
+      name,
+      dir: dir ?? null,
+      ranges: new Set(),
+      origins: new Set(),
+      direct: false,
+      via: new Set(),
+      expanded: new Set(),
+    };
     entry.ranges.add(range);
     entry.origins.add(origin);
     if (direct) entry.direct = true;
     if (via) entry.via.add(via);
-    wanted.set(name, entry);
+    wanted.set(key, entry);
   };
 
   const toolsDir = join(ROOT, 'tools');
   for (const id of readdirSync(toolsDir).filter((d) => statSync(join(toolsDir, d)).isDirectory())) {
     const pkg = JSON.parse(readFileSync(join(toolsDir, id, 'package.json'), 'utf8'));
-    for (const [name, range] of Object.entries(pkg.dependencies ?? {})) add(name, range, `tools/${id}`, true);
-  }
-
-  const web = JSON.parse(readFileSync(join(ROOT, 'apps', 'web', 'package.json'), 'utf8'));
-  for (const [name, range] of Object.entries(web.dependencies ?? {})) add(name, range, 'apps/web', true);
-
-  // One level, deliberately, and only one: follow each direct dependency into
-  // its own installed manifest and collect what IT declares as a runtime
-  // dependency. A direct dependency ships its own dependencies to every
-  // visitor just as surely as it ships itself, and a notices file that only
-  // ever looked at this project's own package.json files would miss that.
-  // A full transitive walk is a bigger change than this notices file
-  // currently needs; revisit if a shipping dependency introduces a deeper
-  // runtime dependency of its own.
-  for (const dep of [...wanted.values()].filter((d) => d.direct)) {
-    const dir = findInstalled(dep.name);
-    if (!dir) continue;
-    const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-    for (const [name, range] of Object.entries(manifest.dependencies ?? {})) {
-      for (const origin of dep.origins) add(name, range, origin, false, dep.name);
+    for (const name of Object.keys(pkg.dependencies ?? {})) {
+      add(name, pkg.dependencies[name], `tools/${id}`, true, null, resolveFrom(join(toolsDir, id), name));
     }
   }
 
-  return [...wanted.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const webDir = join(ROOT, 'apps', 'web');
+  const web = JSON.parse(readFileSync(join(webDir, 'package.json'), 'utf8'));
+  for (const name of Object.keys(web.dependencies ?? {})) {
+    add(name, web.dependencies[name], 'apps/web', true, null, resolveFrom(webDir, name));
+  }
+
+  // To a fixed point: follow every package that reaches a visitor into its own installed manifest and collect what
+  // IT declares as a runtime dependency or a peer dependency, then do the same for those, until nothing new turns up.
+  // A package ships its dependencies to every visitor just as surely as it ships itself, however deep, and the MIT
+  // licence (and the others allowed here) require the notice to travel with every copy. Each package is expanded once
+  // per origin, so a dependency cycle ends. A peer dependency that is not installed is skipped: it is the host's to
+  // supply, and a missing optional one ships nothing. A declared dependency that is not installed is still reported
+  // by the check below.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const dep of [...wanted.values()]) {
+      const dir = dep.dir;
+      if (!dir) continue;
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      for (const origin of dep.origins) {
+        if (dep.expanded.has(origin)) continue;
+        dep.expanded.add(origin);
+        changed = true;
+        for (const [name, range] of Object.entries(manifest.dependencies ?? {})) {
+          add(name, range, origin, false, dep.name, resolveFrom(dir, name));
+        }
+        for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
+          const found = resolveFrom(dir, name);
+          if (found) add(name, range, origin, false, dep.name, found);
+        }
+      }
+    }
+  }
+
+  return [...wanted.values()].sort(
+    (a, b) => a.name.localeCompare(b.name) || String(a.dir).localeCompare(String(b.dir)),
+  );
+}
+
+/**
+ * Finds the installed copy of `name` the way Node would for a package living in `parentDir`: in the nearest
+ * node_modules above its real path (under pnpm that is the folder next to it in the .pnpm store). Returns null when
+ * nothing is found there; callers fall back to `findInstalled`.
+ */
+function resolveFrom(parentDir, name) {
+  let dir = realpathSync(parentDir);
+  for (;;) {
+    const candidate = basename(dir) === 'node_modules' ? join(dir, name) : join(dir, 'node_modules', name);
+    if (existsSync(join(candidate, 'package.json'))) return candidate;
+    const up = dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return findInstalled(name);
 }
 
 /** Walks the installed tree to find a package's real manifest and licence text. */
@@ -131,6 +178,14 @@ const MANUAL_LICENSE_OVERRIDES = {
   // @nodable/entities npm tarball's `files` allowlist (["src","README.md"])
   // does not include, even though its package.json declares `"license": "MIT"`.
   '@nodable/entities@3.0.0': 'docs/vendored-licenses/nodable-entities-LICENSE.txt',
+  // fetched from https://raw.githubusercontent.com/fb55/boolbase/master/LICENSE (2026-10-01): the repository's own
+  // ISC licence, which the published boolbase 1.0.0 tarball (reached through css-select and nth-check) omits even
+  // though its package.json declares "ISC".
+  'boolbase@1.0.0': 'docs/vendored-licenses/boolbase-LICENSE.txt',
+  // The published railroad-diagrams 1.0.0 tarball (reached through nearley) has no licence file; its README.md
+  // states CC0. That statement is quoted verbatim in the vendored file (the repository's later LICENSE file is a
+  // different, MIT, licence for later versions and is deliberately not used).
+  'railroad-diagrams@1.0.0': 'docs/vendored-licenses/railroad-diagrams-LICENSE.txt',
 };
 
 // Some upstream packages (e.g. typescript, @mixmark-io/domino) ship a LICENSE
@@ -151,6 +206,7 @@ function licenceTextFor(dir, name, version) {
     'LICENSE.txt',
     'license',
     'LICENSE-MIT',
+    'LICENSE-MIT.txt',
     'LICENCE.md',
     'LICENCE.txt',
   ]) {
@@ -170,7 +226,7 @@ const problems = [];
 const rows = [];
 
 for (const dep of dependencies) {
-  const dir = findInstalled(dep.name);
+  const dir = dep.dir;
   if (!dir) {
     problems.push(`${dep.name} is declared but not installed, so its licence cannot be checked. Run install first.`);
     continue;
