@@ -109,6 +109,7 @@ export default defineTool({
 
       const outputs: OutputBlock[] = [
         { kind: 'keyvalue', label: 'Summary', pairs },
+        ...result.notes.map((note): OutputBlock => ({ kind: 'note', tone: 'info', value: note })),
         { kind: 'code', label: 'How this was worked out', value: result.working },
         {
           kind: 'table',

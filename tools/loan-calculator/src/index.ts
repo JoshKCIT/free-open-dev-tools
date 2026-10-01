@@ -197,6 +197,8 @@ export interface LoanResult {
   working: string;
   /** The schedule as RFC 4180 CSV. */
   csv: string;
+  /** Plain-language notes about the result, such as a last payment far above the regular one. Often empty. */
+  notes: string[];
 }
 
 /** The schedule as RFC 4180 CSV (CRLF line ends), from the same rounded figures the table shows. */
@@ -352,5 +354,14 @@ export function calculateLoan(texts: LoanTexts): LoanResult {
   };
   if (payoffDate) summary.payoffDate = payoffDate;
 
-  return { summary, rows, working, csv: scheduleCsv(rows) };
+  const notes: string[] = [];
+  const regular = payment.plus(extra);
+  const finalPaid = schedule.rows[schedule.rows.length - 1]?.payment ?? regular;
+  if (finalPaid.gt(regular.times(1.5).plus(1))) {
+    notes.push(
+      `The last payment is ${finalPaid.toFixed(decimals)}, much more than the regular ${regular.toFixed(decimals)}. The regular payment is rounded once to ${decimals} decimal places and that rounding adds up over ${payments.toFixed()} payments, so the last one has to make up the gap. This is normal for small loans, long terms and high rates.`,
+    );
+  }
+
+  return { summary, rows, working, csv: scheduleCsv(rows), notes };
 }

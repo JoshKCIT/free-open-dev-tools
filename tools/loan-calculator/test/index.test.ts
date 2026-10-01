@@ -1,4 +1,4 @@
-import { it, expect, describe } from 'vitest';
+import { it, expect, describe, test } from 'vitest';
 import { calculateLoan, paymentPerPeriod, periodsPerYear, scheduleCsv, MAX_TERM_YEARS, meta } from '../src/index';
 import { D, MoneyInputError } from '../src/money';
 
@@ -363,4 +363,27 @@ it('the schedule CSV lists every row with the same rounded figures as the table'
   expect(undated.csv.split('\r\n')[1]).toBe('1,88.85,10.00,78.85,921.15');
   // Only digits, dots, dashes and commas: nothing a spreadsheet could read as a formula.
   expect(loan.csv).not.toMatch(/["=@+]/);
+});
+
+test('a last payment far above the regular one comes with a note that explains why', () => {
+  // 1,919.42 over 47 years of fortnightly payments: the payment is rounded once to 3.22 and the rounding error
+  // compounds over 1,222 payments, so the last payment is 16.84 (more than five times the regular one).
+  const long = calculateLoan({ amount: '1919.42', rate: '3.539', years: '47', frequency: 'fortnightly' });
+  expect(long.summary.payment).toBe('3.22');
+  expect(long.rows[long.rows.length - 1]!.payment).toBe('16.84');
+  expect(long.notes).toHaveLength(1);
+  expect(long.notes[0]).toContain('16.84');
+  expect(long.notes[0]).toContain('3.22');
+  expect(long.notes[0]).toMatch(/rounding/i);
+  // An ordinary mortgage (200,000 at 7 percent over 30 years: 1,330.60, last 1,336.54) gets no note.
+  const mortgage = calculateLoan({ amount: '200000', rate: '7', years: '30' });
+  expect(mortgage.summary.payment).toBe('1330.60');
+  expect(mortgage.notes).toEqual([]);
+  // A loan cleared early by an extra payment has a short last row and gets no note.
+  expect(calculateLoan({ amount: '1000', rate: '12', years: '1', extra: '20' }).notes).toEqual([]);
+});
+
+test('the limits text no longer says the last payment differs only by a few coins', () => {
+  expect(meta.limits.join(' ')).not.toMatch(/few units of the smallest coin/i);
+  expect(meta.limits.some((l: string) => /final payment can be several times the regular one/i.test(l))).toBe(true);
 });

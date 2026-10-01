@@ -25,7 +25,7 @@ Works out the regular payment on a fixed-rate loan or mortgage from the amount, 
 ## Limits
 
 - The payment is rounded once to the currency's smallest unit, half away from zero, and each row's interest is rounded the same way; every step before that keeps 40 significant digits.
-- The last row pays whatever balance is left plus its interest, so the payments, interest and principal columns add up exactly to the totals; that last payment can differ from the others by a few units of the smallest coin.
+- The last row pays whatever balance is left plus its interest, so the payments, interest and principal columns add up exactly to the totals; for small loans, long terms or high rates the final payment can be several times the regular one, because the rounding of the payment compounds over the term, and the page then says so.
 - Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores lender fees, mortgage insurance, taxes and escrow, rate changes over time and day counts other than equal periods.
 - Interest is charged in equal periods: the yearly rate is divided by the number of payments a year, not accrued day by day.
 - A term is limited to 50 years, so a schedule never holds more than 2,600 payments.
