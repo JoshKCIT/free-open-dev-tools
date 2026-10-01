@@ -128,7 +128,7 @@ export function amortise(input: AmortiseInput): Amortisation {
     } else if (!part.gt(0)) {
       throw new MoneyInputError(
         FIELD_AMOUNT,
-        `a payment of ${toPlain(payment, decimals)} does not cover the ${toPlain(interest, decimals)} of interest in payment ${k}, so the balance would never fall, try a larger amount or a shorter term`,
+        `a payment of ${toPlain(payment, decimals)} is not more than the ${toPlain(interest, decimals)} of interest in payment ${k}, so the balance would never fall, try a larger amount or a shorter term`,
       );
     }
     balance = balance.minus(part);

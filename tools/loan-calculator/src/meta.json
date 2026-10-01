@@ -22,7 +22,7 @@
     "Interest is charged in equal periods: the yearly rate is divided by the number of payments a year, not accrued day by day.",
     "A term is limited to 50 years, so a schedule never holds more than 2,600 payments.",
     "The loan amount and any extra payment can have no more decimal places than the currency's smallest unit, so the schedule can add up to the last cent.",
-    "A payment that rounds to less than the smallest unit of the currency, or does not cover its row's interest, is refused instead of showing a schedule that never pays the loan off.",
+    "A payment that rounds to less than the smallest unit of the currency, or is not more than its row's interest, is refused instead of showing a schedule that never pays the loan off.",
     "Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose."
   ],
   "ambiguities": [

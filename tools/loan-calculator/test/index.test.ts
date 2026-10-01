@@ -387,3 +387,11 @@ test('the limits text no longer says the last payment differs only by a few coin
   expect(meta.limits.join(' ')).not.toMatch(/few units of the smallest coin/i);
   expect(meta.limits.some((l: string) => /final payment can be several times the regular one/i.test(l))).toBe(true);
 });
+
+test('a payment equal to its interest is refused with words that are true for equal amounts', () => {
+  // 1,000 at 12 percent over 50 years of weekly payments: the payment and the first row's interest are both 2.31.
+  const err = refused(() => calculateLoan({ amount: '1000', rate: '12', years: '50', frequency: 'weekly' }));
+  expect(err.field).toBe('Loan amount');
+  expect(err.message).toContain('a payment of 2.31 is not more than the 2.31 of interest in payment 1');
+  expect(err.message).not.toContain('does not cover');
+});
