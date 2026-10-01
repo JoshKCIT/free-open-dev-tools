@@ -12,12 +12,41 @@ import { defineTool, bool, str, type OutputBlock, type ToolResult, type Values }
 const KIND_LABELS: Record<MediaKind, string> = {
   video: 'video',
   audio: 'audio',
+  image: 'Responsive image (img with srcset)',
+  picture: 'Picture with sources',
 };
 
 /** Whether the chosen media uses a field, so a value typed before switching media never reaches a run. */
 function whenKind(...kinds: MediaKind[]): (values: Values) => boolean {
   return (values) => kinds.includes(str(values, 'kind', 'video') as MediaKind);
 }
+
+/** The text fields each media reads, in the order the page shows them. */
+const READS: Record<MediaKind, string[]> = {
+  video: [
+    'src',
+    'mediaSources',
+    'tracks',
+    'poster',
+    'width',
+    'height',
+    'preload',
+    'loading',
+    'crossorigin',
+    'fallback',
+  ],
+  audio: ['src', 'mediaSources', 'tracks', 'preload', 'loading', 'crossorigin', 'fallback'],
+  image: ['imageSrc', 'srcset', 'sizes', 'alt', 'width', 'height', 'loading', 'crossorigin'],
+  picture: ['imageSrc', 'pictureSources', 'srcset', 'sizes', 'alt', 'width', 'height', 'loading', 'crossorigin'],
+};
+
+/** The checkboxes each media reads. */
+const FLAGS: Record<MediaKind, (keyof MediaSpec)[]> = {
+  video: ['controls', 'autoplay', 'muted', 'loop', 'playsinline'],
+  audio: ['controls', 'autoplay', 'muted', 'loop'],
+  image: ['decorative'],
+  picture: ['decorative'],
+};
 
 export default defineTool({
   id: 'media-embed-builder',
@@ -65,12 +94,61 @@ export default defineTool({
       visible: whenKind('video'),
     },
     {
+      name: 'imageSrc',
+      label: FIELD_LABELS.imageSrc,
+      type: 'text',
+      mono: true,
+      placeholder: 'photo-800.jpg',
+      help: 'The image shown when no source or candidate is chosen. Written exactly as you type it. The preview shows a grey placeholder instead of loading it.',
+      visible: whenKind('image', 'picture'),
+    },
+    {
+      name: 'pictureSources',
+      label: FIELD_LABELS.pictureSources,
+      type: 'textarea',
+      rows: 3,
+      help: 'One per line: srcset | type | media | sizes. A source followed by another source needs a type or a media value.',
+      visible: whenKind('picture'),
+    },
+    {
+      name: 'srcset',
+      label: FIELD_LABELS.srcset,
+      type: 'text',
+      mono: true,
+      placeholder: 'photo-400.jpg 400w, photo-800.jpg 800w',
+      help: 'Candidates separated by commas, each an address and then a width such as 400w or a density such as 2x, never both kinds.',
+      visible: whenKind('image', 'picture'),
+    },
+    {
+      name: 'sizes',
+      label: FIELD_LABELS.sizes,
+      type: 'text',
+      mono: true,
+      placeholder: '(max-width: 600px) 100vw, 800px',
+      help: 'Needed with width descriptors. Media conditions with lengths, ending in a length; no percentages. auto works only with loading set to lazy.',
+      visible: whenKind('image', 'picture'),
+    },
+    {
+      name: 'alt',
+      label: FIELD_LABELS.alt,
+      type: 'text',
+      help: 'Describes the image in words for a visitor who cannot see it. Required unless the image is decorative.',
+      visible: whenKind('image', 'picture'),
+    },
+    {
+      name: 'decorative',
+      label: FIELD_LABELS.decorative,
+      type: 'checkbox',
+      default: false,
+      visible: whenKind('image', 'picture'),
+    },
+    {
       name: 'width',
       label: FIELD_LABELS.width,
       type: 'text',
       mono: true,
       help: 'Whole pixels. Giving both width and height lets the browser reserve space and avoids layout shift.',
-      visible: whenKind('video'),
+      visible: whenKind('video', 'image', 'picture'),
     },
     {
       name: 'height',
@@ -78,7 +156,7 @@ export default defineTool({
       type: 'text',
       mono: true,
       help: 'Whole pixels.',
-      visible: whenKind('video'),
+      visible: whenKind('video', 'image', 'picture'),
     },
     {
       name: 'controls',
@@ -138,7 +216,8 @@ export default defineTool({
         { value: 'lazy', label: 'lazy' },
         { value: 'eager', label: 'eager' },
       ],
-      visible: whenKind('video', 'audio'),
+      help: 'Lazy loading defers the fetch until the element is near the viewport. On video and audio only some browsers act on it.',
+      visible: whenKind('video', 'audio', 'image', 'picture'),
     },
     {
       name: 'crossorigin',
@@ -150,7 +229,7 @@ export default defineTool({
         { value: 'anonymous', label: 'anonymous' },
         { value: 'use-credentials', label: 'use-credentials' },
       ],
-      visible: whenKind('video', 'audio'),
+      visible: whenKind('video', 'audio', 'image', 'picture'),
     },
     {
       name: 'fallback',
@@ -177,18 +256,40 @@ export default defineTool({
         mediaSources: 'song.ogg | audio/ogg\nsong.mp3 | audio/mpeg',
       },
     },
+    {
+      label: 'A responsive image with width descriptors and sizes',
+      values: {
+        kind: 'image',
+        imageSrc: 'photo-800.jpg',
+        srcset: 'photo-400.jpg 400w, photo-800.jpg 800w',
+        sizes: '(max-width: 600px) 100vw, 800px',
+        alt: 'A harbour at dusk',
+        width: '800',
+        height: '533',
+      },
+    },
+    {
+      label: 'A picture with a modern format and a fallback',
+      values: {
+        kind: 'picture',
+        imageSrc: 'hero.jpg',
+        pictureSources: 'hero.avif | image/avif',
+        alt: 'Hero image',
+        width: '400',
+        height: '300',
+      },
+    },
   ],
   run(values): ToolResult {
     try {
       const kind = str(values, 'kind', 'video') as MediaKind;
       const spec: MediaSpec = { kind };
-      const names = ['src', 'mediaSources', 'tracks', 'preload', 'loading', 'crossorigin', 'fallback'];
-      if (kind === 'video') names.push('poster', 'width', 'height');
       const typed: Record<string, string> = {};
-      for (const name of names) typed[name] = str(values, name);
+      for (const name of READS[kind]) typed[name === 'imageSrc' ? 'src' : name] = str(values, name);
       Object.assign(spec, typed);
-      for (const name of ['controls', 'autoplay', 'muted', 'loop'] as const) spec[name] = bool(values, name);
-      if (kind === 'video') spec.playsinline = bool(values, 'playsinline');
+      const flags: Record<string, boolean> = {};
+      for (const name of FLAGS[kind]) flags[name] = bool(values, name);
+      Object.assign(spec, flags);
       const built = buildMedia(spec);
       if (built === null) return { outputs: [] };
 

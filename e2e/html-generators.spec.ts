@@ -603,8 +603,50 @@ test('semantic-html-builder: addresses typed into the citation and image fields 
 const MEDIA_UNDER_TEST: { kind: string; fields: Record<string, string>; needle: string }[] = [
   {
     kind: 'video',
-    fields: { src: 'HOSTILE', tracks: 'brave.en.vtt | subtitles | en | HOSTILE' },
+    fields: {
+      src: 'HOSTILE',
+      poster: 'HOSTILE',
+      width: '640',
+      height: '360',
+      tracks: 'brave.en.vtt | subtitles | en | HOSTILE',
+      fallback: 'HOSTILE',
+    },
     needle: '<video',
+  },
+  {
+    kind: 'audio',
+    fields: {
+      src: '',
+      mediaSources: 'HOSTILE | audio/ogg | HOSTILE',
+      tracks: 'song.en.vtt | captions | en | HOSTILE',
+      fallback: 'HOSTILE',
+    },
+    needle: '<audio',
+  },
+  {
+    kind: 'image',
+    fields: {
+      imageSrc: 'HOSTILE',
+      srcset: 'javascript:alert(1) 1x',
+      sizes: '',
+      alt: 'HOSTILE',
+      width: '320',
+      height: '200',
+    },
+    needle: '<img',
+  },
+  {
+    kind: 'picture',
+    fields: {
+      imageSrc: 'HOSTILE',
+      pictureSources: 'javascript:alert(1) 1x | image/webp | HOSTILE',
+      srcset: '',
+      sizes: '',
+      alt: 'HOSTILE',
+      width: '320',
+      height: '200',
+    },
+    needle: '<picture',
   },
 ];
 
@@ -723,5 +765,101 @@ test('media-embed-builder: addresses typed into every video and audio field are 
       preview.locator(`${kind}[controls]`),
       `${kind}: the preview holds the element with controls`,
     ).toHaveCount(1);
+  }
+});
+
+test('media-embed-builder: addresses typed into every image and picture field are never requested and the preview shows a placeholder', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/media-embed-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const cases: { kind: string; fields: Record<string, string>; needle: string; typed: string[] }[] = [
+    {
+      kind: 'image',
+      fields: { imageSrc: VISITOR_URL, srcset: `${VISITOR_URL} 1x`, alt: 'A chart', width: '320', height: '200' },
+      needle: '<img',
+      typed: [`src="${VISITOR_URL}"`, `srcset="${VISITOR_URL} 1x"`],
+    },
+    {
+      kind: 'picture',
+      fields: {
+        imageSrc: VISITOR_URL,
+        pictureSources: `${VISITOR_URL} 1x | image/webp | (min-width: 1px)`,
+        srcset: '',
+        alt: 'A chart',
+        width: '320',
+        height: '200',
+      },
+      needle: '<picture',
+      typed: [`src="${VISITOR_URL}"`, `<source srcset="${VISITOR_URL} 1x"`],
+    },
+  ];
+
+  for (const { kind, fields, needle, typed } of cases) {
+    const requests = await withRequestRecorder(page, async () => {
+      await page.locator('#f-kind').selectOption(kind);
+      for (const [field, value] of Object.entries(fields)) await page.locator(`#f-${field}`).fill(value);
+      await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText(needle);
+      await settle(page);
+    });
+    expect(requests, `${kind}: an address typed into a field must never be requested: ${requests.join(', ')}`).toEqual(
+      [],
+    );
+
+    const srcdocs = await previewSrcdocs(page);
+    expect(srcdocs.length, `${kind}: the preview must render in a frame`).toBeGreaterThan(0);
+    for (const srcdoc of srcdocs) {
+      expect(await scanPreview(page, srcdoc), `${kind}: the preview carries no address`).toEqual([]);
+      expect(srcdoc, `${kind}: the preview holds no part of the typed address`).not.toContain('example.invalid');
+    }
+    const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+    for (const part of typed) expect(markup, `${kind}: the markup keeps ${part} as typed`).toContain(part);
+
+    const image = page.frameLocator('iframe.preview-frame').first().locator('img');
+    await expect(image, `${kind}: the preview holds one img`).toHaveCount(1);
+    expect(await image.getAttribute('src'), `${kind}: the preview img shows the placeholder`).toMatch(
+      /^data:image\/svg\+xml/,
+    );
+    await expect
+      .poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalWidth), {
+        message: `${kind}: the placeholder has loaded in the frame`,
+      })
+      .toBeGreaterThan(0);
+  }
+});
+
+test('media-embed-builder: clicking the media in the preview requests nothing and leaves the preview in place', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/media-embed-builder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  const cases: { kind: string; fields: Record<string, string>; needle: string; element: string }[] = [
+    { kind: 'video', fields: { src: VISITOR_URL, width: '320', height: '200' }, needle: '<video', element: 'video' },
+    { kind: 'audio', fields: { src: VISITOR_URL }, needle: '<audio', element: 'audio' },
+    {
+      kind: 'image',
+      fields: { imageSrc: VISITOR_URL, alt: 'A chart', width: '320', height: '200' },
+      needle: '<img',
+      element: 'img',
+    },
+  ];
+
+  for (const { kind, fields, needle, element } of cases) {
+    await page.locator('#f-kind').selectOption(kind);
+    for (const [field, value] of Object.entries(fields)) await page.locator(`#f-${field}`).fill(value);
+    await expect(page.locator('section[aria-label="Output"] pre.output').first()).toContainText(needle);
+    await settle(page);
+    const handle = await page.locator('iframe.preview-frame').first().elementHandle();
+    const frame = await handle!.contentFrame();
+    expect(frame, `${kind}: the preview frame can be reached`).not.toBeNull();
+    const requests = await withRequestRecorder(page, async () => {
+      await frame!.locator(element).first().click({ timeout: 5_000 });
+      await page.waitForTimeout(300);
+    });
+    expect(requests, `${kind}: clicking the media must request nothing: ${requests.join(', ')}`).toEqual([]);
+    expect(frame!.url(), `${kind}: the preview stays on its own document`).toBe('about:srcdoc');
+    expect(await frame!.locator(element).count(), `${kind}: the preview still holds its element`).toBe(1);
   }
 });

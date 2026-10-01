@@ -28,6 +28,10 @@
     "subtitles",
     "captions",
     "source",
+    "picture",
+    "img",
+    "srcset",
+    "sizes",
     "markup generator"
   ],
   "scripts": {

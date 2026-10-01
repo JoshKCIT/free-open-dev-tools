@@ -2,25 +2,29 @@
   "id": "media-embed-builder",
   "name": "HTML Media Embed Builder",
   "summary": "Build video, audio and responsive image markup with several sources, caption and subtitle tracks, a poster, controls and lazy loading, previewed without loading anything.",
-  "about": "Builds a video or audio element and shows its markup first, ready to copy, with a live preview of the same markup after it. You give one file or several source lines, any caption, subtitle or other tracks, and the playback attributes, and the page checks them against the HTML Living Standard and refuses what the standard does not allow instead of copying it. The preview shows a player without loading the media, the poster or any track. The standard was read on 2026-10-01 (last updated 2026-09-29); a later edition may differ.",
+  "about": "Builds a video, audio, responsive image or picture element and shows its markup first, ready to copy, with a live preview of the same markup after it. You give the files, sources, tracks and attributes, and the page checks them against the HTML Living Standard and refuses what the standard does not allow instead of copying it: a media element with both an address and source elements, a track kind that does not exist, a srcset list that mixes width and density descriptors, a sizes value with a percentage, or an image with no alt text. The preview shows a player or a grey placeholder without loading any address you typed. The standard was read on 2026-10-01 (last updated 2026-09-29); a later edition may differ.",
   "supports": [
     "video and audio with either one address or several source lines written as address | type | media, never both, with the sources written before the tracks",
     "Track lines written as address | kind | language | label | default, with the five kinds of the standard, a well-formed language tag required for subtitles, a label written only when typed, at most one default among subtitles and captions, one among descriptions and one among chapters, and no two tracks of the same kind, language and label",
     "A poster, width and height on video; audio takes none of these, as the standard lists none for audio",
     "preload (auto, metadata, none), loading (lazy, eager) and crossorigin (anonymous, use-credentials), each taking only its keywords, and the controls, autoplay, muted, loop and playsinline attributes where the standard defines them",
     "Optional fallback text for a browser that cannot play media, written after the tracks",
-    "Notes where the choice has a platform limit: autoplay without muted, autoplay with lazy loading, the loading attribute on video and audio, tracks on another site without crossorigin, a video without width and height, and media without controls",
+    "A responsive image with src, srcset and sizes: width descriptors (400w) and pixel density descriptors (2x) are never mixed, no descriptor value repeats, a width is a whole number above zero, sizes is needed with width descriptors, refuses percentages and negative lengths, and allows auto only with loading set to lazy",
+    "A picture with source lines written as srcset | type | media | sizes followed by an img, where a source followed by another source or by an img with srcset needs a media value other than all, or a type",
+    "Alt text required for an image unless it is marked decorative, which writes an empty alt; width and height written as whole pixels when given",
+    "Notes where the choice has a platform limit: autoplay without muted, autoplay with lazy loading, the loading attribute on video and audio, tracks on another site without crossorigin, an image or video without width and height, and media without controls",
     "Markup first and an inert preview of the same element second, with controls always shown in the preview so the element is visible"
   ],
   "limits": [
     "Everything you type is escaped before it is placed in the markup, so a tag, an event handler or a script address you type stays text; a javascript:, data: or vbscript: address is kept as typed and flagged.",
     "The preview replaces every address you typed (src, srcset, poster and every track address) with an inert placeholder or removes it, so nothing you typed is loaded; only the markup you copy keeps the real addresses.",
-    "Each text field is limited to 20,000 characters, a list to 20 sources or 20 tracks, and control characters other than a tab (and line breaks in a text area) are refused because HTML cannot carry them.",
+    "Each text field is limited to 20,000 characters, a list to 20 sources, 20 tracks or 20 srcset candidates, and control characters other than a tab (and line breaks in a text area) are refused because HTML cannot carry them.",
     "The preview always shows controls so the element is visible, while the copied markup keeps your choice; an audio element without controls is not displayed by a browser at all, and a note says so.",
     "Browsers commonly block autoplay unless the media is muted, and lazy loading defers autoplay; the builder keeps what you choose and says so. The loading attribute on video and audio is in the standard, but when this page was built only Chromium-based browsers acted on it.",
     "Tracks are fetched with the media element's crossorigin setting, so a track on another site needs the crossorigin attribute and CORS headers on the file; a track address with a scheme and no crossorigin setting is flagged.",
-    "The files are never fetched or inspected: codecs are not checked against what a browser plays, a source type is checked only for the type/subtype shape, a media query is not parsed, and a track file is not checked to be WebVTT.",
-    "This page writes the attributes the standard defines for video and audio that it offers; it does not write the other global attributes."
+    "The files are never fetched or inspected: codecs are not checked against what a browser plays, a descriptor is not compared with the real width of an image, a source type is checked only for the type/subtype shape, a media query is not parsed, and a track file is not checked to be WebVTT.",
+    "In a sizes value each length, calc, min, max and clamp expression is checked, but the media condition before a length is checked only for being in parentheses (or starting with not) with balanced parentheses, not parsed as CSS.",
+    "This page writes the attributes the standard defines for video, audio, img and the sources that it offers; it does not write the other global attributes, usemap, ismap, referrerpolicy, decoding, fetchpriority or the width and height of a picture source."
   ],
   "ambiguities": [
     "The standard's example gives four tracks; this page offers as many lines as you type, and its first example reproduces the first two of them.",
@@ -28,12 +32,32 @@
     "Two languages are taken to be the same when their canonical forms are equal, as the browser's own language tag handling computes them, so en and EN are the same language.",
     "The standard allows a track label to be absent but not empty; an empty label cell is therefore read as no label.",
     "The preload attribute's empty value means auto in the standard; this page writes the keyword auto instead of an empty value, and leaves the attribute out when the choice is blank.",
-    "The standard says an audio element without controls is not displayed, so a markup without controls is kept as you chose and flagged, while the preview shows controls."
+    "The standard says an audio element without controls is not displayed, so a markup without controls is kept as you chose and flagged, while the preview shows controls.",
+    "The standard lets a srcset parser repair a stray comma, a second descriptor or a descriptor ending in h; as an authoring list these are refused here, because a visitor copying the markup should not rely on a browser to repair it.",
+    "A candidate with no descriptor counts as 1x, so a list with one such candidate and another at 1x repeats a density and is refused.",
+    "The standard asks a markup generator to get alt text from the person writing the page; this page therefore refuses an image with no alt text unless it is marked decorative, even though the standard lets a conforming image omit alt in a few narrow cases.",
+    "A source in a picture may leave its sizes out only when the img after it is lazy and has sizes auto, as the standard says; otherwise width descriptors in a source need their own sizes value."
   ],
   "standards": [
     {
+      "label": "HTML Living Standard, 4.8.1 The picture element",
+      "url": "https://html.spec.whatwg.org/multipage/embedded-content.html#the-picture-element"
+    },
+    {
       "label": "HTML Living Standard, 4.8.2 The source element",
       "url": "https://html.spec.whatwg.org/multipage/embedded-content.html#the-source-element"
+    },
+    {
+      "label": "HTML Living Standard, 4.8.3 The img element",
+      "url": "https://html.spec.whatwg.org/multipage/embedded-content.html#the-img-element"
+    },
+    {
+      "label": "HTML Living Standard, 4.8.4.2 Attributes common to source, img, and link elements (srcset and sizes)",
+      "url": "https://html.spec.whatwg.org/multipage/images.html#attributes-common-to-source-and-img-elements"
+    },
+    {
+      "label": "HTML Living Standard, 4.8.4.4 Requirements for providing text to act as an alternative for images",
+      "url": "https://html.spec.whatwg.org/multipage/images.html#alt"
     },
     {
       "label": "HTML Living Standard, 4.8.8 The video element",
@@ -60,11 +84,24 @@
       "url": "https://html.spec.whatwg.org/multipage/urls-and-fetching.html#lazy-loading-attributes"
     }
   ],
-  "keywords": ["html", "video", "audio", "track", "subtitles", "captions", "source", "markup generator"],
+  "keywords": [
+    "html",
+    "video",
+    "audio",
+    "track",
+    "subtitles",
+    "captions",
+    "source",
+    "picture",
+    "img",
+    "srcset",
+    "sizes",
+    "markup generator"
+  ],
   "primaryExport": "buildMedia",
-  "usage": "import { buildMedia, parseTrackLines } from '@fodt/media-embed-builder';\n\nconst video = buildMedia({\n  kind: 'video',\n  src: 'brave.webm',\n  tracks: 'brave.en.vtt | subtitles | en | English',\n  controls: true,\n});\nvideo?.html;\n// <video src=\"brave.webm\" controls>\n//   <track kind=\"subtitles\" src=\"brave.en.vtt\" srclang=\"en\" label=\"English\">\n// </video>\n\nconst audio = buildMedia({ kind: 'audio', mediaSources: 'song.ogg | audio/ogg\\nsong.mp3 | audio/mpeg', controls: true });\naudio?.html;\n// <audio controls>\n//   <source src=\"song.ogg\" type=\"audio/ogg\">\n//   <source src=\"song.mp3\" type=\"audio/mpeg\">\n// </audio>\n\nparseTrackLines('a.vtt | chapter | en | Chapters');\n// throws MarkupError: Tracks: line 1: \"chapter\" is not a track kind",
-  "apiNotes": "`buildMedia(spec)` returns `{ tree, html, preview, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup and `preview` is the same tree with every address removed and controls always shown. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message` that names the rule and its section. `parseSourceLines(text)` and `parseTrackLines(text)` take the typed lines, throw `MarkupError` naming the line, and return the parsed lines. `MEDIA_KINDS` lists the media and `FIELD_LABELS` the field names used in refusals.",
-  "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The track example of WHATWG 4.8.10 is checked literally; a video with src must have no source children and without src the sources come before the tracks; audio must refuse a poster and a size; each track rule is tested on its own, including the five kinds, the language for subtitles, one default per kind group and duplicates; preload, loading and crossorigin take only their keywords; and the preview must carry no address the visitor typed and must always show controls.",
+  "usage": "import { buildMedia, parseTrackLines, checkSrcset, parseSrcset } from '@fodt/media-embed-builder';\n\nconst video = buildMedia({\n  kind: 'video',\n  src: 'brave.webm',\n  tracks: 'brave.en.vtt | subtitles | en | English',\n  controls: true,\n});\nvideo?.html;\n// <video src=\"brave.webm\" controls>\n//   <track kind=\"subtitles\" src=\"brave.en.vtt\" srclang=\"en\" label=\"English\">\n// </video>\n\nconst image = buildMedia({\n  kind: 'image',\n  src: 'photo-800.jpg',\n  srcset: 'photo-400.jpg 400w, photo-800.jpg 800w',\n  sizes: '(max-width: 600px) 100vw, 800px',\n  alt: 'A harbour at dusk',\n  width: '800',\n  height: '533',\n});\nimage?.html;\n// <img src=\"photo-800.jpg\" srcset=\"photo-400.jpg 400w, photo-800.jpg 800w\" sizes=\"(max-width: 600px) 100vw, 800px\" alt=\"A harbour at dusk\" width=\"800\" height=\"533\">\n\ncheckSrcset(parseSrcset('a.png 100w, b.png 2x', 'Srcset'), 'Srcset', { sizesPresent: true });\n// throws MarkupError: Srcset: width descriptors (such as 400w) and pixel density descriptors (such as 2x) cannot be mixed",
+  "apiNotes": "`buildMedia(spec)` returns `{ tree, html, preview, warnings }`, or `null` when every field it reads is blank. `html` is the copyable markup and `preview` is the same tree with every address removed or replaced by a grey placeholder and controls always shown. A refused value throws `MarkupError` with a `field` (the label the page shows) and a `message` that names the rule and its section. `parseSourceLines(text)`, `parseTrackLines(text)` and `parsePictureSourceLines(text, { imgAllowsAutoSizes })` take the typed lines, throw `MarkupError` naming the line, and return the parsed lines. `parseSrcset(text, field)` splits a srcset value into candidates, `checkSrcset(candidates, field, { sizesPresent })` applies the authoring rules of WHATWG 4.8.4.2.1 and `checkSizes(text, field, { lazy })` those of 4.8.4.2.2. `MEDIA_KINDS` lists the four media and `FIELD_LABELS` the field names used in refusals.",
+  "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The track example of WHATWG 4.8.10 is checked literally; a video with src must have no source children and without src the sources come before the tracks; audio must refuse a poster and a size; each track rule is tested on its own, including the five kinds, the language for subtitles, one default per kind group and duplicates; preload, loading and crossorigin take only their keywords; srcset descriptors are tested for mixing, repeats, zero and negative values and stray commas; sizes is tested for percentages, negative lengths, a missing fallback length and auto without lazy loading; a picture source followed by another source or by an img with srcset must carry media or type; an image must carry alt text unless decorative; hostile text typed into every free-text field of every media must leave the parsed element tree unchanged; and the preview must carry no address the visitor typed and must always show controls.",
   "devDependencies": {
     "parse5": "8.0.1"
   }

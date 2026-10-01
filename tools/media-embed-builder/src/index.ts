@@ -6,6 +6,7 @@ import { CORS_KEYWORDS, LOADING_KEYWORDS, PRELOAD_KEYWORDS, TRACK_KINDS, TRACK_K
 
 export { meta };
 export { MarkupError } from './markup';
+export { checkSizes, checkSrcset, parseSrcset } from './srcset';
 
 /** The media the builder writes, in the order the page lists them. */
 export const MEDIA_KINDS = ['video', 'audio', 'image', 'picture'] as const;

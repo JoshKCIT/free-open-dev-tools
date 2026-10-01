@@ -27,5 +27,36 @@
       "fallback": "Your browser cannot play this audio"
     },
     "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "kind",
+      "value": "image"
+    },
+    "values": {
+      "imageSrc": "photo-800.jpg",
+      "srcset": "photo-400.jpg 400w, photo-800.jpg 800w",
+      "sizes": "(max-width: 600px) 100vw, 800px",
+      "alt": "A harbour at dusk",
+      "width": "800",
+      "height": "533"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "kind",
+      "value": "picture"
+    },
+    "values": {
+      "pictureSources": "hero-wide.avif | image/avif | (min-width: 800px)\nhero-wide.jpg | image/jpeg | (min-width: 800px)",
+      "imageSrc": "hero.jpg",
+      "srcset": "",
+      "sizes": "",
+      "alt": "Hero image",
+      "width": "400",
+      "height": "300"
+    },
+    "attachesFile": false
   }
 ]
