@@ -290,10 +290,10 @@ it('200 items spread over several pages with every line present, and 201 are ref
   const positions = many.map((m) => all.indexOf(m.description));
   expect([...positions].sort((a, b) => a - b)).toEqual(positions);
   expect(all.split('Item001').length).toBe(2);
-  // Every page says where it is, and a page that carries rows repeats the table heading.
+  // Every page says where it is, and every page that carries rows has the table heading (the last page may hold only the totals).
   read.pages.forEach((p, i) => {
     expect(p.text).toContain(`Page${i + 1}of${read.pages.length}`);
-    if (i > 0) expect(p.text).toContain('DescriptionQty');
+    if (/Item\d{3}/.test(p.text)) expect(p.text).toContain('DescriptionQty');
   });
   // The totals come after the last row, on the last page.
   expect(read.pages[read.pages.length - 1]!.text).toContain('48.58');
