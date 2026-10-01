@@ -85,6 +85,11 @@ it('hostile text in the label, name and value comes out as text', () => {
       { label: 'Label', name: hostile, value: 'v' },
       { label: 'Label', name: 'nm', value: hostile },
     ]) {
+      // A value holding a control character is refused outright; every other one comes out as text.
+      if (/[\u0000-\u0008\u000a-\u001f]/.test(hostile)) {
+        expect(refusal(() => buildField({ control: 'text', ...spec })).message).toContain('U+0001');
+        continue;
+      }
       const field = buildField({ control: 'text', ...spec })!;
       const { frag, errors } = parse(field.html);
       expect(errors).toEqual([]);
@@ -562,4 +567,243 @@ it('the copied list of input types and autofill field names matches the counts o
   expect(SPEC_LAST_UPDATED).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(meta.about).toContain(SPEC_LAST_UPDATED);
   expect(meta.about).toContain(SPEC_FETCHED);
+});
+
+// ---- Task 3: microsyntax checks, lengths, patterns and hostile text ------------------------------------------------
+
+it('WHATWG 4.10.5 min, max and step must use the syntax of the chosen type, and min above max is refused except for time', () => {
+  // Valid strings of each type's own syntax are written as typed.
+  const number = buildField({ ...minimalSpec('number'), min: '0', max: '10.5', step: '0.5', value: '5' })!;
+  expect(number.html).toContain(
+    '<input type="number" id="field1" name="field1" value="5" min="0" max="10.5" step="0.5">',
+  );
+  expect(parse(number.html).errors).toEqual([]);
+  const date = buildField({
+    ...minimalSpec('date'),
+    min: '2024-02-29',
+    max: '2024-12-31',
+    value: '2024-06-01',
+    step: '7',
+  })!;
+  expect(date.html).toContain('min="2024-02-29" max="2024-12-31" step="7"');
+  expect(buildField({ ...minimalSpec('month'), min: '2024-01', max: '2024-12', value: '2024-06' })!.html).toContain(
+    'min="2024-01"',
+  );
+  expect(buildField({ ...minimalSpec('week'), min: '2020-W01', max: '2020-W53' })!.html).toContain('max="2020-W53"');
+  expect(
+    buildField({ ...minimalSpec('datetime-local'), min: '2024-01-01T09:00', max: '2024-01-01 17:00:30.5' })!.html,
+  ).toContain('min="2024-01-01T09:00"');
+  expect(buildField({ ...minimalSpec('range'), min: '0', max: '100', step: '10', value: '50' })!.html).toContain(
+    'type="range"',
+  );
+  // A string that is not valid for the type names the field: Min, Max, Step or the starting value.
+  const badMin = refusal(() => buildField({ ...minimalSpec('date'), min: '2024-02-30' }));
+  expect(badMin.field).toBe('Min');
+  expect(badMin.message).toContain('2024-02-30');
+  expect(refusal(() => buildField({ ...minimalSpec('month'), max: '2024-13' })).field).toBe('Max');
+  expect(refusal(() => buildField({ ...minimalSpec('week'), min: '2024-W53' })).field).toBe('Min');
+  expect(refusal(() => buildField({ ...minimalSpec('time'), min: '24:00' })).field).toBe('Min');
+  expect(refusal(() => buildField({ ...minimalSpec('datetime-local'), max: '2024-01-01' })).field).toBe('Max');
+  for (const bad of ['5.', '+5', 'NaN', '1,5', '0x10', '']) {
+    if (bad === '') continue;
+    expect(refusal(() => buildField({ ...minimalSpec('number'), min: bad })).field, bad).toBe('Min');
+  }
+  expect(refusal(() => buildField({ ...minimalSpec('number'), value: 'abc' })).field).toBe('Starting value');
+  expect(refusal(() => buildField({ ...minimalSpec('date'), value: '2024-2-1' })).field).toBe('Starting value');
+  expect(refusal(() => buildField({ ...minimalSpec('time'), value: '14:54:39.9291' })).field).toBe('Starting value');
+  expect(() => buildField({ ...minimalSpec('time'), value: '14:54:39.929' })).not.toThrow();
+  // A step is a floating-point number greater than zero, or any (ASCII case-insensitive).
+  expect(refusal(() => buildField({ ...minimalSpec('number'), step: '0' })).field).toBe('Step');
+  expect(refusal(() => buildField({ ...minimalSpec('number'), step: '-1' })).field).toBe('Step');
+  expect(refusal(() => buildField({ ...minimalSpec('number'), step: 'abc' })).field).toBe('Step');
+  expect(refusal(() => buildField({ ...minimalSpec('number'), step: '0.0' })).message).toContain('greater than zero');
+  expect(buildField({ ...minimalSpec('number'), step: 'any' })!.html).toContain('step="any"');
+  expect(buildField({ ...minimalSpec('number'), step: 'ANY' })!.html).toContain('step="ANY"');
+  expect(buildField({ ...minimalSpec('number'), step: '1e-3' })!.html).toContain('step="1e-3"');
+  // A min above max is refused, except for time, whose domain wraps round midnight (WHATWG 4.10.5.3.7).
+  const reversed = refusal(() => buildField({ ...minimalSpec('number'), min: '5', max: '1' }));
+  expect(reversed.field).toBe('Max');
+  expect(reversed.message).toContain('4.10.5.3.7');
+  expect(refusal(() => buildField({ ...minimalSpec('date'), min: '2024-03-01', max: '2024-02-29' })).field).toBe('Max');
+  expect(refusal(() => buildField({ ...minimalSpec('week'), min: '2021-W01', max: '2020-W53' })).field).toBe('Max');
+  expect(
+    refusal(() => buildField({ ...minimalSpec('datetime-local'), min: '2024-01-01T10:00', max: '2024-01-01T09:00' }))
+      .field,
+  ).toBe('Max');
+  expect(() => buildField({ ...minimalSpec('number'), min: '5', max: '5' })).not.toThrow();
+  const wrapping = buildField({ ...minimalSpec('time'), min: '21:00', max: '06:00' })!;
+  expect(wrapping.html).toContain('min="21:00" max="06:00"');
+  // A starting value outside the range is still written, with a note, because the standard only marks it as out of range.
+  const outside = buildField({ ...minimalSpec('number'), min: '0', max: '10', value: '11' })!;
+  expect(outside.warnings.join(' ')).toContain('above the max');
+  expect(buildField({ ...minimalSpec('number'), min: '0', max: '10', value: '-1' })!.warnings.join(' ')).toContain(
+    'below the min',
+  );
+  // A colour is a hash and six hexadecimal digits (WHATWG 2.3.6).
+  expect(buildField({ ...minimalSpec('color'), value: '#00FF7f' })!.html).toContain('value="#00FF7f"');
+  expect(refusal(() => buildField({ ...minimalSpec('color'), value: 'red' })).field).toBe('Starting value');
+  expect(refusal(() => buildField({ ...minimalSpec('color'), value: '#fff' })).field).toBe('Starting value');
+});
+
+it('minlength and maxlength count UTF-16 code units, so an emoji counts as two and a value longer than maxlength is refused', () => {
+  const emoji = '\u{1F600}';
+  expect(emoji.length).toBe(2);
+  const tooLong = refusal(() => buildField({ ...minimalSpec('text'), maxlength: '1', value: emoji }));
+  expect(tooLong.field).toBe('Starting value');
+  expect(tooLong.message).toContain('2 characters');
+  expect(tooLong.message).toContain('UTF-16');
+  expect(buildField({ ...minimalSpec('text'), maxlength: '2', value: emoji })!.html).toContain('maxlength="2"');
+  expect(refusal(() => buildField({ ...minimalSpec('text'), maxlength: '5', value: 'abcdef' })).field).toBe(
+    'Starting value',
+  );
+  expect(() => buildField({ ...minimalSpec('text'), maxlength: '5', value: 'abcde' })).not.toThrow();
+  // A value shorter than the minimum is refused; an empty value is not subject to it.
+  expect(refusal(() => buildField({ ...minimalSpec('text'), minlength: '3', value: 'ab' })).message).toContain(
+    'minlength 3',
+  );
+  expect(() => buildField({ ...minimalSpec('text'), minlength: '3' })).not.toThrow();
+  expect(() => buildField({ ...minimalSpec('text'), minlength: '3', value: emoji + 'a' })).not.toThrow();
+  // A textarea counts a line break as one character, as the standard says (WHATWG 4.10.19.3).
+  expect(() => buildField({ ...minimalSpec('textarea'), maxlength: '3', value: 'a\r\nb' })).not.toThrow();
+  expect(refusal(() => buildField({ ...minimalSpec('textarea'), maxlength: '2', value: 'a\r\nb' })).field).toBe(
+    'Starting value',
+  );
+  // The limits themselves are digits only, and compared exactly even when huge.
+  expect(refusal(() => buildField({ ...minimalSpec('text'), maxlength: '1e3' })).field).toBe('Maxlength');
+  expect(
+    refusal(() => buildField({ ...minimalSpec('text'), minlength: '9007199254740993', maxlength: '9007199254740992' }))
+      .field,
+  ).toBe('Minlength');
+  expect(() =>
+    buildField({ ...minimalSpec('text'), minlength: '9007199254740992', maxlength: '9007199254740993' }),
+  ).not.toThrow();
+  // The label for value and the id compare exactly, while boolean and autofill tokens ignore ASCII case.
+  const field = buildField({ ...minimalSpec('text'), id: 'MyId', flags: 'REQUIRED', autocomplete: 'NAME' })!;
+  expect(field.html).toContain('<label for="MyId">');
+  expect(field.html).toContain('id="MyId"');
+  expect(field.html).toContain(' required>');
+  expect(field.html).toContain('autocomplete="NAME"');
+});
+
+it('WHATWG 4.10.5 pattern is compiled with the v flag and an invalid pattern is refused without being run', () => {
+  const ok = buildField({ ...minimalSpec('text'), pattern: '[A-Z]{3}[0-9]', title: 'Three capitals and a digit' })!;
+  expect(ok.html).toContain('pattern="[A-Z]{3}[0-9]"');
+  expect(ok.warnings).toEqual([]);
+  expect(parse(ok.html).errors).toEqual([]);
+  // A pattern with no title earns a note (WHATWG 4.10.5.3.6).
+  expect(buildField({ ...minimalSpec('text'), pattern: '[a-z]+' })!.warnings.join(' ')).toContain('title');
+  // A pattern that is not a valid regular expression is refused naming Pattern.
+  for (const bad of ['[', '(', '(?<n>', '*a', 'a{2,1}', '\\']) {
+    const e = refusal(() => buildField({ ...minimalSpec('text'), pattern: bad }));
+    expect(e.field, bad).toBe('Pattern');
+    expect(e.message, bad).toContain('4.10.5.3.6');
+  }
+  // The standard compiles with the v flag, which is stricter than u: an unescaped parenthesis in a class is an error.
+  expect(refusal(() => buildField({ ...minimalSpec('text'), pattern: '[(]' })).field).toBe('Pattern');
+  expect(() => buildField({ ...minimalSpec('text'), pattern: '[\\(]' })).not.toThrow();
+  // The pattern is wrapped in a group with both anchors before compiling, so an alternation stays inside it.
+  expect(() => buildField({ ...minimalSpec('text'), pattern: 'a|b' })).not.toThrow();
+  // The pattern is never run: one that would take years against its own starting value returns at once.
+  const started = Date.now();
+  const never = buildField({ ...minimalSpec('text'), pattern: '^(a+)+$', value: 'a'.repeat(60) + '!', title: 'x' })!;
+  expect(never.html).toContain('pattern="^(a+)+$"');
+  expect(Date.now() - started).toBeLessThan(1000);
+  // A pattern only applies to some types.
+  expect(refusal(() => buildField({ ...minimalSpec('number'), pattern: '[0-9]+' })).field).toBe('Pattern');
+});
+
+it('hostile text in every free-text field leaves the parsed field tree unchanged, and a hostile value in a checked field is refused naming the field', () => {
+  const holds = (control: ControlKind, field: keyof FieldSpec, benign: string, extra: Partial<FieldSpec> = {}) => {
+    const base: FieldSpec = { ...minimalSpec(control), ...extra };
+    const reference = shape(parse(buildField({ ...base, [field]: benign })!.html).frag);
+    for (const hostile of HOSTILE) {
+      const value = field === 'options' ? 'a | ' + hostile + '\nb | Beta' : hostile;
+      let built;
+      try {
+        built = buildField({ ...base, [field]: value });
+      } catch (e) {
+        // A refusal is the other allowed outcome, and it must name the field and never leak a crash.
+        expect(e, `${control} ${String(field)}`).toBeInstanceOf(MarkupError);
+        expect((e as MarkupError).field.length, `${control} ${String(field)}`).toBeGreaterThan(0);
+        continue;
+      }
+      const { frag, errors } = parse(built!.html);
+      expect(errors, `${control} ${String(field)} ${hostile.slice(0, 20)}`).toEqual([]);
+      expect(shape(frag), `${control} ${String(field)} ${hostile.slice(0, 20)}`).toBe(reference);
+      expect(findAll(frag, 'script'), `${control} ${String(field)}`).toHaveLength(0);
+      expect(findAll(frag, 'img'), `${control} ${String(field)}`).toHaveLength(0);
+      const preview = parse(built!.preview);
+      expect(preview.errors).toEqual([]);
+      expect(findAll(preview.frag, 'script')).toHaveLength(0);
+    }
+  };
+  // Free-text fields: the structure never depends on what was typed.
+  holds('text', 'label', 'Label');
+  holds('text', 'name', 'nm');
+  holds('text', 'value', 'v');
+  holds('text', 'placeholder', 'p');
+  holds('text', 'title', 't');
+  holds('text', 'pattern', '[a-z]+');
+  holds('textarea', 'value', 'v');
+  holds('checkbox', 'label', 'L');
+  holds('submit', 'value', 'Send');
+  holds('select', 'options', 'a | A\nb | Beta');
+  holds('radio', 'options', 'a | A\nb | Beta');
+  holds('text', 'id', 'my-id');
+  holds('image', 'src', 'a.png');
+  holds('image', 'alt', 'A');
+  holds('hidden', 'value', 'v');
+  holds('file', 'accept', 'image/*');
+  // Checked fields: anything but a valid value is refused naming the field.
+  const checked: [ControlKind, keyof FieldSpec, string][] = [
+    ['text', 'flags', 'Flags'],
+    ['text', 'autocomplete', 'Autocomplete'],
+    ['text', 'minlength', 'Minlength'],
+    ['text', 'maxlength', 'Maxlength'],
+    ['text', 'size', 'Size'],
+    ['number', 'min', 'Min'],
+    ['number', 'max', 'Max'],
+    ['number', 'step', 'Step'],
+    ['number', 'value', 'Starting value'],
+    ['textarea', 'rows', 'Rows'],
+    ['textarea', 'cols', 'Columns (cols)'],
+    ['image', 'width', 'Width'],
+    ['image', 'height', 'Height'],
+  ];
+  for (const [control, field, label] of checked) {
+    for (const hostile of HOSTILE) {
+      const e = refusal(() => buildField({ ...minimalSpec(control), [field]: hostile }));
+      expect(e.field, `${control} ${String(field)} ${hostile.slice(0, 20)}`).toBe(label);
+    }
+  }
+  // A control character, a noncharacter and a lone surrogate are refused in every field, naming it.
+  for (const bad of ['a\u0001b', 'a\u0085b', 'a﷐b', 'a\uD800b']) {
+    expect(refusal(() => buildField({ ...minimalSpec('text'), placeholder: bad })).field).toBe('Placeholder');
+    expect(refusal(() => buildField({ ...minimalSpec('text'), title: bad })).field).toBe('Title');
+    expect(refusal(() => buildField({ ...minimalSpec('select'), options: 'a | ' + bad })).field).toBe('Options');
+  }
+  // A line break is only allowed in the multi-line fields.
+  expect(refusal(() => buildField({ ...minimalSpec('text'), title: 'a\nb' })).field).toBe('Title');
+  expect(() => buildField({ ...minimalSpec('textarea'), value: 'a\r\nb' })).not.toThrow();
+  // A javascript, data or vbscript address in the image button is kept as typed and flagged.
+  const flagged = buildField({ ...minimalSpec('image'), src: 'java\tscript:alert(1)' })!;
+  expect(flagged.html).toContain('src="java\tscript:alert(1)"');
+  expect(flagged.warnings.join(' ')).toContain('javascript: scheme');
+  expect(buildField({ ...minimalSpec('image'), src: 'DATA:image/png;base64,AAAA' })!.warnings.join(' ')).toContain(
+    'data: scheme',
+  );
+  expect(buildField({ ...minimalSpec('image'), src: 'https://example.invalid/a.png' })!.warnings).toEqual([]);
+  // The same value in every field of one run still builds the same elements.
+  const everything = buildField({
+    control: 'text',
+    label: HOSTILE[0],
+    name: 'nm',
+    value: HOSTILE[1],
+    placeholder: HOSTILE[2],
+    title: HOSTILE[3],
+    pattern: '[a-z]+',
+  })!;
+  expect(parse(everything.html).errors).toEqual([]);
+  expect(findAll(parse(everything.html).frag, 'input')).toHaveLength(1);
+  expect(findAll(parse(everything.html).frag, 'script')).toHaveLength(0);
 });
