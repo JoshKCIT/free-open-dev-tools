@@ -197,7 +197,7 @@ The `verify` job runs against the live site after publishing and fails if:
 - The deployed HTML references any asset from a host other than the site own origin.
 - Either the served HTML (the prerendered page descriptions, which live in the HTML rather than the bundle) or the
   served JavaScript carries a forbidden reference from the `PROVENANCE_DENYLIST` repository secret.
-- Any of the complete 171-tool catalog's pages fails to load its tool cleanly, loads anything from another origin, or
+- Any of the complete 177-tool catalog's pages fails to load its tool cleanly, loads anything from another origin, or
   its JavaScript — every chunk and inline worker the page actually loads — carries a forbidden reference.
   `e2e/all-tool-chunks.spec.ts` checks this against the live site, on chromium only: it is a byte scan over static
   files rather than a cross-browser behavioural check, so running it on every engine would repeat the same fetches
@@ -262,7 +262,7 @@ On a host that supports custom headers, these are worth setting. They are not se
 cannot:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
 Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
@@ -271,6 +271,11 @@ Cross-Origin-Opener-Policy: same-origin
 
 `connect-src 'none'` is the interesting one: it makes the privacy claim enforceable by the browser itself, not just by
 our tests. Adding it is the main argument for moving off GitHub Pages later.
+
+`script-src 'self' 'wasm-unsafe-eval'` and `worker-src 'self' blob:` are both needed: the code formatters compile
+WebAssembly inside background workers that the page builds from blob addresses, so a host that sets this header and
+leaves either one out blocks every formatter and every other tool that runs in an inline worker. GitHub Pages sends no
+policy at all and needs nothing changed.
 
 ## Operational notes
 
