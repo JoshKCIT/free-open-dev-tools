@@ -1,0 +1,50 @@
+{
+  "id": "python-formatter",
+  "name": "Python Formatter",
+  "summary": "Format Python code with the Ruff formatter, choosing line length, quote style and indent, with syntax errors shown by line and column.",
+  "about": "Formats Python source with the Ruff formatter compiled to WebAssembly and run in a background worker in your browser. You choose the line length, the quote style (double, single or kept as written), and whether to indent with spaces or tabs and how wide. A syntax error is reported with its line and column instead of any formatted code. Nothing is sent anywhere.",
+  "supports": [
+    "Python source of any version Ruff 0.15.20 parses, including match statements, type parameters and f-strings",
+    "Line length from 1 to 65535 characters, with Ruff's own default of 88",
+    "Quote style double, single or preserve (each string keeps the quotes it was written with)",
+    "Indent with spaces or tabs, with an indent width from 1 to 255 (Ruff's own default is 4 spaces)",
+    "A magic trailing comma keeps a collection exploded over several lines, as Ruff does by default",
+    "A syntax error is reported with its line and column, and no formatted code is shown"
+  ],
+  "limits": [
+    "A run that takes longer than 10 seconds is stopped with a message, so a pathological input cannot freeze the page.",
+    "Line and column count characters as you see them; Ruff reports a byte position, which is converted.",
+    "Only the first syntax error is reported.",
+    "Line length must be a whole number from 1 to 65535 and indent width a whole number from 1 to 255, the ranges in Ruff's settings schema; anything else is refused before the formatter runs.",
+    "Formatting follows the style of Ruff 0.15.20, which aims at Black compatibility but is not identical to it everywhere.",
+    "Only the formatter is run: imports are not sorted, unused code is not removed and no lint rule is applied.",
+    "A source nested hundreds of brackets deep is refused with a plain message instead of crashing the page."
+  ],
+  "ambiguities": [
+    "Ruff leaves a docstring's own quotes alone only when changing them would change the text, so quote style does not rewrite every string",
+    "A string that already contains the other kind of quote keeps its quotes under every quote style, because swapping them would need escapes"
+  ],
+  "standards": [
+    { "label": "Ruff formatter documentation", "url": "https://docs.astral.sh/ruff/formatter/" },
+    {
+      "label": "Python language reference, lexical analysis",
+      "url": "https://docs.python.org/3/reference/lexical_analysis.html"
+    }
+  ],
+  "keywords": ["python", "ruff", "format", "formatter", "pretty-print", "black", "wasm"],
+  "primaryExport": "formatPython",
+  "usage": "import { createRequire } from 'node:module';\nimport { readFileSync } from 'node:fs';\nimport { loadEngine, formatPython } from '@fodt/python-formatter';\n\nconst require = createRequire(import.meta.url);\nloadEngine(readFileSync(require.resolve('@wasm-fmt/ruff_fmt/wasm')));\n\nformatPython(\"x = 'a'\\n\", { quoteStyle: 'double' });\n// { output: 'x = \"a\"\\n', inputBytes: 8, outputBytes: 8 }",
+  "apiNotes": "`loadEngine(wasm)` hands the Ruff WebAssembly bytes (or a compiled module) to the engine once; calling it again does nothing. `formatPython(source, options?)` returns `{ output, inputBytes, outputBytes }`, or `null` for blank or whitespace-only source without calling the engine. The options are `lineLength` (88), `quoteStyle` ('double', 'single' or 'preserve'), `indentStyle` ('space' or 'tab') and `indentWidth` (4). It throws `PythonFormatterError` for every failure, never returning partly formatted code; the error carries `line` and `column` (both 1-based, the column counted in characters) when Ruff located a syntax error. `positionFromByteOffset(source, byteOffset)` is the conversion it uses.",
+  "testNotes": "The oracle is Ruff's own published formatter test data at tag 0.15.20 (crates/ruff_python_formatter): the quote_style fixture is formatted with each of its three option sets and compared byte for byte with the outputs of its snapshot. The vendored fixtures keep Ruff's licence and a record of where they came from. Error positions in the tests are counted by hand from each test's input.",
+  "dependencies": { "@wasm-fmt/ruff_fmt": "0.15.20" },
+  "bundledData": [
+    {
+      "name": "Ruff 0.15.20 formatter",
+      "source": "https://github.com/astral-sh/ruff/tree/0.15.20/crates/ruff_python_formatter",
+      "licence": "MIT",
+      "licenceUrl": "https://github.com/astral-sh/ruff/blob/0.15.20/LICENSE",
+      "attribution": "Copyright (c) 2022 Charles Marsh. The Ruff Python formatter is compiled into the WebAssembly module that @wasm-fmt/ruff_fmt 0.15.20 ships.",
+      "noticeFile": "src/ruff-LICENSE.txt"
+    }
+  ]
+}
