@@ -83,10 +83,12 @@ const TITLE_TAG = /<title>[\s\S]*?<\/title>/;
 const DESCRIPTION_TAG = /<meta\s[^>]*name="description"[^>]*>/;
 
 function render(route) {
-  const withTitle = template.replace(TITLE_TAG, `<title>${escape(route.title)}</title>`);
+  // Replacer functions, not replacement strings: a string is read for `$&`, `$1`, `$$` and so on, which would
+  // rewrite a title or summary that holds a dollar sign.
+  const withTitle = template.replace(TITLE_TAG, () => `<title>${escape(route.title)}</title>`);
   const withDescription = withTitle.replace(
     DESCRIPTION_TAG,
-    `<meta name="description" content="${escape(route.description)}" />`,
+    () => `<meta name="description" content="${escape(route.description)}" />`,
   );
 
   // A replacement that changed nothing means the template moved and this script
