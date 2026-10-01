@@ -155,6 +155,18 @@ const FORMATTERS: FormatterCase[] = [
     expectOutput: 'private: void g() {} // test protected: int h; };',
     // No broken input: clang-format reports no syntax errors, it formats malformed code best effort.
   },
+  {
+    id: 'dart-formatter',
+    // dart_style's own import.unit case 'Wrap before "deferred".' (test/tall/top_level/import.unit, v3.1.4,
+    // https://github.com/dart-lang/dart_style/blob/v3.1.4/test/tall/top_level/import.unit, BSD-3-Clause), whose
+    // header sets a page width of 40: the second line of its expected output. The same input and width the live
+    // fixture types.
+    valid: { lineWidth: '40', input: liveFixtureInput('dart-formatter') },
+    expectOutput: 'deferred as path;',
+    // Counted by hand: two lines, each ended by a line break, and a closing brace that never comes, so the
+    // formatter looks for it at the end of the input: line 3, column 1.
+    broken: { input: 'void main() {\n  print(1);\n', issue: 'Line 3, column 1' },
+  },
 ];
 
 /** A second valid input that differs from the first by one trailing line break, so it is a new run. */
@@ -383,4 +395,22 @@ test('c-family-formatter: each of the six languages formats in this browser', as
       .toBe(c.expected);
     expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
   }
+});
+
+test('dart-formatter: the line width decides where an import wraps in this browser', async ({ page }) => {
+  await openFormatter(page, 'dart-formatter');
+  const block = outputArea(page).locator('pre.output').first();
+
+  // dart_style's own import.unit case 'Wrap before "deferred".' at the header's width of 40 wraps before
+  // deferred; at the default width of 80 the same import stays on one line.
+  await page.locator('#f-input').fill("import 'package:foo/foo.dart' deferred as path;\n");
+  await page.locator('#f-lineWidth').fill('40');
+  await expect
+    .poll(async () => (await block.textContent()) ?? '', { timeout: 15_000 })
+    .toBe("import 'package:foo/foo.dart'\n    deferred as path;\n");
+
+  await page.locator('#f-lineWidth').fill('80');
+  await expect
+    .poll(async () => (await block.textContent()) ?? '', { timeout: 15_000 })
+    .toBe("import 'package:foo/foo.dart' deferred as path;\n");
 });

@@ -1,0 +1,17 @@
+{
+  "id": "dart-formatter",
+  "label": "dart_style import.unit: wrap at 40 columns",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "lineWidth",
+      "value": "40"
+    },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "import 'package:foo/foo.dart' deferred as path;\n"
+    }
+  ],
+  "expect": ["import 'package:foo/foo.dart'", "deferred as path;"]
+}
