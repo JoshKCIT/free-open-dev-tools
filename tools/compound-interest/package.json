@@ -1,0 +1,52 @@
+{
+  "name": "@fodt/compound-interest",
+  "version": "1.0.0",
+  "description": "Grow a starting amount and regular deposits at a stated rate and compounding frequency, with the final balance and a year-by-year table.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "compound interest",
+    "savings calculator",
+    "future value",
+    "regular deposit",
+    "compounding frequency",
+    "annual percentage yield",
+    "APY",
+    "effective annual yield",
+    "year by year",
+    "FV"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/compound-interest"
+  }
+}
