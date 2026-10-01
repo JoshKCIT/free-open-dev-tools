@@ -1,0 +1,52 @@
+{
+  "name": "@fodt/stock-metrics",
+  "version": "1.0.0",
+  "description": "Work out earnings per share, price to earnings ratio, dividend yield and payout ratio, and the price that triggers a margin call.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "earnings per share",
+    "EPS",
+    "price to earnings",
+    "P/E ratio",
+    "dividend yield",
+    "payout ratio",
+    "margin call",
+    "maintenance margin",
+    "initial margin",
+    "stock ratios"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/stock-metrics"
+  }
+}
