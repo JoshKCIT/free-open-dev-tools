@@ -1202,5 +1202,12 @@
     "category": "code",
     "tier": 2,
     "summary": "Format Go source exactly as gofmt does, with syntax errors shown by line and column."
+  },
+  {
+    "id": "python-formatter",
+    "name": "Python Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Format Python code with the Ruff formatter, choosing line length, quote style and indent, with syntax errors shown by line and column."
   }
 ]
