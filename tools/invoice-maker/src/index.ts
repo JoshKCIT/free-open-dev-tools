@@ -307,7 +307,13 @@ function choose<T extends string>(
  * Returns null when nothing is typed. A missing item, number, date or name, a bad value, or a character the PDF's
  * built-in fonts cannot write is refused by name, and no file is produced.
  */
-export async function calculateInvoice(texts: InvoiceTexts): Promise<InvoiceResult | null> {
+export async function calculateInvoice(rawTexts: InvoiceTexts): Promise<InvoiceResult | null> {
+  // A letter typed as a plain letter plus a combining accent (decomposed text from some file names, mail clients and
+  // PDFs) is joined into the single code point the PDF's fonts have (Unicode Standard Annex 15, form NFC). Everything
+  // typed is normalised once, here, before it is validated and drawn; error columns count the normalised text.
+  const texts: InvoiceTexts = Object.fromEntries(
+    Object.entries(rawTexts).map(([key, value]) => [key, typeof value === 'string' ? value.normalize('NFC') : value]),
+  );
   const typed = [
     texts.number,
     texts.issueDate,

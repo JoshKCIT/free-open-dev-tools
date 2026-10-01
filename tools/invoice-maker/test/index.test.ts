@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, test } from 'vitest';
 import { calculateInvoice, invoiceTotals, parseItems, MAX_ITEMS, meta, type InvoiceTexts } from '../src/index';
 import { D, MoneyInputError } from '../src/money';
 
@@ -266,4 +266,27 @@ it('the working shows every step with the typed numbers and the rounding mode', 
   expect(working).toContain('48.58');
   expect((await calc({ rounding: 'line' })).working).toContain('on each line');
   expect(working).not.toMatch(/recommend|you should/i);
+});
+
+test('letters typed as a plain letter plus a combining accent are joined into one letter before the PDF is written', async () => {
+  // 'Cafe' + U+0301 (combining acute accent) looks like "Café" but is two code points; the PDF's fonts have the one
+  // code point U+00E9, so the text is normalised to NFC (Unicode Standard Annex 15) before it is checked and drawn.
+  const decomposed = 'Cafe\u0301';
+  const composed = 'Caf\u00e9';
+  expect(decomposed).not.toBe(composed);
+  const result = await calc({
+    number: `N${decomposed}-1`,
+    seller: `${decomposed} Studio\nCre\u0300me SARL`,
+    buyer: `${decomposed} Client`,
+    taxLabel: `Taxe ${decomposed}`,
+    notes: `Merci ${decomposed}`,
+    items: `${decomposed} au lait | 2 | 3.50`,
+  });
+  expect(result.rows[0]!.description).toBe(`${composed} au lait`);
+  expect(result.totals.taxLabel).toBe(`Taxe ${composed}`);
+  expect(result.bytes.length).toBeGreaterThan(500);
+  // A letter with no single WinAnsi code point is still refused, named by the joined letter's code point.
+  const err = await refusedAsync(calculateInvoice({ ...BASE, seller: 'z\u0301 Studio' }));
+  expect(err.field).toBe('Your name and address');
+  expect(err.message).toContain('U+017A');
 });
