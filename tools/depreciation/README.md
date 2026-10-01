@@ -1,0 +1,100 @@
+# Depreciation Calculator
+
+Build a depreciation schedule by straight line, declining balance with a switch to straight line, sum of the years digits or units of production.
+
+Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
+package file, tests, licence and documentation, and does not import anything from the rest of the repository.
+
+## What it does
+
+Takes an asset's cost, its salvage value and its useful life in whole years and builds a year-by-year schedule of depreciation, accumulated depreciation and book value by one of four methods: straight line, declining balance with a factor you choose that switches to straight line when that gives a larger amount, sum of the years digits, or units of production. Where a method fully depreciates the asset the rows add up exactly to cost minus salvage. The page shows each formula with your own numbers put in.
+
+## Supported
+
+- Straight line: the same amount every year, cost minus salvage over the useful life
+- Declining balance with a factor from above 0 to 10 (2 is the usual double rate), switching to straight line in the first year that gives an equal or greater amount, with the switch year named
+- For comparison, the same declining balance schedule without the switch, which can leave value above the salvage after the last year
+- Sum of the years digits: each year takes a share of cost minus salvage, the first year the largest
+- Units of production: cost minus salvage in proportion to the units used each year out of the total units over the asset's life, stopping at cost minus salvage
+- Useful lives of 1 to 100 whole years and up to 100 yearly unit counts
+- A schedule of opening book value, depreciation, accumulated depreciation and closing book value for every year, with each year rounded to the currency's smallest unit and the last year carrying the rounding residue
+- The working shown: the formula, your numbers put into it and the section of the specification it follows
+- Any currency code your browser knows, with the right number of decimal places for that currency
+- Exact decimal arithmetic with decimal.js: no amount ever passes through a JavaScript floating-point number
+
+## Limits
+
+- Amounts are rounded half away from zero to the currency's smallest unit only when shown; every step before that keeps 40 significant digits, each year is rounded to the smallest unit, and in a method that fully depreciates the last year is cost minus salvage minus the earlier rounded years, so the schedule adds up exactly.
+- Every figure is arithmetic on the values you type, not financial, tax or legal advice; it ignores tax rules, first-year conventions, bonus and special depreciation, partial years, disposals and impairment.
+- Depreciation runs in whole years with no half-year, mid-quarter or mid-month first-year convention and no tax-table method, so a figure from a tax table or a tax return can differ.
+- Units of production stops at cost minus salvage: units beyond the total are not depreciated, and if the units typed add up to less than the total the asset is left above its salvage value.
+- A useful life is 1 to 100 years and units are one line for each year, at most 100 lines.
+- Cost and salvage value can have no more decimal places than the currency's smallest unit, and the salvage value cannot be more than the cost.
+- Declining balance uses the book value at the start of each year times the factor over the useful life, capped at a rate of 1, and the amount never takes the book value below the salvage value.
+- Amounts are shown with English (United States) digit grouping and decimal point whatever currency you choose.
+
+## Ambiguous cases, and what this does about them
+
+- The specification's syntax line for straight line misnames the function as DDB; this page follows its parameters (cost, salvage and lifetime) and its description, which is the straight line amount.
+- OpenFormula's declining balance (6.12.14) never switches to straight line, while its variable declining balance (6.12.50) switches automatically unless told not to; this page's declining balance method switches, and the working shows the unswitched years beside it.
+- IRS Publication 946 switches to straight line in the first year that gives an equal or greater deduction, using the remaining recovery period; this page measures the remaining life in whole years from the start of each year.
+- Units of production has no standard formula in the specification; this page uses cost minus salvage times the units used that year over the total units.
+
+## Defined by
+
+- [IRS Publication 946 (2025), How To Depreciate Property: straight line method and the switch from declining balance](https://www.irs.gov/pub/irs-pdf/p946.pdf)
+- [ISO/IEC 26300-2:2015 (OpenFormula, OASIS ODF 1.2 part 2) sections 6.12.45 SLN, 6.12.14 DDB, 6.12.50 VDB and 6.12.46 SYD](https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part2.html)
+
+## Use it on its own
+
+```sh
+npx degit JoshKCIT/free-open-dev-tools/tools/depreciation depreciation
+cd depreciation
+npm install
+npm test
+```
+
+## Install into a project
+
+```sh
+npm install @fodt/depreciation
+```
+
+This package is not published to npm. Copy the folder in, or add it as a workspace package, or depend on the
+repository directly. The whole point is that you can vendor it: it is small enough to read.
+
+## API
+
+```ts
+import { calculateDepreciation } from '@fodt/depreciation';
+
+const plan = calculateDepreciation({
+  method: 'declining',
+  cost: '10000',
+  salvage: '0',
+  life: '5',
+  factor: '2',
+  currency: 'USD',
+});
+plan.rows.map((row) => row.depreciation); // ['4000.00', '2400.00', '1440.00', '1080.00', '1080.00']
+plan.summary.switchYear; // 4
+plan.summary.totalDepreciation; // '10000.00'
+```
+
+`calculateDepreciation` takes the page's text values (`method` as `straight`, `declining`, `syd` or `units`, `cost`, `salvage`, `life`, `factor`, `units` one count per line, `totalUnits` and `currency`) and returns `{ summary, rows, working }`, or `null` when every number field is blank, or throws `MoneyInputError` carrying the `field` that was wrong and, for a bad units line, its `line` and `column`. Every row is `{ year, opening, depreciation, accumulated, closing }` as plain decimal strings at the currency's smallest unit. `straightLine`, `decliningBalance`, `sumOfYearsDigits` and `unitsOfProduction` build the rows from exact `Dec` values (a decimal.js value made by this folder's own clone, 40 significant digits, half away from zero) and `decliningRows(openingBook, salvage, rate, remainingLife, periods, switchToStraightLine)` is the engine under declining balance: the rate is a fraction and the remaining life may be fractional, which is how a schedule that starts part way through an asset's life is reproduced. `money.ts` is the shared exact-decimal helper: strict text parsing, rounding, money formatting, whole-number counts, calendar dates, one-row-per-line text with line and column errors, and spreadsheet-safe CSV cells.
+
+## Dependencies
+
+- `decimal.js` 10.6.0
+
+## Tests
+
+```sh
+npm test
+```
+
+IRS Publication 946 gives 300 a year for a 5,100 patent over 17 years with no salvage, and its chapter 4 Example 1 shows 200 percent declining balance switching to straight line (200, 320, 192, 115, 115 and 58, rounded to whole dollars for the examples); the exact values 320, 192, 115.20, 115.20 and 57.60 for years 2 to 6 are reproduced through the lower-level engine with a remaining life of 4.5 years. The OpenFormula sections 6.12.45, 6.12.14, 6.12.50 and 6.12.46 are read from the specification text and the other schedules (declining balance with and without the switch, with and without salvage, sum of the years digits, units of production) are derived by hand in the test comments from those equations. Exactness is proven by first showing that 0.1 + 0.2 in JavaScript floating point is 0.30000000000000004 and then that this tool's own path returns exactly 0.3.
+
+## Licence
+
+MIT. See [LICENSE](./LICENSE).
