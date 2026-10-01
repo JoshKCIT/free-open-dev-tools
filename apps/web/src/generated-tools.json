@@ -255,6 +255,31 @@
       "inset"
     ]
   },
+  "c-family-formatter": {
+    "id": "c-family-formatter",
+    "name": "C, C++, C#, Java, Objective-C & Protobuf Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@wasm-fmt/clang-format": "23.1.1"
+    },
+    "keywords": [
+      "c",
+      "c++",
+      "cpp",
+      "c#",
+      "csharp",
+      "java",
+      "objective-c",
+      "protobuf",
+      "proto",
+      "clang-format",
+      "format",
+      "formatter",
+      "pretty-print",
+      "wasm"
+    ]
+  },
   "case-converter": {
     "id": "case-converter",
     "name": "Case Converter",
@@ -668,6 +693,25 @@
       "reference rate"
     ]
   },
+  "dart-formatter": {
+    "id": "dart-formatter",
+    "name": "Dart Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@wasm-fmt/dart_fmt": "0.4.0"
+    },
+    "keywords": [
+      "dart",
+      "flutter",
+      "dart_style",
+      "dart format",
+      "format",
+      "formatter",
+      "pretty-print",
+      "wasm"
+    ]
+  },
   "data-convert": {
     "id": "data-convert",
     "name": "JSON, YAML & TOML Converter",
@@ -1074,6 +1118,24 @@
       "templates",
       "generator",
       "devops"
+    ]
+  },
+  "go-formatter": {
+    "id": "go-formatter",
+    "name": "Go Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@wasm-fmt/gofmt": "0.7.3"
+    },
+    "keywords": [
+      "go",
+      "golang",
+      "gofmt",
+      "format",
+      "formatter",
+      "pretty-print",
+      "wasm"
     ]
   },
   "gradient-generator": {
@@ -2223,6 +2285,26 @@
       "what percent"
     ]
   },
+  "php-formatter": {
+    "id": "php-formatter",
+    "name": "PHP Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@prettier/plugin-php": "0.25.0",
+      "prettier": "3.9.9"
+    },
+    "keywords": [
+      "php",
+      "prettier",
+      "plugin-php",
+      "format",
+      "formatter",
+      "pretty-print",
+      "per coding style",
+      "psr-12"
+    ]
+  },
   "php-unserialize": {
     "id": "php-unserialize",
     "name": "PHP Unserialize",
@@ -2269,6 +2351,24 @@
       "contribution margin",
       "selling price",
       "cost plus pricing"
+    ]
+  },
+  "python-formatter": {
+    "id": "python-formatter",
+    "name": "Python Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@wasm-fmt/ruff_fmt": "0.15.20"
+    },
+    "keywords": [
+      "python",
+      "ruff",
+      "format",
+      "formatter",
+      "pretty-print",
+      "black",
+      "wasm"
     ]
   },
   "qr-generator": {
@@ -2495,6 +2595,27 @@
       "mark",
       "kbd",
       "markup generator"
+    ]
+  },
+  "shell-formatter": {
+    "id": "shell-formatter",
+    "name": "Shell Script Formatter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@wasm-fmt/shfmt": "0.2.7"
+    },
+    "keywords": [
+      "shell",
+      "sh",
+      "bash",
+      "mksh",
+      "posix",
+      "shfmt",
+      "format",
+      "formatter",
+      "pretty-print",
+      "wasm"
     ]
   },
   "sitemap-generator": {

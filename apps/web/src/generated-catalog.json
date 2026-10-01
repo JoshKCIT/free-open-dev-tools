@@ -1538,6 +1538,60 @@
       "tier": 1,
       "summary": "Build a link with the rel, target and download attributes you choose, or a correctly encoded mailto, tel or sms link.",
       "implemented": true
+    },
+    {
+      "id": "go-formatter",
+      "name": "Go Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Format Go source exactly as gofmt does, with syntax errors shown by line and column.",
+      "implemented": true
+    },
+    {
+      "id": "python-formatter",
+      "name": "Python Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Format Python code with the Ruff formatter, choosing line length, quote style and indent, with syntax errors shown by line and column.",
+      "implemented": true
+    },
+    {
+      "id": "shell-formatter",
+      "name": "Shell Script Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Format shell scripts for POSIX sh, bash or mksh with shfmt and a chosen indent, with syntax errors shown by line and column.",
+      "implemented": true
+    },
+    {
+      "id": "c-family-formatter",
+      "name": "C, C++, C#, Java, Objective-C & Protobuf Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Format C, C++, C#, Java, Objective-C and Protocol Buffers source with clang-format under a named style preset and a chosen indent width.",
+      "implemented": true
+    },
+    {
+      "id": "dart-formatter",
+      "name": "Dart Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Format Dart code with the dart_style formatter at a chosen line width, with syntax errors shown by line and column.",
+      "implemented": true
+    },
+    {
+      "id": "php-formatter",
+      "name": "PHP Formatter",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 2,
+      "summary": "Format PHP code with Prettier and its PHP plugin, choosing width, indent, quotes, braces and trailing commas, with syntax errors shown by line and column.",
+      "implemented": true
     }
   ]
 }
