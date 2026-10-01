@@ -27,8 +27,12 @@
     "dialog",
     "meter",
     "progress",
+    "blockquote",
+    "figure",
     "time",
-    "datetime",
+    "abbr",
+    "mark",
+    "kbd",
     "markup generator"
   ],
   "scripts": {

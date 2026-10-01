@@ -1,12 +1,33 @@
 import meta from './meta.json';
-import { MarkupError, assertSafeText, el, inert, serialize, type El } from './markup';
-import { isValidFloat, isValidTimeElementValue, parseValidFloat } from './microsyntax';
+import { MarkupError, assertSafeText, el, inert, schemeWarning, serialize, type El } from './markup';
+import {
+  isValidDateOrGlobalDateTime,
+  isValidFloat,
+  isValidNonNegativeInteger,
+  isValidTimeElementValue,
+  parseValidFloat,
+} from './microsyntax';
 
 export { meta };
 export { MarkupError } from './markup';
 
 /** The elements the builder writes, in the order the page lists them. */
-export const SEMANTIC_ELEMENTS = ['details', 'dialog', 'meter', 'progress', 'time'] as const;
+export const SEMANTIC_ELEMENTS = [
+  'details',
+  'dialog',
+  'meter',
+  'progress',
+  'blockquote',
+  'figure',
+  'time',
+  'abbr',
+  'mark',
+  'sub',
+  'sup',
+  'del',
+  'ins',
+  'kbd',
+] as const;
 export type SemanticElement = (typeof SEMANTIC_ELEMENTS)[number];
 
 /** The label each field has on the page; a refusal names the field by this text. */
@@ -29,6 +50,17 @@ export const FIELD_LABELS = {
   high: 'High',
   optimum: 'Optimum',
   title: 'Title',
+  citeUrl: 'Citation address',
+  attribution: 'Attribution',
+  workTitle: 'Work title',
+  imageUrl: 'Image address',
+  alt: 'Alt text',
+  width: 'Width',
+  height: 'Height',
+  caption: 'Caption',
+  captionAt: 'Caption position',
+  before: 'Text before',
+  after: 'Text after',
 } as const;
 
 export interface ElementSpec {
@@ -54,6 +86,21 @@ export interface ElementSpec {
   high?: string;
   optimum?: string;
   title?: string;
+  /** A quotation or an edit: where it comes from, kept exactly as typed. */
+  citeUrl?: string;
+  attribution?: string;
+  workTitle?: string;
+  /** A figure: the image address (kept exactly as typed), its alt text, its size and its caption. */
+  imageUrl?: string;
+  alt?: string;
+  width?: string;
+  height?: string;
+  caption?: string;
+  /** first or last: where the figcaption sits in the figure. */
+  captionAt?: string;
+  /** The text around mark, sub, sup, kbd, ins and del. */
+  before?: string;
+  after?: string;
 }
 
 export interface BuiltElement {
@@ -414,6 +461,167 @@ function buildGauge(spec: ElementSpec, tag: 'meter' | 'progress'): Draft | null 
   return { tree: [el('label', [['for', finalId]], [label]), gauge], warnings };
 }
 
+// ---- blockquote and figure ----------------------------------------------------------------------------------------
+
+function buildBlockquote(spec: ElementSpec): Draft | null {
+  const citeUrl = text(spec.citeUrl);
+  const attribution = text(spec.attribution);
+  const workTitle = text(spec.workTitle);
+  assertSafeText(text(spec.paragraphs), FIELD_LABELS.paragraphs, { multiline: true });
+  assertSafeText(citeUrl, FIELD_LABELS.citeUrl);
+  assertSafeText(attribution, FIELD_LABELS.attribution);
+  assertSafeText(workTitle, FIELD_LABELS.workTitle);
+  const paragraphs = paragraphList(text(spec.paragraphs), FIELD_LABELS.paragraphs);
+  if (paragraphs.length === 0 && [citeUrl, attribution, workTitle].every(blank)) return null;
+  if (paragraphs.length === 0) {
+    throw new MarkupError(FIELD_LABELS.paragraphs, 'missing, type the quoted words; a blockquote holds a quotation');
+  }
+  const warnings: string[] = [];
+  const warning = blank(citeUrl) ? null : schemeWarning(FIELD_LABELS.citeUrl, citeUrl);
+  if (warning !== null) warnings.push(warning);
+  const quote = el(
+    'blockquote',
+    [['cite', blank(citeUrl) ? undefined : citeUrl]],
+    paragraphs.map((p) => el('p', [], [p])),
+  );
+  if (blank(attribution) && blank(workTitle)) return { tree: [quote], warnings };
+
+  // WHATWG 4.4.4: the attribution goes outside the blockquote, in the figcaption of a figure that holds it; 4.5.6: a
+  // cite element names a work, never a person.
+  const caption: (El | string)[] = [];
+  if (!blank(attribution)) caption.push(attribution);
+  if (!blank(attribution) && !blank(workTitle)) caption.push(', ');
+  if (!blank(workTitle)) caption.push(el('cite', [], [workTitle]));
+  const figure = el('figure', [], [quote, el('figcaption', [], caption)]);
+  return { tree: [figure], warnings };
+}
+
+function buildFigure(spec: ElementSpec): Draft | null {
+  const imageUrl = text(spec.imageUrl);
+  const alt = text(spec.alt);
+  const width = text(spec.width);
+  const height = text(spec.height);
+  const caption = text(spec.caption);
+  const captionAt = text(spec.captionAt);
+  assertSafeText(imageUrl, FIELD_LABELS.imageUrl);
+  assertSafeText(alt, FIELD_LABELS.alt);
+  assertSafeText(width, FIELD_LABELS.width);
+  assertSafeText(height, FIELD_LABELS.height);
+  assertSafeText(caption, FIELD_LABELS.caption);
+  if ([imageUrl, alt, width, height, caption].every(blank)) return null;
+  if (blank(imageUrl)) {
+    throw new MarkupError(
+      FIELD_LABELS.imageUrl,
+      'missing, type the address of the image; a figure here holds one image',
+    );
+  }
+  if (blank(alt)) {
+    throw new MarkupError(
+      FIELD_LABELS.alt,
+      'missing, describe the image in words for a visitor who cannot see it (WHATWG 4.8.4.4); a decorative image needs no figure',
+    );
+  }
+  for (const [field, value] of [
+    ['width', width],
+    ['height', height],
+  ] as const) {
+    if (!blank(value) && !isValidNonNegativeInteger(value)) {
+      throw new MarkupError(
+        FIELD_LABELS[field],
+        `"${shown(value)}" is not a valid non-negative integer (WHATWG 2.3.4.2): ASCII digits only`,
+      );
+    }
+  }
+  if (captionAt !== '' && captionAt !== 'first' && captionAt !== 'last') {
+    throw new MarkupError(
+      FIELD_LABELS.captionAt,
+      `"${shown(captionAt)}" is not a position; WHATWG 4.4.12 puts the figcaption first or last in the figure`,
+    );
+  }
+  const warnings: string[] = [];
+  const warning = schemeWarning(FIELD_LABELS.imageUrl, imageUrl);
+  if (warning !== null) warnings.push(warning);
+  const image = el(
+    'img',
+    [
+      ['src', imageUrl],
+      ['alt', alt],
+      ['width', blank(width) ? undefined : width],
+      ['height', blank(height) ? undefined : height],
+    ],
+    [],
+  );
+  const figcaption = blank(caption) ? null : el('figcaption', [], [caption]);
+  const children = captionAt === 'first' ? [figcaption, image] : [image, figcaption];
+  return { tree: [el('figure', [], children)], warnings };
+}
+
+// ---- abbr, mark, sub, sup, kbd, ins and del -----------------------------------------------------------------------
+
+function buildAbbr(spec: ElementSpec): Draft | null {
+  const content = text(spec.content);
+  const title = text(spec.title);
+  assertSafeText(content, FIELD_LABELS.content);
+  assertSafeText(title, FIELD_LABELS.title);
+  if (blank(content) && blank(title)) return null;
+  if (blank(content)) {
+    throw new MarkupError(FIELD_LABELS.content, 'missing, type the abbreviation as a visitor reads it');
+  }
+  // WHATWG 4.5.9: the title holds the expansion of the abbreviation and nothing else.
+  return { tree: [el('abbr', [['title', blank(title) ? undefined : title]], [content])], warnings: [] };
+}
+
+const DATE_FORMS =
+  'a date (2009-10-11) or a global date and time (2009-10-11T01:25-07:00 or 2005-03-16 00:00Z); a local date and time, a time, a month and the other forms the time element takes are not valid here';
+
+/** mark, sub, sup, kbd, ins and del wrap only the typed text; text typed around it sits in a paragraph. */
+function buildWrapped(spec: ElementSpec, tag: 'mark' | 'sub' | 'sup' | 'kbd' | 'ins' | 'del'): Draft | null {
+  const content = text(spec.content);
+  const before = text(spec.before);
+  const after = text(spec.after);
+  const edit = tag === 'ins' || tag === 'del';
+  const citeUrl = edit ? text(spec.citeUrl) : '';
+  const datetime = edit ? text(spec.datetime) : '';
+  assertSafeText(content, FIELD_LABELS.content);
+  assertSafeText(before, FIELD_LABELS.before);
+  assertSafeText(after, FIELD_LABELS.after);
+  assertSafeText(citeUrl, FIELD_LABELS.citeUrl);
+  assertSafeText(datetime, FIELD_LABELS.datetime);
+  if ([content, before, after, citeUrl, datetime].every(blank)) return null;
+  if (blank(content)) {
+    throw new MarkupError(FIELD_LABELS.content, `missing, type the text the ${tag} element wraps`);
+  }
+  if (!blank(datetime) && !isValidDateOrGlobalDateTime(datetime)) {
+    throw new MarkupError(
+      FIELD_LABELS.datetime,
+      `the datetime value is not valid on ${tag}; WHATWG 4.7.3 allows only ${DATE_FORMS}, written as WHATWG 2.3.5 describes with ASCII digits`,
+    );
+  }
+  const warnings: string[] = [];
+  const warning = blank(citeUrl) ? null : schemeWarning(FIELD_LABELS.citeUrl, citeUrl);
+  if (warning !== null) warnings.push(warning);
+  const inner = el(
+    tag,
+    [
+      ['cite', blank(citeUrl) ? undefined : citeUrl],
+      ['datetime', blank(datetime) ? undefined : datetime],
+    ],
+    [content],
+  );
+  // Text typed before or after stays outside the element, in a paragraph; spaces are kept exactly as typed.
+  if (before === '' && after === '') return { tree: [inner], warnings };
+  return {
+    tree: [
+      el(
+        'p',
+        [],
+        [before, inner, after].filter((part) => part !== ''),
+      ),
+    ],
+    warnings,
+  };
+}
+
 /**
  * Builds one semantic element. Returns null when every field it reads is blank, throws MarkupError naming the
  * field and the broken rule when a value is refused. One tree is built; the markup and the preview are both written
@@ -432,8 +640,25 @@ export function buildElement(spec: ElementSpec): BuiltElement | null {
     case 'progress':
       draft = buildGauge(spec, spec.element);
       break;
+    case 'blockquote':
+      draft = buildBlockquote(spec);
+      break;
+    case 'figure':
+      draft = buildFigure(spec);
+      break;
     case 'time':
       draft = buildTime(spec);
+      break;
+    case 'abbr':
+      draft = buildAbbr(spec);
+      break;
+    case 'mark':
+    case 'sub':
+    case 'sup':
+    case 'del':
+    case 'ins':
+    case 'kbd':
+      draft = buildWrapped(spec, spec.element);
       break;
     default:
       throw new MarkupError(FIELD_LABELS.element, 'not an element this builder writes');

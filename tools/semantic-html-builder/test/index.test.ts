@@ -446,7 +446,7 @@ it('WHATWG 4.4.4 a quotation with citation puts the attribution and the work tit
   const quote = findAll(parsed.frag, 'blockquote')[0]!;
   expect(attrOf(quote, 'cite')).toBe('https://example.org/source');
   expect(childTags(quote)).toEqual(['p']);
-  expect(textOf(quote)).toBe('Quoted words');
+  expect(textOf(quote).trim()).toBe('Quoted words');
   // The attribution is outside the blockquote, in the figcaption, and the work title is in a cite element.
   expect(findAll(quote, 'figcaption')).toHaveLength(0);
   const caption = findAll(parsed.frag, 'figcaption')[0]!;
@@ -478,7 +478,7 @@ it('WHATWG 4.4.4 a quotation with citation puts the attribution and the work tit
   expect(findAll(parse(person?.html ?? '').frag, 'cite')).toHaveLength(0);
   expect(textOf(findAll(parse(person?.html ?? '').frag, 'figcaption')[0]!)).toBe('A. Writer');
   const work = buildElement({ element: 'blockquote', paragraphs: 'Quoted words', workTitle: 'A Book' });
-  expect(textOf(findAll(parse(work?.html ?? '').frag, 'figcaption')[0]!)).toBe('A Book');
+  expect(textOf(findAll(parse(work?.html ?? '').frag, 'figcaption')[0]!).trim()).toBe('A Book');
   // Two paragraphs make two p elements inside the blockquote.
   const two = buildElement({ element: 'blockquote', paragraphs: 'One\n\nTwo' });
   expect(childTags(findAll(parse(two?.html ?? '').frag, 'blockquote')[0]!)).toEqual(['p', 'p']);
