@@ -1195,5 +1195,12 @@
     "category": "code",
     "tier": 1,
     "summary": "Build a link with the rel, target and download attributes you choose, or a correctly encoded mailto, tel or sms link."
+  },
+  {
+    "id": "go-formatter",
+    "name": "Go Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Format Go source exactly as gofmt does, with syntax errors shown by line and column."
   }
 ]
