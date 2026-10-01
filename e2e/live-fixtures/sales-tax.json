@@ -1,0 +1,10 @@
+{
+  "id": "sales-tax",
+  "label": "HMRC VAT Notice 700 section 7.3.1: 2.40 including VAT at 20 percent contains 0.40 of VAT (one-sixth), leaving 2.00",
+  "steps": [
+    { "action": "select", "field": "mode", "value": "extract" },
+    { "action": "fill", "field": "lines", "value": "2.40" },
+    { "action": "fill", "field": "rates", "value": "VAT | 20" }
+  ],
+  "expect": ["0.40", "2.00"]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "add" },
+    "values": { "lines": "Coffee | 3.50\nCake | 4.25", "rates": "State | 6.25\nCity | 2", "currency": "USD" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "extract" },
+    "values": { "lines": "2.40", "rates": "VAT | 20", "currency": "USD" },
+    "attachesFile": false
+  }
+]
