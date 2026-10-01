@@ -698,3 +698,13 @@ it('blank content gives no output and a meter without a value is reported naming
   expect(buildElement({ element: 'details', open: true })).toBeNull();
   expect(buildElement({ element: 'figure', captionAt: 'first' })).toBeNull();
 });
+
+// ---- Review fixes (phase 11 code review) ---------------------------------------------------------------------------
+
+it('WHATWG 2.3.2 a closedby keyword matches ASCII case-insensitively and is written as typed', () => {
+  const built = buildElement({ element: 'dialog', paragraphs: 'Hello', closedby: 'CloseRequest' });
+  expect(built).not.toBeNull();
+  expect(built!.html).toContain('closedby="CloseRequest"');
+  // A word that is not one of the three keywords is still refused.
+  expect(refusal({ element: 'dialog', paragraphs: 'Hello', closedby: 'Sometimes' })?.field).toBe('Closed by');
+});

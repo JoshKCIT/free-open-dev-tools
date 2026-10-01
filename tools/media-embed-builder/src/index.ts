@@ -236,14 +236,15 @@ export function parseTrackLines(input: string): TrackLine[] {
     if (url === '') {
       throw lineError(FIELD_LABELS.tracks, line, 'the address is empty; WHATWG 4.8.10 needs the src of every track');
     }
-    if (kind !== '' && !(TRACK_KINDS as readonly string[]).includes(kind)) {
+    const lowerKind = asciiLower(kind);
+    if (kind !== '' && !(TRACK_KINDS as readonly string[]).includes(lowerKind)) {
       throw lineError(
         FIELD_LABELS.tracks,
         line,
         `"${kind}" is not a track kind; WHATWG 4.8.10 allows ${TRACK_KINDS.join(', ')}`,
       );
     }
-    const effectiveKind = kind === '' ? TRACK_KIND_DEFAULTS.missingValue : kind;
+    const effectiveKind = kind === '' ? TRACK_KIND_DEFAULTS.missingValue : lowerKind;
     if (srclang === '' && effectiveKind === 'subtitles') {
       throw lineError(
         FIELD_LABELS.tracks,
@@ -310,6 +311,11 @@ function trackElement(track: TrackLine): El {
 
 // ---- Keywords and numbers -----------------------------------------------------------------------------------------
 
+/** Lower-cases only the ASCII letters A to Z, as the standard's case-insensitive keyword match does. */
+function asciiLower(value: string): string {
+  return value.replace(/[A-Z]/g, (c) => c.toLowerCase());
+}
+
 /** A value that must be one of the keywords of the standard, or blank for not written. */
 function keyword(
   value: string | undefined,
@@ -319,7 +325,8 @@ function keyword(
 ): string | undefined {
   const typed = text(value);
   if (typed === '') return undefined;
-  if (!allowed.includes(typed)) {
+  // Keywords of an enumerated attribute match ASCII case-insensitively (WHATWG 2.3.2); the value is written as typed.
+  if (!allowed.includes(asciiLower(typed))) {
     throw new MarkupError(field, `"${typed}" is not a keyword; ${rule} allows ${allowed.join(', ')}`);
   }
   return typed;

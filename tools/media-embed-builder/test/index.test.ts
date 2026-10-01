@@ -802,3 +802,34 @@ it('WHATWG 4.8.11.11.3 a track address that starts with two slashes is flagged a
   });
   expect(relative?.warnings.join(' ')).not.toContain('CORS');
 });
+
+it('WHATWG 2.3.2 keywords of enumerated attributes match ASCII case-insensitively and are written as typed', () => {
+  const video = buildMedia({
+    kind: 'video',
+    src: 'v.webm',
+    width: '1',
+    height: '1',
+    controls: true,
+    preload: 'None',
+    loading: 'LAZY',
+    crossorigin: 'Anonymous',
+    tracks: 'en.vtt | Captions | en | English | DEFAULT',
+  });
+  expect(video).not.toBeNull();
+  expect(video!.html).toContain('preload="None"');
+  expect(video!.html).toContain('loading="LAZY"');
+  expect(video!.html).toContain('crossorigin="Anonymous"');
+  expect(video!.html).toContain('kind="Captions"');
+  // The kind is still understood: a mixed-case subtitles track needs a language, and a keyword that is not one is refused.
+  const noLanguage = refusal(() => parseTrackLines('en.vtt | SubTitles'));
+  expect(noLanguage?.message).toContain('language');
+  expect(refusal(() => parseTrackLines('en.vtt | Caption | en'))?.field).toBe('Tracks');
+  // Two tracks that differ only in the case of the kind are the same kind.
+  const twin = refusal(() => parseTrackLines('a.vtt | Captions | en | E' + LF + 'b.vtt | captions | en | E'));
+  expect(twin?.message).toContain('same kind');
+  // One default is allowed per kind group even when the kinds are written in different cases.
+  const twoDefaults = refusal(() =>
+    parseTrackLines('a.vtt | Captions | en | A | default' + LF + 'b.vtt | subtitles | fr | B | default'),
+  );
+  expect(twoDefaults?.message).toContain('second default');
+});

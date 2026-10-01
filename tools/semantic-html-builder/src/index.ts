@@ -241,6 +241,10 @@ function buildDetails(spec: ElementSpec): Draft | null {
 
 const CLOSEDBY_KEYWORDS = ['any', 'closerequest', 'none'] as const;
 
+function asciiLower(value: string): string {
+  return value.replace(/[A-Z]/g, (c) => c.toLowerCase());
+}
+
 /** A copy of a dialog with the open attribute added where the markup would write it (after id, before closedby). */
 function withOpen(dialog: El): El {
   if (dialog.attrs.some(([name]) => name === 'open')) return dialog;
@@ -260,7 +264,8 @@ function buildDialog(spec: ElementSpec): Draft | null {
   assertSafeText(closedby, FIELD_LABELS.closedby);
   const paragraphs = paragraphList(text(spec.paragraphs), FIELD_LABELS.paragraphs);
   if (paragraphs.length === 0 && blank(closeLabel) && blank(id) && closedby === '') return null;
-  if (closedby !== '' && !(CLOSEDBY_KEYWORDS as readonly string[]).includes(closedby)) {
+  // Keywords of an enumerated attribute match ASCII case-insensitively (WHATWG 2.3.2); the value is written as typed.
+  if (closedby !== '' && !(CLOSEDBY_KEYWORDS as readonly string[]).includes(asciiLower(closedby))) {
     throw new MarkupError(
       FIELD_LABELS.closedby,
       `"${shown(closedby)}" is not a closedby keyword; WHATWG 4.11.4 allows any, closerequest or none, or leave it unset to write no closedby attribute`,
