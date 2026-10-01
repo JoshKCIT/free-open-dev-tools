@@ -1223,5 +1223,12 @@
     "category": "code",
     "tier": 2,
     "summary": "Format C, C++, C#, Java, Objective-C and Protocol Buffers source with clang-format under a named style preset and a chosen indent width."
+  },
+  {
+    "id": "dart-formatter",
+    "name": "Dart Formatter",
+    "category": "code",
+    "tier": 2,
+    "summary": "Format Dart code with the dart_style formatter at a chosen line width, with syntax errors shown by line and column."
   }
 ]
