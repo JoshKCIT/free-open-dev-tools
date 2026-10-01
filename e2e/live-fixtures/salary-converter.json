@@ -1,0 +1,11 @@
+{
+  "id": "salary-converter",
+  "label": "OPM 2,087-hour divisor fact sheet: 89,033 a year at 40 hours a week and 52.175 weeks (2,087 hours) is 42.66 an hour",
+  "steps": [
+    { "action": "fill", "field": "amount", "value": "89033" },
+    { "action": "select", "field": "period", "value": "yearly" },
+    { "action": "fill", "field": "hoursPerWeek", "value": "40" },
+    { "action": "fill", "field": "weeksPerYear", "value": "52.175" }
+  ],
+  "expect": ["42.66"]
+}
