@@ -47,6 +47,8 @@ export default defineConfig({
       },
     },
   },
+  // Module workers: libxml2's WebAssembly loader awaits at the top level of its module, which an IIFE worker cannot hold.
+  worker: { format: 'es' },
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
 });

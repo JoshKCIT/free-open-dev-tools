@@ -2,6 +2,7 @@
 *.png binary
 *.ico binary
 *.woff2 binary
+*.sqlite binary
 
 # Vendored upstream files whose bytes are proven identical to a recorded git
 # blob SHA (test/upstream.ts, AM.1): never let line-ending normalisation
