@@ -1,0 +1,14 @@
+{
+  "id": "freelance-rate",
+  "label": "Freelance rate formula shown on the page, derived by hand: 60,000 after a 25 percent tax share, 6,000 expenses, 235 days at 8 hours and 75 percent billable need 60.99 an hour",
+  "steps": [
+    { "action": "fill", "field": "income", "value": "60000" },
+    { "action": "fill", "field": "expenses", "value": "6000" },
+    { "action": "fill", "field": "taxRate", "value": "25" },
+    { "action": "fill", "field": "workingDays", "value": "260" },
+    { "action": "fill", "field": "daysOff", "value": "25" },
+    { "action": "fill", "field": "hoursPerDay", "value": "8" },
+    { "action": "fill", "field": "billable", "value": "75" }
+  ],
+  "expect": ["60.99", "487.94"]
+}

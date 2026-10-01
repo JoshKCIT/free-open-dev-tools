@@ -1,0 +1,15 @@
+[
+  {
+    "values": {
+      "income": "60000",
+      "expenses": "6000",
+      "taxRate": "25",
+      "workingDays": "260",
+      "daysOff": "25",
+      "hoursPerDay": "8",
+      "billable": "75",
+      "currency": "USD"
+    },
+    "attachesFile": false
+  }
+]
