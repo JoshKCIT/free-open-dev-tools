@@ -149,8 +149,73 @@ async function setControls(
   }
 }
 
+/**
+ * Fills each text field and checks the value stayed. The pages are prerendered, so a field filled in the first moments
+ * after load can be cleared again when the page finishes starting; the fill is repeated until it holds.
+ */
 async function fillFields(page: Page, fields: Record<string, string>): Promise<void> {
-  for (const [name, value] of Object.entries(fields)) await page.locator(`#f-${name}`).fill(value);
+  for (const [name, value] of Object.entries(fields)) {
+    const field = page.locator(`#f-${name}`);
+    await expect(async () => {
+      await field.fill(value);
+      await expect(field).toHaveValue(value, { timeout: 500 });
+    }).toPass({ timeout: 10_000 });
+  }
+}
+
+function cancelButtonOf(page: Page) {
+  return page.getByRole('button', { name: 'Cancel', exact: true });
+}
+
+/** Page time in milliseconds, read from the page itself so it follows the page clock. */
+async function pageNow(page: Page): Promise<number> {
+  return page.evaluate(() => Date.now());
+}
+
+/**
+ * Freezes the page clock a little after `seen` and returns how much page time a timer that began between `before`
+ * and `seen` has used up at that point: at least `atLeast` and at most `atMost`. Page time stands still from here
+ * until `page.clock.runFor` moves it, so a limit is crossed to the millisecond, not at the speed of the machine.
+ */
+async function freezeClock(page: Page, before: number, seen: number): Promise<{ atLeast: number; atMost: number }> {
+  const pausedAt = seen + 2_000;
+  await page.clock.pauseAt(pausedAt);
+  return { atLeast: pausedAt - seen, atMost: pausedAt - before };
+}
+
+/** Waits until the wrapper's log holds an entry that starts and ends as given. */
+async function waitForLog(page: Page, startsWith: string, endsWith: string): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          ([start, end]) =>
+            window.__FODT_DATA_WORKERS__!.log.some((entry) => entry.startsWith(start!) && entry.endsWith(end!)),
+          [startsWith, endsWith],
+        ),
+      { timeout: 15_000, intervals: [50, 100] },
+    )
+    .toBe(true);
+}
+
+/**
+ * Fills the case's fields and starts its run, returning the page time just before the run began. A page that waits
+ * for a Run press starts when the button is clicked; a page that runs as you type starts at the fill.
+ */
+async function startRun(page: Page, c: EngineCase): Promise<number> {
+  if (c.pressRun) {
+    await fillFields(page, c.valid);
+    const before = await pageNow(page);
+    await runButtonOf(page).click();
+    return before;
+  }
+  const before = await pageNow(page);
+  await fillFields(page, c.valid);
+  return before;
+}
+
+async function endedWorkers(page: Page): Promise<number[]> {
+  return page.evaluate(() => window.__FODT_DATA_WORKERS__!.ended);
 }
 
 async function openTool(page: Page, id: string): Promise<void> {
@@ -224,4 +289,130 @@ for (const c of ENGINE_CASES) {
     const offending = requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'));
     expect(offending).toEqual([]);
   });
+
+  test(`${c.id}: a run past the ${c.limitSeconds} second limit stops with a plain message, not before, and the page stays usable`, async ({
+    page,
+  }) => {
+    // The first worker never receives its job, so the run stays in flight like a stuck engine, and the page clock
+    // (not real time) crosses the limit.
+    await installWorkerWrapper(page, { swallowFirstJob: true, swallowReady: false });
+    await page.clock.install();
+    await openTool(page, c.id);
+    await setControls(page, c);
+
+    // The run's own timer begins after `before`. Page time is frozen once the job has been posted, then moved by
+    // exact amounts: the stuck run must still be running when no more than the limit minus half a second can have
+    // passed on it, and must have been stopped when at least the limit plus a tenth of a second has.
+    const before = await startRun(page, c);
+    await expect(cancelButtonOf(page)).toBeVisible();
+
+    // The limit runs from the moment the job is posted, which is after the worker said it was ready. The wrapper
+    // logs the swallowed job, so the run's timer exists before the clock is frozen, with no guess about real time.
+    await waitForLog(page, 'out-swallowed:0:', '-job');
+    const used = await freezeClock(page, before, await pageNow(page));
+    const limit = c.limitSeconds * 1000;
+
+    // Short of the limit: still running, no stop message, and the stuck worker is not yet ended. A limit that fired
+    // at 9 seconds would already have stopped a 10 second run.
+    const early = Math.max(0, limit - 500 - used.atMost);
+    await page.clock.runFor(early);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await expect(outputArea(page)).not.toContainText('Stopped after');
+    expect(await endedWorkers(page)).toEqual([]);
+
+    // Past the limit: stopped, with the plain message, and the timed-out worker is ended. A limit that fired at 11
+    // seconds would not have stopped it yet.
+    await page.clock.runFor(Math.max(1, limit + 100 - used.atLeast - early));
+    await expect(outputArea(page).locator('.issue-list')).toContainText(c.limitMessage, { timeout: 5_000 });
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    expect(await endedWorkers(page)).toEqual([0]);
+    await page.clock.resume();
+
+    // The page still answers a script call within a second.
+    const answerStart = Date.now();
+    await page.evaluate(() => 1 + 1);
+    expect(Date.now() - answerStart).toBeLessThan(1_000);
+
+    // The next run works, in a new worker.
+    if (c.pressRun) await runButtonOf(page).click();
+    await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+    expect((await page.evaluate(() => window.__FODT_DATA_WORKERS__!.addresses)).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test(`${c.id}: Cancel stops a run at once, no time-limit message follows, and the next run works`, async ({
+    page,
+  }) => {
+    await installWorkerWrapper(page, { swallowFirstJob: true, swallowReady: false });
+    await page.clock.install();
+    await openTool(page, c.id);
+    await setControls(page, c);
+
+    await startRun(page, c);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await waitForLog(page, 'out-swallowed:0:', '-job');
+    expect(await endedWorkers(page)).toEqual([]);
+    await cancelButtonOf(page).click();
+
+    const note = outputArea(page).locator('.note-warn');
+    await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    // The cancelled worker has been terminated, not just forgotten.
+    expect(await endedWorkers(page)).toEqual([0]);
+
+    // A little past the limit of page clock later, the limit would have fired had Cancel not cleared it: it must not.
+    await page.clock.fastForward((c.limitSeconds + 1) * 1000);
+    await page.waitForTimeout(300);
+    await expect(outputArea(page)).not.toContainText('Stopped after');
+    await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+
+    // The next run works.
+    if (c.pressRun) await runButtonOf(page).click();
+    await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+  });
+
+  test(`${c.id}: a worker that never reports ready stops after 10 seconds with a plain message`, async ({ page }) => {
+    // The worker starts and says it is ready, but the page is never allowed to hear it, as if the module never
+    // finished loading. The page must not post the job, and must stop waiting after 10 seconds of page clock.
+    await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: true });
+    await page.clock.install();
+    await openTool(page, c.id);
+    await setControls(page, c);
+
+    const before = await startRun(page, c);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await waitForLog(page, 'in:0:', '-ready');
+    // The start timer began between `before` and now. Page time is frozen, then moved by exact amounts: no message
+    // while no more than 9.5 seconds can have passed, the message once at least 10.1 seconds have.
+    const used = await freezeClock(page, before, await pageNow(page));
+
+    const early = Math.max(0, 9_500 - used.atMost);
+    await page.clock.runFor(early);
+    await expect(outputArea(page)).not.toContainText('did not start');
+    expect(await endedWorkers(page)).toEqual([]);
+
+    await page.clock.runFor(Math.max(1, 10_100 - used.atLeast - early));
+    await expect(outputArea(page).locator('.issue-list')).toContainText(
+      'The background task did not start within 10 seconds. Reload the page and try again.',
+      { timeout: 5_000 },
+    );
+    // The job was never posted, and the silent worker has been ended.
+    const log = await page.evaluate(() => window.__FODT_DATA_WORKERS__!.log);
+    expect(log.filter((entry) => entry.startsWith('out')).length, log.join(' | ')).toBe(0);
+    expect(await endedWorkers(page)).toEqual([0]);
+  });
 }
+
+test('sqlite-viewer: Run with no file and no SQL starts no worker and shows nothing', async ({ page }) => {
+  await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: false });
+  await openTool(page, 'sqlite-viewer');
+
+  await runButtonOf(page).click();
+  // Past any start-up of a worker and any render, with room to spare.
+  await page.waitForTimeout(1_500);
+
+  expect(await page.evaluate(() => window.__FODT_DATA_WORKERS__!.addresses.length)).toBe(0);
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  expect(await outputArea(page).locator('table').count()).toBe(0);
+  expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
+  expect(await cancelButtonOf(page).count()).toBe(0);
+});
