@@ -575,6 +575,58 @@ export function encodeCbor(item: CborItem): Uint8Array {
   return out.finish();
 }
 
+/** What a CBOR item holds that its JSON form cannot keep, so converting back writes it in another form. */
+export interface CborRoundTrip {
+  /** Bignums that an ordinary integer holds (or that start with a zero byte): they come back as an integer or shorter. */
+  bignums: number;
+  /** Finite floats written wider than the shortest width that holds them. */
+  floats: number;
+  /** Arrays and maps of indefinite length: they come back with a definite length. */
+  indefinite: number;
+}
+
+/** Counts what a decoded item holds that comes back in the shortest form (preferred serialization, RFC 8949 section 4.1). */
+export function cborRoundTrip(item: CborItem): CborRoundTrip {
+  const notes: CborRoundTrip = { bignums: 0, floats: 0, indefinite: 0 };
+  const walk = (node: CborItem): void => {
+    switch (node.type) {
+      case 'array':
+        if (node.indefinite) notes.indefinite++;
+        for (const child of node.items) walk(child);
+        return;
+      case 'map':
+        if (node.indefinite) notes.indefinite++;
+        for (const [key, value] of node.entries) {
+          walk(key);
+          walk(value);
+        }
+        return;
+      case 'tag':
+        if (isShortBignum(node)) {
+          // Without its leading zero bytes, up to 8 bytes fit the head of an integer; more is a bignum, which is
+          // already in the shortest form unless the bytes start with a zero.
+          const bytes = node.item.value;
+          let first = 0;
+          while (first < bytes.length && bytes[first] === 0) first++;
+          if (bytes.length - first <= 8 || first > 0) notes.bignums++;
+        } else {
+          walk(node.item);
+        }
+        return;
+      case 'float':
+        if (node.width !== undefined && node.raw === undefined && Number.isFinite(node.value)) {
+          const shortest = heldBy(node.value, 16) ? 16 : heldBy(node.value, 32) ? 32 : 64;
+          if (shortest < node.width) notes.floats++;
+        }
+        return;
+      default:
+        return;
+    }
+  };
+  walk(item);
+  return notes;
+}
+
 /** A bignum item for an integer outside the 64 bit range, in the shortest form (no leading zero bytes). */
 export function bignumItem(value: bigint): CborItem {
   const negative = value < 0n;

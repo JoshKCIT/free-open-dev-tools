@@ -255,6 +255,47 @@ function readItem(reader: Reader, depth: number): MsgpackItem {
   }
 }
 
+/** What a MessagePack value holds that its JSON form cannot keep, so converting back writes it in another form. */
+export interface MsgpackRoundTrip {
+  /** Timestamps in a longer layout than the shortest one that holds them. */
+  timestamps: number;
+  /** Floats of 64 bits that 32 bits hold exactly (they come back as 32 bits). */
+  floats: number;
+}
+
+/** Counts what a decoded value holds that comes back in the shortest form. */
+export function msgpackRoundTrip(item: MsgpackItem): MsgpackRoundTrip {
+  const notes: MsgpackRoundTrip = { timestamps: 0, floats: 0 };
+  const walk = (node: MsgpackItem): void => {
+    switch (node.type) {
+      case 'array':
+        for (const child of node.items) walk(child);
+        return;
+      case 'map':
+        for (const [key, value] of node.entries) {
+          walk(key);
+          walk(value);
+        }
+        return;
+      case 'timestamp': {
+        // The specification's serialization: 4 bytes for whole seconds under 2^32, 8 bytes for 34 bits of seconds, else 12.
+        let shortest: 4 | 8 | 12 = 12;
+        if (node.seconds >= 0n && node.seconds >> 34n === 0n)
+          shortest = node.nanoseconds === 0 && node.seconds >> 32n === 0n ? 4 : 8;
+        if (shortest < node.size) notes.timestamps++;
+        return;
+      }
+      case 'float':
+        if (node.width === 64 && Number.isFinite(node.value) && Math.fround(node.value) === node.value) notes.floats++;
+        return;
+      default:
+        return;
+    }
+  };
+  walk(item);
+  return notes;
+}
+
 /** What reading one value found besides the value, so the page can say what its JSON form cannot keep. */
 export interface MsgpackDecoded {
   item: MsgpackItem;

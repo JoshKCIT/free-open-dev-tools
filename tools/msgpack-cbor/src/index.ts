@@ -1,8 +1,8 @@
 import meta from './meta.json';
-import { cborToDiagnostic, decodeCborWithNotes, encodeCbor, type CborItem } from './cbor';
+import { cborRoundTrip, cborToDiagnostic, decodeCborWithNotes, encodeCbor, type CborItem } from './cbor';
 import { MAX_DEPTH, MAX_INPUT_BYTES, MAX_OUTPUT_CHARS, MsgpackCborError, decodeUtf8, tooLarge } from './common';
 import { bytesToBase64, fromJsonValue, parseJson, stringifyJson, toJsonValue } from './json-markers';
-import { decodeMsgpackWithNotes, encodeMsgpack, type MsgpackItem } from './msgpack';
+import { decodeMsgpackWithNotes, encodeMsgpack, msgpackRoundTrip, type MsgpackItem } from './msgpack';
 
 export { meta, MAX_DEPTH, MAX_INPUT_BYTES, MAX_OUTPUT_CHARS, MsgpackCborError };
 
@@ -168,11 +168,40 @@ function toJson(job: ConvertJob): ConvertResult {
       );
     }
     if (decoded.nanPayload) warnings.push(NAN_WARNING);
+    if (!diagnostic) {
+      const notes = cborRoundTrip(decoded.item);
+      if (notes.bignums > 0) {
+        warnings.push(
+          `${count(notes.bignums, 'bignum')} that an ordinary integer holds (or that start with a zero byte) ${notes.bignums === 1 ? 'is' : 'are'} shown as ${notes.bignums === 1 ? 'a number' : 'numbers'}. Converting back writes the shortest form, so the bytes are not the same.`,
+        );
+      }
+      if (notes.floats > 0) {
+        warnings.push(
+          `${count(notes.floats, 'float')} ${notes.floats === 1 ? 'was' : 'were'} written wider than ${notes.floats === 1 ? 'its' : 'their'} value needs. JSON has no widths, so converting back writes the shortest width that keeps the value.`,
+        );
+      }
+      if (notes.indefinite > 0) {
+        warnings.push(
+          `${count(notes.indefinite, 'indefinite-length array or map', 'indefinite-length arrays or maps')} will come back with a definite length.`,
+        );
+      }
+    }
     const text = diagnostic ? cborToDiagnostic(decoded.item) : stringifyJson(toJsonValue(decoded.item, 'cbor'));
     return { text, warnings, bytesIn: bytes.length, bytesOut: utf8.encode(text).length };
   }
   const decoded = decodeMsgpackWithNotes(bytes);
   if (decoded.nanPayload) warnings.push(NAN_WARNING);
+  const notes = msgpackRoundTrip(decoded.item);
+  if (notes.timestamps > 0) {
+    warnings.push(
+      `${count(notes.timestamps, 'timestamp')} used a longer layout than ${notes.timestamps === 1 ? 'it needs' : 'they need'}. Converting back writes the shortest layout the specification allows (4, 8 or 12 bytes).`,
+    );
+  }
+  if (notes.floats > 0) {
+    warnings.push(
+      `${count(notes.floats, 'float')} of 64 bits ${notes.floats === 1 ? 'holds' : 'hold'} a value that 32 bits keep exactly. Converting back writes ${notes.floats === 1 ? 'it' : 'them'} in 32 bits.`,
+    );
+  }
   const text = stringifyJson(toJsonValue(decoded.item, 'msgpack'));
   return {
     text,
@@ -181,6 +210,11 @@ function toJson(job: ConvertJob): ConvertResult {
     bytesOut: utf8.encode(text).length,
     ...(decoded.widths.length > 0 ? { widths: decoded.widths } : {}),
   };
+}
+
+/** "1 bignum", "2 bignums": a count and its noun, with the plural given when it is not the noun and an s. */
+function count(n: number, one: string, many = `${one}s`): string {
+  return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 }
 
 const NAN_WARNING =
