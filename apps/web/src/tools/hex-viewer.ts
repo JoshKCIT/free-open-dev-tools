@@ -1,21 +1,38 @@
 import {
   HexViewerError,
   MAX_PASTED_BYTES,
+  checkSearchSize,
+  checkViewSize,
+  encodeNeedle,
   formatHexRows,
   formatSize,
   identifyFile,
   meta,
   parseHexInput,
+  viewWindow,
   type BytesPerRow,
+  type SearchResult,
 } from '@fodt/hex-viewer';
-import { defineTool, formatBytes, num, str, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
+import { hexViewerInWorker, HexViewerRunError } from '../lib/run-hex-viewer-in-worker';
+import {
+  defineTool,
+  bool,
+  files,
+  formatBytes,
+  num,
+  str,
+  type OutputBlock,
+  type ToolIssue,
+  type ToolResult,
+  type Values,
+} from '../lib/tool-ui';
 
 const POSITION_MAX = 2147483647;
 
 const ROWS_PER_PAGE = [16, 64, 256];
 const BYTES_PER_ROW: BytesPerRow[] = [8, 16, 32];
 
-/** What was opened: its bytes' size, the slice to show, the start and end of the file, and a name when it has one. */
+/** What was opened: its size, a name when it has one, the start and end of it, and the slice to show. */
 interface Opened {
   size: number;
   name?: string;
@@ -52,18 +69,47 @@ function pastedBytes(values: Values, source: string): Uint8Array | null {
   // A character is at least one byte, so text longer than the limit is over it before any encoding.
   if (text.length > MAX_PASTED_BYTES) {
     throw new HexViewerError(
-      `The pasted text is longer than ${formatSize(MAX_PASTED_BYTES)}. The limit is ${formatSize(MAX_PASTED_BYTES)} because it is held in the page while it is shown.`,
+      `Pasted bytes: the text is longer than ${formatSize(MAX_PASTED_BYTES)}. The limit is ${formatSize(MAX_PASTED_BYTES)} because it is held in the page while it is shown.`,
       { field: 'Pasted bytes' },
     );
   }
   const bytes = new TextEncoder().encode(text);
   if (bytes.length > MAX_PASTED_BYTES) {
     throw new HexViewerError(
-      `The pasted text is ${formatSize(bytes.length)} as UTF-8. The limit is ${formatSize(MAX_PASTED_BYTES)} because it is held in the page while it is shown.`,
+      `Pasted bytes: the text is ${formatSize(bytes.length)} as UTF-8. The limit is ${formatSize(MAX_PASTED_BYTES)} because it is held in the page while it is shown.`,
       { field: 'Pasted bytes' },
     );
   }
   return bytes;
+}
+
+/** Reads one slice of a file. Only the bytes asked for are read. */
+async function readSlice(file: File, start: number, end: number): Promise<Uint8Array> {
+  return new Uint8Array(await file.slice(start, end).arrayBuffer());
+}
+
+/** Opens a file for viewing: its name, size, first 512 and last 22 bytes, and the one page of rows asked for. */
+async function openFile(file: File, position: number, rowsPerPage: number, bytesPerRow: BytesPerRow): Promise<Opened> {
+  checkViewSize(file.size);
+  const { start, end } = viewWindow(file.size, position, rowsPerPage, bytesPerRow);
+  const [head, tail, window] = await Promise.all([
+    readSlice(file, 0, Math.min(file.size, 512)),
+    readSlice(file, Math.max(0, file.size - 22), file.size),
+    readSlice(file, start, end),
+  ]);
+  return { size: file.size, name: file.name, head, tail, window, start };
+}
+
+/** Opens pasted bytes the same way, so a pasted source follows the same path as a file. */
+function openBytes(bytes: Uint8Array, position: number, rowsPerPage: number, bytesPerRow: BytesPerRow): Opened {
+  const { start, end } = viewWindow(bytes.length, position, rowsPerPage, bytesPerRow);
+  return {
+    size: bytes.length,
+    head: bytes.subarray(0, 512),
+    tail: bytes.subarray(Math.max(0, bytes.length - 22)),
+    window: bytes.subarray(start, end),
+    start,
+  };
 }
 
 function describe(opened: Opened, rowsPerPage: number, bytesPerRow: BytesPerRow): OutputBlock[] {
@@ -106,9 +152,36 @@ function describe(opened: Opened, rowsPerPage: number, bytesPerRow: BytesPerRow)
   return outputs;
 }
 
+/** The search result as page blocks: how many matches there are, and a table of the first ones. */
+function matchBlocks(result: SearchResult): OutputBlock[] {
+  const found = result.total.toLocaleString('en-US');
+  const capped = result.total > result.offsets.length;
+  const outputs: OutputBlock[] = [
+    {
+      kind: 'note',
+      tone: 'info',
+      value: `Found ${found} ${result.total === 1 ? 'match' : 'matches'}.${capped ? ` Showing the first ${result.offsets.length.toLocaleString('en-US')}.` : ''}`,
+    },
+  ];
+  if (result.offsets.length > 0) {
+    outputs.push({
+      kind: 'table',
+      label: 'Matches',
+      table: {
+        headers: ['Offset (hex)', 'Offset'],
+        rows: result.offsets.map((offset) => [offset.toString(16).padStart(8, '0'), offset.toString(10)]),
+        mono: [0, 1],
+      },
+    });
+  }
+  return outputs;
+}
+
 export default defineTool({
   id: 'hex-viewer',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
+  // Viewing reads one slice of the file on the page. Searching streams the whole file, which is real background work, so
+  // it runs in a new worker with a 20 second limit (see run-hex-viewer-in-worker.ts's own comment) and offers Cancel.
   cancellable: true,
   fields: [
     {
@@ -167,7 +240,7 @@ export default defineTool({
       label: 'Search for',
       type: 'text',
       mono: true,
-      help: 'Text, or hex bytes when Search as is hex.',
+      help: 'Text, or hex bytes when Search as is hex. Searches files up to 1 GiB.',
     },
     {
       name: 'searchAs',
@@ -217,29 +290,62 @@ export default defineTool({
       const rowsPerPage = choice(values, 'rowsPerPage', ROWS_PER_PAGE, 64);
       const bytesPerRow = choice(values, 'bytesPerRow', BYTES_PER_ROW, 16) as BytesPerRow;
 
-      // The file source arrives with the file window in the next change; until then it shows nothing.
-      if (source === 'file') return { outputs: [] };
-
-      const bytes = pastedBytes(values, source);
-      if (bytes === null) return { outputs: [] };
-      if (position > bytes.length - 1) {
-        throw new HexViewerError(
-          `Go to byte is ${position.toLocaleString('en-US')}, which is past the end of ${bytes.length.toLocaleString('en-US')} bytes. Use a number from 0 to ${(bytes.length - 1).toLocaleString('en-US')}.`,
-          { field: 'Go to byte' },
-        );
+      // What was opened, and what a search would look through: the picked file itself, or the pasted bytes.
+      let opened: Opened;
+      let searchable: { kind: 'file'; file: File } | { kind: 'bytes'; bytes: Uint8Array };
+      if (source === 'file') {
+        const file = files(values, 'file')[0];
+        // No file, no output and no worker.
+        if (!file) return { outputs: [] };
+        opened = await openFile(file, position, rowsPerPage, bytesPerRow);
+        searchable = { kind: 'file', file };
+      } else {
+        const bytes = pastedBytes(values, source);
+        if (bytes === null) return { outputs: [] };
+        opened = openBytes(bytes, position, rowsPerPage, bytesPerRow);
+        searchable = { kind: 'bytes', bytes };
       }
-      const end = Math.min(bytes.length, position + rowsPerPage * bytesPerRow);
-      const opened: Opened = {
-        size: bytes.length,
-        head: bytes.subarray(0, 512),
-        tail: bytes.subarray(Math.max(0, bytes.length - 22)),
-        window: bytes.subarray(position, end),
-        start: position,
-      };
-      return { outputs: describe(opened, rowsPerPage, bytesPerRow) };
+
+      const outputs = describe(opened, rowsPerPage, bytesPerRow);
+      const errors: ToolIssue[] = [];
+
+      // A search that is refused before it starts (hex that is not pairs of digits, a file over 1 GiB) is shown beside
+      // the rows, which stay. A search that was started and failed, or stopped at its time limit, shows only its message.
+      const term = str(values, 'search');
+      let needle: Uint8Array | null = null;
+      if (term !== '') {
+        try {
+          needle = encodeNeedle(term, str(values, 'searchAs', 'text') === 'hex' ? 'hex' : 'text');
+          if (needle.length === 0) needle = null;
+          else if (searchable.kind === 'file') checkSearchSize(searchable.file.size);
+        } catch (err) {
+          if (!(err instanceof HexViewerError)) throw err;
+          errors.push({ message: err.message });
+          needle = null;
+        }
+      }
+      if (needle !== null) {
+        const matchCase = bool(values, 'matchCase', true);
+        const result = await hexViewerInWorker(
+          {
+            type: 'hex-viewer-job',
+            job:
+              searchable.kind === 'file'
+                ? { kind: 'file', file: searchable.file, needle, matchCase }
+                : { kind: 'bytes', bytes: searchable.bytes, needle, matchCase },
+          },
+          ctx,
+        );
+        outputs.push(...matchBlocks(result));
+      }
+      return { outputs, ...(errors.length > 0 ? { errors } : {}) };
     } catch (err) {
+      // An abort rejection is let through rather than swallowed: the runner's own cancellation note already owns that
+      // message.
       if (ctx.signal.aborted) throw err;
-      if (err instanceof HexViewerError) return { outputs: [], errors: [{ message: err.message }] };
+      if (err instanceof HexViewerError || err instanceof HexViewerRunError) {
+        return { outputs: [], errors: [{ message: err.message }] };
+      }
       const message = err instanceof Error ? err.message : 'Could not process that input.';
       return { outputs: [], errors: [{ message }] };
     }
