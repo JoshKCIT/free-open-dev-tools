@@ -134,24 +134,32 @@ function toJson(sheet: Sheet, options: TextOptions): { text: string; warnings: s
   }
 
   // The first row names the columns: an empty name is called column_N, and a repeated one gets a number, with a warning.
+  // A number is never one a header already holds ("a", "a", "a_2" gives a, a_3, a_2), so no two columns share a key.
   const names: string[] = [];
   const counts = new Map<string, number>();
   const headerRow = rows[0]!;
+  const taken = new Set<string>();
+  for (let c = 0; c < width; c++) taken.add(cellAt(headerRow, c).text);
+  const used = new Set<string>();
   for (let c = 0; c < width; c++) {
     let base = cellAt(headerRow, c).text;
     if (base === '') {
       base = `column_${c + 1}`;
       warn(`Column ${c + 1} has no header text, so it was named "${base}" in the JSON output.`);
     }
-    const count = (counts.get(base) ?? 0) + 1;
-    counts.set(base, count);
     let name = base;
-    if (count > 1) {
-      name = `${base}_${count}`;
+    if (used.has(base)) {
+      let count = counts.get(base) ?? 1;
+      do {
+        count += 1;
+        name = `${base}_${count}`;
+      } while (taken.has(name) || used.has(name));
+      counts.set(base, count);
       warn(
         `Column ${c + 1}'s header "${base}" duplicates an earlier column, so it was renamed "${name}" in the JSON output.`,
       );
     }
+    used.add(name);
     names.push(name);
   }
   const objects = rows.slice(1).map((row) => {

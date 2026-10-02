@@ -675,6 +675,35 @@ it('XML output uses a fixed structure so no cell text becomes an element name', 
   expect(control.warnings[0]).toMatch(/XML 1\.0/);
 });
 
+it('JSON output never writes two keys of one name when a renamed header meets a header that already has that name', () => {
+  // a, a, a_2: the second a cannot become a_2, because the third column is already called that.
+  const sheet = sheetOf([
+    ['a', 'a', 'a_2'],
+    ['1', '2', '3'],
+  ]);
+  const text = sheetToText(sheet, 'json', { header: true, keepTypes: false });
+  const keys = [...text.text.matchAll(/^ {4}"([^"]*)":/gm)].map((match) => match[1]);
+  expect(keys).toEqual(['a', 'a_3', 'a_2']);
+  expect(JSON.parse(text.text)).toEqual([{ a: '1', a_3: '2', a_2: '3' }]);
+  expect(text.warnings).toEqual([
+    'Column 2\'s header "a" duplicates an earlier column, so it was renamed "a_3" in the JSON output.',
+  ]);
+
+  // The empty-header name column_2 is also kept apart from a header that is already called column_2, and a
+  // header repeated three times keeps counting.
+  const mixed = sheetOf([
+    ['column_2', '', 'x', 'x', 'x', 'x_2'],
+    ['1', '2', '3', '4', '5', '6'],
+  ]);
+  const mixedKeys = [
+    ...sheetToText(mixed, 'json', { header: true, keepTypes: false }).text.matchAll(/^ {4}"([^"]*)":/gm),
+  ].map((match) => match[1]);
+  expect(new Set(mixedKeys).size).toBe(mixedKeys.length);
+  expect(mixedKeys).toHaveLength(6);
+  expect(mixedKeys[2]).toBe('x');
+  expect(mixedKeys[5]).toBe('x_2');
+});
+
 it('JSON output renames empty and repeated headers with a warning and keeps strings unless keep types is on', () => {
   const sheet = sheetOf(
     [
