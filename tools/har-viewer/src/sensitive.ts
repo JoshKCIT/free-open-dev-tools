@@ -402,8 +402,14 @@ function maskAddressText(text: string, mode: AddressMode, depth = 0): { text: st
 
 /** A JSON string member, `"name": "value"`, with its parts. */
 const JSON_MEMBER = /"((?:[^"\\]|\\.)*)"(\s*:\s*)"((?:[^"\\]|\\.)*)"/g;
+/** The same member inside a JSON string that holds JSON, where every quote is written with a backslash. */
+const ESCAPED_JSON_MEMBER = /\\"([^"\\]*)\\"(\s*:\s*)\\"((?:[^"\\]|\\(?!"))*)\\"/g;
+/** A JSON member whose value is a number, `"name": 123`. */
+const JSON_NUMBER_MEMBER = /"((?:[^"\\]|\\.)*)"(\s*:\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?![\w.])/g;
 const BEARER_TEXT = /\bBearer[ \t]+[A-Za-z0-9._~+/-]+=*/gi;
 const JWT_TEXT = /eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]*){1,3}/g;
+/** A line of a text of pairs: a name with no space, an equals sign, then anything. */
+const PAIR_LINE = /^[A-Za-z0-9_.\-[\]%+]+=/;
 
 function unescapeJson(text: string): string {
   try {
@@ -413,21 +419,100 @@ function unescapeJson(text: string): string {
   }
 }
 
+/** Whether a text is only `name=value` pairs: one or more lines, each a name with no space, an equals sign and a value. */
+function isPairsText(text: string): boolean {
+  if (text.trim() === '') return false;
+  let any = false;
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === '') continue;
+    if (!PAIR_LINE.test(line)) return false;
+    any = true;
+  }
+  return any;
+}
+
+/** Masks the pairs of a text of pairs, one line at a time (a line holds pairs joined by `&`), keeping the line endings. */
+function maskPairsText(text: string): string {
+  return text
+    .split(/(\r?\n)/)
+    .map((piece, index) => (index % 2 === 1 ? piece : maskPairs(piece).text))
+    .join('');
+}
+
+/** The boundary of a multipart body: from its type, else from its first line (`--boundary`). */
+function boundaryOf(text: string, mimeType: string): string | undefined {
+  const given = /boundary=(?:"([^"]+)"|([^\s;]+))/i.exec(mimeType);
+  if (given) return given[1] ?? given[2];
+  const first = /^--([^\r\n]+)/.exec(text.trimStart());
+  return first?.[1];
+}
+
+/** Masks the value of every part of a multipart form body whose name is sensitive; a part is read by its name. */
+function maskMultipart(text: string, boundary: string): string {
+  const parts = text.split(`--${boundary}`);
+  return parts
+    .map((part, index) => {
+      if (index === 0 || part.startsWith('--')) return part;
+      let separator = '\r\n\r\n';
+      let split = part.indexOf(separator);
+      if (split < 0) {
+        separator = '\n\n';
+        split = part.indexOf(separator);
+      }
+      if (split < 0) return part;
+      const headers = part.slice(0, split);
+      const name = /(?:^|[;\s])name="([^"]*)"/i.exec(headers)?.[1];
+      if (name === undefined) return part;
+      const bodyStart = split + separator.length;
+      let bodyEnd = part.length;
+      if (part.endsWith('\r\n')) bodyEnd -= 2;
+      else if (part.endsWith('\n')) bodyEnd -= 1;
+      if (bodyEnd <= bodyStart) return part;
+      const value = part.slice(bodyStart, bodyEnd);
+      if (!sensitiveByNameOrShape('param', name, value)) return part;
+      return `${part.slice(0, bodyStart)}${maskValue(value, name)}${part.slice(bodyEnd)}`;
+    })
+    .join(`--${boundary}`);
+}
+
 /**
- * Masks the sensitive values inside a body that is shown as text: the fields of a form body, the string members of
- * JSON (or of anything that looks like JSON) whose names are sensitive, and any text shaped like a Bearer credential
- * or a JWT. A secret with another name and no such shape is not found.
+ * Masks the sensitive values inside a body that is shown as text. A multipart form body is read part by part by the
+ * name of each part. A body that is only `name=value` pairs (a form body, or a text of that shape whatever its type) is
+ * read as pairs. In any other text: the members of JSON (also inside a string that holds JSON, one level deep) whose
+ * names are sensitive, whether the value is a string or a number; addresses, with the password and sensitive
+ * parameters in them; and any text shaped like a Bearer credential or a JWT. A secret with another name and no such
+ * shape is not found.
  */
 export function maskBodyText(text: string, mimeType: string): string {
+  const type = mimeType.trim();
+  if (/^multipart\/form-data\b/i.test(type)) {
+    const boundary = boundaryOf(text, type);
+    if (boundary !== undefined) return maskMultipart(text, boundary);
+  }
   let result = text;
-  if (/^application\/x-www-form-urlencoded\b/i.test(mimeType.trim())) {
-    result = maskPairs(result).text;
+  let pairs = false;
+  if (/^application\/x-www-form-urlencoded\b/i.test(type) || isPairsText(text)) {
+    result = maskPairsText(result);
+    pairs = true;
   }
   result = result.replace(JSON_MEMBER, (whole, rawName: string, colon: string, rawValue: string) => {
+    const name = unescapeJson(rawName);
     const value = unescapeJson(rawValue);
-    if (!isSensitive('param', unescapeJson(rawName), value)) return whole;
-    return `"${rawName}"${colon}"${JSON.stringify(maskValue(value, unescapeJson(rawName))).slice(1, -1)}"`;
+    if (!sensitiveByNameOrShape('param', name, value)) return whole;
+    return `"${rawName}"${colon}"${JSON.stringify(maskValue(value, name)).slice(1, -1)}"`;
   });
+  result = result.replace(ESCAPED_JSON_MEMBER, (whole, rawName: string, colon: string, rawValue: string) => {
+    const value = unescapeJson(rawValue);
+    if (!sensitiveByNameOrShape('param', rawName, value)) return whole;
+    return `\\"${rawName}\\"${colon}\\"${maskValue(value, rawName)}\\"`;
+  });
+  result = result.replace(JSON_NUMBER_MEMBER, (whole, rawName: string, colon: string, digits: string) => {
+    const name = unescapeJson(rawName);
+    if (!nameIsSensitive(name)) return whole;
+    return `"${rawName}"${colon}"${maskValue(digits, name)}"`;
+  });
+  // Addresses: not for pairs, whose values were read for addresses already (the masked text has spaces in it).
+  if (!pairs) result = maskSchemeAddresses(result, 0).text;
   result = result.replace(BEARER_TEXT, (match) => maskValue(match));
   result = result.replace(JWT_TEXT, (match) => maskValue(match));
   return result;

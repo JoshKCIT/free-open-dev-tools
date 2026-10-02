@@ -374,3 +374,120 @@ it('an address inside the value of a parameter is masked, and a masked redirect 
     params: 0,
   });
 });
+
+const BS = String.fromCharCode(92);
+
+it('a named secret in JSON is masked inside a string that holds JSON, as a bare number, and under a name such as pass', () => {
+  // JSON inside a JSON string: the inner quotes are written with a backslash.
+  const inner = `{${BS}"password${BS}":${BS}"${HUNTER}${BS}",${BS}"x${BS}":1}`;
+  expect(maskBodyText(`{"data":"${inner}"}`, 'application/json')).toBe(
+    `{"data":"{${BS}"password${BS}":${BS}"… (10 characters)${BS}",${BS}"x${BS}":1}"}`,
+  );
+  // A number under a sensitive name is masked and written as a string; other numbers are left alone.
+  expect(maskBodyText('{"password": 123456789012}', 'application/json')).toBe('{"password": "… (12 characters)"}');
+  expect(maskBodyText('{"token":1234567890123456,"count":5}', 'application/json')).toBe(
+    '{"token":"1234… (16 characters)","count":5}',
+  );
+  expect(maskBodyText('{"pin":1234,"retry_secret":-12.5e3}', 'application/json')).toBe(
+    '{"pin":1234,"retry_secret":"… (7 characters)"}',
+  );
+  // A member named pass, inside an object named credentials.
+  expect(maskBodyText('{"credentials":{"user":"ann","pass":"zzzzzzzz"}}', 'application/json')).toBe(
+    '{"credentials":{"user":"ann","pass":"… (8 characters)"}}',
+  );
+  // Nothing sensitive: unchanged.
+  const plain = `{"data":"{${BS}"note${BS}":${BS}"hello${BS}"}","n":12}`;
+  expect(maskBodyText(plain, 'application/json')).toBe(plain);
+});
+
+it('a body that is only name=value pairs is read as pairs whatever its type, and lines of name=value too', () => {
+  expect(maskBodyText(`password=${HUNTER}&x=1`, 'text/plain')).toBe('password=… (10 characters)&x=1');
+  expect(maskBodyText(`password=${HUNTER}&x=1\n`, '')).toBe('password=… (10 characters)&x=1\n');
+  expect(maskBodyText(`token=${SECRET16}`, 'application/octet-stream')).toBe('token=abcd… (16 characters)');
+  expect(maskBodyText(`host=db1\r\npassword=${HUNTER}\r\nport=5432`, 'text/plain')).toBe(
+    'host=db1\r\npassword=… (10 characters)\r\nport=5432',
+  );
+  // Not pairs: prose, a sentence with an equals sign, a JSON document, an HTML document.
+  for (const text of [
+    'hello world',
+    'a = 1 and b = 2',
+    'x=1&y=2',
+    '<p a="b=c">password=x</p>',
+    'see x=1 and then more text',
+  ]) {
+    expect(maskBodyText(text, 'text/plain'), text).toBe(text);
+  }
+});
+
+it('multipart form data is masked part by part, by the name of each part', () => {
+  const body = [
+    '--XyZ',
+    'Content-Disposition: form-data; name="username"',
+    '',
+    'ann',
+    '--XyZ',
+    'Content-Disposition: form-data; name="password"',
+    '',
+    HUNTER,
+    '--XyZ',
+    'Content-Disposition: form-data; name="api_key"',
+    '',
+    SECRET16,
+    '--XyZ',
+    'Content-Disposition: form-data; name="avatar"; filename="a.txt"',
+    'Content-Type: text/plain',
+    '',
+    'file content with password=not-a-field',
+    '--XyZ--',
+    '',
+  ];
+  const masked = [
+    '--XyZ',
+    'Content-Disposition: form-data; name="username"',
+    '',
+    'ann',
+    '--XyZ',
+    'Content-Disposition: form-data; name="password"',
+    '',
+    '… (10 characters)',
+    '--XyZ',
+    'Content-Disposition: form-data; name="api_key"',
+    '',
+    'abcd… (16 characters)',
+    '--XyZ',
+    'Content-Disposition: form-data; name="avatar"; filename="a.txt"',
+    'Content-Type: text/plain',
+    '',
+    'file content with password=not-a-field',
+    '--XyZ--',
+    '',
+  ];
+  const type = 'multipart/form-data; boundary=XyZ';
+  expect(maskBodyText(body.join('\r\n'), type)).toBe(masked.join('\r\n'));
+  expect(maskBodyText(body.join('\n'), type)).toBe(masked.join('\n'));
+  // The boundary is found from the first line when the type does not give it, and quotes around it are allowed.
+  expect(maskBodyText(body.join('\r\n'), 'multipart/form-data')).toBe(masked.join('\r\n'));
+  expect(maskBodyText(body.join('\r\n'), 'multipart/form-data; boundary="XyZ"')).toBe(masked.join('\r\n'));
+  // Revealed text is not touched: the detail view shows the body as recorded.
+  const recording = har([
+    entry({
+      request: { postData: { mimeType: type, text: body.join('\r\n') } },
+    }),
+  ]);
+  expect(requestDetail(recording, 1, { reveal: false, bodies: true }).postData!.text).toBe(masked.join('\r\n'));
+  expect(requestDetail(recording, 1, { reveal: true, bodies: true }).postData!.text).toBe(body.join('\r\n'));
+});
+
+it('an address inside a body is masked in place: in plain text, in a JSON string and in markup', () => {
+  expect(maskBodyText(`see https://x.example/y?token=${SECRET16} for details`, 'text/plain')).toBe(
+    'see https://x.example/y?token=abcd… (16 characters) for details',
+  );
+  expect(maskBodyText(`{"url":"https://x.example/y?a=1&sig=abcdefghijkl","n":1}`, 'application/json')).toBe(
+    '{"url":"https://x.example/y?a=1&sig=abc… (12 characters)","n":1}',
+  );
+  expect(maskBodyText(`<a href="https://u:pw@h.example/p?key=${SECRET16}">x</a>`, 'text/html')).toBe(
+    '<a href="https://u:… (2 characters)@h.example/p?key=abcd… (16 characters)">x</a>',
+  );
+  const clean = '{"url":"https://x.example/y?page=2"} and https://a.example/';
+  expect(maskBodyText(clean, 'application/json')).toBe(clean);
+});

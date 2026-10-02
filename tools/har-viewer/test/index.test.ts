@@ -1175,11 +1175,12 @@ it('masking pairs, addresses and bodies at their edges', () => {
   });
   expect(maskUrl('https://x/p?q=1#top')).toEqual({ url: 'https://x/p?q=1#top', userinfo: 0, params: 0 });
 
-  // Bodies: only a form body is read as form fields, whatever the letter case and spacing of its type.
+  // Bodies: a body that is only name=value pairs is read as form fields, whatever its type (B-WR-06: a text/plain
+  // body of pairs used to be left alone), and so is a form body in any letter case and spacing of its type.
   const fields = 'x=1&password=abcdefghij';
-  expect(maskBodyText(fields, 'text/plain')).toBe(fields);
-  expect(maskBodyText(fields, '')).toBe(fields);
   const maskedFields = 'x=1&password=… (10 characters)';
+  expect(maskBodyText(fields, 'text/plain')).toBe(maskedFields);
+  expect(maskBodyText(fields, '')).toBe(maskedFields);
   expect(maskBodyText(fields, 'Application/X-WWW-Form-Urlencoded')).toBe(maskedFields);
   expect(maskBodyText(fields, '  application/x-www-form-urlencoded  ')).toBe(maskedFields);
 

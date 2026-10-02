@@ -244,7 +244,8 @@ const SENSITIVE_RULES = [
   'In the user information of an address (everything before the last @ ahead of the first slash): everything after the first colon (RFC 3986 section 3.2.1), and a user name shaped like a token (a long run of letters and digits, or a prefix such as ghp_).',
   'An address inside a header value (Referer, Location, Origin, Link, Content-Location and Refresh are always read as addresses, any other header where its value holds ://), inside a parameter value (a redirect or return address) and the redirect address of a response: the rules for an address above apply to it.',
   'Any value shaped like a JSON Web Token (RFC 7519) or a Bearer credential (RFC 6750), also inside a body.',
-  'In a body: form fields and JSON members with those names.',
+  'In a body: the fields of a form body or of any text that is only name=value pairs (one pair list per line is read too), the parts of a multipart form by their name, JSON members with those names (a string or a number, also inside a string that holds JSON one level deep), and addresses in the text.',
+  'Not found: a secret with an ordinary name and no token shape; the members of an object named credentials when they have ordinary names; XML elements and attributes; JSON nested in JSON more than one level; addresses whose slashes or ampersands are written as JSON escapes; an address with no scheme outside the headers named above; a secret in a part of a body that is not shown.',
   'A masked value shows its first min(4, floor(length / 4)) characters and its length; a password, a secret and a value named like one show no character.',
 ];
 
