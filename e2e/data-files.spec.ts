@@ -263,6 +263,19 @@ const FILE_CASES: FileCase[] = [
     pressRun: false,
     expectText: MARKER,
   },
+  {
+    id: 'msgpack-cbor',
+    // A CBOR text string: the head byte 0x70 is major type 3 (text) with length 16 (RFC 8949 section 3), and the
+    // marker is exactly sixteen bytes. The page reads CBOR, so the format is chosen first; it runs as you type.
+    file: () => ({
+      name: 'marker.cbor',
+      mimeType: 'application/cbor',
+      buffer: Buffer.concat([Buffer.from([0x70]), Buffer.from(MARKER, 'ascii')]),
+    }),
+    radios: { format: 'cbor' },
+    pressRun: false,
+    expectText: MARKER,
+  },
 ];
 
 for (const c of FILE_CASES) {

@@ -79,23 +79,24 @@ export default defineTool({
   ],
   examples: [
     {
-      label: 'CBOR time tag',
+      // A map holding a byte string: the bytes 01 02 become the $bytes marker.
+      label: 'CBOR map with a byte string',
       values: {
         format: 'cbor',
         direction: 'to-json',
-        input: 'c1 1a 51 4b 67 b0',
+        input: 'a2 64 6e616d65 62 6f6b 64 64617461 42 0102',
         inputEncoding: 'hex',
         show: 'json',
       },
     },
     {
-      label: 'CBOR bignum',
+      // The timestamp extension in its 64 bit layout: seconds and nanoseconds stay apart.
+      label: 'MessagePack timestamp',
       values: {
-        format: 'cbor',
+        format: 'msgpack',
         direction: 'to-json',
-        input: 'c2 49 01 00 00 00 00 00 00 00 00',
+        input: 'd7 ff a1 dc d7 c8 5a 4a f6 a5',
         inputEncoding: 'hex',
-        show: 'json',
       },
     },
   ],
@@ -136,6 +137,15 @@ export default defineTool({
             }
           : { kind: 'code', label: 'Encoded', language: 'text', value: result.text, download: 'encoded.txt' },
       ];
+      if (result.widths !== undefined) {
+        const listed = result.widths.map(([name, count]) => `${name} ${count === 1 ? 'once' : `${count} times`}`);
+        outputs.push({
+          kind: 'note',
+          tone: 'info',
+          label: 'Integer and float widths',
+          value: `This input used ${listed.join(', ')}. JSON has no widths, so converting back writes the shortest form of each.`,
+        });
+      }
       if (result.warnings.length > 0) {
         outputs.push({ kind: 'note', tone: 'warn', value: result.warnings.join(' ') });
       }
@@ -150,17 +160,8 @@ export default defineTool({
       // An abort rejection is let through rather than swallowed: the runner's own cancellation note owns that message.
       if (ctx.signal.aborted) throw err;
       if (err instanceof MsgpackCborError) {
-        return {
-          outputs: [],
-          errors: [
-            {
-              message: err.message,
-              ...(err.line !== undefined ? { line: err.line } : {}),
-              ...(err.column !== undefined ? { column: err.column } : {}),
-              ...(err.path !== undefined ? { path: err.path } : {}),
-            },
-          ],
-        };
+        // The message already says where: a byte offset for binary input, a line and column for JSON.
+        return { outputs: [], errors: [{ message: err.message }] };
       }
       const message = err instanceof Error ? err.message : 'Could not convert that input.';
       return { outputs: [], errors: [{ message }] };

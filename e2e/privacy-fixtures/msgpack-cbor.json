@@ -2,7 +2,12 @@
   { "attachesFile": true },
   {
     "mode": { "field": "format", "value": "cbor" },
-    "values": { "input": "c2 49 01 00 00 00 00 00 00 00 00" },
+    "values": { "input": "a1 61 61 01" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "direction", "value": "from-json" },
+    "values": { "input": "{\"a\":1}" },
     "attachesFile": false
   }
 ]
