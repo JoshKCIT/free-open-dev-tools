@@ -19,7 +19,7 @@ import {
   type Sheet,
   type TableCell,
 } from '../src/index';
-import { tryDate } from '../src/dates';
+import { builtInFormatClass, customFormatClass, tryDate } from '../src/dates';
 
 /*
  * Grounding (D-179, P13-08). The package structure is ECMA-376 Part 1 (SpreadsheetML): a zip with
@@ -452,6 +452,7 @@ it('a time-only serial below 1 shows as a time of day', () => {
   // A format that holds only a time makes a value of exactly 0 midnight, and a value past 1 a date and a time.
   expect(tryDate('0', false, true)).toBe('00:00:00');
   expect(tryDate('1.5', false, true)).toBe('1900-01-01T12:00:00');
+  expect(tryDate('2', false, true)).toBe('1900-01-02T00:00:00');
   // The fixtures: openpyxl wrote time(8, 30, 0) as h:mm:ss and XlsxWriter wrote time(8, 30) as hh:mm:ss.
   const people = readXlsx(fixture('openpyxl-people.xlsx'), { datesAsSerials: false }).sheets[0]!;
   expect(people.rows[3]![2]).toEqual({ kind: 'date', text: '08:30:00', ref: 'C4' });
@@ -1106,4 +1107,120 @@ it('convertSpreadsheet runs both directions in one call', () => {
   if (hidden.direction !== 'xlsx-to-text') throw new Error('wrong direction');
   expect(JSON.parse(hidden.text)).toEqual([['secret', 42]]);
   expect(hidden.chosen).toBe(1);
+});
+
+it('an attribute value holding a greater-than sign does not end its tag, and a DOCTYPE and its entities are never read', () => {
+  // XML 1.0 allows > inside a quoted attribute value. An entity declared in a DOCTYPE is never expanded, so nothing a
+  // file declares or names is loaded: the text &x; stays as written.
+  const xml =
+    '<?xml version="1.0"?><!DOCTYPE worksheet [<!ENTITY x "boom">]>' +
+    sheetXmlOf(
+      '<row r="1"><c r="A1" t="inlineStr"><is><t>&x;</t></is></c><c note="x > y" r="C1" t="n"><v>1</v></c><c note=\'p > q\' r="E1" t="n"><v>2</v></c></row>',
+    );
+  const sheet = readXlsx(xlsxFrom(xml), { datesAsSerials: false }).sheets[0]!;
+  // The reference comes after the attribute that holds the sign, so a tag cut short there would lose C1 and E1 and put
+  // their cells next to A1.
+  expect(sheet.rows[0]!.map((cell) => [cell.kind, cell.text, cell.ref])).toEqual([
+    ['string', '&x;', 'A1'],
+    ['empty', '', ''],
+    ['number', '1', 'C1'],
+    ['empty', '', ''],
+    ['number', '2', 'E1'],
+  ]);
+});
+
+it('custom number formats are classified as date, time or neither by their tokens outside quotes and brackets', () => {
+  // ECMA-376 Part 1, 18.8.30 and 18.8.31 define format codes: text in quotes, a backslash escape, _x spacing, *x fill and
+  // [bracketed] colours, conditions and locales carry no date meaning; an m directly after h, or directly before s, is
+  // minutes and any other m is a month (Microsoft's description of the format code rules).
+  const FORMATS: [string, 'date' | 'time' | undefined][] = [
+    ['yyyy-mm-dd', 'date'],
+    ['dd/mm/yyyy', 'date'],
+    ['d-mmm-yy', 'date'],
+    ['mmmm d, yyyy', 'date'],
+    ['m/d/yy h:mm', 'date'],
+    ['yyyy-mm-dd hh:mm:ss', 'date'],
+    ['[$-409]d-mmm-yy;@', 'date'],
+    ['mmm', 'date'],
+    ['h:mm:ss', 'time'],
+    ['hh:mm', 'time'],
+    ['mm:ss', 'time'],
+    ['[h]:mm:ss', 'time'],
+    ['h:mm AM/PM', 'time'],
+    ['General', undefined],
+    ['0.00', undefined],
+    ['0.0%', undefined],
+    ['#,##0.00 "days"', undefined],
+    ['0.00E+00', undefined],
+    ['[Red]0.00;[Blue]-0.00', undefined],
+    ['"Total: "0', undefined],
+    ['\\d0', undefined],
+    ['0_);(0)', undefined],
+  ];
+  for (const [code, expected] of FORMATS) expect(customFormatClass(code), code).toBe(expected);
+  // Built-in ids: 14 to 17 and 22 are dates, 18 to 21 and 45 to 47 are times, 0 and 1 are numbers.
+  expect([14, 15, 16, 17, 22, 27, 36, 50, 58].map(builtInFormatClass)).toEqual(Array(9).fill('date'));
+  expect([18, 19, 20, 21, 45, 46, 47].map(builtInFormatClass)).toEqual(Array(7).fill('time'));
+  expect([0, 1, 2, 9, 10, 11, 12, 37, 49].map(builtInFormatClass)).toEqual(Array(9).fill(undefined));
+
+  // A file whose cells use them: styles say which cell format is a date, and the value 0 shows what class it is.
+  const styles = `<styleSheet xmlns="${MAIN_NS}"><numFmts count="1"><numFmt numFmtId="164" formatCode="[h]:mm:ss"/></numFmts><cellStyleXfs count="1"><xf numFmtId="14"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0"/><xf numFmtId="21"/><xf numFmtId="14"/><xf numFmtId="164"/><xf numFmtId="22"/></cellXfs></styleSheet>`;
+  const cells = [
+    '<c r="A1" s="1"><v>0</v></c>',
+    '<c r="B1" s="2"><v>0</v></c>',
+    '<c r="C1" s="1"><v>1.5</v></c>',
+    '<c r="D1" s="3"><v>0.75</v></c>',
+    '<c r="E1" s="4"><v>45351.75</v></c>',
+    '<c r="F1" s="2"><v>-1</v></c>',
+    '<c r="G1" s="0"><v>43861</v></c>',
+    '<c r="H1" s="99"><v>43861</v></c>',
+    '<c r="I1"><v>43861</v></c>',
+  ].join('');
+  const workbook = readXlsx(xlsxFrom(sheetXmlOf(`<row r="1">${cells}</row>`), { styles }), { datesAsSerials: false });
+  expect(snapshot(workbook.sheets[0]!)[0]).toEqual([
+    ['date', '00:00:00'],
+    ['date', '1900-01-00'],
+    ['date', '1900-01-01T12:00:00'],
+    ['date', '18:00:00'],
+    ['date', '2024-02-29T18:00:00'],
+    ['number', '-1'],
+    ['number', '43861'],
+    ['number', '43861'],
+    ['number', '43861'],
+  ]);
+  // The cell with a date format and a number no date can be made from is shown as stored, and the page is told.
+  expect(workbook.warnings).toEqual([
+    '1 cell has a date format but holds a number no date can be made from (the first is F1), so it is shown as stored.',
+  ]);
+});
+
+it('a damaged sheet that was not chosen does not stop the chosen sheet from being read', () => {
+  const parts = partsOf(sheetXmlOf('<row r="1"><c r="A1"><v>1</v></c></row>'), {
+    workbook: `<workbook xmlns="${MAIN_NS}" xmlns:r="${REL_NS}"><sheets><sheet name="Good" sheetId="1" r:id="rId1"/><sheet name="Bad" sheetId="2" r:id="rId9"/></sheets></workbook>`,
+  });
+  parts['xl/_rels/workbook.xml.rels'] = parts['xl/_rels/workbook.xml.rels']!.replace(
+    '</Relationships>',
+    `<Relationship Id="rId9" Type="${REL_NS}/worksheet" Target="worksheets/sheet9.xml"/></Relationships>`,
+  );
+  parts['xl/worksheets/sheet9.xml'] = '<worksheet><sheetData><row r="1"><c r="A1"';
+  const bytes = zipSync(bytesOf(parts));
+
+  const converted = convertSpreadsheet({
+    direction: 'xlsx-to-text',
+    bytes,
+    sheet: '',
+    output: 'csv',
+    header: true,
+    keepTypes: false,
+    datesAsSerials: false,
+  });
+  if (converted.direction !== 'xlsx-to-text') throw new Error('wrong direction');
+  expect(converted.text).toBe('1');
+  expect(converted.sheets).toEqual([
+    { name: 'Good', state: 'visible' },
+    { name: 'Bad', state: 'visible' },
+  ]);
+  // Reading every sheet, or the damaged one, says so.
+  expect(thrown(() => readXlsx(bytes, { datesAsSerials: false })).message).toMatch(/cut short/);
+  expect(thrown(() => readXlsx(bytes, { datesAsSerials: false, sheet: 'Bad' })).part).toBe('xl/worksheets/sheet9.xml');
 });

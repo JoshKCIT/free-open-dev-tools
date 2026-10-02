@@ -25,6 +25,7 @@ Reads and writes the Office Open XML spreadsheet format (.xlsx) directly in your
 - A cell is a date when its number format is a date format; choose to see serial numbers instead and nothing is interpreted.
 - Older .xls files, .ods files and password-protected files are not read.
 - Text to spreadsheet writes one sheet; digit strings with a leading zero or more than 15 digits stay text so a spreadsheet program cannot round them.
+- A sheet is held as a rectangle of at most 10,000,000 cells, empty ones included, so one cell far from the rest cannot ask for billions of entries.
 
 ## Ambiguous cases, and what this does about them
 
@@ -35,6 +36,9 @@ Reads and writes the Office Open XML spreadsheet format (.xlsx) directly in your
 - Empty cells are empty text in CSV and TSV, null in JSON when keep types is on, and left out of the XML
 - A sheet is chosen by position when you type a whole number, and by exact name otherwise; a number that is no position falls back to a sheet with that name
 - Text to spreadsheet keeps every cell as text unless detect types is on; then only TRUE and FALSE become booleans and only plain numbers become numbers, so +5, .5 and -0 stay text
+- A cell with a date format that holds a number no date can be made from is shown as stored, with a warning
+- XML 1.0 cannot carry most control characters, so XML output writes one as _xHHHH_, as a spreadsheet does, with a warning
+- A written cell of more than 32,767 characters is kept whole, with a warning, because Excel keeps only the first 32,767
 
 ## Defined by
 
@@ -72,7 +76,7 @@ const { text, warnings } = sheetToText(sheet, 'csv', { header: true, keepTypes: 
 // text is the sheet as CSV; warnings lists anything that was renamed or could not be carried exactly.
 ```
 
-`readXlsx(bytes, options)` unzips the package with fflate, refuses a file over `MAX_FILE_BYTES` before unzipping and parts that declare more than `MAX_UNZIPPED_BYTES` together, and returns `{ sheets, date1904, warnings }`; every cell is `{ kind, text, ref }` where `text` is exactly what the file stores (numbers keep their digits, dates are shown by their number format unless `datesAsSerials` is true). Pass `sheet` to read only that sheet's cells. `pickSheet(workbook, selector)` chooses a sheet; `sheetToText(sheet, format, options)` writes CSV, TSV, JSON or XML. `parseTextTable(text, format)` reads CSV, TSV or JSON into rows and `writeXlsx(rows, options)` writes a one-sheet package with a fixed modification time, so the same input always gives the same bytes. `convertSpreadsheet(job)` does either direction in one call. Every expected failure is a `SpreadsheetConverterError` with a plain message and, where it applies, the cell, the part or the line.
+`readXlsx(bytes, options)` unzips the package with fflate, refuses a file over `MAX_FILE_BYTES` before unzipping and parts that declare more than `MAX_UNZIPPED_BYTES` together, and returns `{ sheets, date1904, warnings }`; every cell is `{ kind, text, ref }` where `text` is exactly what the file stores (numbers keep their digits, dates are shown by their number format unless `datesAsSerials` is true). Pass `sheet` to read only that sheet's cells. `pickSheet(workbook, selector)` chooses a sheet; `sheetToText(sheet, format, options)` writes CSV, TSV, JSON or XML. `parseTextTable(text, format)` reads CSV, TSV or JSON into rows and `writeXlsx(rows, options)` writes a one-sheet package with a fixed modification time, so the same input always gives the same bytes. `convertSpreadsheet(job)` does either direction in one call. `checkFileSize(byteLength)` throws the refusal sentence for a file over `MAX_FILE_BYTES`, so a page can refuse before it reads the file. Every expected failure is a `SpreadsheetConverterError` with a plain message and, where it applies, the cell, the part or the line.
 
 ## Dependencies
 
@@ -84,7 +88,7 @@ const { text, warnings } = sheetToText(sheet, 'csv', { header: true, keepTypes: 
 npm test
 ```
 
-ECMA-376 and the Microsoft pages it cites are the specification: cell types come from CellValues, the 1900 leap-day quirk from Microsoft's own support article. openpyxl 3.1.5 is the independent second opinion: test/fixtures/make-fixtures.py writes the committed files and re-reads a file cell by cell, and the writer's output for a fixed input is compared byte for byte with a committed file that openpyxl re-read to the values quoted in the test.
+ECMA-376 and the Microsoft pages it cites are the specification: cell types come from CellValues, the 1900 leap-day quirk from Microsoft's own support article. Two writers this folder shares no code with made the committed fixtures, by test/fixtures/make-fixtures.py under Python 3.14.3: openpyxl 3.1.5 wrote openpyxl-people.xlsx (with a hidden and a very hidden sheet) and openpyxl-date1904.xlsx, and XlsxWriter 3.2.9 wrote xlsxwriter-sales.xlsx (shared strings, a rich string, cached formulas, an error, percent and date formats); the expected cells are the values typed in that script, never read back from this reader. tool-output.xlsx is this writer's own output for a fixed input, pinned byte for byte after openpyxl re-read it; openpyxl returns the escape text for an inline string where the specification says the character, and reads serial 60 as 1900-02-28, so the tests follow the specification on those two points. Python's datetime gave every date serial.
 
 ## Licence
 
