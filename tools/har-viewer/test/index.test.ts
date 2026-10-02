@@ -11,7 +11,15 @@ import {
   readHar,
   requestDetail,
 } from '../src/index';
-import { SENSITIVE_HEADERS, SENSITIVE_PARAMS, isSensitive, maskValue } from '../src/sensitive';
+import {
+  SENSITIVE_HEADERS,
+  SENSITIVE_PARAMS,
+  isSensitive,
+  maskBodyText,
+  maskPairs,
+  maskUrl,
+  maskValue,
+} from '../src/sensitive';
 
 /*
  * Grounding (D-179, P13-08).
@@ -492,7 +500,11 @@ it('sensitive headers, cookies, token-named parameters, JWT-shaped and Bearer va
 
 it('sensitive values inside bodies are masked: form fields, JSON members and token-shaped text', () => {
   const form = `grant_type=password&username=ann&password=hunter2hunter2&access_token=${TOKEN}&note=hello+there`;
-  const json = `{"access_token":"${TOKEN}","name":"ann","nested":{"password":"zzzzzzzzzzzz","Key":"k-1234567890"}}`;
+  const json = JSON.stringify({
+    access_token: TOKEN,
+    name: 'ann',
+    nested: { password: 'zzzzzzzzzzzz', Key: ['k-12', '34567890'].join('') },
+  });
   const text = `first ${JWT} then ${BEARER} done`;
   const har = readHar(
     harText([
@@ -788,4 +800,426 @@ it('a recorded address is never requested and reading, listing and opening chang
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
   expect(seen).toEqual([]);
+});
+
+it('a recording without a version reads as 1.1 and names the application that wrote it', () => {
+  const noVersion = readHar(JSON.stringify({ log: { entries: [] } }));
+  expect(noVersion.version).toBe('1.1');
+  expect(noVersion.creator).toBe('');
+  const named = readHar(harText([]));
+  expect(named.creator).toBe('Firebug 1.6');
+  expect(readHar(JSON.stringify({ log: { creator: { name: 'Charles' }, entries: [] } })).creator).toBe('Charles');
+});
+
+it('times, sizes and statuses at the edges: a blocked time counts, a negative entry time and a missing time are unknown', () => {
+  const noStatus = entry();
+  delete (noStatus.response as Record<string, unknown>).status;
+  const har = readHar(
+    harText([
+      // blocked 5 + send 1 (the others are not given)
+      entry({ timings: { blocked: 5, send: 1 } }),
+      // No timings: the entry time is the total, and a negative one is not a time.
+      entry({ timings: {}, time: -1 }),
+      entry({ timings: {}, extra: { time: undefined } }),
+      // bodySize is zero for a response from the cache (the specification's 304 case), and that is a size.
+      entry({ content: { size: -1, mimeType: 'text/plain' }, bodySize: 0 }),
+      noStatus,
+    ]),
+  );
+  const rows = listRequests(har, { ...LIST }).rows;
+  expect(rows.map((row) => row.time)).toEqual(['6', 'unknown', 'unknown', '85', '85']);
+  expect(rows[3]!.size).toBe('0 B');
+  // A response without a status code reads as 0, and so is not in the class 2xx.
+  expect(rows[4]!.status).toBe(0);
+  expect(listRequests(har, { ...LIST, status: '2xx' }).rows.map((row) => row.index)).toEqual([1, 2, 3, 4]);
+
+  // The phases a recording leaves out are not recorded, and the entry time is the total then.
+  const detail = requestDetail(har, 2, { reveal: false, bodies: false });
+  expect(detail.timings).toEqual([
+    ['Blocked', 'not recorded'],
+    ['DNS', 'not recorded'],
+    ['Connect', 'not recorded'],
+    ['SSL', 'not recorded'],
+    ['Send', 'not recorded'],
+    ['Wait', 'not recorded'],
+    ['Receive', 'not recorded'],
+    ['Total', 'unknown'],
+  ]);
+  expect(requestDetail(har, 3, { reveal: false, bodies: false }).timings.at(-1)).toEqual(['Total', 'unknown']);
+  const own = readHar(harText([entry({ timings: {}, time: 41 })]));
+  expect(requestDetail(own, 1, { reveal: false, bodies: false }).timings.at(-1)).toEqual(['Total', '41 ms']);
+  expect(requestDetail(har, 1, { reveal: false, bodies: false }).timings.at(-1)).toEqual(['Total', '6 ms']);
+});
+
+it('the method filter ignores letter case and white space, and a page must be a whole number', () => {
+  const har = readHar(
+    harText([
+      entry({ method: 'get', url: 'https://example.com/a' }),
+      entry({ method: 'POST', url: 'https://example.com/b' }),
+    ]),
+  );
+  const indexes = (method: string) => listRequests(har, { ...LIST, method }).rows.map((row) => row.index);
+  expect(indexes('GET')).toEqual([1]);
+  expect(indexes('get')).toEqual([1]);
+  expect(indexes(' post ')).toEqual([2]);
+  expect(indexes('')).toEqual([1, 2]);
+  expect(indexes('   ')).toEqual([1, 2]);
+  expect(refusal(() => listRequests(har, { ...LIST, page: 1.5 })).message).toContain('Page');
+  expect(refusal(() => listRequests(har, { ...LIST, page: Number.NaN })).message).toContain('Page');
+});
+
+it('size limits count bytes: two-byte and four-byte characters are counted at their size', () => {
+  // 26,214,401 characters of two bytes each are 52,428,802 bytes, over the limit although they are 26 million characters.
+  const twoByte = '\u{e9}'.repeat(MAX_FILE_BYTES / 2 + 1);
+  expect(refusal(() => readHar(twoByte)).message).toContain('52,428,802');
+  // Exactly the limit in two-byte characters is not refused for its size (it is not JSON, so it is refused for that).
+  const exactly = refusal(() => readHar('\u{e9}'.repeat(MAX_FILE_BYTES / 2)));
+  expect(exactly.message).not.toContain('50 MiB');
+  // 13,107,201 characters outside the basic plane are four bytes each: 52,428,804 bytes.
+  const fourByte = String.fromCodePoint(0x1f600).repeat(MAX_FILE_BYTES / 4 + 1);
+  expect(refusal(() => readHar(fourByte)).message).toContain('52,428,804');
+  const fourExactly = refusal(() => readHar(String.fromCodePoint(0x1f600).repeat(MAX_FILE_BYTES / 4)));
+  expect(fourExactly.message).not.toContain('50 MiB');
+  // Three-byte characters: 17,476,267 of them are 52,428,801 bytes.
+  expect(refusal(() => readHar('\u{20ac}'.repeat(Math.floor(MAX_FILE_BYTES / 3) + 1))).message).toContain('52,428,801');
+});
+
+it('which MIME types are shown as text: text, JSON, XML, YAML, JavaScript, forms and SVG in any case, with or without parameters', () => {
+  const shown = [
+    'text/plain',
+    'TEXT/HTML',
+    'application/json',
+    'application/json; charset=utf-8',
+    'Application/JSON',
+    'application/vnd.api+json',
+    'application/ld+json',
+    'application/xml',
+    'application/atom+xml',
+    'application/soap+xml; charset=utf-8',
+    'application/yaml',
+    'application/x-yaml',
+    'application/javascript',
+    'application/x-javascript',
+    'application/ecmascript',
+    'application/x-www-form-urlencoded',
+    'application/graphql',
+    'application/x-ndjson',
+    'image/svg+xml',
+    '',
+  ];
+  const hidden = [
+    'image/png',
+    'application/octet-stream',
+    'application/pdf',
+    'font/woff2',
+    'audio/mpeg',
+    'video/mp4',
+    'application/zip',
+  ];
+  const har = readHar(
+    harText([
+      ...shown.map((mimeType) => entry({ content: { size: 5, mimeType, text: 'hello' } })),
+      ...shown.map((mimeType) => entry({ content: { size: 5, mimeType, text: 'aGVsbG8=', encoding: 'base64' } })),
+      ...hidden.map((mimeType) => entry({ content: { size: 5, mimeType, text: 'aGVsbG8=', encoding: 'base64' } })),
+      ...hidden.map((mimeType) => entry({ content: { size: 5, mimeType, text: 'hello' } })),
+    ]),
+  );
+  const open = (index: number) => requestDetail(har, index, { reveal: false, bodies: true });
+  let index = 1;
+  for (const mimeType of [...shown, ...shown]) {
+    expect(open(index).body, `${mimeType || '(blank)'} #${index}`).toBe('hello');
+    index++;
+  }
+  for (const mimeType of [...hidden, ...hidden]) {
+    expect(open(index).body, `${mimeType} #${index}`).toBeUndefined();
+    expect(open(index).bodyNote, `${mimeType} #${index}`).toBe('Binary body not shown (5 bytes).');
+    index++;
+  }
+});
+
+it('binary notes count bytes with grouping, from the Base64 text, or from the declared size, or from the text', () => {
+  const fifteenHundred = Buffer.alloc(1500, 0x61).toString('base64');
+  const har = readHar(
+    harText([
+      // 1,500 bytes of valid UTF-8 that is still an image.
+      entry({ content: { size: 1500, mimeType: 'image/png', text: fifteenHundred, encoding: 'base64' } }),
+      // Padding: one, two and no padding characters. Base64 of 'a', 'ab' and 'abc'.
+      entry({ content: { mimeType: 'image/png', text: 'YQ==', encoding: 'base64' } }),
+      entry({ content: { mimeType: 'image/png', text: 'YWI=', encoding: 'base64' } }),
+      entry({ content: { mimeType: 'image/png', text: 'YWJj', encoding: 'base64' } }),
+      // White space inside the Base64 text is allowed.
+      entry({ content: { mimeType: 'image/png', text: 'YWJj\nZGVm\r\n', encoding: 'base64' } }),
+      // Not encoded and no declared size: the bytes of the text. A declared size of 0 is used.
+      entry({ content: { mimeType: 'image/png', text: 'abc' } }),
+      entry({ content: { size: 0, mimeType: 'image/png', text: 'abc' } }),
+      entry({ content: { size: -1, mimeType: 'image/png', text: '\u{e9}' } }),
+      // The encoding name is case-insensitive.
+      entry({ content: { mimeType: 'text/plain', text: 'aGVsbG8=', encoding: 'BASE64' } }),
+      // Text that is not Base64: a length that leaves one character over, and the URL-safe alphabet.
+      entry({ content: { mimeType: 'text/plain', text: 'abcde', encoding: 'base64' } }),
+      entry({ content: { mimeType: 'text/plain', text: 'ab-_', encoding: 'base64' } }),
+      entry({ content: { mimeType: 'text/plain', text: 'YWJj=', encoding: 'base64' } }),
+      entry({ content: { mimeType: 'text/plain', text: 'Y===', encoding: 'base64' } }),
+    ]),
+  );
+  const note = (index: number) => requestDetail(har, index, { reveal: false, bodies: true }).bodyNote;
+  expect(note(1)).toBe('Binary body not shown (1,500 bytes).');
+  expect(note(2)).toBe('Binary body not shown (1 byte).');
+  expect(note(3)).toBe('Binary body not shown (2 bytes).');
+  expect(note(4)).toBe('Binary body not shown (3 bytes).');
+  expect(note(5)).toBe('Binary body not shown (6 bytes).');
+  expect(note(6)).toBe('Binary body not shown (3 bytes).');
+  expect(note(7)).toBe('Binary body not shown (0 bytes).');
+  expect(note(8)).toBe('Binary body not shown (2 bytes).');
+  expect(requestDetail(har, 9, { reveal: false, bodies: true }).body).toBe('hello');
+  const invalid = 'The body is marked Base64 but is not valid Base64, so it is not shown.';
+  for (const index of [10, 11, 12, 13]) expect(note(index), String(index)).toBe(invalid);
+});
+
+it('a body of exactly 102,400 characters is whole, a longer one is cut, and a revealed cut body is not masked', () => {
+  const exact = 'x'.repeat(102400);
+  const token = `Bearer ${'B'.repeat(30)}`;
+  // The credential is in the part that is shown; the cut comes after it.
+  const cutText = `${token}${' '.repeat(102400)}`;
+  // The credential starts ten characters before the cut and ends after it, and nothing follows it.
+  const straddling = `${' '.repeat(102390)}${token}`;
+  const har = readHar(
+    harText([
+      entry({ content: { size: exact.length, mimeType: 'text/plain', text: exact } }),
+      entry({ content: { size: cutText.length, mimeType: 'text/plain', text: cutText } }),
+      entry({ content: { size: straddling.length, mimeType: 'text/plain', text: straddling } }),
+    ]),
+  );
+  const whole = requestDetail(har, 1, { reveal: false, bodies: true });
+  expect(whole.body).toBe(exact);
+  expect(whole.bodyNote).toBeUndefined();
+
+  const note = 'The body is 102,437 characters long. The first 102,400 are shown.';
+  const masked = requestDetail(har, 2, { reveal: false, bodies: true });
+  expect(masked.body).toBe(`Bear… (37 characters)${' '.repeat(102400 - 37)}`);
+  expect(masked.bodyNote).toBe(note);
+  const revealed = requestDetail(har, 2, { reveal: true, bodies: true });
+  expect(revealed.body).toBe(cutText.slice(0, 102400));
+  expect(revealed.bodyNote).toBe(note);
+
+  // A cut that would split a credential moves on to its end; when that is the end of the text, nothing is cut.
+  const ends = requestDetail(har, 3, { reveal: false, bodies: true });
+  expect(ends.body).toBe(`${' '.repeat(102390)}Bear… (37 characters)`);
+  expect(ends.bodyNote).toBeUndefined();
+  expect(requestDetail(har, 3, { reveal: true, bodies: true }).body).toBe(straddling);
+});
+
+it('a cut never shows part of a JWT, a form value or a quoted value: it moves on to the end of it', () => {
+  const jwtBody = `${' '.repeat(102390)}${JWT} done`;
+  // The value of access_token starts at 102,390, ten characters before the cut.
+  const formBody = `${'a=b&'.repeat(25594)}&access_token=${'C'.repeat(40)}&z=1`;
+  // The value of access_token starts at 102,390 here too: 8 characters of opening, the padding, 18 of the name.
+  const jsonBody = `{"pad":"${'p'.repeat(102364)}","access_token":"${'D'.repeat(40)}"}`;
+  // A quoted value, after an escaped quote, that the cut is ten characters inside.
+  const opening = '{"a":"x\\"y","pad":"';
+  const escaped = `${opening}${'p'.repeat(102400 - opening.length + 10)}","tail":"${'e'.repeat(60)}"}`;
+  // A quoted value that does not end within 4,096 characters of the cut: the cut moves on that far and no further.
+  const open = `{"a":"${'x'.repeat(300000)}`;
+  const har = readHar(
+    harText([
+      entry({ content: { size: jwtBody.length, mimeType: 'text/plain', text: jwtBody } }),
+      entry({ request: { postData: { mimeType: 'application/x-www-form-urlencoded', text: formBody } } }),
+      entry({ content: { size: jsonBody.length, mimeType: 'application/json', text: jsonBody } }),
+      entry({ content: { size: escaped.length, mimeType: 'application/json', text: escaped } }),
+      entry({ content: { size: open.length, mimeType: 'application/json', text: open } }),
+    ]),
+  );
+  // The JWT starts ten characters before the cut and runs on past it.
+  const first = requestDetail(har, 1, { reveal: false, bodies: true });
+  expect(first.body).toBe(`${' '.repeat(102390)}eyJ0… (${JWT.length} characters)`);
+  // The form value after access_token= runs to the next &.
+  const second = requestDetail(har, 2, { reveal: false, bodies: true });
+  expect(second.postData!.text!.endsWith('&access_token=CCCC… (40 characters)')).toBe(true);
+  expect(second.postData!.text).not.toContain('CCCCC');
+  expect(second.postData!.note).toContain('are shown');
+  // The quoted value of a JSON member that the cut is inside is shown to its closing quote, masked by its name.
+  const third = requestDetail(har, 3, { reveal: false, bodies: true });
+  expect(third.body!.endsWith('"access_token":"DDDD… (40 characters)"')).toBe(true);
+  expect(third.body!.length).toBeLessThan(102400 + 100);
+  // An escaped quote earlier in the text does not change which quotes open and close a value.
+  const fourth = requestDetail(har, 4, { reveal: true, bodies: true });
+  expect(fourth.body).toBe(`${opening}${'p'.repeat(102400 - opening.length + 10)}"`);
+  // An unfinished value is shown 4,096 characters past the cut and no more.
+  const fifth = requestDetail(har, 5, { reveal: true, bodies: true });
+  expect(fifth.body!.length).toBe(102400 + 4096);
+  expect(fifth.bodyNote).toContain('are shown');
+});
+
+it('cookie attributes are listed as text in the order of the specification', () => {
+  const har = readHar(
+    harText([
+      entry({
+        request: {
+          cookies: [
+            {
+              name: 'a',
+              value: 'v',
+              path: '/p',
+              domain: 'example.com',
+              expires: '2009-07-24T19:20:30.123+02:00',
+              httpOnly: true,
+              secure: true,
+            },
+            { name: 'b', value: 'v', domain: 'example.com' },
+            { name: 'c', value: 'v', expires: '2009-07-24T19:20:30.123+02:00' },
+            { name: 'd', value: 'v', secure: true, httpOnly: false },
+          ],
+        },
+      }),
+    ]),
+  );
+  const details = requestDetail(har, 1, { reveal: true, bodies: false }).cookies.map((cookie) => cookie.details);
+  expect(details).toEqual([
+    'Path=/p; Domain=example.com; Expires=2009-07-24T19:20:30.123+02:00; HttpOnly; Secure',
+    'Domain=example.com',
+    'Expires=2009-07-24T19:20:30.123+02:00',
+    'Secure',
+  ]);
+});
+
+it('a redirect address is masked, a posted body is shown only with bodies, and addresses are counted when there is no query list', () => {
+  const secret = 'abcdefghijklmnop';
+  const har = readHar(
+    harText([
+      entry({
+        url: `https://example.com/p?token=${secret}`,
+        response: { redirectURL: `https://example.com/cb#access_token=${secret}&state=1` },
+        request: { postData: { mimeType: 'text/plain', text: 'posted text' } },
+      }),
+    ]),
+  );
+  const hidden = requestDetail(har, 1, { reveal: false, bodies: false });
+  expect(hidden.response.redirectURL).toBe('https://example.com/cb#access_token=abcd… (16 characters)&state=1');
+  expect(hidden.postData).toEqual({ mimeType: 'text/plain', params: [] });
+  // No query list, so the token in the address is counted; the redirect is not part of the count.
+  expect(hidden.flags).toBe(1);
+  expect(listRequests(har, { ...LIST }).rows[0]!.flags).toBe(1);
+  expect(requestDetail(har, 1, { reveal: true, bodies: false }).response.redirectURL).toBe(
+    `https://example.com/cb#access_token=${secret}&state=1`,
+  );
+  const shown = requestDetail(har, 1, { reveal: false, bodies: true });
+  expect(shown.postData!.text).toBe('posted text');
+  // An address with a parameter that is not sensitive in its fragment is left alone, and so is one with no value.
+  const plain = readHar(harText([entry({ url: 'https://example.com/p?flag&a=1#section=2' })]));
+  expect(listRequests(plain, { ...LIST }).rows[0]!.url).toBe('https://example.com/p?flag&a=1#section=2');
+  expect(listRequests(plain, { ...LIST }).rows[0]!.flags).toBe(0);
+});
+
+it('the name and shape rules at their edges: words inside names, spaces, and what is not a JWT or a Bearer value', () => {
+  // Names: a word inside a longer name, white space around a name, any letter case.
+  expect(isSensitive('param', 'user_passwd', 'x')).toBe(true);
+  expect(isSensitive('param', ' token ', 'x')).toBe(true);
+  expect(isSensitive('param', ' key ', 'x')).toBe(true);
+  expect(isSensitive('param', ' SIG ', 'x')).toBe(true);
+  expect(isSensitive('param', 'TOKEN', 'x')).toBe(true);
+  expect(isSensitive('param', 'Secret-Value', 'x')).toBe(true);
+  // Not a JWT: no eyJ start, four parts, characters outside the URL-safe alphabet, an empty payload, a header too
+  // short to be base64url of a JSON object.
+  expect(isSensitive('header', 'X-Any', 'abc.def.ghi')).toBe(false);
+  expect(isSensitive('header', 'X-Any', 'abcdef.ghijkl.mnopqr')).toBe(false);
+  expect(isSensitive('header', 'X-Any', 'eyJabc.def.ghi.jkl')).toBe(false);
+  expect(isSensitive('header', 'X-Any', 'eyJabcdef.ghi+x.jkl')).toBe(false);
+  expect(isSensitive('header', 'X-Any', 'eyJhbGciOiJIUzI1NiJ9..sig')).toBe(false);
+  expect(isSensitive('header', 'X-Any', 'eyJ.e30.sig')).toBe(false);
+  // White space around a value does not hide its shape.
+  expect(isSensitive('header', 'X-Any', `  ${JWT}  `)).toBe(true);
+  expect(isSensitive('header', 'X-Any', '  Bearer abc  ')).toBe(true);
+  expect(isSensitive('header', 'X-Any', 'Bearer   abc')).toBe(true);
+  expect(isSensitive('header', 'X-Any', 'Bearerabc')).toBe(false);
+});
+
+it('masking pairs, addresses and bodies at their edges', () => {
+  // Pairs: plus is a space and percent escapes are decoded before the value is masked and counted.
+  expect(maskPairs('password=ab+cd+ef+gh')).toEqual({ text: 'password=ab c… (11 characters)', count: 1 });
+  expect(maskPairs('password=a%20b%20c%20d%20e')).toEqual({ text: 'password=a b … (9 characters)', count: 1 });
+  // A bad percent escape does not stop the masking: the value is taken as written.
+  expect(maskPairs('password=%E0%A4%A')).toEqual({ text: 'password=… (8 characters)', count: 1 });
+  // A piece with no equals sign has no value; the order and separators are kept; every masked value is counted.
+  expect(maskPairs('password&q=1')).toEqual({ text: 'password&q=1', count: 0 });
+  expect(maskPairs('passwdx&q=1')).toEqual({ text: 'passwdx&q=1', count: 0 });
+  expect(maskPairs('password=abcdefghij&token=klmnopqrst&q=1')).toEqual({
+    text: 'password=abcd… (10 characters)&token=klmn… (10 characters)&q=1',
+    count: 2,
+  });
+
+  // Addresses: user information without a password, with an empty one, and a colon far from the user information.
+  expect(maskUrl('https://ann@example.com/x')).toEqual({ url: 'https://ann@example.com/x', userinfo: 0, params: 0 });
+  expect(maskUrl('https://ann:@example.com/x')).toEqual({ url: 'https://ann:@example.com/x', userinfo: 0, params: 0 });
+  expect(maskUrl('https://example.com/a:b/@user')).toEqual({
+    url: 'https://example.com/a:b/@user',
+    userinfo: 0,
+    params: 0,
+  });
+  expect(maskUrl('https://ann:pw@example.com/x')).toEqual({
+    url: 'https://ann:… (2 characters)@example.com/x',
+    userinfo: 1,
+    params: 0,
+  });
+  // Parameters in the query and in the fragment are masked and counted.
+  expect(maskUrl('https://x/p?token=abcdefghijklmnop&sig=zzzzzzzzzzzz&q=1')).toEqual({
+    url: 'https://x/p?token=abcd… (16 characters)&sig=zzzz… (12 characters)&q=1',
+    userinfo: 0,
+    params: 2,
+  });
+  expect(maskUrl('https://x/cb#access_token=abcdefghijklmnop&state=1')).toEqual({
+    url: 'https://x/cb#access_token=abcd… (16 characters)&state=1',
+    userinfo: 0,
+    params: 1,
+  });
+  expect(maskUrl('https://x/p?q=1#top')).toEqual({ url: 'https://x/p?q=1#top', userinfo: 0, params: 0 });
+
+  // Bodies: only a form body is read as form fields, whatever the letter case and spacing of its type.
+  const fields = 'x=1&password=abcdefghij';
+  expect(maskBodyText(fields, 'text/plain')).toBe(fields);
+  expect(maskBodyText(fields, '')).toBe(fields);
+  const maskedFields = 'x=1&password=abcd… (10 characters)';
+  expect(maskBodyText(fields, 'Application/X-WWW-Form-Urlencoded')).toBe(maskedFields);
+  expect(maskBodyText(fields, '  application/x-www-form-urlencoded  ')).toBe(maskedFields);
+
+  // JSON members: spaces around the colon, an escaped name, an escaped quote in a value, a bad escape in a value.
+  const bs = String.fromCharCode(92);
+  expect(maskBodyText('{"password" : "abcdefghij"}', '')).toBe('{"password" : "abcd… (10 characters)"}');
+  expect(maskBodyText(`{"pass${bs}u0077ord":"abcdefghij"}`, '')).toBe(`{"pass${bs}u0077ord":"abcd… (10 characters)"}`);
+  expect(maskBodyText(`{"password":"ab${bs}"cdefgh"}`, '')).toBe(`{"password":"ab${bs}"c… (9 characters)"}`);
+  expect(maskBodyText(`{"password":"abc${bs}xdefghij"}`, '')).toBe(`{"password":"abc${bs}${bs}… (12 characters)"}`);
+  expect(maskBodyText('{"note":"abcdefghij","n":1}', '')).toBe('{"note":"abcdefghij","n":1}');
+
+  // Credentials inside text: any letter case of the scheme, not inside a longer word, dots and padding included,
+  // five-part tokens whole, and not a short or a payload-less look-alike.
+  expect(maskBodyText('see bearer abcdefghij end', '')).toBe('see bear… (17 characters) end');
+  expect(maskBodyText('mybearer abcdefghij', '')).toBe('mybearer abcdefghij');
+  expect(maskBodyText('Bearer abc.def.ghi-jkl end', '')).toBe('Bear… (22 characters) end');
+  expect(maskBodyText('Bearer abcdefgh== end', '')).toBe('Bear… (17 characters) end');
+  const encrypted = ['eyJhbGciOiJkaXIifQ', 'ekey1234', 'iv123456', 'cipher12', 'tag12345'].join('.');
+  expect(maskBodyText(`x ${encrypted} y`, '')).toBe(`x eyJh… (${encrypted.length} characters) y`);
+  expect(maskBodyText('eyJab.cd.ef', '')).toBe('eyJab.cd.ef');
+  expect(maskBodyText('eyJhbGciOiJIUzI1NiJ9..sig', '')).toBe('eyJhbGciOiJIUzI1NiJ9..sig');
+});
+
+it('a cut moves over the whole of a credential: its tilde, its padding, and not a run of letters that is too long to be one', () => {
+  // The credential 'BB~' then 'B' x 20 starts at 102,397; the character before the cut (index 102,399) is the tilde.
+  const tilde = `${' '.repeat(102390)}Bearer BB~${'B'.repeat(20)} end`;
+  // The credential 'BBB' ends at 102,399 and its padding '==' begins at the cut.
+  const padded = `${' '.repeat(102390)}Bearer BBB== end`;
+  // A run of 200,000 letters after an equals sign is too long to be a credential and is cut where the limit says.
+  const letters = `x=${'a'.repeat(200000)}`;
+  const har = readHar(
+    harText([
+      entry({ content: { size: tilde.length, mimeType: 'text/plain', text: tilde } }),
+      entry({ content: { size: padded.length, mimeType: 'text/plain', text: padded } }),
+      entry({ content: { size: letters.length, mimeType: 'text/plain', text: letters } }),
+    ]),
+  );
+  const open = (index: number) => requestDetail(har, index, { reveal: false, bodies: true });
+  expect(open(1).body).toBe(`${' '.repeat(102390)}Bear… (30 characters)`);
+  expect(open(1).bodyNote).toContain('are shown');
+  expect(open(2).body).toBe(`${' '.repeat(102390)}Bear… (12 characters)`);
+  expect(open(2).bodyNote).toContain('are shown');
+  expect(open(3).body).toBe(letters.slice(0, 102400));
+  expect(open(3).bodyNote).toBe('The body is 200,002 characters long. The first 102,400 are shown.');
 });
