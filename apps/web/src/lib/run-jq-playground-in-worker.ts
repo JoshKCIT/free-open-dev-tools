@@ -91,6 +91,10 @@ export function jqPlaygroundInWorker(job: JqPlaygroundJobMessage, ctx: RunContex
     const worker = new JqPlaygroundWorker();
     let settled = false;
     let runTimer: ReturnType<typeof setTimeout> | undefined;
+    // Whether the job has been posted. A worker that fails after that did start, so it is not reported as unable to.
+    let posted = false;
+    const failedMessage = () =>
+      posted ? 'The background task stopped unexpectedly.' : 'The background task could not start.';
 
     const removeListeners = () => {
       worker.removeEventListener('message', onMessage);
@@ -126,6 +130,7 @@ export function jqPlaygroundInWorker(job: JqPlaygroundJobMessage, ctx: RunContex
         }, JQ_PLAYGROUND_TIME_LIMIT_MS);
         try {
           worker.postMessage(job);
+          posted = true;
         } catch {
           settle({ ok: false, error: new Error('The background task could not start.') });
         }
@@ -146,11 +151,11 @@ export function jqPlaygroundInWorker(job: JqPlaygroundJobMessage, ctx: RunContex
     };
 
     const onNativeError = () => {
-      settle({ ok: false, error: new Error('The background task could not start.') });
+      settle({ ok: false, error: new Error(failedMessage()) });
     };
 
     const onMessageError = () => {
-      settle({ ok: false, error: new Error('The background task could not start.') });
+      settle({ ok: false, error: new Error(failedMessage()) });
     };
 
     const onAbort = () => {

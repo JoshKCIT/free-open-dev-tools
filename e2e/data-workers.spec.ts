@@ -43,9 +43,12 @@ function runButtonOf(page: Page) {
  * first worker's message listeners never see a message whose type ends with `-ready` (as if the module never
  * finished loading). Every later worker behaves normally, so the next run after a stop can be proven to work.
  */
-async function installWorkerWrapper(page: Page, options: { swallowFirstJob: boolean; swallowReady: boolean }) {
+async function installWorkerWrapper(
+  page: Page,
+  options: { swallowFirstJob: boolean; swallowReady: boolean; errorAfterSwallowedJob?: boolean },
+) {
   await page.addInitScript(
-    (modes: { swallowFirstJob: boolean; swallowReady: boolean }) => {
+    (modes: { swallowFirstJob: boolean; swallowReady: boolean; errorAfterSwallowedJob: boolean }) => {
       const OriginalWorker = window.Worker;
       const state = {
         addresses: [] as string[],
@@ -83,6 +86,10 @@ async function installWorkerWrapper(page: Page, options: { swallowFirstJob: bool
         postMessage(...args: Parameters<Worker['postMessage']>): void {
           if (this.swallowJob) {
             state.log.push(`out-swallowed:${this.index}:${typeOf(args[0])}`);
+            // As if the worker failed after the job was posted: the page hears an error event from it.
+            if (modes.errorAfterSwallowedJob) {
+              setTimeout(() => this.inner.dispatchEvent(new ErrorEvent('error', { message: 'probe' })), 0);
+            }
             return;
           }
           state.log.push(`out:${this.index}:${typeOf(args[0])}`);
@@ -122,7 +129,11 @@ async function installWorkerWrapper(page: Page, options: { swallowFirstJob: bool
 
       window.Worker = WrappedWorker as unknown as typeof Worker;
     },
-    { swallowFirstJob: options.swallowFirstJob, swallowReady: options.swallowReady },
+    {
+      swallowFirstJob: options.swallowFirstJob,
+      swallowReady: options.swallowReady,
+      errorAfterSwallowedJob: options.errorAfterSwallowedJob ?? false,
+    },
   );
 }
 
@@ -423,6 +434,22 @@ for (const c of ENGINE_CASES) {
     // The next run works.
     await startNextRun(page, c);
     await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+  });
+
+  test(`${c.id}: a worker that fails after its job was posted is reported as stopped, not as unable to start`, async ({
+    page,
+  }) => {
+    // The job is posted and swallowed, and then the worker raises an error event, as a worker that crashes mid-run
+    // does. The worker had started, so the page must not say it could not.
+    await installWorkerWrapper(page, { swallowFirstJob: true, swallowReady: false, errorAfterSwallowedJob: true });
+    await openTool(page, c.id);
+    await setControls(page, c);
+    await startRun(page, c);
+    await expect(outputArea(page).locator('.issue-list')).toContainText('The background task stopped unexpectedly.', {
+      timeout: 15_000,
+    });
+    await expect(outputArea(page)).not.toContainText('could not start');
+    expect(await endedWorkers(page)).toEqual([0]);
   });
 
   test(`${c.id}: a worker that never reports ready stops after 10 seconds with a plain message`, async ({ page }) => {
