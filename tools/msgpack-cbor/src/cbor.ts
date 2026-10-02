@@ -339,8 +339,13 @@ export function decodeCbor(bytes: Uint8Array): CborItem {
 
 /** The value of a bignum (tag 2) or negative bignum (tag 3) over `content`, or -1 minus it. */
 export function bignumValue(tag: bigint, content: Uint8Array): bigint {
+  // One conversion from hex text: shifting the whole number once per byte took the square of the length.
   let n = 0n;
-  for (const byte of content) n = (n << 8n) | BigInt(byte);
+  if (content.length > 0) {
+    const digits = new Array<string>(content.length);
+    for (let i = 0; i < content.length; i++) digits[i] = content[i]!.toString(16).padStart(2, '0');
+    n = BigInt(`0x${digits.join('')}`);
+  }
   return tag === 3n ? -1n - n : n;
 }
 
