@@ -1286,5 +1286,12 @@
     "category": "encoding",
     "tier": 2,
     "summary": "Decode raw Protocol Buffers bytes without a schema into field numbers, wire types and the values they could hold."
+  },
+  {
+    "id": "text-encoding-fixer",
+    "name": "Text Encoding Fixer",
+    "category": "encoding",
+    "tier": 2,
+    "summary": "Decode bytes in a legacy text encoding, repair UTF-8 read as Windows-1252, and convert line endings and byte order marks."
   }
 ]
