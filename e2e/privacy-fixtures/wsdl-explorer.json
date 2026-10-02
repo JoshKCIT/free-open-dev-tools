@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "wsdl": "<definitions xmlns=\"http://schemas.xmlsoap.org/wsdl/\" name=\"minimal\"/>",
+      "operation": "first"
+    },
+    "attachesFile": false
+  }
+]

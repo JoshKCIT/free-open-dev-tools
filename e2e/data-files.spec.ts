@@ -571,3 +571,54 @@ test('har-viewer: a recorded cookie stays masked until Show sensitive values is 
   });
   expect(seen).toEqual([]);
 });
+
+test('wsdl-explorer: every address a document names is listed as text, and a local server named in it receives no request', async ({
+  page,
+}) => {
+  const seen = await withRecordingServer(async (address) => {
+    const wsdl = [
+      '<definitions name="t" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t"',
+      '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+      `  <import namespace="urn:other" location="${address}/other.wsdl"/>`,
+      '  <types>',
+      '    <xs:schema targetNamespace="urn:t">',
+      `      <xs:import namespace="urn:o" schemaLocation="${address}/import.xsd"/>`,
+      `      <xs:include schemaLocation="${address}/include.xsd"/>`,
+      '      <xs:element name="Ping" type="xs:string"/>',
+      '    </xs:schema>',
+      '  </types>',
+      '  <message name="PingIn"><part name="p" element="tns:Ping"/></message>',
+      '  <portType name="Pt"><operation name="Ping"><input message="tns:PingIn"/></operation></portType>',
+      '  <binding name="B" type="tns:Pt"><soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>',
+      `    <operation name="Ping"><soap:operation soapAction="${address}/action"/><input><soap:body use="literal"/></input></operation></binding>`,
+      `  <service name="S"><port name="P" binding="tns:B"><soap:address location="${address}/service"/></port></service>`,
+      '</definitions>',
+    ].join('\n');
+    await page.goto(rel('/tools/wsdl-explorer'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    const requests: string[] = [];
+    page.on('request', (request) => requests.push(request.url()));
+
+    await fillAndHold(page, 'wsdl', wsdl);
+    // The address of the port, the imports and the action are on the page as text.
+    await expect(outputArea(page)).toContainText(`${address}/service`, { timeout: 20_000 });
+    await expect(outputArea(page)).toContainText(`wsdl:import of urn:other at ${address}/other.wsdl`);
+    await expect(outputArea(page)).toContainText(`xsd:import of urn:o at ${address}/import.xsd`);
+    await expect(outputArea(page)).toContainText(`xsd:include at ${address}/include.xsd`);
+    await expect(outputArea(page)).toContainText('(not loaded)');
+    await expect(outputArea(page)).toContainText(`"${address}/action"`);
+    expect(await outputArea(page).locator('img, iframe, script, link, form, a[href], object, embed').count()).toBe(0);
+
+    // A DOCTYPE that declares an entity at the server is refused before the document is parsed.
+    const doctype = `<?xml version="1.0"?>\n<!DOCTYPE definitions [ <!ENTITY x SYSTEM "${address}/entity"> ]>\n<definitions xmlns="http://schemas.xmlsoap.org/wsdl/">&x;</definitions>`;
+    await fillAndHold(page, 'wsdl', doctype);
+    await expect(outputArea(page)).toContainText('Documents with a DOCTYPE are refused');
+    await page.waitForTimeout(500);
+    const origin = new URL(page.url()).origin;
+    const strays = requests.filter(
+      (url) => !url.startsWith('data:') && !url.startsWith('blob:') && !url.startsWith(`${origin}/`),
+    );
+    expect(strays).toEqual([]);
+  });
+  expect(seen).toEqual([]);
+});
