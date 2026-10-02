@@ -214,6 +214,19 @@ async function startRun(page: Page, c: EngineCase): Promise<number> {
   return before;
 }
 
+/**
+ * Starts the next run after a stop or a Cancel. A page that waits for a Run press is pressed again; a page that runs
+ * as you type does not run again until a value changes, so the last field of the case is edited by one trailing space.
+ */
+async function startNextRun(page: Page, c: EngineCase): Promise<void> {
+  if (c.pressRun) {
+    await runButtonOf(page).click();
+    return;
+  }
+  const [name, value] = Object.entries(c.valid).at(-1)!;
+  await fillFields(page, { [name]: value + ' ' });
+}
+
 async function endedWorkers(page: Page): Promise<number[]> {
   return page.evaluate(() => window.__FODT_DATA_WORKERS__!.ended);
 }
@@ -260,6 +273,15 @@ const ENGINE_CASES: EngineCase[] = [
     expectOutput: 'Valid against the schema',
     limitSeconds: 20,
     limitMessage: 'Stopped after 20 seconds',
+  },
+  {
+    id: 'jq-playground',
+    // The filter comes first: this page runs as you type, so the run starts when the input is filled.
+    valid: { filter: '{doubled: (.a | map(. * 2))}', input: '{"a":[1,2,3]}' },
+    pressRun: false,
+    expectOutput: 'doubled',
+    limitSeconds: 5,
+    limitMessage: 'Stopped after 5 seconds',
   },
 ];
 
@@ -346,7 +368,7 @@ for (const c of ENGINE_CASES) {
     expect(Date.now() - answerStart).toBeLessThan(1_000);
 
     // The next run works, in a new worker.
-    if (c.pressRun) await runButtonOf(page).click();
+    await startNextRun(page, c);
     await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
     expect((await page.evaluate(() => window.__FODT_DATA_WORKERS__!.addresses)).length).toBeGreaterThanOrEqual(2);
   });
@@ -378,7 +400,7 @@ for (const c of ENGINE_CASES) {
     await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
 
     // The next run works.
-    if (c.pressRun) await runButtonOf(page).click();
+    await startNextRun(page, c);
     await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
   });
 
@@ -427,4 +449,50 @@ test('sqlite-viewer: Run with no file and no SQL starts no worker and shows noth
   expect(await outputArea(page).locator('table').count()).toBe(0);
   expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
   expect(await cancelButtonOf(page).count()).toBe(0);
+});
+
+test('jq-playground: a filter that never ends is stopped at 5 seconds in real time and the next filter runs', async ({
+  page,
+}) => {
+  // No page clock and no wrapper: the real engine runs a filter that calls itself forever, in a real worker, and the
+  // page's own 5 second limit stops it. The filter is filled first, so the run starts when the input arrives.
+  await openTool(page, 'jq-playground');
+  const startedAt = Date.now();
+  await fillFields(page, { filter: 'def f: f; f', input: '{"a":[1,2,3]}' });
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Stopped after 5 seconds', { timeout: 12_000 });
+  const elapsed = Date.now() - startedAt;
+  // Never early (the limit is 5 seconds from the posted job, which is after startedAt), and not far past it.
+  expect(elapsed).toBeGreaterThanOrEqual(5_000);
+  expect(elapsed).toBeLessThan(12_000);
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'Stopped after 5 seconds: this filter took too long. Check it for a loop that never ends.',
+  );
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  // The page stayed usable, and the next filter runs in a new worker.
+  const answerStart = Date.now();
+  await page.evaluate(() => 1 + 1);
+  expect(Date.now() - answerStart).toBeLessThan(1_000);
+  await fillFields(page, { filter: '.a | length' });
+  await expect(outputArea(page).locator('pre.output')).toContainText('3', { timeout: 10_000 });
+});
+
+test('jq-playground: Cancel stops a filter that never ends at once and the next filter runs', async ({ page }) => {
+  await openTool(page, 'jq-playground');
+  await fillFields(page, { filter: 'def f: f; f', input: '{"a":[1,2,3]}' });
+  await expect(cancelButtonOf(page)).toBeVisible();
+  // Let the engine be well inside the endless call before stopping it.
+  await page.waitForTimeout(1_000);
+  const clickedAt = Date.now();
+  await cancelButtonOf(page).click();
+  await expect(outputArea(page).locator('.note-warn')).toHaveText(
+    'Cancelled before finishing. No result was produced.',
+  );
+  expect(Date.now() - clickedAt).toBeLessThan(2_000);
+  expect(await cancelButtonOf(page).count()).toBe(0);
+  // No stop message arrives later from the cancelled run's own limit.
+  await page.waitForTimeout(500);
+  await expect(outputArea(page)).not.toContainText('Stopped after');
+  await fillFields(page, { filter: '.a | length' });
+  await expect(outputArea(page).locator('pre.output')).toContainText('3', { timeout: 10_000 });
 });

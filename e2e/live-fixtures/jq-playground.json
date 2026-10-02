@@ -1,0 +1,13 @@
+{
+  "id": "jq-playground",
+  "label": "jq 1.8 manual, Object Construction: one object per title",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "{\"user\":\"stedolan\",\"titles\":[\"JQ Primer\", \"More JQ\"]}"
+    },
+    { "action": "fill", "field": "filter", "value": "{user, title: .titles[]}" }
+  ],
+  "expect": ["\"title\": \"JQ Primer\"", "\"title\": \"More JQ\""]
+}

@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "input": "{\"a\":1}", "filter": ".a", "args": "{}" },
+    "attachesFile": false
+  }
+]

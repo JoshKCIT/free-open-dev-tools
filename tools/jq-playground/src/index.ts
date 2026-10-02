@@ -66,7 +66,8 @@ function utf8Length(text: string, limit: number): number {
   return text.length * 3 <= limit ? 0 : new TextEncoder().encode(text).length;
 }
 
-function checkInputSize(input: string): void {
+/** Refuses input over 5 MiB, counted in UTF-8 bytes. The page calls this before it starts a worker, and `runJq` again. */
+export function checkInputSize(input: string): void {
   const bytes = utf8Length(input, MAX_INPUT_BYTES);
   if (bytes > MAX_INPUT_BYTES) {
     throw new JqPlaygroundError(
