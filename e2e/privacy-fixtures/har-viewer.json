@@ -1,0 +1,12 @@
+[
+  { "attachesFile": true },
+  {
+    "values": {
+      "pasted": "{\"log\":{\"version\":\"1.2\",\"creator\":{\"name\":\"x\",\"version\":\"1\"},\"entries\":[]}}",
+      "status": "2xx",
+      "row": "0",
+      "page": "1"
+    },
+    "attachesFile": false
+  }
+]

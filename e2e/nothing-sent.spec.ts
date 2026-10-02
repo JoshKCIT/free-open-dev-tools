@@ -46,6 +46,9 @@ const PHASE_6_TOOL_IDS = [
 /** The one network-category tool added on 2026-09-29, outside phase 6. */
 const ADDED_2026_09_29_NETWORK_TOOL_IDS = ['data-size'];
 
+/** The network-category tools Phase 13 adds (DATA-07, DATA-11). */
+const PHASE_13_NETWORK_TOOL_IDS = ['har-viewer'];
+
 /**
  * An absolute, real-shaped URL a visitor might genuinely paste. The
  * `.invalid` top-level domain is reserved by RFC 6761 section 6.4 and never
@@ -148,9 +151,11 @@ test('the nothing-sent list matches the network category of the catalog', () => 
     category: string;
   }[];
   // ip-subnet is a phase 2 tool already live in the network category; every
-  // other network-category id belongs to this phase or the 2026-09-29 batch.
+  // other network-category id belongs to this phase, the 2026-09-29 batch or phase 13.
   const networkIds = catalog.filter((c) => c.category === 'network' && c.id !== 'ip-subnet').map((c) => c.id);
-  expect(networkIds.slice().sort()).toEqual([...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS].slice().sort());
+  expect(networkIds.slice().sort()).toEqual(
+    [...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS, ...PHASE_13_NETWORK_TOOL_IDS].slice().sort(),
+  );
 });
 
 const pagesDir = join(root, 'apps', 'web', 'src', 'tools');
@@ -162,7 +167,7 @@ const builtIds = existsSync(pagesDir)
     )
   : new Set<string>();
 
-for (const id of [...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS]) {
+for (const id of [...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS, ...PHASE_13_NETWORK_TOOL_IDS]) {
   if (!builtIds.has(id)) continue;
 
   test(`${id}: a visitor URL typed into every field causes no request and no network call`, async ({ page }) => {

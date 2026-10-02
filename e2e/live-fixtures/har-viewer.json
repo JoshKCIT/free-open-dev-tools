@@ -1,0 +1,12 @@
+{
+  "id": "har-viewer",
+  "label": "HAR 1.2: one GET entry lists its method, address and status",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "pasted",
+      "value": "{\"log\":{\"version\":\"1.2\",\"creator\":{\"name\":\"x\",\"version\":\"1\"},\"entries\":[{\"startedDateTime\":\"2009-04-16T12:07:23.596Z\",\"time\":50,\"request\":{\"method\":\"GET\",\"url\":\"https://example.com/\",\"httpVersion\":\"HTTP/1.1\",\"cookies\":[],\"headers\":[],\"queryString\":[],\"headersSize\":-1,\"bodySize\":0},\"response\":{\"status\":200,\"statusText\":\"OK\",\"httpVersion\":\"HTTP/1.1\",\"cookies\":[],\"headers\":[],\"content\":{\"size\":33,\"mimeType\":\"text/html\"},\"redirectURL\":\"\",\"headersSize\":-1,\"bodySize\":33},\"cache\":{},\"timings\":{\"send\":1,\"wait\":2,\"receive\":3}}]}}"
+    }
+  ],
+  "expect": ["GET", "https://example.com/", "200"]
+}
