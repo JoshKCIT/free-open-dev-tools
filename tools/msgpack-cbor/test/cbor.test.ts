@@ -162,6 +162,9 @@ it('malformed CBOR is refused with the byte offset of the problem', () => {
   expect(truncated.message).toContain('byte 1');
   // An array that declares more items than there are bytes left is refused before any item is read.
   expect(refuse('9b0000000100000000').offset).toBe(0);
+  // A map that declares more pairs than there are bytes for (a pair takes at least two bytes): three pairs, four bytes.
+  expect(refuse('a301020304').offset).toBe(0);
+  expect(refuse('bb0000000100000000').offset).toBe(0);
   // Additional information 28 to 30 is reserved.
   expect(refuse('1c').offset).toBe(0);
   // A break with no indefinite item to end.

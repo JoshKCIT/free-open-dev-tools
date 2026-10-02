@@ -157,6 +157,8 @@ it('MessagePack timestamps of 4, 8 and 12 bytes keep seconds and nanoseconds', (
     'c70cff3b9ac9ff0000003afff4417f',
     'd6ff00000000',
     'd7ff0000000400000000',
+    // seconds 4294967296 and no nanoseconds: the first value that no longer fits the 32 bit layout.
+    'd7ff0000000100000000',
   ]) {
     expect(hexOf(encodeMsgpack(decodeMsgpack(bytes(hex)))), hex).toBe(hex);
   }

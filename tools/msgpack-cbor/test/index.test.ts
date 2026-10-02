@@ -244,6 +244,11 @@ it('an object that looks like a marker but does not fit is written as an ordinar
   asMap('cbor', '{"$tag": 1}', '$tag');
   asMap('cbor', '{"$tag": -1, "$value": 2}', '$tag');
   asMap('cbor', '{"$bytes": "AQID", "extra": 1}', '$bytes');
+  // Base64 padding must be right when it is there, and may be left off.
+  asMap('cbor', '{"$bytes": "AQIDBA="}', '$bytes');
+  expect(fromJson('cbor', '{"$bytes": "AQIDBA"}').warnings).toEqual([]);
+  expect(fromJson('cbor', '{"$bytes": "AQIDBA=="}').text).toBe('4401020304');
+  expect(fromJson('cbor', '{"$bytes": "AQIDBA"}').text).toBe('4401020304');
   asMap('cbor', '{"$float": "nan"}', '$float');
   asMap('cbor', '{"$simple": 22}', '$simple');
   asMap('cbor', '{"$undefined": 1}', '$undefined');
@@ -255,6 +260,9 @@ it('an object that looks like a marker but does not fit is written as an ordinar
   asMap('msgpack', '{"$undefined": true}', '$undefined');
   asMap('msgpack', '{"$simple": 16}', '$simple');
   asMap('msgpack', '{"$ext": 200, "$hex": "10"}', '$ext');
+  asMap('msgpack', '{"$ext": -129, "$hex": "10"}', '$ext');
+  expect(fromJson('msgpack', '{"$ext": -128, "$hex": "10"}').text).toBe('d48010');
+  expect(fromJson('msgpack', '{"$ext": 127, "$hex": "10"}').text).toBe('d47f10');
   asMap('msgpack', '{"$ext": 1, "$hex": "1"}', '$ext');
   asMap('msgpack', '{"$timestamp": {"seconds": "1", "nanoseconds": 1000000000}}', '$timestamp');
   // The warning names where the object is.
@@ -344,9 +352,9 @@ it('JSON that is not valid, a lone surrogate or a number out of range is refused
   expect(refuse('msgpack', '18446744073709551616').message).toContain('18446744073709551615');
   expect(refuse('msgpack', '{"$bigint": "-9223372036854775809"}').message).toContain('-9223372036854775808');
   expect(fromJson('msgpack', '18446744073709551615').text).toBe('cfffffffffffffffff');
-  // An integer of more than 19000 digits is refused before it is turned into a number.
-  expect(refuse('cbor', '1'.repeat(19001)).message).toContain('19,000');
-  expect(refuse('cbor', '{"$bigint": "' + '1'.repeat(19001) + '"}').message).toContain('19,000');
+  // An integer of more than 20000 digits is refused before it is turned into a number.
+  expect(refuse('cbor', '1'.repeat(20001)).message).toContain('20,000');
+  expect(refuse('cbor', '{"$bigint": "' + '1'.repeat(20001) + '"}').message).toContain('20,000');
 });
 
 it('reports what was changed: joined chunks, a NaN payload, and the integer and float widths', () => {
@@ -361,6 +369,8 @@ it('reports what was changed: joined chunks, a NaN payload, and the integer and 
   expect(toJson('msgpack', 'ca7fc00001').warnings.join(' ')).toContain('NaN');
   expect(toJson('cbor', 'f97e00').warnings).toEqual([]);
   expect(toJson('cbor', 'fa7fc00000').warnings).toEqual([]);
+  // Chunks are joined without anything between them.
+  expect(JSON.parse(toJson('cbor', '7f657374726561646d696e67ff').text)).toBe('streaming');
   // MessagePack input lists the integer and float widths it used, in the order they first appear.
   const widths = toJson('msgpack', '94cc80d1ff00cb3ff0000000000000ca3f800000').widths;
   expect(widths).toEqual([
@@ -371,4 +381,20 @@ it('reports what was changed: joined chunks, a NaN payload, and the integer and 
   ]);
   expect(toJson('msgpack', '93010101').widths).toEqual([['positive fixint', 3]]);
   expect(toJson('cbor', '01').widths).toBeUndefined();
+  expect(toJson('msgpack', 'c0').widths).toBeUndefined();
+});
+
+it('a bignum of more than 8192 bytes stays a tag and a bignum of 8192 bytes is a number', () => {
+  // Turning a very long bignum into decimal digits would take too long, so past 8192 bytes it is kept as a tag over its
+  // bytes, which loses nothing and comes back the same.
+  const long = 'c2' + '592001' + '01' + '00'.repeat(8192);
+  const asTag = JSON.parse(toJson('cbor', long).text) as Record<string, unknown>;
+  expect(Object.keys(asTag)).toEqual(['$tag', '$value']);
+  expect(asTag['$tag']).toBe(2);
+  expect(fromJson('cbor', toJson('cbor', long).text).text).toBe(long);
+  const exact = 'c2' + '592000' + '01' + '00'.repeat(8191);
+  const asNumber = JSON.parse(toJson('cbor', exact).text) as { $bigint: string };
+  // The byte string 01 followed by 8191 zero bytes is the number 2 to the power of 8 times 8191.
+  expect(BigInt(asNumber.$bigint)).toBe(2n ** BigInt(8 * 8191));
+  expect(fromJson('cbor', toJson('cbor', exact).text).text).toBe(exact);
 });

@@ -42,3 +42,67 @@ export function tooLarge(bytes: number, what = 'The input'): MsgpackCborError {
     `${what} is ${sizeWords(bytes)}. The limit is 5 MiB because the whole value is held in the page while it is converted.`,
   );
 }
+
+/** A bignum or `$bigint` longer than this many digits is not turned into a number: the conversion would take too long. */
+export const MAX_BIGINT_DIGITS = 20000;
+/** The same limit in bytes for a CBOR bignum's byte string (8192 bytes hold at most 19,729 digits, under the digit limit). */
+export const MAX_BIGNUM_BYTES = 8192;
+
+const strictUtf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+
+/**
+ * Reads bytes as UTF-8 text. A byte order mark stays in the text (it is data, not a marker), and bytes that are not
+ * UTF-8 are refused naming `offset`, the byte where the string starts, instead of being replaced by U+FFFD.
+ */
+export function decodeUtf8(bytes: Uint8Array, offset: number, what: string): string {
+  try {
+    return strictUtf8.decode(bytes);
+  } catch {
+    throw new MsgpackCborError(`The ${what} starting at byte ${offset} is not valid UTF-8.`, { offset });
+  }
+}
+
+/** The big endian bytes of a non-negative integer, with no leading zero byte (zero is one zero byte). */
+export function bigintToBytes(value: bigint): Uint8Array {
+  if (value === 0n) return new Uint8Array(1);
+  let hex = value.toString(16);
+  if (hex.length % 2 === 1) hex = `0${hex}`;
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return bytes;
+}
+
+/** A growable byte buffer for the encoders. */
+export class ByteWriter {
+  private buffer = new Uint8Array(256);
+  length = 0;
+
+  private room(extra: number): void {
+    if (this.length + extra <= this.buffer.length) return;
+    let size = this.buffer.length;
+    while (size < this.length + extra) size *= 2;
+    const next = new Uint8Array(size);
+    next.set(this.buffer.subarray(0, this.length));
+    this.buffer = next;
+  }
+
+  byte(value: number): void {
+    this.room(1);
+    this.buffer[this.length++] = value;
+  }
+
+  bytes(data: Uint8Array): void {
+    this.room(data.length);
+    this.buffer.set(data, this.length);
+    this.length += data.length;
+  }
+
+  /** An unsigned integer of `size` bytes (1, 2, 4 or 8), big endian. */
+  unsigned(value: bigint, size: 1 | 2 | 4 | 8): void {
+    for (let shift = (size - 1) * 8; shift >= 0; shift -= 8) this.byte(Number((value >> BigInt(shift)) & 0xffn));
+  }
+
+  finish(): Uint8Array {
+    return this.buffer.slice(0, this.length);
+  }
+}

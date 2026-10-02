@@ -23,8 +23,10 @@ Converts MessagePack and CBOR to JSON and back, in your browser, from pasted hex
 - JSON cannot hold every MessagePack and CBOR value, so these markers are used both ways: $bigint, $bytes, $tag with $value, $ext with $hex, $timestamp, $map, $float, $undefined and $simple.
 - JSON to CBOR or MessagePack uses preferred serialization (the shortest form), so an item first written in a longer form, such as an indefinite-length array or a float with more bytes than it needs, does not come back byte for byte.
 - Unknown tags and extension types are shown, never dropped or interpreted.
-- In JSON a number with a fraction or an exponent is a float and a number without either is an integer, of any size.
-- A NaN keeps its meaning but not its payload bits: it is written back as the standard quiet NaN.
+- In JSON a number with a fraction or an exponent is a float and a number without either is an integer, of any size up to 20,000 digits.
+- A CBOR bignum of more than 8,192 bytes is shown as a $tag over its bytes instead of as digits, which loses nothing.
+- A NaN keeps its meaning but not its payload bits: it is written back as the standard quiet NaN, and a warning says when a payload was dropped.
+- JSON nested deeper than 256 levels is refused with its line and column; a $map counts as three levels.
 
 ## Ambiguous cases, and what this does about them
 
@@ -86,7 +88,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-To be completed with the vendored vectors.
+CBOR is tested against all 81 rows of RFC 8949 Appendix A Table 6, vendored from the RFC text by a script, with each item printed in diagnostic notation exactly as the RFC prints it and every row in preferred form written back byte for byte from its JSON form. The rows that cannot come back identical are named in the test with the reason: the six infinities and NaNs written wider than they need, and the eleven items written with indefinite lengths. MessagePack is tested against the published MessagePack test suite (kawanet/msgpack-test-suite, MIT, commit e04f6ed): all 15 groups, 85 cases and 233 encodings, including every extension size and the timestamps with seconds and nanoseconds. The 8 byte timestamp layout was also worked out independently with Python's struct module from the specification. Neither format is checked against this folder's own output, and no MessagePack or CBOR library is used or compared.
 
 ## Licence
 

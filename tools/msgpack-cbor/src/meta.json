@@ -15,8 +15,10 @@
     "JSON cannot hold every MessagePack and CBOR value, so these markers are used both ways: $bigint, $bytes, $tag with $value, $ext with $hex, $timestamp, $map, $float, $undefined and $simple.",
     "JSON to CBOR or MessagePack uses preferred serialization (the shortest form), so an item first written in a longer form, such as an indefinite-length array or a float with more bytes than it needs, does not come back byte for byte.",
     "Unknown tags and extension types are shown, never dropped or interpreted.",
-    "In JSON a number with a fraction or an exponent is a float and a number without either is an integer, of any size.",
-    "A NaN keeps its meaning but not its payload bits: it is written back as the standard quiet NaN."
+    "In JSON a number with a fraction or an exponent is a float and a number without either is an integer, of any size up to 20,000 digits.",
+    "A CBOR bignum of more than 8,192 bytes is shown as a $tag over its bytes instead of as digits, which loses nothing.",
+    "A NaN keeps its meaning but not its payload bits: it is written back as the standard quiet NaN, and a warning says when a payload was dropped.",
+    "JSON nested deeper than 256 levels is refused with its line and column; a $map counts as three levels."
   ],
   "ambiguities": [
     "A CBOR map or MessagePack map is written as a JSON object only when every key is text, no key repeats and no key begins with a dollar sign; otherwise it is written as a $map list of key and value pairs, so no key is lost or mistaken for a marker",
@@ -30,7 +32,10 @@
       "label": "RFC 8949 Concise Binary Object Representation (CBOR)",
       "url": "https://www.rfc-editor.org/rfc/rfc8949"
     },
-    { "label": "MessagePack specification", "url": "https://github.com/msgpack/msgpack/blob/master/spec.md" }
+    {
+      "label": "MessagePack specification",
+      "url": "https://github.com/msgpack/msgpack/blob/master/spec.md"
+    }
   ],
   "keywords": [
     "messagepack",
@@ -46,5 +51,5 @@
   "primaryExport": "convert",
   "usage": "import { convert } from '@fodt/msgpack-cbor';\n\nconst result = convert({\n  format: 'cbor',\n  direction: 'to-json',\n  input: 'c249010000000000000000',\n  inputEncoding: 'hex',\n  outputEncoding: 'hex',\n  show: 'json',\n});\nconsole.log(result.text);\n// { \"$bigint\": \"18446744073709551616\" }",
   "apiNotes": "`convert(job)` takes the format (`msgpack` or `cbor`), the direction (`to-json` or `from-json`), the input as text or bytes, how text input is encoded (`hex` or `base64`), how bytes are written out (`hex` or `base64`) and, for CBOR, whether to show `json` or `diagnostic` notation. It returns the text, the bytes when the direction is from JSON, and any warnings. `readInputBytes(text, encoding)` reads hex (spaces and line breaks allowed) or Base64 and refuses a bad digit with its position. Every expected failure is a `MsgpackCborError` with a plain message, a byte `offset` when one applies and a `path` into the value.",
-  "testNotes": "To be completed with the vendored vectors."
+  "testNotes": "CBOR is tested against all 81 rows of RFC 8949 Appendix A Table 6, vendored from the RFC text by a script, with each item printed in diagnostic notation exactly as the RFC prints it and every row in preferred form written back byte for byte from its JSON form. The rows that cannot come back identical are named in the test with the reason: the six infinities and NaNs written wider than they need, and the eleven items written with indefinite lengths. MessagePack is tested against the published MessagePack test suite (kawanet/msgpack-test-suite, MIT, commit e04f6ed): all 15 groups, 85 cases and 233 encodings, including every extension size and the timestamps with seconds and nanoseconds. The 8 byte timestamp layout was also worked out independently with Python's struct module from the specification. Neither format is checked against this folder's own output, and no MessagePack or CBOR library is used or compared."
 }
