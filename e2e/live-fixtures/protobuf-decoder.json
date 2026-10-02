@@ -1,0 +1,6 @@
+{
+  "id": "protobuf-decoder",
+  "label": "Protocol Buffers encoding guide: 08 96 01 is field 1 with the varint 150",
+  "steps": [{ "action": "fill", "field": "input", "value": "08 96 01" }],
+  "expect": ["1: 150"]
+}

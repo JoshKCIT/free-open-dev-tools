@@ -276,6 +276,18 @@ const FILE_CASES: FileCase[] = [
     pressRun: false,
     expectText: MARKER,
   },
+  {
+    id: 'protobuf-decoder',
+    // A message with one string field: the tag 0x0a is field 1 with the length-delimited wire type, and the length 0x10 is
+    // sixteen, the size of the marker (encoding guide: a string is a LEN record). The page runs as you type.
+    file: () => ({
+      name: 'marker.pb',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.concat([Buffer.from([0x0a, 0x10]), Buffer.from(MARKER, 'ascii')]),
+    }),
+    pressRun: false,
+    expectText: MARKER,
+  },
 ];
 
 for (const c of FILE_CASES) {
