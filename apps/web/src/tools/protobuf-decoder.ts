@@ -1,6 +1,7 @@
 import {
   ProtobufDecoderError,
   checkInputSize,
+  countFields,
   decodeProtobufInfo,
   formatDecodeRaw,
   meta,
@@ -119,7 +120,7 @@ export default defineTool({
         outputs.push({
           kind: 'note',
           tone: 'warn',
-          value: `The message holds ${info.total.toLocaleString('en-US')} fields. The first ${info.fields.length.toLocaleString('en-US')} are shown; the rest were read and checked but are not listed.`,
+          value: `The message holds ${info.total.toLocaleString('en-US')} fields. The first ${countFields(info.fields).toLocaleString('en-US')} (counting the fields inside nested messages and groups) are shown; the rest were read and checked but are not listed, and a length-delimited field after the cut is not tried as a nested message.`,
         });
       }
       outputs.push({

@@ -591,6 +591,16 @@ function readFields(
   return { fields, next: pos };
 }
 
+/** How many fields a decoded list holds, counting the fields inside nested messages and groups. */
+export function countFields(fields: ProtoField[]): number {
+  let count = 0;
+  for (const field of fields) {
+    count++;
+    if (field.children !== undefined) count += countFields(field.children);
+  }
+  return count;
+}
+
 /** Decodes one message, saying also how many fields it held and whether the list was cut at MAX_FIELDS. */
 export function decodeProtobufInfo(bytes: Uint8Array, options: DecodeOptions): DecodeInfo {
   if (bytes.length > MAX_INPUT_BYTES) throw tooLarge(bytes.length);
