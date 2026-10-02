@@ -109,8 +109,11 @@ function pointer(tokens: string[]): string {
   return tokens.map((t) => '/' + t.replace(/~/g, '~0').replace(/\//g, '~1')).join('');
 }
 
+/** True for a plain object (one made by `{}`, JSON or `Object.create(null)`); a Date, a byte array, a Set or a Map is not one. */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value) as unknown;
+  return proto === Object.prototype || proto === null;
 }
 
 function scalarText(value: unknown, tokens: string[]): string {

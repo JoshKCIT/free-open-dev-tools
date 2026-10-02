@@ -187,8 +187,11 @@ export function readTable(text: string, format: TableFormat, options: TableReadO
   return { value, warnings };
 }
 
+/** True for a plain object (one made by `{}`, JSON or `Object.create(null)`); a Date, a byte array, a Set or a Map is not one. */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value) as unknown;
+  return proto === Object.prototype || proto === null;
 }
 
 interface WriteState {

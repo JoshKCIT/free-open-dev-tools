@@ -149,6 +149,50 @@ function normalizeTomlDates(value: unknown, onDate: () => void): unknown {
   return value;
 }
 
+const YAML_TIMESTAMP_WARNING =
+  'YAML timestamps (written with the !!timestamp tag) have no equivalent here, so they became ISO 8601 text.';
+
+/** A short plain name for a value an explicit YAML tag made that no target format here can hold. */
+function describeTaggedValue(value: unknown): string {
+  if (value instanceof Uint8Array) return 'binary data (made by the !!binary tag)';
+  if (value instanceof Set) return 'a set (made by the !!set tag)';
+  if (value instanceof Map) return 'an ordered map or list of pairs (made by the !!omap or !!pairs tag)';
+  return 'a value that has no JSON form';
+}
+
+/**
+ * Walks a value read from YAML (already checked to be no deeper than 512 levels). A date an explicit
+ * `!!timestamp` tag made becomes its ISO 8601 text; binary data, a set or a map is refused naming its RFC 6901
+ * path, so none of them is ever written as an empty element, an empty cell or a column per byte. Mutates existing
+ * containers in place, so a key such as `__proto__` is only ever overwritten, never freshly created.
+ */
+function normalizeYamlValue(value: unknown, tokens: string[], onDate: () => void): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new DataConvertError('This YAML holds a timestamp that is not a real date, so it cannot be converted.', {
+        path: formatPointer(tokens),
+      });
+    }
+    onDate();
+    return value.toISOString();
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) value[i] = normalizeYamlValue(value[i], [...tokens, String(i)], onDate);
+    return value;
+  }
+  const proto = Object.getPrototypeOf(value) as unknown;
+  if (proto !== Object.prototype && proto !== null) {
+    throw new DataConvertError(
+      `This YAML holds ${describeTaggedValue(value)}, which the other formats cannot hold, so it cannot be converted. Remove the tag to read it as text.`,
+      { path: formatPointer(tokens) },
+    );
+  }
+  const obj = value as Record<string, unknown>;
+  for (const key of Object.keys(obj)) obj[key] = normalizeYamlValue(obj[key], [...tokens, key], onDate);
+  return value;
+}
+
 /** Refuses a `null` anywhere in `value`, naming its RFC 6901 pointer, since TOML has no null. */
 function assertNoNullsForToml(value: unknown, tokens: string[]): void {
   if (value === null) {
@@ -284,6 +328,14 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
   }
 
   if (exceedsDepth(value, MAX_JSON_DEPTH)) throw new DataConvertError(DEPTH_MESSAGE);
+
+  if (from === 'yaml') {
+    let sawTimestamp = false;
+    value = normalizeYamlValue(value, [], () => {
+      sawTimestamp = true;
+    });
+    if (sawTimestamp) warnings.push(YAML_TIMESTAMP_WARNING);
+  }
 
   if (from === 'toml' && to !== 'toml') {
     let sawDate = false;

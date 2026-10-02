@@ -25,6 +25,7 @@
     "TOML has no null; a null anywhere in the input is refused by its RFC 6901 path rather than being dropped, since TOML libraries otherwise drop it silently",
     "A YAML tag outside the core schema, and a YAML anchor or alias, are resolved to a plain copy on output; the tag or the sharing is not preserved",
     "TOML has no distinct date type on the JSON/YAML side of a conversion; a TOML date or time becomes a string",
+    "A YAML timestamp written with the !!timestamp tag becomes ISO 8601 text with a warning; binary data (!!binary), a set (!!set) or an ordered map (!!omap) is refused with its path, because no other format here can hold it; a YAML to YAML conversion keeps all of them as written",
     "TOML output lists plain keys before any table, which can change the input's key order",
     "A JSON number beyond double precision is rounded, the same limit JSON.parse itself has",
     "Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0",
