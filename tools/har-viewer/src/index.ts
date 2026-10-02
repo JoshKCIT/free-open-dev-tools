@@ -264,3 +264,10 @@ export function listRequests(har: Har, options: ListOptions): ListResult {
   const rows = matching.slice(start, start + PAGE_SIZE).map(rowOf);
   return { rows, total: matching.length, shown: rows.length };
 }
+
+export function requestDetail(har: Har, index: number, options: { reveal: boolean; bodies: boolean }): never {
+  void har;
+  void index;
+  void options;
+  throw new Error('not implemented');
+}
