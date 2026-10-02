@@ -1,0 +1,9 @@
+{
+  "id": "text-encoding-fixer",
+  "label": "WHATWG windows-1252 index: cafÃ© read back as UTF-8 is café",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "repair" },
+    { "action": "fill", "field": "text", "value": "cafÃ© â€™quotedâ€™" }
+  ],
+  "expect": ["café", "’quoted’"]
+}

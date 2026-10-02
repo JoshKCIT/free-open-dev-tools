@@ -1,0 +1,8 @@
+[
+  {
+    "mode": { "field": "mode", "value": "decode" },
+    "values": { "hex": "80 81 9f e9", "encoding": "windows-1252" },
+    "attachesFile": true
+  },
+  { "mode": { "field": "mode", "value": "repair" }, "values": { "text": "cafÃ©" }, "attachesFile": false }
+]
