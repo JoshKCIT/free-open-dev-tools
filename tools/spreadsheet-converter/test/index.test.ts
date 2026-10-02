@@ -130,11 +130,16 @@ it('the writer output for the fixed input is byte for byte the committed file op
   const written = writeXlsx(FIXED_ROWS, { sheetName: 'Sheet1', detectTypes: true });
   expect(Buffer.compare(Buffer.from(written.bytes), committed)).toBe(0);
 
-  // Reading the committed file with this package gives openpyxl's values.
-  const rows = readXlsx(new Uint8Array(committed), { datesAsSerials: false }).sheets[0]!.rows;
-  expect(rows.map((row) => OPENPYXL_REREAD[0]!.map((_, i) => plain(row[i])))).toEqual(
-    OPENPYXL_REREAD.map((row) => row.map(([, value]) => value)),
+  // Reading the committed file with this package gives openpyxl's values, with one difference that is openpyxl's, not
+  // ours: for an inline string it returns the escape text as stored (a_x0001_b) and does not apply the ECMA-376
+  // ST_Xstring rule that _xHHHH_ stands for the character U+HHHH, which Excel does apply. Those two cells are compared
+  // with the character the escape names.
+  const DECODED: Record<string, string> = { a_x0001_b: 'a\u0001b', cr_x000D_lf: 'cr\rlf' };
+  const expected = OPENPYXL_REREAD.map((row) =>
+    row.map(([, value]) => (typeof value === 'string' && value in DECODED ? DECODED[value]! : value)),
   );
+  const rows = readXlsx(new Uint8Array(committed), { datesAsSerials: false }).sheets[0]!.rows;
+  expect(rows.map((row) => OPENPYXL_REREAD[0]!.map((_, i) => plain(row[i])))).toEqual(expected);
   expect(rows.map((row) => OPENPYXL_REREAD[0]!.map((_, i) => row[i]?.kind ?? 'empty'))).toEqual(
     OPENPYXL_REREAD.map((row) =>
       row.map(([type]) => (type === 's' ? 'string' : type === 'n' ? 'number' : type === 'b' ? 'boolean' : 'empty')),
