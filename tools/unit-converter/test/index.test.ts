@@ -160,6 +160,10 @@ it('exact definitions give exact factors for the inch, foot, yard, mile, pound, 
   expect(convertUnit('area', '1', 'ac', 'ft2', 30).result).toBe('43560');
   expect(convertUnit('area', '1', 'mi2', 'ac', 30).result).toBe('640');
   expect(convertUnit('pressure', '1', 'atm', 'Pa', 30).result).toBe('101325');
+  // 1 atm is exactly 760 torr, a finite decimal, but the torr is not marked exact (NIST SP 811 prints it rounded), so the
+  // factor is not either; and a hectopascal is exactly 100 pascal.
+  expect(convertUnit('pressure', '1', 'atm', 'Torr', 30)).toMatchObject({ result: '760', exact: false });
+  expect(convertUnit('pressure', '1', 'hPa', 'Pa', 30)).toMatchObject({ result: '100', exact: true });
   // The psi comes from the pound-force over the square inch, so it is never a typed figure: 8 896 443 230 521 over
   // 1 290 320 000 pascal, and 6894.757293168361... to the digits asked for.
   expect(convertUnit('pressure', '1', 'psi', 'Pa', 30).result).toBe('6894.75729316836133672267344535');
@@ -177,6 +181,16 @@ it('exact definitions give exact factors for the inch, foot, yard, mile, pound, 
     ['speed', 'km/h', 'm/s', false],
     ['angle', DEGREE, 'rad', false],
     ['frequency', 'rpm', 'Hz', false],
+    ['temperature', 'C', 'K', true],
+    ['temperature', 'K', 'C', true],
+    ['temperature', 'F', 'K', false],
+    ['temperature', 'R', 'K', false],
+    ['temperature', 'K', 'F', false],
+    ['temperature', 'K', 'R', false],
+    ['pressure', 'Pa', 'mmHg', false],
+    ['fuel-economy', 'km/L', 'L/100km', true],
+    ['angle', 'rev', 'rad', false],
+    ['angle', 'gon', DEGREE, true],
     ['pressure', 'mmHg', 'Pa', false],
     ['power', 'PS', 'W', false],
   ] as const) {
@@ -266,6 +280,23 @@ it('32 F is 273.15 K and 212 F is 373.15 K exactly, absolute zero converts in fo
   expect(convertUnit('temperature', '-40', 'C', 'F', 30).result).toBe('-40');
   expect(convertUnit('temperature', '491.67', 'R', 'F', 30).result).toBe('32');
   expect(convertUnit('temperature', '37', 'C', 'K', 30).result).toBe('310.15');
+  // The factor line names the rule through kelvin: (value + offset) x factor, and its reverse.
+  const times = String.fromCharCode(0xd7);
+  expect(convertUnit('temperature', '1', DEGREE + 'F', 'K', 10).factor).toBe(
+    `${DEGREE}F to K: (x + 459.67) ${times} 0.5555555556`,
+  );
+  expect(convertUnit('temperature', '1', 'K', DEGREE + 'C', 10).factor).toBe(`K to ${DEGREE}C: x - 273.15`);
+  expect(convertUnit('temperature', '1', DEGREE + 'C', 'K', 10).factor).toBe(`${DEGREE}C to K: (x + 273.15)`);
+  expect(convertUnit('temperature', '1', 'K', 'K', 10).factor).toBe('1');
+  expect(convertUnit('temperature', '1', DEGREE + 'R', 'K', 10).factor).toBe(
+    `${DEGREE}R to K: x ${times} 0.5555555556`,
+  );
+  expect(convertUnit('temperature', '1', 'K', DEGREE + 'F', 10).factor).toBe(
+    `K to ${DEGREE}F: x / 0.5555555556 - 459.67`,
+  );
+  expect(convertUnit('fuel-economy', '1', 'km/L', 'L/100km', 10).factor).toBe('km/L to L/100 km: 100 / x');
+  expect(convertUnit('fuel-economy', '1', 'L/100km', 'km/L', 10).factor).toBe('L/100 km to km/L: 100 / x');
+  expect(convertUnit('temperature', '5', 'K', DEGREE + 'R', 10).factor).toBe(`K to ${DEGREE}R: x / 0.5555555556`);
 
   // The formulas applied one by one in this test, on a spread of readings, against the tool.
   const D = Decimal.clone({ precision: 50, rounding: Decimal.ROUND_HALF_EVEN });
@@ -395,6 +426,12 @@ it('results round half to even at the chosen significant digits', () => {
   expect(convertUnit('length', '1.1', 'in', 'cm', 20).result).toBe('2.794');
   expect(convertUnit('mass', '0.3', 'lb', 'kg', 20).result).toBe('0.136077711');
   expect(convertUnit('time', '0.1', 'h', 's', 20).result).toBe('360');
+  expect(convertUnit('time', '1', 'wk', 'd', 20)).toMatchObject({ result: '7', exact: true });
+  expect(convertUnit('time', '1', 'wk', 's', 20).result).toBe('604800');
+  expect(convertUnit('time', '1', 'yr', 'd', 20).result).toBe('365');
+  expect(convertUnit('time', '1', 'min', 's', 20).result).toBe('60');
+  expect(convertUnit('time', '1', 'h', 'min', 20).result).toBe('60');
+  expect(convertUnit('time', '1', 'd', 'h', 20).result).toBe('24');
   // A value is read as typed, with every digit: a number over 2^53 or with 17 digits is not rounded to a double.
   expect(convertUnit('length', '9007199254740993', 'm', 'm', 30).result).toBe('9007199254740993');
   expect(convertUnit('length', '0.30000000000000004', 'm', 'm', 30).result).toBe('0.30000000000000004');
@@ -402,6 +439,14 @@ it('results round half to even at the chosen significant digits', () => {
     '1.23456789012345678901234567891',
   );
   expect(convertUnit('length', '+5', 'm', 'm', 10).result).toBe('5');
+  // A text of 501 characters is refused for its length alone, though it holds one significant digit.
+  expect(error(() => convertUnit('length', '0'.repeat(500) + '1', 'm', 'm', 10)).field).toBe('Value');
+  expect(convertUnit('length', '1E3', 'm', 'km', 10).result).toBe('1');
+  expect(convertUnit('length', '1e+3', 'm', 'km', 10).result).toBe('1');
+  expect(convertUnit('length', '5e-1', 'm', 'm', 10).result).toBe('0.5');
+  expect(error(() => convertUnit('length', '1e1001', 'm', 'm', 10)).message).toContain('exponent');
+  expect(error(() => convertUnit('length', '1e1000', 'm', 'm', 10)).message).toContain('1e100');
+  expect(error(() => convertUnit('length', '1e-1001', 'm', 'm', 10)).message).toContain('exponent');
   expect(convertUnit('length', '.5', 'm', 'm', 10).result).toBe('0.5');
   expect(convertUnit('length', '5.', 'm', 'm', 10).result).toBe('5');
   expect(convertUnit('length', '1.5e3', 'm', 'km', 10).result).toBe('1.5');
@@ -517,6 +562,7 @@ it('an unknown unit is refused with the accepted names and a blank To lists ever
   expect(error(() => convertUnit('mass', '1', 'kg', 'm', 10)).field).toBe('To unit');
   // A blank unit is asked for, not guessed.
   expect(error(() => convertUnit('length', '1', '', 'm', 10)).field).toBe('From unit');
+  expect(error(() => convertUnit('length', '1', '', 'm', 10)).message).toContain('enter a unit of length, such as m');
   expect(error(() => convertUnit('length', '1', 'm', '  ', 10)).field).toBe('To unit');
   expect(error(() => listUnits('length', '1', '', 10)).field).toBe('From unit');
 
@@ -545,10 +591,19 @@ it('an unknown unit is refused with the accepted names and a blank To lists ever
   expect(fuel.get('L/100km')?.value).toBe('7.840486111');
   expect(fuel.get('mpg')?.value).toBe('30');
   expect(fuel.get('mpg')?.exact).toBe(false);
+  // A unit whose factor is a finite decimal but is not marked exact says so in the list.
+  const pressures = new Map(listUnits('pressure', '1', 'atm', 10).map((row) => [row.id, row]));
+  expect(pressures.get('Pa')).toMatchObject({ value: '101325', exact: true });
+  // Python fractions: 101325 / (13595.1 x 9.80665 x 0.001) = 965000000000/1269737023 = 759.9998917 (the torr is 760).
+  expect(pressures.get('mmHg')).toMatchObject({ value: '759.9998917', exact: false });
+  expect(pressures.get('Torr')).toMatchObject({ value: '760', exact: false });
+  expect(pressures.get('psi')).toMatchObject({ value: '14.69594878', exact: false });
   const angles = new Map(listUnits('angle', '1', 'rad', 10).map((row) => [row.id, row]));
   expect(angles.get('deg')?.value).toBe('57.29577951');
   expect(angles.get('gon')?.value).toBe('63.66197724');
   expect(angles.get('deg')?.exact).toBe(false);
+  expect(angles.get('rev')?.exact).toBe(false);
+  expect(angles.get('gon')?.exact).toBe(false);
   expect(angles.get('rad')?.exact).toBe(true);
   expect(angles.get('rev')?.value).toBe('0.1591549431');
   // A gon is exactly 0.9 degree because pi cancels (NIST SP 811 B.8, boldface 9.0 E-01).
@@ -560,6 +615,14 @@ it('an unknown unit is refused with the accepted names and a blank To lists ever
   expect(convertUnit('angle', '60', 'arcmin', DEGREE, 30).result).toBe('1');
   // pi to 50 digits comes from the library, not a typed constant: 180 degrees is pi radians.
   expect(convertUnit('angle', '180', DEGREE, 'rad', 30).result).toBe('3.14159265358979323846264338328');
+  // Python decimal, pi = 3.14159265358979323846264338327950288419716939937510582097494459230781640628620899 (OEIS A000796)
+  // divided by 180, 10 800, 648 000 and 200, and times 2, written to 50 significant digits (trailing zeros dropped):
+  const trim = (text: string): string => text.replace(/0+$/, '');
+  expect(findUnit('angle', 'deg').factor).toBe('0.017453292519943295769236907684886127134428718885417');
+  expect(findUnit('angle', 'arcmin').factor).toBe('0.00029088820866572159615394846141476878557381198142362');
+  expect(findUnit('angle', 'arcsec').factor).toBe(trim('0.0000048481368110953599358991410235794797595635330237270'));
+  expect(findUnit('angle', 'gon').factor).toBe('0.015707963267948966192313216916397514420985846996876');
+  expect(findUnit('angle', 'rev').factor).toBe('6.2831853071795864769252867665590057683943387987502');
 });
 
 it('all fourteen quantities have at least two units and every unit round-trips through the base unit', () => {
