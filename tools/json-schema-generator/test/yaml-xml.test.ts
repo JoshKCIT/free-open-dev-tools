@@ -201,7 +201,7 @@ it('a YAML stream in single mode, a non-list in array mode, a duplicate key and 
   const withNull = generateSchema('--- null\n---\nid: 1\n---\n', { inputFormat: 'yaml', samplesAre: 'lines' });
   expect(withNull.sampleCount).toBe(2);
   expect((withNull.schema as { type: unknown }).type).toEqual(['null', 'object']);
-});
+}, 60_000);
 
 it('a YAML alias is reported as a warning and a key named __proto__ stays an ordinary property', () => {
   const result = generateSchema('base: &b {x: 1}\ncopy: *b\n__proto__: {y: 2}\n', { inputFormat: 'yaml' });

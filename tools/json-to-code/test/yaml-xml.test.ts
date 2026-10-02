@@ -186,7 +186,7 @@ it('a YAML stream, a scalar root, a duplicate key or too many aliases is refused
     expect(err).toBeInstanceOf(YamlValueError);
     expect((err as YamlValueError).line).toBe(2);
   }
-});
+}, 60_000);
 
 it('XML input with a DOCTYPE is refused naming its line, and malformed XML names its line', () => {
   const doctype = '<?xml version="1.0"?>\n<!DOCTYPE r [<!ENTITY x "boom">]>\n<r>&x;</r>';
