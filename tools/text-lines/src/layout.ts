@@ -134,10 +134,17 @@ const codePointLength = (text: string): number => Array.from(text).length;
 export function wrapLine(line: string, width: number, breakLongWords: boolean): string[] {
   if (codePointLength(line) <= width) return [line];
 
+  // Each word with the run of spaces before it; spaces after the last word belong to no token. Two index loops, not a
+  // regular expression such as /( *)([^ ]+)/g, which retries from every position inside a long run of spaces at the end
+  // of the line and takes time that grows with the square of the run.
   const tokens: { gap: string; word: string }[] = [];
-  const pattern = /( *)([^ ]+)/g;
-  for (let match = pattern.exec(line); match !== null; match = pattern.exec(line)) {
-    tokens.push({ gap: match[1]!, word: match[2]! });
+  let at = 0;
+  while (at < line.length) {
+    const gapStart = at;
+    while (at < line.length && line[at] === ' ') at++;
+    const wordStart = at;
+    while (at < line.length && line[at] !== ' ') at++;
+    if (at > wordStart) tokens.push({ gap: line.slice(gapStart, wordStart), word: line.slice(wordStart, at) });
   }
   if (tokens.length === 0) return [line];
 
@@ -154,12 +161,19 @@ export function wrapLine(line: string, width: number, breakLongWords: boolean): 
       open = true;
       return;
     }
-    const pieces = Array.from(word);
-    out.push(lead + pieces.splice(0, Math.max(1, width - lead.length)).join(''));
-    while (pieces.length > width) out.push(pieces.splice(0, width).join(''));
-    current = pieces.join('');
-    currentLength = pieces.length;
-    open = pieces.length > 0;
+    // Cut by index: taking each piece off the front of the array with splice moves everything behind it every time,
+    // which is quadratic for a very long word cut into pieces of a few characters.
+    const chars = Array.from(word);
+    let at = Math.max(1, width - lead.length);
+    out.push(lead + chars.slice(0, at).join(''));
+    while (chars.length - at > width) {
+      out.push(chars.slice(at, at + width).join(''));
+      at += width;
+    }
+    const rest = chars.slice(at);
+    current = rest.join('');
+    currentLength = rest.length;
+    open = rest.length > 0;
   };
 
   tokens.forEach(({ gap, word }, index) => {
@@ -259,7 +273,12 @@ function parseV6(text: string): bigint | null {
  * else, including an address with a zone identifier such as %eth0, is not an address and gives null.
  */
 export function parseIp(line: string): ParsedIp | null {
-  const text = line.replace(/^[ \t]+|[ \t]+$/g, '');
+  // Trimmed with index loops: /^[ \t]+|[ \t]+$/g is quadratic on a long run of spaces inside the line.
+  let start = 0;
+  let end = line.length;
+  while (start < end && (line[start] === ' ' || line[start] === '\t')) start++;
+  while (end > start && (line[end - 1] === ' ' || line[end - 1] === '\t')) end--;
+  const text = line.slice(start, end);
   if (text === '') return null;
   let address = text;
   let prefix: number | null = null;
