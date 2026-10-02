@@ -663,7 +663,15 @@ test('text-lines: sorting as IP addresses puts 10.0.0.2 before 10.0.0.10 and IPv
   await fillField(page, 'input', '10.0.0.10\n::1\n10.0.0.2\nnot an address');
   const output = outputArea(page).locator('pre.output');
   await expect(output).toHaveText('10.0.0.2\n10.0.0.10\n::1\nnot an address', { timeout: 15_000 });
-  await expect(outputArea(page)).toContainText('1 of 4 lines were not IP addresses');
+  await expect(outputArea(page)).toContainText('1 of 4 lines is not an IP address');
+  // Two such lines are "are not IP addresses", and a blank last line (a trailing line break) is not counted as one.
+  await fillField(page, 'input', '10.0.0.10\nx\n10.0.0.2\ny\n');
+  await expect(outputArea(page)).toContainText('2 of 4 lines are not IP addresses', { timeout: 15_000 });
+  await fillField(page, 'input', '10.0.0.10\n10.0.0.2\n');
+  await expect(output).toHaveText('10.0.0.2\n10.0.0.10\n', { timeout: 15_000 });
+  await expect(outputArea(page)).not.toContainText('Not IP addresses');
+  // Back to the sample the next steps use.
+  await fillField(page, 'input', '10.0.0.10\n::1\n10.0.0.2\nnot an address');
 
   // Tabs to spaces, as GNU expand -t 4 prints it: a tab at column 1 reaches column 4, and one at a stop moves four.
   await setControls(page, { selects: { operation: 'tabs-to-spaces' } });

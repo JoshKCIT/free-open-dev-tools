@@ -74,8 +74,10 @@ export interface LinesResult {
   output: string;
   linesIn: number;
   linesOut: number;
-  /** Sorting as IP addresses only: how many lines were not addresses and so follow the sorted ones. */
+  /** Sorting as IP addresses only: how many lines were not addresses and so follow the sorted ones, blank lines included. */
   nonAddressLines?: number;
+  /** Sorting as IP addresses only: how many lines were blank (empty, or only spaces and tabs). Already part of `nonAddressLines`; a page that tells the reader how many lines failed to be an address leaves them out, since a blank line is not one that failed. */
+  blankLines?: number;
 }
 
 /** Splits on CRLF, LF or CR, so any of the three common line endings are read as line breaks. */
@@ -163,6 +165,7 @@ export function processLines(input: string, operation: LineOperation, options: L
   const linesIn = lines.length;
   let result: string[];
   let nonAddressLines: number | undefined;
+  let blankLines: number | undefined;
 
   switch (operation) {
     case 'sort': {
@@ -175,6 +178,7 @@ export function processLines(input: string, operation: LineOperation, options: L
         const others = parsed.filter((entry) => entry.ip === null).map((entry) => entry.line);
         addresses.sort(options.descending ? (a, b) => compareIp(b.ip, a.ip) : (a, b) => compareIp(a.ip, b.ip));
         result = [...addresses.map((entry) => entry.line), ...others];
+        blankLines = others.filter((line) => /^[ \t]*$/.test(line)).length;
         nonAddressLines = others.length;
         break;
       }
@@ -290,5 +294,5 @@ export function processLines(input: string, operation: LineOperation, options: L
   const output = result.join('\n');
   return nonAddressLines === undefined
     ? { output, linesIn, linesOut: result.length }
-    : { output, linesIn, linesOut: result.length, nonAddressLines };
+    : { output, linesIn, linesOut: result.length, nonAddressLines, blankLines };
 }

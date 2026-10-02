@@ -223,12 +223,20 @@ export default defineTool({
       });
 
       const outputs: OutputBlock[] = [{ kind: 'code', value: result.output }];
-      if (result.nonAddressLines !== undefined && result.nonAddressLines > 0) {
+      // Blank lines also follow the sorted addresses, but a blank line is not one that failed to be an address, so
+      // neither the count nor the total says anything about them (a trailing line break is a blank last line).
+      const blank = result.blankLines ?? 0;
+      const notAddresses = (result.nonAddressLines ?? 0) - blank;
+      const readLines = result.linesIn - blank;
+      if (notAddresses > 0) {
         outputs.push({
           kind: 'note',
           label: 'Not IP addresses',
           tone: 'info',
-          value: `${result.nonAddressLines} of ${result.linesIn} lines were not IP addresses, so they follow the sorted addresses in their original order.`,
+          value:
+            notAddresses === 1
+              ? `1 of ${readLines} lines is not an IP address, so it follows the sorted addresses in its original order.`
+              : `${notAddresses} of ${readLines} lines are not IP addresses, so they follow the sorted addresses in their original order.`,
         });
       }
       return {
