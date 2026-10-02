@@ -1279,5 +1279,12 @@
     "category": "json-data",
     "tier": 2,
     "summary": "Convert MessagePack and CBOR to JSON and back, from hex, Base64 or a file, with binary values and tags kept visible."
+  },
+  {
+    "id": "protobuf-decoder",
+    "name": "Protobuf Decoder (no schema)",
+    "category": "encoding",
+    "tier": 2,
+    "summary": "Decode raw Protocol Buffers bytes without a schema into field numbers, wire types and the values they could hold."
   }
 ]
