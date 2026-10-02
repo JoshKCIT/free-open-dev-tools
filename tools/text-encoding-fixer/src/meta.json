@@ -18,16 +18,25 @@
     "Text is not written into multi-byte legacy encodings such as Shift_JIS, GBK or Big5."
   ],
   "ambiguities": [
-    "The WHATWG label latin1 is Windows-1252, not ISO-8859-1: byte 80 is the euro sign, not a control character. True ISO-8859-1 is a separate choice here",
+    "The WHATWG label latin1 is Windows-1252, not ISO-8859-1: byte 80 is the euro sign, not a control character. True ISO-8859-1 is a separate choice here, and it applies to the Latin-1 labels only",
     "Windows-1252 has five bytes (81, 8D, 8F, 90 and 9D) that Microsoft leaves undefined; the WHATWG table maps them to the control characters U+0081, U+008D, U+008F, U+0090 and U+009D, so every byte decodes and every one of those characters repairs back",
-    "Text that is already correct UTF-8 can look repairable or not: plain ASCII is left alone, and accented text such as café does not decode as UTF-8 after being read as Windows-1252, so it is left as it is",
-    "A lone carriage return counts as a line ending, as it did on older Mac systems, and a carriage return followed by a line feed counts once",
+    "Text that is already correct UTF-8 cannot be told from garbled text by one rule: plain ASCII is left alone, and accented text such as café does not read as UTF-8 after being written back as Windows-1252, so it is left as it is and the page says why nothing was repaired",
+    "Decoding keeps a byte order mark as the character U+FEFF at the start of the text instead of dropping it; the byte order mark mode removes it",
+    "Adding a mark to bytes that start with a different mark replaces it, so there is never more than one; removing takes off the first mark only, and a start of FF FE is read as UTF-16LE even when 00 00 follows (which would be UTF-32LE)",
+    "A UTF-16 mark is added without converting the bytes after it: it is for bytes that are already UTF-16",
+    "A lone carriage return counts as a line ending, as it did on older Mac systems, and a carriage return followed by a line feed counts once; U+2028, U+2029 and U+0085 are ordinary characters here",
     "Positions in messages count characters (code points); byte views and sizes count bytes",
-    "Unknown encoding labels are refused rather than guessed, and a decoder that cannot be built in your browser is refused with the label named"
+    "Unknown encoding labels are refused rather than guessed, and a label the browser has no decoder for is refused with the label named"
   ],
   "standards": [
-    { "label": "WHATWG Encoding Standard", "url": "https://encoding.spec.whatwg.org/" },
-    { "label": "RFC 3629 UTF-8, a transformation format of ISO 10646", "url": "https://www.rfc-editor.org/rfc/rfc3629" }
+    {
+      "label": "WHATWG Encoding Standard",
+      "url": "https://encoding.spec.whatwg.org/"
+    },
+    {
+      "label": "RFC 3629 UTF-8, a transformation format of ISO 10646",
+      "url": "https://www.rfc-editor.org/rfc/rfc3629"
+    }
   ],
   "keywords": [
     "encoding",
@@ -45,6 +54,6 @@
   ],
   "primaryExport": "repairMojibake",
   "usage": "import { repairMojibake } from '@fodt/text-encoding-fixer';\n\nconst result = repairMojibake('cafÃ© â€™quotedâ€™', 'windows-1252', { perLine: false });\nconsole.log(result.text);\n// café ’quoted’\nconsole.log(result.changed);\n// true",
-  "apiNotes": "`repairMojibake(text, from, { perLine })` maps each character back to the byte the chosen table gives it and reads the bytes as UTF-8, returning `{ text, changed, unrepairedLines, problem }`; text that cannot be repaired comes back unchanged with `problem` saying why and where (a character position counting code points), and `perLine` repairs only the lines that decode. `decodeBytes(bytes, label, { strictLatin1 })` decodes with a WHATWG label, using the folder's own windows-1252 table, and counts replacement characters. `convertLineEndings(text, eol)` and `changeBom(bytes, action)` work in one pass. Every expected failure is a `TextEncodingFixerError` with a plain message and, where one applies, a `position`. Input over `MAX_INPUT_BYTES` (20 MiB) is refused before any decoding.",
-  "testNotes": "The windows-1252 table is checked against the WHATWG index file copied into test/fixtures, not against the decoder of the platform running the tests (Node and the browsers differ for this encoding). The garbled and repaired pairs come from Python 3.14.3: encoding the correct text as UTF-8 and decoding it as cp1252 gave the garbled text, quoted as literals in the test comment. Nothing is checked against this folder's own output."
+  "apiNotes": "`repairMojibake(text, from, { perLine })` maps each character back to the byte the chosen table gives it and reads the bytes as UTF-8, returning `{ text, changed, unrepairedLines, problem }`; text that cannot be repaired comes back unchanged with `problem` saying why and where (`outside-table` with the character, or `not-utf8`, a position counting code points from 1), and `perLine` repairs only the lines that decode, listing the others in `unrepairedLines` and keeping every line ending. `decodeBytes(bytes, label, { strictLatin1 })` decodes with a WHATWG label, using the folder's own windows-1252 table, and returns `{ text, encoding, replacements }`. `convertLineEndings(text, eol)` returns the text and how many LF, CRLF and CR it found; `changeBom(bytes, action)` returns the new bytes and the first 8 bytes before and after as hex. `parseHex(text)` reads pasted hex and `utf8Bytes(text)` writes text as UTF-8, refusing a lone surrogate. Every expected failure is a `TextEncodingFixerError` with a plain message and, where one applies, a `position`. Input over `MAX_INPUT_BYTES` (20 MiB) is refused before any decoding, by `checkInputSize` for bytes and `checkTextSize` for text.",
+  "testNotes": "The windows-1252, koi8-r and windows-1251 tables are checked against the WHATWG index files copied into test/fixtures (all 128 bytes of each), not against the decoder of the platform running the tests (Node and the browsers differ for windows-1252). The Shift_JIS rows are quoted from the standard's jis0208 index with the byte pairs its decoder gives them. The garbled and repaired pairs, the positions where ill-formed UTF-8 stops, the byte order marks and the line ending counts come from Python 3.14.3 (str.encode, bytes.decode, codecs and re), quoted as literals in the test comments. Nothing is checked against this folder's own output."
 }
