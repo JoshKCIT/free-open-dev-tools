@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { listRequests, readHar, requestDetail } from '../src/index';
-import { maskBodyText, maskPairs, maskUrl, maskValue } from '../src/sensitive';
+import { isSensitive, maskBodyText, maskPairs, maskUrl, maskValue } from '../src/sensitive';
 
 /*
  * Masking rules, checked at the edges the review of phase 13 found.
@@ -188,4 +188,108 @@ it('the list and the detail mask a password holding an at sign and count it once
     url: 'https://ghp_… (40 characters)@github.com/o/r.git',
     flags: 1,
   });
+});
+
+it('a header name follows the same word rule as a parameter name, and the word list covers the usual names of a key, a session, a signature and a credential', () => {
+  // Header names that used to be shown in clear.
+  for (const name of [
+    'X-Access-Token',
+    'Api-Key',
+    'X-Amz-Security-Token',
+    'x-goog-api-key',
+    'Ocp-Apim-Subscription-Key',
+    'X-Session-Id',
+    'X-Amz-Signature',
+    'X-Credential',
+    'X-Auth',
+    'X-Pwd',
+  ]) {
+    expect(isSensitive('header', name, 'some-value'), name).toBe(true);
+  }
+  // Parameter names that used to be shown in clear or not recognised.
+  for (const name of [
+    'x-amz-signature',
+    'auth',
+    'sessionid',
+    'PHPSESSID',
+    'pwd',
+    'pass',
+    'credential',
+    'credentials',
+    'x-goog-api-key',
+    'ocp-apim-subscription-key',
+    'apiKey',
+    'accessKey',
+    'privatekey',
+    'session_token',
+  ]) {
+    expect(isSensitive('param', name, 'some-value'), name).toBe(true);
+  }
+  // Ordinary names stay readable: a word has to be a whole part of the name, except the long ones that are never
+  // part of anything else.
+  for (const name of [
+    'Host',
+    'Accept',
+    'Content-Type',
+    'Cache-Control',
+    'User-Agent',
+    'WWW-Authenticate',
+    'Content-Length',
+    'author',
+    'authority',
+    'monkey',
+    'keyboard',
+    'design',
+    'passenger',
+    'compass',
+    'sort',
+    'page',
+    'q',
+  ]) {
+    expect(isSensitive('header', name, 'some-value'), `header ${name}`).toBe(false);
+    expect(isSensitive('param', name, 'some-value'), `param ${name}`).toBe(false);
+  }
+});
+
+it('a parameter list is split at a semicolon as well as at an ampersand, and a secret after a semicolon is masked', () => {
+  expect(maskPairs('a=1;token=abcdefghijkl')).toEqual({ text: 'a=1;token=abc… (12 characters)', count: 1 });
+  expect(maskPairs('a=1;b=2;password=hunter2024&c=3')).toEqual({
+    text: 'a=1;b=2;password=… (10 characters)&c=3',
+    count: 1,
+  });
+  // A sensitive name takes everything after its equals sign up to the next ampersand, semicolons included.
+  expect(maskPairs('token=abc;def&q=1')).toEqual({ text: 'token=a… (7 characters)&q=1', count: 1 });
+  // Nothing to mask: unchanged, order kept.
+  expect(maskPairs('a=1;b=2&c=x;y')).toEqual({ text: 'a=1;b=2&c=x;y', count: 0 });
+  expect(maskUrl('https://x/p?a=1;token=abcdefghijklmnop')).toEqual({
+    url: 'https://x/p?a=1;token=abcd… (16 characters)',
+    userinfo: 0,
+    params: 1,
+  });
+});
+
+it('headers named like a token, a key or a signature are masked, flagged and counted in the list and the detail', () => {
+  const recording = har([
+    entry({
+      request: {
+        headers: [
+          { name: 'X-Access-Token', value: 'abcdefghijklmnop' },
+          { name: 'Api-Key', value: 'abcdefghijklmnop' },
+          { name: 'Accept', value: 'text/html' },
+        ],
+        queryString: [{ name: 'x-amz-signature', value: 'abcdefghijklmnop' }],
+      },
+      response: { headers: [{ name: 'X-Amz-Security-Token', value: 'abcdefghijklmnop' }] },
+    }),
+  ]);
+  const detail = requestDetail(recording, 1, { reveal: false, bodies: false });
+  expect(detail.headers.map((h) => [h.value, h.sensitive])).toEqual([
+    ['abcd… (16 characters)', true],
+    ['abcd… (16 characters)', true],
+    ['text/html', false],
+  ]);
+  expect(detail.query[0]).toMatchObject({ value: 'abcd… (16 characters)', sensitive: true });
+  expect(detail.response.headers[0]).toMatchObject({ value: 'abcd… (16 characters)', sensitive: true });
+  expect(detail.flags).toBe(4);
+  expect(listRequests(recording, { ...LIST }).rows[0]!.flags).toBe(4);
 });

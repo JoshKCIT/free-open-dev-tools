@@ -237,9 +237,10 @@ function count(n: number): string {
 
 /** The rules the page uses to flag a value, in words. */
 const SENSITIVE_RULES = [
-  'Headers named Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token (RFC 7235, RFC 6265).',
+  'Headers named Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token (RFC 7235, RFC 6265), and any header or parameter named by the word rule below.',
   'Every cookie value, in the cookie lists (RFC 6265).',
-  'Query, form and posted parameters named key, apikey, api_key, sig or signature, or whose name holds token, secret, password or passwd (RFC 6750 names access_token).',
+  'The word rule for the name of a header, a query, form or posted parameter, a cookie or a body member: the name holds token, secret, password, passwd, credential, session or signature, or one of its words is key, sig, auth, pwd, pass or passcode (words are split at anything that is not a letter or digit and between a lower and an upper case letter, so x-goog-api-key and apiKey are found, and monkey, design and author are not). RFC 6750 names access_token.',
+  'Parameter lists are split at & and at ; (a=1;token=abc).',
   'In the user information of an address (everything before the last @ ahead of the first slash): everything after the first colon (RFC 3986 section 3.2.1), and a user name shaped like a token (a long run of letters and digits, or a prefix such as ghp_).',
   'Any value shaped like a JSON Web Token (RFC 7519) or a Bearer credential (RFC 6750), also inside a body.',
   'In a body: form fields and JSON members with those names.',

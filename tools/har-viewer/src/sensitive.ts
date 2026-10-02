@@ -23,9 +23,9 @@ export const SENSITIVE_HEADERS: readonly string[] = [
 ];
 
 /**
- * Query and form parameter names (lower case) whose value is sensitive: access_token is the name RFC 6750 sections 2.2
- * and 2.3 give a bearer token in a form body and a query, and the others are the usual names of a token, a key, a
- * secret, a password and a signature.
+ * Query, form and header names (lower case) that are sensitive as they stand: access_token is the name RFC 6750
+ * sections 2.2 and 2.3 give a bearer token in a form body and a query, and the others are the usual names of a token, a
+ * key, a secret, a password, a credential, a session and a signature.
  */
 export const SENSITIVE_PARAMS: readonly string[] = [
   'token',
@@ -34,16 +34,45 @@ export const SENSITIVE_PARAMS: readonly string[] = [
   'refresh_token',
   'api_key',
   'apikey',
+  'accesskey',
+  'privatekey',
   'key',
   'secret',
   'password',
   'passwd',
+  'pwd',
+  'pass',
+  'passcode',
+  'auth',
+  'credential',
+  'credentials',
+  'session',
+  'sessionid',
   'signature',
   'sig',
 ];
 
-/** A parameter name that holds one of these words is sensitive too (csrf_token, client_secret, new_password). */
-export const SENSITIVE_PARAM_WORDS: readonly string[] = ['token', 'secret', 'password', 'passwd'];
+/**
+ * A name that holds one of these words anywhere is sensitive (csrf_token, client_secret, new_password, X-Session-Id,
+ * x-amz-signature, PHPSESSID): they are long enough that they are not found inside other words.
+ */
+export const SENSITIVE_PARAM_WORDS: readonly string[] = [
+  'token',
+  'secret',
+  'password',
+  'passwd',
+  'credential',
+  'session',
+  'sessid',
+  'signature',
+];
+
+/**
+ * A name is sensitive too when one of its parts (split at anything that is not a letter or a digit, and between a
+ * lower case letter and an upper case one) is one of these short words, so x-goog-api-key and apiKey are found and
+ * monkey, keyboard, design, author and compass are not.
+ */
+export const SENSITIVE_PARAM_PARTS: readonly string[] = ['key', 'sig', 'auth', 'pwd', 'pass', 'passcode', 'apikey'];
 
 /** What a value is read as: a header value, a cookie value, or a query, form or posted parameter value. */
 export type ValueKind = 'header' | 'cookie' | 'param';
@@ -71,22 +100,29 @@ export function looksLikeBearer(value: string): boolean {
   return /^bearer[ \t]+\S/i.test(value.trim());
 }
 
+/** Whether a header, query, form or posted parameter name is sensitive: the same rule for all of them. */
 function nameIsSensitive(name: string): boolean {
-  const lower = name.trim().toLowerCase();
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
   if (SENSITIVE_PARAMS.includes(lower)) return true;
-  return SENSITIVE_PARAM_WORDS.some((word) => lower.includes(word));
+  if (SENSITIVE_PARAM_WORDS.some((word) => lower.includes(word))) return true;
+  const parts = trimmed
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/);
+  return parts.some((part) => SENSITIVE_PARAM_PARTS.includes(part));
 }
 
 /**
- * Whether a value is sensitive. A cookie value always is. A header is by its name, a parameter by its name or by one
- * of the words in its name, and any value is by its shape (a JWT, a Bearer credential). An empty value has nothing to
- * hide.
+ * Whether a value is sensitive. A cookie value always is. A header or a parameter is by its name (the listed names, a
+ * word in the name, or a part of it) and any value is by its shape (a JWT, a Bearer credential). An empty value has
+ * nothing to hide.
  */
 export function isSensitive(kind: ValueKind, name: string, value: string): boolean {
   if (value === '') return false;
   if (looksLikeJwt(value) || looksLikeBearer(value)) return true;
   if (kind === 'cookie') return true;
-  if (kind === 'header') return SENSITIVE_HEADERS.includes(name.trim().toLowerCase());
+  if (kind === 'header' && SENSITIVE_HEADERS.includes(name.trim().toLowerCase())) return true;
   return nameIsSensitive(name);
 }
 
@@ -124,7 +160,11 @@ function decode(text: string): string {
   }
 }
 
-/** Masks the sensitive values of a list of `name=value` pairs joined by `&`, and counts them. */
+/**
+ * Masks the sensitive values of a list of `name=value` pairs joined by `&` or `;`, and counts them. A sensitive name
+ * takes everything after its equals sign up to the next `&`, semicolons included; any other value is searched for
+ * `;name=value` pairs of its own (`a=1;token=...`).
+ */
 export function maskPairs(text: string): { text: string; count: number } {
   let count = 0;
   const pieces = text.split('&').map((piece) => {
@@ -132,9 +172,22 @@ export function maskPairs(text: string): { text: string; count: number } {
     if (equals < 0) return piece;
     const name = decode(piece.slice(0, equals));
     const value = decode(piece.slice(equals + 1));
-    if (!isSensitive('param', name, value)) return piece;
-    count++;
-    return `${piece.slice(0, equals + 1)}${maskValue(value, name)}`;
+    if (isSensitive('param', name, value)) {
+      count++;
+      return `${piece.slice(0, equals + 1)}${maskValue(value, name)}`;
+    }
+    const rest = piece.slice(equals + 1);
+    if (!rest.includes(';')) return piece;
+    const inner = rest.split(';').map((part, position) => {
+      const innerEquals = part.indexOf('=');
+      if (position === 0 || innerEquals < 0) return part;
+      const innerName = decode(part.slice(0, innerEquals));
+      const innerValue = decode(part.slice(innerEquals + 1));
+      if (!isSensitive('param', innerName, innerValue)) return part;
+      count++;
+      return `${part.slice(0, innerEquals + 1)}${maskValue(innerValue, innerName)}`;
+    });
+    return `${piece.slice(0, equals + 1)}${inner.join(';')}`;
   });
   return { text: pieces.join('&'), count };
 }
