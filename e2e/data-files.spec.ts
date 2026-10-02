@@ -288,6 +288,22 @@ const FILE_CASES: FileCase[] = [
     pressRun: false,
     expectText: MARKER,
   },
+  {
+    id: 'text-encoding-fixer',
+    // A legacy text file: the marker's ASCII bytes followed by the single byte 0x80, which the WHATWG Encoding Standard
+    // decodes as windows-1252 to the euro sign (index-windows-1252.txt, pointer 0 is 0x20AC). Decode mode is chosen
+    // first, windows-1252 is the page's default label, and the page runs as you type. Each browser decodes the
+    // byte correctly by itself (the research measured Chromium, Firefox and WebKit), so this row proves the page path
+    // end to end: the picked file is read in the page, shown with the right character, and goes nowhere.
+    file: () => ({
+      name: 'legacy.txt',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.concat([Buffer.from(MARKER, 'ascii'), Buffer.from([0x80])]),
+    }),
+    radios: { mode: 'decode' },
+    pressRun: false,
+    expectText: `${MARKER}€`,
+  },
 ];
 
 for (const c of FILE_CASES) {

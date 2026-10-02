@@ -4,5 +4,7 @@
     "values": { "hex": "80 81 9f e9", "encoding": "windows-1252" },
     "attachesFile": true
   },
-  { "mode": { "field": "mode", "value": "repair" }, "values": { "text": "cafÃ©" }, "attachesFile": false }
+  { "mode": { "field": "mode", "value": "repair" }, "values": { "text": "cafÃ©" }, "attachesFile": false },
+  { "mode": { "field": "mode", "value": "eol" }, "values": { "text": "one\ntwo" }, "attachesFile": true },
+  { "mode": { "field": "mode", "value": "bom" }, "values": { "hex": "68 65 6c 6c 6f" }, "attachesFile": false }
 ]
