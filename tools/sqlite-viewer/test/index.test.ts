@@ -55,6 +55,21 @@ it('a query on an empty in-memory database returns its rows and the 64-bit integ
   expect(consoleSpies.every((spy) => spy.mock.calls.length === 0)).toBe(true);
 });
 
+it('a REAL that holds a whole number shows its point, so it is not mistaken for an INTEGER, and infinity shows as Inf', () => {
+  // The SQLite shell prints select 1.0 as 1.0, select -0.0 as -0.0 and an overflowing REAL as Inf; an INTEGER 1 is 1.
+  const result = runSqlite(
+    null,
+    'select 1.0, -0.0, 2.5, 100.0, 1, 0, -3, 1e999, -1e999, 0.1, typeof(1.0), typeof(1);',
+    OPTIONS,
+  );
+  expect(result.results[0]!.rows).toEqual([
+    ['1.0', '-0.0', '2.5', '100.0', '1', '0', '-3', 'Inf', '-Inf', '0.1', 'real', 'integer'],
+  ]);
+  // A REAL too large for a plain digit string keeps the shortest form JavaScript gives, with no point added.
+  const huge = runSqlite(null, 'select 1e21, 123456789.0;', OPTIONS);
+  expect(huge.results[0]!.rows).toEqual([['1e+21', '123456789.0']]);
+});
+
 it('blank SQL on the committed fixture lists its table, view and index as sqlite_master records them', () => {
   // Fixture: test/fixtures/make-fixture.py (Python standard library sqlite3) wrote sample.sqlite with
   // PRAGMA page_size=1024, a table people, a view named_people and an index people_name, created in that order.

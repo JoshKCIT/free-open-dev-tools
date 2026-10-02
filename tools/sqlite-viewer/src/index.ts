@@ -116,11 +116,23 @@ function hexOf(bytes: Uint8Array, count: number): string {
   return hex.toUpperCase();
 }
 
+/**
+ * A REAL as the SQLite shell prints it: a whole number keeps its point (1.0, -0.0, so it is not read as an INTEGER) and
+ * infinity is Inf. (Integers arrive as bigint, so every number here is a REAL.)
+ */
+function showReal(value: number): string {
+  if (value === Infinity) return 'Inf';
+  if (value === -Infinity) return '-Inf';
+  if (Object.is(value, -0)) return '-0.0';
+  const text = String(value);
+  return /^-?\d+$/.test(text) ? `${text}.0` : text;
+}
+
 /** The text shown for one value: NULL, an integer of any size, a REAL in its shortest form, text, or a BLOB as X'hex'. */
 function showCell(value: Cell): string {
   if (value === null) return 'NULL';
   if (typeof value === 'bigint') return value.toString();
-  if (typeof value === 'number') return String(value);
+  if (typeof value === 'number') return showReal(value);
   if (typeof value === 'string') return value;
   return `X'${hexOf(value, 32)}${value.length > 32 ? '…' : ''}' (${value.length} bytes)`;
 }
