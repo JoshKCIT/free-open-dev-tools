@@ -257,7 +257,9 @@ export function writeXmlValue(value: unknown, options: XmlWriteOptions = {}): Xm
       warnings.push(
         keys.length === 0
           ? 'The input had no top-level key, so it was wrapped in a root element.'
-          : 'The input had more than one top-level key, so it was wrapped in a root element.',
+          : keys.length === 1
+            ? 'The only top-level key is an attribute or the text of an element, which cannot be a root element, so it was wrapped in a root element.'
+            : 'The input had more than one top-level key, so it was wrapped in a root element.',
       );
       body = writeElement(rootName, value, [], 0, state);
     }
