@@ -43,6 +43,27 @@ it('RFC 4180 the last record may or may not end with a line break', () => {
   ]);
 });
 
+it('RFC 4180 a field may be empty, so text that ends with a delimiter ends with an empty field, line break or not', () => {
+  // No final line break: the empty field after the last comma still counts.
+  expect(parseCsv('a,b,').rows).toEqual([['a', 'b', '']]);
+  expect(parseCsv('a,').rows).toEqual([['a', '']]);
+  expect(parseCsv(',').rows).toEqual([['', '']]);
+  expect(parseCsv('"a",').rows).toEqual([['a', '']]);
+  expect(parseCsv('a;', { delimiter: ';' }).rows).toEqual([['a', '']]);
+  expect(parseCsv('a\tb\t', { delimiter: '\t' }).rows).toEqual([['a', 'b', '']]);
+  // The same text with a final line break gave this all along.
+  expect(parseCsv('a,b,\n').rows).toEqual([['a', 'b', '']]);
+  expect(parseCsv('a,\r\n').rows).toEqual([['a', '']]);
+  // A last row with an empty last field has as many fields as the header above it.
+  expect(parseCsv('x,y,z\n1,x,').rows).toEqual([
+    ['x', 'y', 'z'],
+    ['1', 'x', ''],
+  ]);
+  // Text that does not end with a delimiter is unchanged.
+  expect(parseCsv('a,b').rows).toEqual([['a', 'b']]);
+  expect(parseCsv('').rows).toEqual([]);
+});
+
 it('formatCsv then parseCsv returns the same rows for fields with quotes, delimiters and line breaks', () => {
   const original = [
     ['name', 'quote'],

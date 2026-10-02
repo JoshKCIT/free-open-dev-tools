@@ -124,6 +124,8 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): CsvParseR
 
     if (i < n && source[i] === delimiter) {
       i++;
+      // Text that ends with a delimiter ends with an empty field (RFC 4180 allows one), which the loop never reaches.
+      if (i >= n) row.push('');
       continue;
     }
 
