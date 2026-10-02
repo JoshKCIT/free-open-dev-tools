@@ -263,7 +263,7 @@ function pairOf(kind: ValueKind, item: JsonObject, reveal: boolean): NameValue {
   const name = textOf(item.name);
   const value = textOf(item.value);
   const sensitive = isSensitive(kind, name, value);
-  return { name, value: sensitive && !reveal ? maskValue(value) : value, sensitive };
+  return { name, value: sensitive && !reveal ? maskValue(value, name) : value, sensitive };
 }
 
 function cookieOf(item: JsonObject, reveal: boolean): CookieRow {

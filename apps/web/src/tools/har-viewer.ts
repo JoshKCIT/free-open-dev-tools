@@ -182,7 +182,7 @@ const fields: Field[] = [
     label: 'Show sensitive values',
     type: 'checkbox',
     default: false,
-    help: 'Off: cookies, tokens, keys and passwords show only their first four characters and their length.',
+    help: 'Off: cookies, tokens, keys and passwords show at most their first four characters (none for a password) and their length.',
   },
   { name: 'bodies', label: 'Show bodies', type: 'checkbox', default: false },
   {
@@ -243,7 +243,7 @@ const SENSITIVE_RULES = [
   'A password in the user information of an address (RFC 3986 section 3.2.1).',
   'Any value shaped like a JSON Web Token (RFC 7519) or a Bearer credential (RFC 6750), also inside a body.',
   'In a body: form fields and JSON members with those names.',
-  'A masked value shows its first four characters (none when it has eight or fewer) and its length.',
+  'A masked value shows its first min(4, floor(length / 4)) characters and its length; a password, a secret and a value named like one show no character.',
 ];
 
 /** Name and value pairs as a block of facts; a flagged value says so in its name. */

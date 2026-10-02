@@ -90,16 +90,26 @@ export function isSensitive(kind: ValueKind, name: string, value: string): boole
   return nameIsSensitive(name);
 }
 
+/** Whether a name is one of a password (password, passwd, pwd, pass, passcode) or a secret: its value shows no character. */
+function namesAPassword(name: string): boolean {
+  const lower = name.trim().toLowerCase();
+  if (lower.includes('password') || lower.includes('passwd') || lower.includes('secret') || lower.includes('pwd')) {
+    return true;
+  }
+  return lower.split(/[^a-z0-9]+/).some((part) => part === 'pass' || part === 'passcode');
+}
+
 /**
- * Masks a value: its first four characters then its length, `abcd… (10 characters)`. A value of eight characters or
- * fewer shows none of them, because four of five characters is most of the value. Characters are counted as code
- * points, so a character outside the basic plane counts once.
+ * Masks a value: its first characters then its length, `abcd… (20 characters)`. It keeps min(4, floor(length / 4))
+ * characters, so a short value shows few or none of them (four of ten is too much of a ten-character secret), and it
+ * keeps none when the name of the value holds password, passwd, secret or pwd, or is pass or passcode. Characters are
+ * counted as code points, so a character outside the basic plane counts once.
  */
-export function maskValue(value: string): string {
+export function maskValue(value: string, name = ''): string {
   if (value === '') return '';
   const characters = Array.from(value);
-  const kept = characters.length > 8 ? characters.slice(0, 4).join('') : '';
-  return `${kept}… (${characters.length} characters)`;
+  const keep = namesAPassword(name) ? 0 : Math.min(4, Math.floor(characters.length / 4));
+  return `${characters.slice(0, keep).join('')}… (${characters.length} characters)`;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -124,7 +134,7 @@ export function maskPairs(text: string): { text: string; count: number } {
     const value = decode(piece.slice(equals + 1));
     if (!isSensitive('param', name, value)) return piece;
     count++;
-    return `${piece.slice(0, equals + 1)}${maskValue(value)}`;
+    return `${piece.slice(0, equals + 1)}${maskValue(value, name)}`;
   });
   return { text: pieces.join('&'), count };
 }
@@ -149,7 +159,7 @@ export function maskUrl(url: string): { url: string; userinfo: number; params: n
     const colon = info.indexOf(':');
     if (colon >= 0 && colon < info.length - 1) {
       userinfo = 1;
-      base = `${authority[1]}${info.slice(0, colon + 1)}${maskValue(decode(info.slice(colon + 1)))}${base.slice(authority[0].length - 1)}`;
+      base = `${authority[1]}${info.slice(0, colon + 1)}${maskValue(decode(info.slice(colon + 1)), 'password')}${base.slice(authority[0].length - 1)}`;
     }
   }
   if (query.length > 1) {
@@ -194,7 +204,7 @@ export function maskBodyText(text: string, mimeType: string): string {
   result = result.replace(JSON_MEMBER, (whole, rawName: string, colon: string, rawValue: string) => {
     const value = unescapeJson(rawValue);
     if (!isSensitive('param', unescapeJson(rawName), value)) return whole;
-    return `"${rawName}"${colon}"${JSON.stringify(maskValue(value)).slice(1, -1)}"`;
+    return `"${rawName}"${colon}"${JSON.stringify(maskValue(value, unescapeJson(rawName))).slice(1, -1)}"`;
   });
   result = result.replace(BEARER_TEXT, (match) => maskValue(match));
   result = result.replace(JWT_TEXT, (match) => maskValue(match));

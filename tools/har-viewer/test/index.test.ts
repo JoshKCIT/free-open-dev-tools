@@ -370,7 +370,8 @@ function sensitiveEntry(): Record<string, unknown> {
 it('sensitive headers, cookies, token-named parameters, JWT-shaped and Bearer values are flagged and masked until revealed', () => {
   const har = readHar(harText([sensitiveEntry()]));
 
-  // Masked: the first four characters and the length; every sensitive value is flagged.
+  // Masked: the first min(4, floor(length / 4)) characters and the length (none for a password); every sensitive value
+  // is flagged.
   const hidden = requestDetail(har, 1, { reveal: false, bodies: false });
   const pairs = (list: { name: string; value: string; sensitive: boolean }[]) =>
     list.map((item) => [item.name, item.value, item.sensitive]);
@@ -380,26 +381,26 @@ it('sensitive headers, cookies, token-named parameters, JWT-shaped and Bearer va
     ['Authorization', 'Bear… (27 characters)', true],
     ['Proxy-Authorization', 'Basi… (26 characters)', true],
     ['Cookie', 'them… (32 characters)', true],
-    ['X-API-Key', 'key-… (14 characters)', true],
-    ['X-Auth-Token', 'tok-… (14 characters)', true],
-    ['X-CSRF-Token', 'csrf… (15 characters)', true],
-    ['X-XSRF-Token', 'xsrf… (15 characters)', true],
+    ['X-API-Key', 'key… (14 characters)', true],
+    ['X-Auth-Token', 'tok… (14 characters)', true],
+    ['X-CSRF-Token', 'csr… (15 characters)', true],
+    ['X-XSRF-Token', 'xsr… (15 characters)', true],
     // A JWT-shaped value is flagged under any header name.
     ['X-Trace', `eyJ0… (${JWT.length} characters)`, true],
   ]);
   expect(hidden.cookies).toEqual([
-    { name: 'session', value: 'abcd… (12 characters)', sensitive: true, details: 'Path=/; HttpOnly' },
+    { name: 'session', value: 'abc… (12 characters)', sensitive: true, details: 'Path=/; HttpOnly' },
     // An empty value has nothing to hide.
     { name: 'empty', value: '', sensitive: false, details: '' },
   ]);
   expect(pairs(hidden.query)).toEqual([
     ['access_token', '0123… (16 characters)', true],
     ['page', '2', false],
-    ['Signature', 'sigs… (12 characters)', true],
+    ['Signature', 'sig… (12 characters)', true],
   ]);
   expect(pairs(hidden.postData!.params)).toEqual([
     ['username', 'ann', false],
-    ['password', 'hunt… (14 characters)', true],
+    ['password', '… (14 characters)', true],
   ]);
   expect(pairs(hidden.response.headers)).toEqual([
     ['Content-Type', 'text/html', false],
@@ -407,11 +408,11 @@ it('sensitive headers, cookies, token-named parameters, JWT-shaped and Bearer va
     ['Cache-Control', 'no-cache', false],
   ]);
   expect(hidden.response.cookies).toEqual([
-    { name: 'sid', value: 'abcd… (12 characters)', sensitive: true, details: '' },
+    { name: 'sid', value: 'abc… (12 characters)', sensitive: true, details: '' },
   ]);
   // The address: the password after the first colon of the user information (RFC 3986 section 3.2.1) and the
   // token parameter, in the query, are masked in place.
-  expect(hidden.url).toBe('https://ann:s3cr… (14 characters)@example.com/path?token=abcd… (16 characters)&q=1#frag');
+  expect(hidden.url).toBe('https://ann:… (14 characters)@example.com/path?token=abcd… (16 characters)&q=1#frag');
   // 8 request headers + 1 cookie + 2 query + 1 posted + 1 user information + 1 response header + 1 response cookie.
   expect(hidden.flags).toBe(15);
   const row = listRequests(har, { ...LIST }).rows[0]!;
@@ -487,15 +488,15 @@ it('sensitive headers, cookies, token-named parameters, JWT-shaped and Bearer va
   expect(isSensitive('header', 'X-Any', 'eyJhbGciOiJIUzI1NiJ9.e30')).toBe(false);
   expect(isSensitive('header', 'X-Any', 'eyJ0 not a token')).toBe(false);
 
-  // Masking keeps four characters of a value longer than eight, nothing of a value of eight or fewer (showing four
-  // of five would show most of it), counts characters and not UTF-16 units, and leaves an empty value empty.
-  expect(maskValue('abcdefghij')).toBe('abcd… (10 characters)');
-  expect(maskValue('abcdefghi')).toBe('abcd… (9 characters)');
-  expect(maskValue('abcdefgh')).toBe('… (8 characters)');
+  // Masking keeps min(4, floor(length / 4)) characters (a value of ten characters keeps two: four of ten would show
+  // too much of a short secret), counts characters and not UTF-16 units, and leaves an empty value empty.
+  expect(maskValue('abcdefghij')).toBe('ab… (10 characters)');
+  expect(maskValue('abcdefghi')).toBe('ab… (9 characters)');
+  expect(maskValue('abcdefgh')).toBe('ab… (8 characters)');
   expect(maskValue('a')).toBe('… (1 characters)');
   expect(maskValue('')).toBe('');
   const faces = String.fromCodePoint(0x1f600).repeat(10);
-  expect(maskValue(faces)).toBe(`${String.fromCodePoint(0x1f600).repeat(4)}… (10 characters)`);
+  expect(maskValue(faces)).toBe(`${String.fromCodePoint(0x1f600).repeat(2)}… (10 characters)`);
 });
 
 it('sensitive values inside bodies are masked: form fields, JSON members and token-shaped text', () => {
@@ -519,10 +520,10 @@ it('sensitive values inside bodies are masked: form fields, JSON members and tok
   );
   const hidden = requestDetail(har, 1, { reveal: false, bodies: true });
   expect(hidden.postData!.text).toBe(
-    'grant_type=password&username=ann&password=hunt… (14 characters)&access_token=abcd… (20 characters)&note=hello+there',
+    'grant_type=password&username=ann&password=… (14 characters)&access_token=abcd… (20 characters)&note=hello+there',
   );
   expect(hidden.body).toBe(
-    '{"access_token":"abcd… (20 characters)","name":"ann","nested":{"password":"zzzz… (12 characters)","Key":"k-12… (12 characters)"}}',
+    '{"access_token":"abcd… (20 characters)","name":"ann","nested":{"password":"… (12 characters)","Key":"k-1… (12 characters)"}}',
   );
   expect(JSON.parse(hidden.body!).name).toBe('ann');
   const plain = requestDetail(har, 2, { reveal: false, bodies: true });
@@ -1135,15 +1136,15 @@ it('the name and shape rules at their edges: words inside names, spaces, and wha
 
 it('masking pairs, addresses and bodies at their edges', () => {
   // Pairs: plus is a space and percent escapes are decoded before the value is masked and counted.
-  expect(maskPairs('password=ab+cd+ef+gh')).toEqual({ text: 'password=ab c… (11 characters)', count: 1 });
-  expect(maskPairs('password=a%20b%20c%20d%20e')).toEqual({ text: 'password=a b … (9 characters)', count: 1 });
+  expect(maskPairs('password=ab+cd+ef+gh')).toEqual({ text: 'password=… (11 characters)', count: 1 });
+  expect(maskPairs('password=a%20b%20c%20d%20e')).toEqual({ text: 'password=… (9 characters)', count: 1 });
   // A bad percent escape does not stop the masking: the value is taken as written.
   expect(maskPairs('password=%E0%A4%A')).toEqual({ text: 'password=… (8 characters)', count: 1 });
   // A piece with no equals sign has no value; the order and separators are kept; every masked value is counted.
   expect(maskPairs('password&q=1')).toEqual({ text: 'password&q=1', count: 0 });
   expect(maskPairs('passwdx&q=1')).toEqual({ text: 'passwdx&q=1', count: 0 });
   expect(maskPairs('password=abcdefghij&token=klmnopqrst&q=1')).toEqual({
-    text: 'password=abcd… (10 characters)&token=klmn… (10 characters)&q=1',
+    text: 'password=… (10 characters)&token=kl… (10 characters)&q=1',
     count: 2,
   });
 
@@ -1162,7 +1163,7 @@ it('masking pairs, addresses and bodies at their edges', () => {
   });
   // Parameters in the query and in the fragment are masked and counted.
   expect(maskUrl('https://x/p?token=abcdefghijklmnop&sig=zzzzzzzzzzzz&q=1')).toEqual({
-    url: 'https://x/p?token=abcd… (16 characters)&sig=zzzz… (12 characters)&q=1',
+    url: 'https://x/p?token=abcd… (16 characters)&sig=zzz… (12 characters)&q=1',
     userinfo: 0,
     params: 2,
   });
@@ -1177,16 +1178,16 @@ it('masking pairs, addresses and bodies at their edges', () => {
   const fields = 'x=1&password=abcdefghij';
   expect(maskBodyText(fields, 'text/plain')).toBe(fields);
   expect(maskBodyText(fields, '')).toBe(fields);
-  const maskedFields = 'x=1&password=abcd… (10 characters)';
+  const maskedFields = 'x=1&password=… (10 characters)';
   expect(maskBodyText(fields, 'Application/X-WWW-Form-Urlencoded')).toBe(maskedFields);
   expect(maskBodyText(fields, '  application/x-www-form-urlencoded  ')).toBe(maskedFields);
 
   // JSON members: spaces around the colon, an escaped name, an escaped quote in a value, a bad escape in a value.
   const bs = String.fromCharCode(92);
-  expect(maskBodyText('{"password" : "abcdefghij"}', '')).toBe('{"password" : "abcd… (10 characters)"}');
-  expect(maskBodyText(`{"pass${bs}u0077ord":"abcdefghij"}`, '')).toBe(`{"pass${bs}u0077ord":"abcd… (10 characters)"}`);
-  expect(maskBodyText(`{"password":"ab${bs}"cdefgh"}`, '')).toBe(`{"password":"ab${bs}"c… (9 characters)"}`);
-  expect(maskBodyText(`{"password":"abc${bs}xdefghij"}`, '')).toBe(`{"password":"abc${bs}${bs}… (12 characters)"}`);
+  expect(maskBodyText('{"password" : "abcdefghij"}', '')).toBe('{"password" : "… (10 characters)"}');
+  expect(maskBodyText(`{"pass${bs}u0077ord":"abcdefghij"}`, '')).toBe(`{"pass${bs}u0077ord":"… (10 characters)"}`);
+  expect(maskBodyText(`{"password":"ab${bs}"cdefgh"}`, '')).toBe(`{"password":"… (9 characters)"}`);
+  expect(maskBodyText(`{"password":"abc${bs}xdefghij"}`, '')).toBe(`{"password":"… (12 characters)"}`);
   expect(maskBodyText('{"note":"abcdefghij","n":1}', '')).toBe('{"note":"abcdefghij","n":1}');
 
   // Credentials inside text: any letter case of the scheme, not inside a longer word, dots and padding included,
@@ -1218,7 +1219,7 @@ it('a cut moves over the whole of a credential: its tilde, its padding, and not 
   const open = (index: number) => requestDetail(har, index, { reveal: false, bodies: true });
   expect(open(1).body).toBe(`${' '.repeat(102390)}Bear… (30 characters)`);
   expect(open(1).bodyNote).toContain('are shown');
-  expect(open(2).body).toBe(`${' '.repeat(102390)}Bear… (12 characters)`);
+  expect(open(2).body).toBe(`${' '.repeat(102390)}Bea… (12 characters)`);
   expect(open(2).bodyNote).toContain('are shown');
   expect(open(3).body).toBe(letters.slice(0, 102400));
   expect(open(3).bodyNote).toBe('The body is 200,002 characters long. The first 102,400 are shown.');

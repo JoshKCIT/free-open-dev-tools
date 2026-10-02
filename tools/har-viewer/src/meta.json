@@ -15,7 +15,7 @@
   "limits": [
     "Files up to 50 MiB; the first 20,000 entries are listed, 500 per page.",
     "No recorded request is ever sent, replayed or opened (a recording is read and never sent anywhere), and addresses are shown as text, never as links.",
-    "Sensitive values are masked to their first four characters and their length until you choose Show sensitive values; the rules are listed on this page and only catch what they describe.",
+    "Sensitive values are masked to a few of their first characters (one for every four characters of the value, at most four) and their length, and a password or secret shows none of its characters, until you choose Show sensitive values; the rules are listed on this page and only catch what they describe.",
     "Bodies are shown as text, up to 100 KB each; images and other binary bodies are not displayed.",
     "HAR files only: a recording in another format, or a HAR version before 1.1, is refused."
   ],
@@ -24,7 +24,7 @@
     "Size is the size of the returned content when the recording has one, otherwise the size of the body as received; a size of -1 means the recording does not have it and is shown as unknown",
     "The list keeps the order of the recording. The specification prefers entries sorted by start time but says a reader should not rely on it, so this page shows the order the file has; sorting by time, size or status is stable, and requests with equal keys stay in recording order",
     "The address filter looks at the address as it is shown, so a masked value cannot be found by searching for part of it until Show sensitive values is on",
-    "A value of five to eight characters is masked completely, because showing four characters of it would show most of it; longer values keep their first four characters",
+    "A masked value keeps the first min(4, floor(length / 4)) of its characters, so a short value shows few or none of them and a value of sixteen or more shows four; a value whose name holds password, passwd, secret or pwd (or is pass or passcode) shows none",
     "Masking looks at names and at the shape of a value. A secret in a body is found when it sits in a form field or a JSON member with a sensitive name, or has the shape of a token; a secret with another name and no recognisable shape is shown as it is"
   ],
   "standards": [
