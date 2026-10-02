@@ -31,7 +31,7 @@
     "YAML and XML input give the same types as the equivalent JSON; XML attributes become fields named with @_ and text beside them #text.",
     "XML text is read as numbers and booleans only while Read numbers and booleans is on; with it off every XML value is a string.",
     "With Read numbers and booleans on, XML text counts as a number only when it is written the way JSON writes one (no leading zeros, no plus sign, no hexadecimal), so 01234 and +4412 stay strings.",
-    "YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, an alias count at the library's limit of 100 and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.",
+    "YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, an alias count at the library's limit of 100, an expansion past 2,000,000 values once every alias is copied out, and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.",
     "A YAML anchor and its aliases are expanded into separate copies, and a YAML tag outside the core schema is not interpreted; each is reported as a warning.",
     "An XML document with a DOCTYPE is refused before it is read, so no entity is ever declared, loaded or expanded; comments, processing instructions and the XML declaration are dropped with a warning."
   ],

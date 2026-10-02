@@ -25,7 +25,7 @@
     "YAML samples follow the same samples modes as JSON; XML reads one document, with attributes as @_ properties and text as #text.",
     "With the XML array or lines choice the one document is used and a warning says so.",
     "XML text is read as numbers and booleans only while Read numbers and booleans is on; with it off every XML value is a string, and with it on text counts as a number only when it is written the way JSON writes one (no leading zeros, no plus sign, no hexadecimal).",
-    "YAML input refuses a repeated key, an alias count at the library's limit of 100 and nesting beyond 512 levels, and names the line and column of a syntax error; a YAML anchor and its aliases are expanded into separate copies and a tag outside the core schema is not interpreted, each reported as a warning.",
+    "YAML input refuses a repeated key, an alias count at the library's limit of 100, an expansion past 2,000,000 values once every alias is copied out, and nesting beyond 512 levels, and names the line and column of a syntax error; a YAML anchor and its aliases are expanded into separate copies and a tag outside the core schema is not interpreted, each reported as a warning.",
     "An XML document with a DOCTYPE is refused before it is read, so no entity is ever declared, loaded or expanded; comments, processing instructions and the XML declaration are dropped with a warning."
   ],
   "ambiguities": [

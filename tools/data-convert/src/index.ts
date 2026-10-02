@@ -39,6 +39,12 @@ export interface ConvertResult {
 const DEPTH_MESSAGE =
   'This document is nested more than 512 levels deep, so it was refused rather than risk freezing the tab.';
 
+const EXPANSION_MESSAGE =
+  'This YAML expands, once its aliases are copied out, to more than 2,000,000 values, so it was refused rather than risk freezing the tab.';
+
+/** The most values (scalars, lists and mappings) a YAML document may expand to once its aliases are copied out. */
+const MAX_YAML_NODES = 2_000_000;
+
 const ALIAS_BOMB_MESSAGE =
   'This document uses YAML aliases that expand into too much data, so it was refused rather than risk freezing the tab.';
 
@@ -62,6 +68,24 @@ interface YamlSourceScan {
   hasComment: boolean;
   hasNonCoreTag: boolean;
   hasAliasOrAnchor: boolean;
+}
+
+/**
+ * True when `value` holds more than `max` values counted the way a copy of it would be: a value that a YAML alias
+ * shares is counted every time it is used, which is what writing it out costs. Iterative, and stops at the limit.
+ */
+function exceedsNodeCount(value: unknown, max: number): boolean {
+  const stack: unknown[] = [value];
+  let nodes = 1;
+  while (stack.length > 0) {
+    const top = stack.pop();
+    if (top === null || typeof top !== 'object') continue;
+    const items = Array.isArray(top) ? top : Object.values(top as Record<string, unknown>);
+    nodes += items.length;
+    if (nodes > max) return true;
+    for (const item of items) stack.push(item);
+  }
+  return false;
 }
 
 /**
@@ -260,6 +284,7 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
       throw err;
     }
     if (exceedsDepth(resolved, MAX_JSON_DEPTH)) throw new DataConvertError(DEPTH_MESSAGE);
+    if (exceedsNodeCount(resolved, MAX_YAML_NODES)) throw new DataConvertError(EXPANSION_MESSAGE);
     return { output: doc.toString({ indent }), warnings: [] };
   }
 
@@ -328,6 +353,7 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
   }
 
   if (exceedsDepth(value, MAX_JSON_DEPTH)) throw new DataConvertError(DEPTH_MESSAGE);
+  if (from === 'yaml' && exceedsNodeCount(value, MAX_YAML_NODES)) throw new DataConvertError(EXPANSION_MESSAGE);
 
   if (from === 'yaml') {
     let sawTimestamp = false;

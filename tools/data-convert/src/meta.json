@@ -15,7 +15,7 @@
     "The YAML 1.2 core schema, so unquoted yes and no stay strings rather than becoming booleans",
     "TOML dates and times, read as strings with a warning since JSON and YAML core scalars have no date type",
     "TOML tables, arrays of tables and inline tables round tripping through JSON and back",
-    "A YAML alias bomb refused by an alias-count limit instead of being expanded",
+    "A YAML alias bomb refused instead of being expanded: by the library's alias-count limit, and by a limit of 2,000,000 values once every alias is copied out (an anchored list of 100,000 items used 99 times is 9.9 million)",
     "A key named __proto__ or constructor surviving every conversion as an ordinary key",
     "A parse error reported with a line and column for both YAML and TOML input"
   ],

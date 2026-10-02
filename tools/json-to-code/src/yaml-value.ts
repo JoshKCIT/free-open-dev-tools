@@ -6,9 +6,10 @@
  *  - YAML is read with the 1.2 core schema: `yes` and `no` are strings, `0o14` and `0x1F` are integers, a quoted
  *    scalar is always a string;
  *  - a mapping with the same key twice is refused, naming the second key's line and column;
- *  - aliases are limited by the library's own rule, `maxAliasCount: 100`: each use of an alias counts with the size of
- *    what it points at, so a document that expands about 100 aliases (99 pass for a one-value anchor, 100 do not) is
- *    refused rather than expanded;
+ *  - aliases are limited twice: by the library's own rule, `maxAliasCount: 100` (each use of an alias counts with the
+ *    number of aliases inside what it points at, so a one-value anchor can be used 99 times and not 100), and by a
+ *    count of the values the document expands to, aliases copied out: a document that expands to more than 2,000,000
+ *    values (an anchored list of 100,000 items used 99 times is 9.9 million) is refused rather than expanded;
  *  - a document nested deeper than 512 levels is refused, and so is text so deeply nested that reading it would
  *    exhaust the stack;
  *  - every error carries its line and column when the library knows them;
@@ -49,11 +50,17 @@ export interface YamlReadResult {
 
 const MAX_YAML_DEPTH = 512;
 
+/** The most values (scalars, lists and mappings) a document may expand to once its aliases are copied out. */
+const MAX_YAML_NODES = 2_000_000;
+
 const DEPTH_MESSAGE =
   'This document is nested more than 512 levels deep, so it was refused rather than risk freezing the tab.';
 
 const ALIAS_BOMB_MESSAGE =
   'This document uses YAML aliases that expand into too much data, so it was refused rather than risk freezing the tab.';
+
+const EXPANSION_MESSAGE =
+  'This YAML expands, once its aliases are copied out, to more than 2,000,000 values, so it was refused rather than risk freezing the tab.';
 
 const ALIAS_WARNING = 'A YAML anchor and its aliases were expanded into separate copies of the same value.';
 const TAG_WARNING = 'A YAML tag outside the core schema was dropped; the value is kept, the tag is not.';
@@ -70,11 +77,14 @@ const CORE_SCHEMA_TAGS = new Set([
 ]);
 
 /**
- * Walks a value without recursion. Returns `deep` when it is nested beyond `max` levels, and `odd` with a short
- * name for the first value that is not null, a boolean, a number, a string, an array or a plain object.
+ * Walks a value without recursion. Returns `deep` when it is nested beyond `max` levels, `tooMany` when it holds more
+ * than `MAX_YAML_NODES` values counted the way a copy of it would be (a value an alias shares is counted every time it
+ * is used), and `odd` with a short name for the first value that is not null, a boolean, a number, a string, an array
+ * or a plain object.
  */
-function inspectValue(value: unknown, max: number): { deep: boolean; odd?: string } {
+function inspectValue(value: unknown, max: number): { deep: boolean; tooMany?: boolean; odd?: string } {
   const stack: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
+  let nodes = 1;
   while (stack.length > 0) {
     const top = stack.pop()!;
     if (top.depth > max) return { deep: true };
@@ -83,6 +93,8 @@ function inspectValue(value: unknown, max: number): { deep: boolean; odd?: strin
     const type = typeof v;
     if (type === 'string' || type === 'number' || type === 'boolean') continue;
     if (Array.isArray(v)) {
+      nodes += v.length;
+      if (nodes > MAX_YAML_NODES) return { deep: false, tooMany: true };
       for (const item of v) stack.push({ value: item, depth: top.depth + 1 });
       continue;
     }
@@ -94,9 +106,10 @@ function inspectValue(value: unknown, max: number): { deep: boolean; odd?: strin
           odd: v instanceof Date ? 'a date' : v instanceof Uint8Array ? 'binary data' : 'an object',
         };
       }
-      for (const item of Object.values(v as Record<string, unknown>)) {
-        stack.push({ value: item, depth: top.depth + 1 });
-      }
+      const items = Object.values(v as Record<string, unknown>);
+      nodes += items.length;
+      if (nodes > MAX_YAML_NODES) return { deep: false, tooMany: true };
+      for (const item of items) stack.push({ value: item, depth: top.depth + 1 });
       continue;
     }
     return { deep: false, odd: type === 'bigint' ? 'a big integer' : 'a value' };
@@ -200,6 +213,7 @@ export function readYamlValue(text: string, options: YamlReadOptions): YamlReadR
     }
     const inspected = inspectValue(value, MAX_YAML_DEPTH);
     if (inspected.deep) throw new YamlValueError(DEPTH_MESSAGE);
+    if (inspected.tooMany) throw new YamlValueError(EXPANSION_MESSAGE);
     if (inspected.odd) {
       throw new YamlValueError(
         `This YAML holds ${inspected.odd} (made by an explicit tag such as !!binary or !!timestamp), which has no JSON form. Remove the tag to read it as text.`,
