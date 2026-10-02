@@ -556,3 +556,22 @@ it('a blank schema or a blank document gives nothing and never touches the engin
   expect(validateXml(untouched, NOTE_SCHEMA, '\t', { showWarnings: false })).toBeNull();
   expect(validateXml(untouched, '', '', { showWarnings: true })).toBeNull();
 });
+
+it('warnings are listed only when asked for and never change the verdict', () => {
+  // libxml2 reads an XML 1.1 declaration as 1.0 and says so as a warning, with a column because it comes from parsing.
+  const schema =
+    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="a" type="xs:anyType"/></xs:schema>';
+  const doc = '<?xml version="1.1"?><a/>';
+  expect(validateXml(libxml2, schema, doc, { showWarnings: false })).toEqual({
+    valid: true,
+    issues: [],
+    total: 0,
+    notLoaded: [],
+  });
+  expect(validateXml(libxml2, schema, doc, { showWarnings: true })).toEqual({
+    valid: true,
+    issues: [{ level: 'warning', message: "Unsupported version '1.1'", line: 1, column: 20, part: 'document' }],
+    total: 1,
+    notLoaded: [],
+  });
+});

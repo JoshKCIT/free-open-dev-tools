@@ -34,7 +34,7 @@
  */
 import XsdValidatorWorker from './workers/xsd-validator.worker.ts?worker&inline';
 import type { XsdValidatorJobMessage, XsdValidatorWorkerMessage } from './workers/xsd-validator.worker';
-import type { XsdIssue, XsdValidationResult } from '@fodt/xsd-validator';
+import type { NotLoadedReference, XsdIssue, XsdValidationResult } from '@fodt/xsd-validator';
 import type { RunContext } from './tool-ui';
 
 export const XSD_VALIDATOR_TIME_LIMIT_MS = 20000;
@@ -53,10 +53,17 @@ export class XsdValidatorRunError extends Error {
   readonly line?: number;
   readonly column?: number;
   readonly issues: XsdIssue[];
+  readonly notLoaded: NotLoadedReference[];
 
   constructor(
     message: string,
-    detail: { part?: 'schema' | 'document'; line?: number; column?: number; issues?: XsdIssue[] } = {},
+    detail: {
+      part?: 'schema' | 'document';
+      line?: number;
+      column?: number;
+      issues?: XsdIssue[];
+      notLoaded?: NotLoadedReference[];
+    } = {},
   ) {
     super(message);
     this.name = 'XsdValidatorRunError';
@@ -64,6 +71,7 @@ export class XsdValidatorRunError extends Error {
     this.line = detail.line;
     this.column = detail.column;
     this.issues = detail.issues ?? [];
+    this.notLoaded = detail.notLoaded ?? [];
   }
 }
 
@@ -137,6 +145,7 @@ export function xsdValidatorInWorker(
             line: data.line,
             column: data.column,
             issues: data.issues,
+            notLoaded: data.notLoaded,
           }),
         });
       }

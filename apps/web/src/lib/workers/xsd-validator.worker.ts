@@ -24,7 +24,13 @@
  * one synchronous engine call, so the page owns the limit and terminates it.
  */
 import * as libxml2 from '../../../../../tools/xsd-validator/node_modules/libxml2-wasm/lib/index.mjs';
-import { validateXml, XsdValidatorError, type XsdIssue, type XsdValidationResult } from '@fodt/xsd-validator';
+import {
+  validateXml,
+  XsdValidatorError,
+  type NotLoadedReference,
+  type XsdIssue,
+  type XsdValidationResult,
+} from '@fodt/xsd-validator';
 
 export interface XsdValidatorJobMessage {
   type: 'xsd-validator-job';
@@ -49,6 +55,7 @@ export interface XsdValidatorErrorMessage {
   line?: number;
   column?: number;
   issues?: XsdIssue[];
+  notLoaded?: NotLoadedReference[];
 }
 
 export type XsdValidatorWorkerMessage = XsdValidatorReadyMessage | XsdValidatorDoneMessage | XsdValidatorErrorMessage;
@@ -89,6 +96,7 @@ function handleJob(job: XsdValidatorJobMessage): void {
         line: err.line,
         column: err.column,
         issues: err.issues,
+        notLoaded: err.notLoaded,
       });
     } else {
       workerGlobal.postMessage({ type: 'xsd-validator-error', message: failureMessage(err) });

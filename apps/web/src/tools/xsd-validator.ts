@@ -1,4 +1,4 @@
-import { meta, XsdValidatorError, type XsdIssue } from '@fodt/xsd-validator';
+import { checkInputSizes, meta, XsdValidatorError, type NotLoadedReference, type XsdIssue } from '@fodt/xsd-validator';
 import { xsdValidatorInWorker, XsdValidatorRunError } from '../lib/run-xsd-validator-in-worker';
 import { defineTool, bool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
@@ -30,6 +30,18 @@ function partLabel(part: 'schema' | 'document' | undefined): string {
   if (part === 'schema') return 'Schema: ';
   if (part === 'document') return 'Document: ';
   return '';
+}
+
+/** The locations a schema names, listed as text and marked not loaded. */
+function notLoadedBlocks(references: NotLoadedReference[]): OutputBlock[] {
+  if (references.length === 0) return [];
+  return [
+    {
+      kind: 'list',
+      label: 'Not loaded',
+      items: references.map((ref) => `${ref.kind} ${ref.location} (line ${ref.line}): not loaded`),
+    },
+  ];
 }
 
 function issueRow(issue: XsdIssue): (string | number)[] {
@@ -74,6 +86,8 @@ export default defineTool({
     const showWarnings = bool(values, 'showWarnings');
 
     try {
+      // Refused before any worker starts, so an oversize text never reaches the engine.
+      checkInputSizes(schema, xml);
       const result = await xsdValidatorInWorker({ type: 'xsd-validator-job', schema, xml, showWarnings }, ctx);
       if (!result) return { outputs: [] };
 
@@ -91,7 +105,7 @@ export default defineTool({
       if (result.issues.length > 0) {
         outputs.push({
           kind: 'table',
-          label: 'Errors',
+          label: showWarnings ? 'Errors and warnings' : 'Errors',
           table: { headers: ['Line', 'Level', 'Message'], rows: result.issues.map(issueRow), mono: [0] },
         });
       }
@@ -102,13 +116,7 @@ export default defineTool({
           value: `Showing ${result.issues.length} of ${result.total}.`,
         });
       }
-      if (result.notLoaded.length > 0) {
-        outputs.push({
-          kind: 'list',
-          label: 'Not loaded',
-          items: result.notLoaded.map((ref) => `${ref.kind} ${ref.location} (line ${ref.line}): not loaded`),
-        });
-      }
+      outputs.push(...notLoadedBlocks(result.notLoaded));
       return { outputs };
     } catch (err) {
       // An abort rejection is let through rather than swallowed: the runner's own cancellation note already owns
@@ -128,7 +136,7 @@ export default defineTool({
             : [{ message: `${partLabel(err.part)}${err.message}`, line: err.line, column: err.column }];
         const warnings = showWarnings ? err.issues.filter((issue) => issue.level === 'warning') : [];
         return {
-          outputs: [],
+          outputs: notLoadedBlocks(err.notLoaded),
           errors: problems,
           ...(warnings.length > 0
             ? { warnings: warnings.map((issue) => `${partLabel(issue.part)}${issue.message}`) }

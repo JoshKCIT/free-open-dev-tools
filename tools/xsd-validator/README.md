@@ -33,6 +33,8 @@ Checks a pasted XML document against a pasted XML Schema and lists every error w
 - A schema with no global element for the document's root reports libxml2's own no matching global declaration error
 - After the first error inside an element, libxml2 may skip the rest of that element, so fixing one error can reveal others
 - A missing xs:import is only a warning in libxml2, and later errors can follow from the declarations that were not imported
+- Past line 65,535 an empty element such as an element written <x/> and followed by a line break is reported by libxml2 on the line after it; every other line is exact
+- The libxml2 inside the package (2.15.1) can word a message differently from an older libxml2, such as the one in lxml, even when both reject the same document
 
 ## Defined by
 
@@ -77,7 +79,7 @@ const result = validateXml(libxml2, schema, '<note>a short note</note>', { showW
 // result.valid is true and result.issues is []; a document that does not match lists each error with its line.
 ```
 
-`validateXml(engine, schemaText, xmlText, { showWarnings })` takes the libxml2-wasm module as its first argument, so the package never imports the engine itself; it returns null when either text is blank. It refuses a DOCTYPE in either text first, lists xs:import, xs:include, xs:redefine and xs:override locations as not loaded, compiles the schema and validates the document, and returns `{ valid, issues, total, notLoaded }` with at most 200 issues. Problems with the input (size, DOCTYPE, a schema that cannot be compiled, a document that is not well formed) are thrown as `XsdValidatorError` with `part` set to schema or document and a line when libxml2 gave one.
+`validateXml(engine, schemaText, xmlText, { showWarnings })` takes the libxml2-wasm module as its first argument, so the package never imports the engine itself; it returns null when either text is blank. It refuses a text over its size limit (`checkInputSizes`, counted in UTF-8 bytes) and a DOCTYPE in either text before anything is parsed, parses both texts with `xmlParseOptions(engine)` (no external entities, no network, big line numbers), lists the locations named by xs:import, xs:include, xs:redefine and xs:override as not loaded, compiles the schema and validates the document, and returns `{ valid, issues, total, notLoaded }` with at most 200 issues and `total` counting all of them. Problems with the input (size, DOCTYPE, a schema that cannot be compiled, a document that is not well formed) are thrown as `XsdValidatorError` with `part` set to schema or document, a line (and a column for well-formedness errors), every diagnostic libxml2 gave in `issues`, and the locations not loaded in `notLoaded`. Every document and the validator are disposed before the call returns.
 
 ## Dependencies
 
@@ -89,7 +91,7 @@ const result = validateXml(libxml2, schema, '<note>a short note</note>', { showW
 npm test
 ```
 
-libxml2's own wording is checked against a first-draft run of the same schema and document through libxml2 itself.
+The W3C XML Schema Primer's purchase order (po.xsd and po.xml) and three copies edited by one visible string replacement each are the published fixtures; their errors and lines are compared with Python lxml 6.1.1 (libxml2 2.11.9), a second binding of libxml2, and the engine's libxml2 is 2.15.1. A test starts a local HTTP server and names its address in every schema location and in an external entity: it must see no request. Line numbers are checked by counting lines in the pasted text, up to line 500003.
 
 ## Licence
 
