@@ -1244,5 +1244,12 @@
     "category": "json-data",
     "tier": 3,
     "summary": "Browse a SQLite database's tables and schema, run SQL on an in-memory copy, export results and download the changed file."
+  },
+  {
+    "id": "xsd-validator",
+    "name": "XML Schema (XSD) Validator",
+    "category": "code",
+    "tier": 3,
+    "summary": "Validate an XML document against a pasted XML Schema and list each error with its line number."
   }
 ]
