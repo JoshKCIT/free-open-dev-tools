@@ -31,7 +31,17 @@
       "url": "https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT"
     }
   ],
-  "keywords": ["hex", "hexdump", "hex viewer", "binary", "bytes", "file signature", "magic number", "file type", "offset"],
+  "keywords": [
+    "hex",
+    "hexdump",
+    "hex viewer",
+    "binary",
+    "bytes",
+    "file signature",
+    "magic number",
+    "file type",
+    "offset"
+  ],
   "primaryExport": "formatHexRows",
   "usage": "import { formatHexRows, identifyFile } from '@fodt/hex-viewer';\n\nconst bytes = new TextEncoder().encode('Hello');\nconsole.log(formatHexRows(bytes, 0, 16));\n// 00000000  48 65 6c 6c 6f                                    |Hello|\n\n// The first 512 bytes, the last 22 bytes and the size of a file name its type:\nconsole.log(identifyFile(bytes, bytes, bytes.length));",
   "apiNotes": "`formatHexRows(bytes, startOffset, bytesPerRow)` returns the rows of the canonical hexdump layout (8 digit hex offset, two spaces, the bytes in groups of eight, two spaces, `|text|`) with the rows joined by line breaks and no closing offset line. `parseHexInput(text)` reads pairs of hex digits with spaces or line breaks between them and refuses an odd digit count or a character that is not a digit, naming its position. `identifyFile(head, tail, size)` takes the first 512 bytes, the last 22 bytes and the byte size of a file and returns every name its signature bytes fit, each with its evidence and the address of the specification. Every expected failure is a `HexViewerError` with a plain message.",
