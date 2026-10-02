@@ -72,7 +72,8 @@ it('the 32 windows-1252 entries match the WHATWG index file and bytes A0 to FF a
   const all = Uint8Array.from({ length: 256 }, (_, byte) => byte);
   const decoded = decodeWindows1252(all);
   expect(Array.from(decoded, (character) => character.codePointAt(0))).toEqual(
-    all.map((byte) => (byte < 0x80 ? byte : index.get(byte - 0x80))),
+    // Array.from, not all.map: a Uint8Array would cut the code points to eight bits.
+    Array.from(all, (byte) => (byte < 0x80 ? byte : index.get(byte - 0x80))),
   );
   // The first and last table entries, as quoted in the research: byte 80 is the euro sign and byte 9F is Y with diaeresis.
   expect(WINDOWS_1252_HIGH[0]).toBe(0x20ac);
