@@ -74,10 +74,58 @@ export interface UnitDef {
 const d = (text: string | number): Dec => new D(text);
 const PI: Dec = D.acos(-1);
 
-/** Whether a quotient of two exact decimals is a finite decimal (the quotient and its check both come out whole). */
-export function terminates(num: Dec, den: Dec): boolean {
-  const q = num.div(den);
-  return q.sd() < 50 && q.times(den).eq(num);
+/** Decimal text (such as 0.0254, 1e-7 or 4.5359237E-1) as a whole-number fraction, numerator and denominator. */
+function fractionOf(text: string): [bigint, bigint] {
+  let body = text.trim().toLowerCase();
+  let exponent = 0;
+  const e = body.indexOf('e');
+  if (e >= 0) {
+    exponent = Number(body.slice(e + 1));
+    body = body.slice(0, e);
+  }
+  const negative = body.startsWith('-');
+  if (negative || body.startsWith('+')) body = body.slice(1);
+  const dot = body.indexOf('.');
+  const digits = dot < 0 ? body : body.slice(0, dot) + body.slice(dot + 1);
+  const places = dot < 0 ? 0 : body.length - dot - 1;
+  let n = BigInt(digits);
+  let d = 10n ** BigInt(places);
+  if (exponent >= 0) n *= 10n ** BigInt(exponent);
+  else d *= 10n ** BigInt(-exponent);
+  return [negative ? -n : n, d];
+}
+
+function gcd(a: bigint, b: bigint): bigint {
+  let x = a < 0n ? -a : a;
+  let y = b < 0n ? -b : b;
+  while (y !== 0n) [x, y] = [y, x % y];
+  return x;
+}
+
+/**
+ * Whether the product of the numerators over the product of the denominators (each a decimal text) is a finite decimal.
+ * This is decided with whole numbers, never with rounded decimal arithmetic: the fraction in lowest terms ends exactly
+ * when its denominator has no prime factor other than 2 and 5.
+ */
+export function factorEnds(numerators: readonly string[], denominators: readonly string[]): boolean {
+  let n = 1n;
+  let d = 1n;
+  for (const text of numerators) {
+    const [a, b] = fractionOf(text);
+    n *= a;
+    d *= b;
+  }
+  for (const text of denominators) {
+    const [a, b] = fractionOf(text);
+    n *= b;
+    d *= a;
+  }
+  if (n === 0n) return true;
+  if (d < 0n) d = -d;
+  let rest = d / gcd(n, d);
+  while (rest % 2n === 0n) rest /= 2n;
+  while (rest % 5n === 0n) rest /= 5n;
+  return rest === 1n;
 }
 
 interface Spec {
@@ -109,7 +157,7 @@ function unit(spec: Spec): UnitDef {
     den: den.toString(),
     pi: spec.pi === true,
     exact: spec.exact,
-    finite: spec.pi === true ? false : terminates(num, den),
+    finite: spec.pi === true ? false : factorEnds([num.toString()], [den.toString()]),
     definition: spec.definition,
   };
   if (spec.offset !== undefined) result.offset = spec.offset;

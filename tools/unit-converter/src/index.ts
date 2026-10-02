@@ -1,5 +1,5 @@
 import meta from './meta.json';
-import { D, UNITS, terminates, type Dec, type Quantity, type UnitDef } from './units';
+import { D, UNITS, factorEnds, type Dec, type Quantity, type UnitDef } from './units';
 
 export { meta, UNITS };
 export type { Quantity, UnitDef };
@@ -153,11 +153,13 @@ function linearRatio(from: UnitDef, to: UnitDef): { num: Dec; den: Dec } {
   return { num, den };
 }
 
-/** Whether a conversion factor between two units is a finite decimal, so it can be shown whole. */
+/**
+ * Whether a conversion factor between two units is a finite decimal, so it can be shown whole. Decided with whole-number
+ * fractions: the product of the two numerators and the two denominators is never rounded.
+ */
 function ratioTerminates(from: UnitDef, to: UnitDef): boolean {
   if (from.pi !== to.pi) return false;
-  const { num, den } = linearRatio(from, to);
-  return terminates(num, den);
+  return factorEnds([from.num, to.den], [from.den, to.num]);
 }
 
 /** Shows a number with the chosen significant digits, rounded half to even, in plain notation for exponents -7 to 20. */
