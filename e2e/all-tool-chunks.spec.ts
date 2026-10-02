@@ -4,7 +4,7 @@ import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * D-141: the release-wide proof that the complete 177-tool catalog's
+ * D-141: the release-wide proof that the complete 188-tool catalog's
  * deployed JavaScript is clean. Runs against the production build
  * (E2E_BASE_URL unset, playwright.config.ts:15) or the deployed site
  * (E2E_BASE_URL set) -- the same base-URL convention every other
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
  * test, with the reason named below.
  *
  * The whole file runs in one worker in declaration order (`mode: 'serial'`)
- * so the one expensive crawl over all 177 pages happens exactly once and is
+ * so the one expensive crawl over all 188 pages happens exactly once and is
  * shared by every test in this file, rather than once per test.
  *
  * SITE-02 (the last test) adds the per-page loading check on top of that one
@@ -217,7 +217,7 @@ async function crawlAllPages(browser: Browser, baseURL: string): Promise<CrawlSt
     throw new Error(`Could not find the entry bundle's own dynamic-import call site for: ${notWired.join(', ')}`);
   }
 
-  // 4. Visit every one of the 177 tool pages, once each, in its own fresh
+  // 4. Visit every one of the 188 tool pages, once each, in its own fresh
   //    browser context (a shared context would serve a repeated chunk like
   //    the shared react chunk from cache without a network round trip on
   //    the second and later visits, silently hiding it from the request
@@ -696,8 +696,8 @@ function getCrawl(browser: Browser, baseURL: string): Promise<CrawlState> {
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('the complete 177-tool catalog loads clean JavaScript', () => {
-  test('every one of the 177 catalog tools has a built page that loads its tool without an error', async ({
+test.describe('the complete 188-tool catalog loads clean JavaScript', () => {
+  test('every one of the 188 catalog tools has a built page that loads its tool without an error', async ({
     browser,
     baseURL,
   }, testInfo: TestInfo) => {
@@ -771,7 +771,7 @@ test.describe('the complete 177-tool catalog loads clean JavaScript', () => {
     ).toEqual([]);
   });
 
-  test('every JavaScript file the 177 tool pages load, inline workers included, carries no denylisted reference', async ({
+  test('every JavaScript file the 188 tool pages load, inline workers included, carries no denylisted reference', async ({
     browser,
     baseURL,
   }, testInfo: TestInfo) => {
