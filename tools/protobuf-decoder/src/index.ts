@@ -502,11 +502,13 @@ function readFields(
       const lengthEnd = varintEnd(bytes, pos, end);
       if (lengthEnd < 0) varintProblem(lengthEnd, pos, end, fieldStart, strict);
       const declared = varintNumber(bytes, pos, lengthEnd);
+      // The length as the exact whole number, for the refusal: a double holds only 53 bits.
+      const exactLength = varintValue(bytes, pos, lengthEnd);
       pos = lengthEnd;
       if (declared > end - pos) {
         fail(
           strict,
-          `The field starting at byte ${fieldStart} declares ${declared.toLocaleString('en-US')} ${declared === 1 ? 'byte' : 'bytes'} but only ${(end - pos).toLocaleString('en-US')} ${end - pos === 1 ? 'is' : 'are'} left.`,
+          `The field starting at byte ${fieldStart} declares ${exactLength.toLocaleString('en-US')} ${declared === 1 ? 'byte' : 'bytes'} but only ${(end - pos).toLocaleString('en-US')} ${end - pos === 1 ? 'is' : 'are'} left.`,
           fieldStart,
         );
       }
