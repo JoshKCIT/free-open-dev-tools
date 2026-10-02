@@ -1592,6 +1592,105 @@
       "tier": 2,
       "summary": "Format PHP code with Prettier and its PHP plugin, choosing width, indent, quotes, braces and trailing commas, with syntax errors shown by line and column.",
       "implemented": true
+    },
+    {
+      "id": "sqlite-viewer",
+      "name": "SQLite Database Viewer",
+      "category": "json-data",
+      "categoryLabel": "JSON and structured data",
+      "tier": 3,
+      "summary": "Browse a SQLite database's tables and schema, run SQL on an in-memory copy, export results and download the changed file.",
+      "implemented": true
+    },
+    {
+      "id": "xsd-validator",
+      "name": "XML Schema (XSD) Validator",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 3,
+      "summary": "Validate an XML document against a pasted XML Schema and list each error with its line number.",
+      "implemented": true
+    },
+    {
+      "id": "jq-playground",
+      "name": "jq Playground",
+      "category": "json-data",
+      "categoryLabel": "JSON and structured data",
+      "tier": 3,
+      "summary": "Run a jq filter against pasted JSON and see its output or error, with a time limit for runaway filters.",
+      "implemented": true
+    },
+    {
+      "id": "spreadsheet-converter",
+      "name": "Spreadsheet Converter (XLSX, CSV, TSV, JSON, XML)",
+      "category": "json-data",
+      "categoryLabel": "JSON and structured data",
+      "tier": 3,
+      "summary": "Turn an .xlsx sheet into CSV, TSV, JSON or XML, or CSV, TSV and JSON into an .xlsx file, without uploading anything.",
+      "implemented": true
+    },
+    {
+      "id": "hex-viewer",
+      "name": "Hex Viewer & File Identifier",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 2,
+      "summary": "View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature.",
+      "implemented": true
+    },
+    {
+      "id": "msgpack-cbor",
+      "name": "MessagePack & CBOR Converter",
+      "category": "json-data",
+      "categoryLabel": "JSON and structured data",
+      "tier": 2,
+      "summary": "Convert MessagePack and CBOR to JSON and back, from hex, Base64 or a file, with binary values and tags kept visible.",
+      "implemented": true
+    },
+    {
+      "id": "protobuf-decoder",
+      "name": "Protobuf Decoder (no schema)",
+      "category": "encoding",
+      "categoryLabel": "Encoding, escaping and numbers",
+      "tier": 2,
+      "summary": "Decode raw Protocol Buffers bytes without a schema into field numbers, wire types and the values they could hold.",
+      "implemented": true
+    },
+    {
+      "id": "text-encoding-fixer",
+      "name": "Text Encoding Fixer",
+      "category": "encoding",
+      "categoryLabel": "Encoding, escaping and numbers",
+      "tier": 2,
+      "summary": "Decode bytes in a legacy text encoding, repair UTF-8 read as Windows-1252, and convert line endings and byte order marks.",
+      "implemented": true
+    },
+    {
+      "id": "unit-converter",
+      "name": "Unit Converter",
+      "category": "reference",
+      "categoryLabel": "Reference tables",
+      "tier": 1,
+      "summary": "Convert length, mass, temperature, volume, area, speed, pressure, energy, power, angle, fuel economy, charge, frequency and time.",
+      "implemented": true
+    },
+    {
+      "id": "har-viewer",
+      "name": "HAR Viewer",
+      "category": "network",
+      "categoryLabel": "Network and web",
+      "tier": 3,
+      "summary": "List the requests in a browser network recording with headers, bodies and timings, with cookies and tokens flagged.",
+      "implemented": true
+    },
+    {
+      "id": "wsdl-explorer",
+      "name": "WSDL & SOAP Explorer",
+      "category": "network",
+      "categoryLabel": "Network and web",
+      "tier": 3,
+      "summary": "List a WSDL document's services, ports, operations and messages, and build a sample SOAP request for one.",
+      "implemented": true
     }
   ]
 }

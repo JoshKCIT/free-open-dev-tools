@@ -35,7 +35,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@wasm-fmt/gofmt](https://github.com/wasm-fmt/gofmt) | 0.7.3 | MIT | direct | tools/go-formatter |
 | [@wasm-fmt/ruff_fmt](https://github.com/wasm-fmt/ruff_fmt) | 0.15.20 | MIT | direct | tools/python-formatter |
 | [@wasm-fmt/shfmt](https://github.com/wasm-fmt/shfmt) | 0.2.7 | MIT | direct | tools/shell-formatter |
-| [@xmldom/xmldom](https://github.com/xmldom/xmldom) | 0.9.12 | MIT | direct | tools/xpath-tester |
+| [@xmldom/xmldom](https://github.com/xmldom/xmldom) | 0.9.12 | MIT | direct | tools/wsdl-explorer, tools/xpath-tester |
 | [@zxcvbn-ts/core](https://github.com/zxcvbn-ts/zxcvbn) | 4.2.0 | MIT | direct | tools/password-strength |
 | [@zxcvbn-ts/dictionary-compression](https://github.com/zxcvbn-ts/dictionary-compression) | 3.0.1 | MIT | transitive (via @zxcvbn-ts/language-common, @zxcvbn-ts/language-en) | tools/password-strength |
 | [@zxcvbn-ts/language-common](https://github.com/zxcvbn-ts/zxcvbn) | 4.1.3 | MIT | direct | tools/password-strength |
@@ -72,7 +72,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [culori]() | 4.0.2 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [debug](git://github.com/debug-js/debug) | 4.4.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [decamelize]() | 1.2.0 | MIT | transitive (via yargs, yargs-parser) | tools/qr-generator |
-| [decimal.js](https://github.com/MikeMcl/decimal.js) | 10.6.0 | MIT | direct | tools/ad-metrics, tools/compound-interest, tools/credit-card-payoff, tools/currency-markup, tools/depreciation, tools/freelance-rate, tools/investment-return, tools/invoice-maker, tools/loan-calculator, tools/npv-irr, tools/payment-fees, tools/percentage-calculator, tools/profit-margin, tools/salary-converter, tools/sales-tax, tools/stock-metrics |
+| [decimal.js](https://github.com/MikeMcl/decimal.js) | 10.6.0 | MIT | direct | tools/ad-metrics, tools/compound-interest, tools/credit-card-payoff, tools/currency-markup, tools/depreciation, tools/freelance-rate, tools/investment-return, tools/invoice-maker, tools/loan-calculator, tools/npv-irr, tools/payment-fees, tools/percentage-calculator, tools/profit-margin, tools/salary-converter, tools/sales-tax, tools/stock-metrics, tools/unit-converter |
 | [decode-named-character-reference]() | 1.3.0 | MIT | transitive (via mdast-util-from-markdown, micromark, micromark-core-commonmark, micromark-util-decode-string) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [dequal]() | 2.0.3 | MIT | transitive (via devlop) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [devlop]() | 1.1.0 | MIT | transitive (via mdast-util-from-markdown, mdast-util-gfm-autolink-literal, mdast-util-gfm-footnote, mdast-util-gfm-table, mdast-util-gfm-task-list-item, micromark, micromark-core-commonmark, micromark-extension-gfm-footnote, micromark-extension-gfm-strikethrough, micromark-extension-gfm-table, micromark-extension-gfm-task-list-item, micromark-factory-label, micromark-util-subtokenize) | tools/bbcode, tools/markdown-html, tools/readme-generator |
@@ -98,7 +98,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
-| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
+| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/spreadsheet-converter |
 | [find-up]() | 4.1.0 | MIT | transitive (via yargs) | tools/qr-generator |
 | [get-caller-file](https://github.com/stefanpenner/get-caller-file#readme) | 2.0.5 | ISC | transitive (via yargs) | tools/qr-generator |
 | [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-formatter, tools/graphql-to-typescript |
@@ -107,8 +107,10 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
 | [is-fullwidth-code-point]() | 3.0.0 | MIT | transitive (via string-width) | tools/qr-generator |
 | [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [jq-wasm](https://github.com/owenthereal/jq-wasm#readme) | 3.0.0-jq-1.8.2 | MIT | direct | tools/jq-playground |
 | [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 1.0.0 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [jsonpath-rfc9535](https://github.com/P0lip/jsonpath-rfc9535) | 1.3.0 | Apache-2.0 | direct | tools/jsonpath |
+| [libxml2-wasm](https://jameslan.github.io/libxml2-wasm/) | 0.7.2 | MIT | direct | tools/xsd-validator |
 | [linguist-languages](https://github.com/ikatyang-collab/linguist-languages#readme) | 8.2.0 | MIT | transitive (via @prettier/plugin-php) | tools/php-formatter |
 | [locate-path]() | 5.0.0 | MIT | transitive (via find-up) | tools/qr-generator |
 | [longest-streak]() | 3.1.0 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
@@ -195,6 +197,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [source-map-js](https://github.com/7rulnik/source-map-js) | 1.2.1 | BSD-3-Clause | transitive (via css-tree) | tools/css-formatter, tools/html-formatter, tools/svg-optimizer |
 | [source-map-support](https://github.com/evanw/node-source-map-support) | 0.5.21 | MIT | transitive (via terser) | tools/html-formatter, tools/js-formatter |
 | [sql-formatter](https://github.com/sql-formatter-org/sql-formatter) | 15.9.0 | MIT | direct | tools/sql-formatter |
+| [sql.js](http://github.com/sql-js/sql.js) | 1.14.2 | MIT | direct | tools/sqlite-viewer |
 | [string-width]() | 4.2.3 | MIT | transitive (via cliui, wrap-ansi, yargs) | tools/qr-generator |
 | [strip-ansi]() | 6.0.1 | MIT | transitive (via cliui, string-width, wrap-ansi) | tools/qr-generator |
 | [strnum](https://github.com/NaturalIntelligence/strnum) | 2.4.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
@@ -3210,6 +3213,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### jq-wasm 3.0.0-jq-1.8.2
+
+Licence: MIT
+
+```text
+Copyright (c) 2024 Owen Ou
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### json-schema-traverse 1.0.0
 
 Licence: MIT
@@ -3433,6 +3462,39 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+```
+
+### libxml2-wasm 0.7.2
+
+Licence: MIT
+
+```text
+MIT License
+
+Copyright (c) 2023 James Lan
+
+This license applies to the libxml2-wasm wrapper code only. The published
+npm package additionally bundles a WebAssembly build of libxml2, which is
+distributed under its own license; see LICENSE.libxml2 for the libxml2
+copyright notice and license terms.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ### linguist-languages 8.2.0
@@ -6156,6 +6218,57 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### sql.js 1.14.2
+
+Licence: MIT
+
+```text
+MIT license
+===========
+
+Copyright (c) 2017 sql.js authors (see AUTHORS)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+# Some portions of the Makefile taken from:
+Copyright 2017 Ryusei Yamaguchi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### string-width 4.2.3
 
 Licence: MIT
@@ -6734,6 +6847,9 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | Go standard library 1.25.5 | BSD-3-Clause | `tools/go-formatter` | [source](https://github.com/golang/go/tree/go1.25.5/src/go/format) |
 | TinyGo runtime | BSD-3-Clause | `tools/go-formatter` | [source](https://github.com/tinygo-org/tinygo/tree/v0.40.1) |
 | IANA Language Subtag Registry | CC0-1.0 | `tools/hreflang` | [source](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry) |
+| Emscripten runtime | MIT | `tools/jq-playground` | [source](https://github.com/emscripten-core/emscripten/tree/6.0.0) |
+| jq 1.8.2 | MIT | `tools/jq-playground` | [source](https://github.com/jqlang/jq/tree/jq-1.8.2) |
+| Oniguruma | BSD-2-Clause | `tools/jq-playground` | [source](https://github.com/kkos/oniguruma/tree/4ef89209a239c1aea328cf13c05a2807e5c146d1) |
 | HTML Living Standard SVG tag-name adjustment table | CC-BY-4.0 | `tools/jsx-converter` | [source](https://html.spec.whatwg.org/multipage/parsing.html) |
 | React possibleStandardNames (attribute names) | MIT | `tools/jsx-converter` | [source](https://github.com/facebook/react/blob/d083ec1da1e5252abd3ddfdde6dfbc09701a2c51/packages/react-dom-bindings/src/shared/possibleStandardNames.js) |
 | Kubernetes OpenAPI-derived JSON Schema subset (twelve kinds, v1.35.0) | Apache-2.0 | `tools/k8s-validator` | [source](https://github.com/yannh/kubernetes-json-schema) |
@@ -6748,7 +6864,11 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | schema.org vocabulary subset | CC-BY-SA-3.0 | `tools/schema-markup` | [source](https://github.com/schemaorg/schemaorg/blob/main/data/releases/30.1/schemaorg-current-https.jsonld) |
 | mvdan/sh 3.13.1 | BSD-3-Clause | `tools/shell-formatter` | [source](https://github.com/mvdan/sh/tree/v3.13.1) |
 | TinyGo runtime | BSD-3-Clause | `tools/shell-formatter` | [source](https://github.com/tinygo-org/tinygo/tree/v0.40.1) |
+| Emscripten runtime | MIT | `tools/sqlite-viewer` | [source](https://github.com/emscripten-core/emscripten/tree/2.0.15) |
+| SQLite 3.49.1 | Public domain | `tools/sqlite-viewer` | [source](https://sqlite.org/2025/sqlite-amalgamation-3490100.zip) |
 | Tailwind CSS 4.3.3 default theme | MIT | `tools/tailwind-css` | [source](https://github.com/tailwindlabs/tailwindcss/blob/v4.3.3/packages/tailwindcss/theme.css) |
+| Emscripten runtime | MIT | `tools/xsd-validator` | [source](https://github.com/emscripten-core/emscripten/tree/5.0.2) |
+| libxml2 | MIT | `tools/xsd-validator` | [source](https://github.com/jameslan/libxml2/tree/f52e859efe97cf3f0b78d731976402748878529a) |
 
 ### Code page 437 to Unicode mapping table (bundled into `tools/archive-toolkit`)
 
@@ -7968,6 +8088,336 @@ and shown on the hreflang page.
 Attribution: IANA Language Subtag Registry, dedicated to the public domain
 by IANA and IETF under CC0 1.0
 (https://creativecommons.org/publicdomain/zero/1.0/legalcode).
+```
+
+### Emscripten runtime (bundled into `tools/jq-playground`)
+
+Licence: MIT ([full text](https://github.com/emscripten-core/emscripten/blob/6.0.0/LICENSE))
+
+Attribution: Copyright (c) 2010-2014 Emscripten authors. The Dockerfile of jq-wasm 3.0.0-jq-1.8.2 builds with Emscripten 6.0.0, and the Emscripten runtime and C library are part of the module that jq-wasm 3.0.0-jq-1.8.2 ships. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.
+
+```text
+Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.
+
+Both are permissive open source licenses, with little if any
+practical difference between them.
+
+The reason for offering both is that (1) the MIT license is
+well-known, while (2) the University of Illinois/NCSA Open Source
+License allows Emscripten's code to be integrated upstream into
+LLVM, which uses that license, should the opportunity arise.
+
+The full text of both licenses follows.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal with the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+    Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimers.
+
+    Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimers
+    in the documentation and/or other materials provided with the
+    distribution.
+
+    Neither the names of Mozilla,
+    nor the names of its contributors may be used to endorse
+    or promote products derived from this Software without specific prior
+    written permission. 
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+
+==============================================================================
+
+This program uses portions of Node.js source code located in src/library_path.js,
+in accordance with the terms of the MIT license. Node's license follows:
+
+    """
+        Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to
+        deal in the Software without restriction, including without limitation the
+        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        IN THE SOFTWARE.
+    """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+```
+
+### jq 1.8.2 (bundled into `tools/jq-playground`)
+
+Licence: MIT ([full text](https://github.com/jqlang/jq/blob/jq-1.8.2/COPYING))
+
+Attribution: jq is copyright (C) 2012 Stephen Dolan. jq 1.8.2 is compiled into the WebAssembly module that jq-wasm 3.0.0-jq-1.8.2 ships (dist/build/jq.wasm and, as base64, dist/inline.mjs). The notice file is jq's COPYING, which also carries the notices for David M. Gay's dtoa.c and g_fmt.c, the decNumber library (ICU License), the Heimdal and NetBSD portions, and the CC BY 3.0 notice for jq's documentation.
+
+```text
+jq is copyright (C) 2012 Stephen Dolan
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+
+jq's documentation (everything found under the docs/ subdirectory in
+the source tree) is licensed under the Creative Commons CC BY 3.0
+license, which can be found at:
+
+         https://creativecommons.org/licenses/by/3.0/
+
+The documentation website includes a copy of Twitter's Bootstrap and
+relies on Bonsai, Liquid templates and various other projects, look
+them up for detailed licensing conditions.
+
+
+
+jq incorporates David M. Gay's dtoa.c and g_fmt.c, which bear the
+following notices:
+
+dtoa.c:
+The author of this software is David M. Gay.
+
+Copyright (c) 1991, 2000, 2001 by Lucent Technologies.
+
+Permission to use, copy, modify, and distribute this software for any
+purpose without fee is hereby granted, provided that this entire notice
+is included in all copies of any software which is or includes a copy
+or modification of this software and in all copies of the supporting
+documentation for such software.
+
+THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTY.  IN PARTICULAR, NEITHER THE AUTHOR NOR LUCENT MAKES ANY
+REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY
+OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
+
+g_fmt.c:
+The author of this software is David M. Gay.
+
+Copyright (c) 1991, 1996 by Lucent Technologies.
+
+Permission to use, copy, modify, and distribute this software for any
+purpose without fee is hereby granted, provided that this entire notice
+is included in all copies of any software which is or includes a copy
+or modification of this software and in all copies of the supporting
+documentation for such software.
+
+THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTY.  IN PARTICULAR, NEITHER THE AUTHOR NOR LUCENT MAKES ANY
+REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY
+OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
+
+
+
+jq uses parts of the open source C library "decNumber", which is distributed
+under the following license:
+
+
+ICU License - ICU 1.8.1 and later
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright (c) 1995-2005 International Business Machines Corporation and others
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, provided that the above
+copyright notice(s) and this permission notice appear in all copies of
+the Software and that both the above copyright notice(s) and this
+permission notice appear in supporting documentation.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+HOLDERS INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL
+INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING
+FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
+WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder
+shall not be used in advertising or otherwise to promote the sale, use
+or other dealings in this Software without prior written authorization
+of the copyright holder.
+
+--------------------------------------------------------------------------------
+All trademarks and registered trademarks mentioned herein are the property of their respective owners.
+
+
+
+jv_thread.h is copied from Heimdal's lib/base/heimbase.h and some code
+in jv.c is copied from Heimdal's lib/base/dll.c:
+
+
+Portions Copyright (c) 2016 Kungliga Tekniska Högskolan
+(Royal Institute of Technology, Stockholm, Sweden).
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+jq uses a modified version of NetBSD implementation strptime(),
+which is distributed under the following license:
+
+Copyright (c) 1997, 1998, 2005, 2008 The NetBSD Foundation, Inc.
+All rights reserved.
+
+This code was contributed to The NetBSD Foundation by Klaus Klein.
+Heavily optimised by David Laight
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+```
+
+### Oniguruma (bundled into `tools/jq-playground`)
+
+Licence: BSD-2-Clause ([full text](https://github.com/kkos/oniguruma/blob/4ef89209a239c1aea328cf13c05a2807e5c146d1/COPYING))
+
+Attribution: Copyright (c) 2002-2021 K.Kosako. Oniguruma, the regular expression library, is built into jq (the jq-wasm build passes --with-oniguruma=builtin) from the commit that jq 1.8.2 pins at vendor/oniguruma, and is therefore inside the WebAssembly module that jq-wasm 3.0.0-jq-1.8.2 ships.
+
+```text
+Oniguruma LICENSE
+-----------------
+
+Copyright (c) 2002-2021  K.Kosako  <kkosako0@gmail.com>
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
 ```
 
 ### HTML Living Standard SVG tag-name adjustment table (bundled into `tools/jsx-converter`)
@@ -9369,6 +9819,158 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+### Emscripten runtime (bundled into `tools/sqlite-viewer`)
+
+Licence: MIT ([full text](https://github.com/emscripten-core/emscripten/blob/2.0.15/LICENSE))
+
+Attribution: Copyright (c) 2010-2014 Emscripten authors. The Makefile of sql.js 1.14.2 says its WebAssembly was last built with Emscripten 2.0.15, and the Emscripten runtime and C library are part of that module. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.
+
+```text
+Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.
+
+Both are permissive open source licenses, with little if any
+practical difference between them.
+
+The reason for offering both is that (1) the MIT license is
+well-known, while (2) the University of Illinois/NCSA Open Source
+License allows Emscripten's code to be integrated upstream into
+LLVM, which uses that license, should the opportunity arise.
+
+The full text of both licenses follows.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal with the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+    Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimers.
+
+    Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimers
+    in the documentation and/or other materials provided with the
+    distribution.
+
+    Neither the names of Mozilla,
+    nor the names of its contributors may be used to endorse
+    or promote products derived from this Software without specific prior
+    written permission. 
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+
+==============================================================================
+
+This program uses portions of Node.js source code located in src/library_path.js,
+in accordance with the terms of the MIT license. Node's license follows:
+
+    """
+        Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to
+        deal in the Software without restriction, including without limitation the
+        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        IN THE SOFTWARE.
+    """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+```
+
+### SQLite 3.49.1 (bundled into `tools/sqlite-viewer`)
+
+Licence: Public domain ([full text](https://www.sqlite.org/copyright.html))
+
+Attribution: SQLite 3.49.1 is dedicated to the public domain by its authors. It is compiled into the WebAssembly module that sql.js 1.14.2 ships (select sqlite_version() prints 3.49.1). sql.js also compiles in the SQLite contributed file extension-functions.c, which carries no licence text of its own and is distributed from sqlite.org's contributed code area.
+
+```text
+SQLite is in the public domain.
+The text below is the section "SQLite Is Public Domain" of https://www.sqlite.org/copyright.html,
+fetched on 2026-10-01 (the page says it was last updated on 2026-01-12), copied without change apart from the page markup.
+
+All of the code and documentation in SQLite has been dedicated to the
+public domain
+by the authors.
+All code authors, and representatives of the companies they work for,
+have signed affidavits dedicating their contributions to
+the public domain and originals of
+those signed affidavits are stored in a firesafe at the main offices
+of Hwaci.  All contributors are citizens
+of countries that allow creative works to be dedicated into the public
+domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute
+the original SQLite code, either in source code form or as a compiled binary,
+for any purpose, commercial or non-commercial, and by any means.
+
+The previous paragraph applies to the deliverable code and documentation
+in SQLite - those parts of the SQLite library that you actually bundle and
+ship with a larger application.  Some scripts used as part of the
+build process (for example the "configure" scripts generated by autoconf)
+might fall under other open-source licenses.  Nothing from these build
+scripts ever reaches the final deliverable SQLite library, however, and
+so the licenses associated with those scripts should not be
+a factor in assessing your rights to copy and use the SQLite library.
+
+All of the deliverable code in SQLite has been written from scratch.
+No code has been taken from other projects or from the open
+internet.  Every line of code can be traced back to its original
+author, and all of those authors have public domain dedications
+on file.  So the SQLite code base is clean and is
+uncontaminated with licensed code from other projects.
+```
+
 ### Tailwind CSS 4.3.3 default theme (bundled into `tools/tailwind-css`)
 
 Licence: MIT ([full text](https://github.com/tailwindlabs/tailwindcss/blob/v4.3.3/LICENSE))
@@ -9404,4 +10006,150 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### Emscripten runtime (bundled into `tools/xsd-validator`)
+
+Licence: MIT ([full text](https://github.com/emscripten-core/emscripten/blob/5.0.2/LICENSE))
+
+Attribution: Copyright (c) 2010-2014 Emscripten authors. The build workflow of libxml2-wasm 0.7.2 names Emscripten 5.0.2, and the Emscripten runtime and C library are part of the module that libxml2-wasm 0.7.2 embeds. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.
+
+```text
+Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.
+
+Both are permissive open source licenses, with little if any
+practical difference between them.
+
+The reason for offering both is that (1) the MIT license is
+well-known, while (2) the University of Illinois/NCSA Open Source
+License allows Emscripten's code to be integrated upstream into
+LLVM, which uses that license, should the opportunity arise.
+
+The full text of both licenses follows.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal with the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+    Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimers.
+
+    Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimers
+    in the documentation and/or other materials provided with the
+    distribution.
+
+    Neither the names of Mozilla,
+    nor the names of its contributors may be used to endorse
+    or promote products derived from this Software without specific prior
+    written permission. 
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+
+==============================================================================
+
+This program uses portions of Node.js source code located in src/library_path.js,
+in accordance with the terms of the MIT license. Node's license follows:
+
+    """
+        Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to
+        deal in the Software without restriction, including without limitation the
+        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        IN THE SOFTWARE.
+    """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+```
+
+### libxml2 (bundled into `tools/xsd-validator`)
+
+Licence: MIT ([full text](https://github.com/jameslan/libxml2-wasm/blob/v0.7.2/LICENSE.libxml2))
+
+Attribution: Copyright (C) 1998-2012 Daniel Veillard and The Libxml2 Contributors. libxml2 2.15.1 (the VERSION file of the source commit that libxml2-wasm 0.7.2 builds) is compiled into the WebAssembly module that libxml2-wasm 0.7.2 embeds in lib/libxml2raw.mjs. libxml2 is offered under the MIT licence; the files dict.c and list.c carry a similar licence with different copyright notices.
+
+```text
+This package bundles a WebAssembly build of libxml2 (in lib/libxml2raw.mjs).
+The libxml2 source code is distributed under the following license:
+
+Except where otherwise noted in the source code (e.g. the files dict.c and
+list.c, which are covered by a similar licence but with different Copyright
+notices) all the files are:
+
+ Copyright (C) 1998-2012 Daniel Veillard.  All Rights Reserved.
+ Copyright (C) The Libxml2 Contributors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is fur-
+nished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FIT-
+NESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```

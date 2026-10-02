@@ -996,6 +996,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/har-viewer:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/hash-file:
     dependencies:
       '@noble/hashes':
@@ -1014,6 +1023,15 @@ importers:
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/hex-viewer:
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -1198,6 +1216,19 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/ip-subnet:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/jq-playground:
+    dependencies:
+      jq-wasm:
+        specifier: 3.0.0-jq-1.8.2
+        version: 3.0.0-jq-1.8.2
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -1564,6 +1595,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/msgpack-cbor:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/nato-phonetic:
     devDependencies:
       typescript:
@@ -1830,6 +1870,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/protobuf-decoder:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/python-formatter:
     dependencies:
       '@wasm-fmt/ruff_fmt':
@@ -2044,6 +2093,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/spreadsheet-converter:
+    dependencies:
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/sql-formatter:
     dependencies:
       sql-formatter:
@@ -2062,6 +2124,22 @@ importers:
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@types/sql.js@1.4.11)(sql.js@1.14.2)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/sqlite-viewer:
+    dependencies:
+      sql.js:
+        specifier: 1.14.2
+        version: 1.14.2
+    devDependencies:
+      '@types/sql.js':
+        specifier: 1.4.11
+        version: 1.4.11
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -2152,6 +2230,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/text-encoding-fixer:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/text-lines:
     devDependencies:
       typescript:
@@ -2214,6 +2301,19 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/unicode-inspector:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/unit-converter:
+    dependencies:
+      decimal.js:
+        specifier: 10.6.0
+        version: 10.6.0
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -2296,6 +2396,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
+  tools/wsdl-explorer:
+    dependencies:
+      '@xmldom/xmldom':
+        specifier: 0.9.12
+        version: 0.9.12
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
   tools/xml-formatter:
     dependencies:
       fast-xml-parser:
@@ -2330,6 +2443,19 @@ importers:
       xpath:
         specifier: 0.0.34
         version: 0.0.34
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
+
+  tools/xsd-validator:
+    dependencies:
+      libxml2-wasm:
+        specifier: 0.7.2
+        version: 0.7.2
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -3928,6 +4054,10 @@ packages:
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
+  jq-wasm@3.0.0-jq-1.8.2:
+    resolution: {integrity: sha512-jgWSEBJSd0lYR4Q5Fw8333MxQS5jCRI+g9KwAGL7yK1spwzTJy8C5uOS08wbpKE0Gz8oQYLlRpNLE/W70Ksp2g==}
+    engines: {node: '>=20'}
+
   js-levenshtein@1.1.6:
     resolution: {integrity: sha512-X2BB11YZtrRqY4EnQcLX5Rh373zbK4alC1FW7D7MBhL2gtcC17cTnr6DmfHZeS0s2rTHjUTMMHfG7gO8SSdw+g==}
     engines: {node: '>=0.10.0'}
@@ -3989,6 +4119,10 @@ packages:
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
+
+  libxml2-wasm@0.7.2:
+    resolution: {integrity: sha512-Ek8Fdb8fIl6mBCvrMGImkOP02aDpANwus0PV827v4gobV9jnoYEHNoPTwWokt71egUBl+sng53fjZ5y2PexLqQ==}
+    engines: {node: '>=18'}
 
   linguist-languages@8.2.0:
     resolution: {integrity: sha512-KCUUH9x97QWYU0SXOCGxUrZR6cSfuQrMhABB7L/0I8N0LXOeaKe7+RZs7FAwvWCV2qKfZ4Wv1luLq4OfMezSJg==}
@@ -6294,6 +6428,8 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
+  jq-wasm@3.0.0-jq-1.8.2: {}
+
   js-levenshtein@1.1.6: {}
 
   js-tokens@10.0.0: {}
@@ -6356,6 +6492,8 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
+
+  libxml2-wasm@0.7.2: {}
 
   linguist-languages@8.2.0: {}
 

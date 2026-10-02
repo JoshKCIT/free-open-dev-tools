@@ -1225,6 +1225,23 @@
       "adler32"
     ]
   },
+  "har-viewer": {
+    "id": "har-viewer",
+    "name": "HAR Viewer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "har",
+      "http archive",
+      "network recording",
+      "devtools",
+      "requests",
+      "headers",
+      "cookies",
+      "timings"
+    ]
+  },
   "hash-file": {
     "id": "hash-file",
     "name": "File Hash & Checksum",
@@ -1275,6 +1292,24 @@
       "blake2b",
       "blake2s",
       "blake3"
+    ]
+  },
+  "hex-viewer": {
+    "id": "hex-viewer",
+    "name": "Hex Viewer & File Identifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "hex",
+      "hexdump",
+      "hex viewer",
+      "binary",
+      "bytes",
+      "file signature",
+      "magic number",
+      "file type",
+      "offset"
     ]
   },
   "hmac": {
@@ -1524,6 +1559,26 @@
       "netmask",
       "vlsm",
       "network"
+    ]
+  },
+  "jq-playground": {
+    "id": "jq-playground",
+    "name": "jq Playground",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "jq-wasm": "3.0.0-jq-1.8.2"
+    },
+    "keywords": [
+      "jq",
+      "json",
+      "filter",
+      "query",
+      "playground",
+      "wasm",
+      "jq 1.8",
+      "transform",
+      "json processor"
     ]
   },
   "js-formatter": {
@@ -2021,6 +2076,24 @@
       "prosign"
     ]
   },
+  "msgpack-cbor": {
+    "id": "msgpack-cbor",
+    "name": "MessagePack & CBOR Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "messagepack",
+      "msgpack",
+      "cbor",
+      "rfc 8949",
+      "binary json",
+      "diagnostic notation",
+      "hex",
+      "base64",
+      "tag"
+    ]
+  },
   "nato-phonetic": {
     "id": "nato-phonetic",
     "name": "NATO Phonetic Alphabet",
@@ -2353,6 +2426,25 @@
       "cost plus pricing"
     ]
   },
+  "protobuf-decoder": {
+    "id": "protobuf-decoder",
+    "name": "Protobuf Decoder (no schema)",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "protobuf",
+      "protocol buffers",
+      "proto",
+      "wire format",
+      "varint",
+      "zigzag",
+      "decode raw",
+      "no schema",
+      "hex",
+      "base64"
+    ]
+  },
   "python-formatter": {
     "id": "python-formatter",
     "name": "Python Formatter",
@@ -2646,6 +2738,27 @@
       "transliterate"
     ]
   },
+  "spreadsheet-converter": {
+    "id": "spreadsheet-converter",
+    "name": "Spreadsheet Converter (XLSX, CSV, TSV, JSON, XML)",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "fflate": "0.8.3"
+    },
+    "keywords": [
+      "xlsx",
+      "excel",
+      "spreadsheet",
+      "spreadsheetml",
+      "openxml",
+      "csv",
+      "tsv",
+      "json",
+      "xml",
+      "convert"
+    ]
+  },
   "sql-formatter": {
     "id": "sql-formatter",
     "name": "SQL Formatter",
@@ -2683,6 +2796,27 @@
       "mysql",
       "sqlite",
       "sql server"
+    ]
+  },
+  "sqlite-viewer": {
+    "id": "sqlite-viewer",
+    "name": "SQLite Database Viewer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "sql.js": "1.14.2"
+    },
+    "keywords": [
+      "sqlite",
+      "sqlite3",
+      "database",
+      "sql",
+      "query",
+      "schema",
+      "viewer",
+      "sql.js",
+      "wasm",
+      "csv"
     ]
   },
   "stock-metrics": {
@@ -2792,6 +2926,27 @@
       "unified-diff",
       "myers",
       "text"
+    ]
+  },
+  "text-encoding-fixer": {
+    "id": "text-encoding-fixer",
+    "name": "Text Encoding Fixer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "encoding",
+      "mojibake",
+      "garbled text",
+      "windows-1252",
+      "latin1",
+      "iso-8859-1",
+      "utf-8",
+      "byte order mark",
+      "bom",
+      "line endings",
+      "crlf",
+      "charset"
     ]
   },
   "text-lines": {
@@ -2904,6 +3059,28 @@
       "diacritics"
     ]
   },
+  "unit-converter": {
+    "id": "unit-converter",
+    "name": "Unit Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "decimal.js": "10.6.0"
+    },
+    "keywords": [
+      "unit converter",
+      "units",
+      "conversion",
+      "metric",
+      "imperial",
+      "temperature",
+      "pressure",
+      "fuel economy",
+      "mpg",
+      "exact factors",
+      "decimal"
+    ]
+  },
   "unix-timestamp": {
     "id": "unix-timestamp",
     "name": "Unix Timestamp Converter",
@@ -3009,6 +3186,26 @@
       "reading-time"
     ]
   },
+  "wsdl-explorer": {
+    "id": "wsdl-explorer",
+    "name": "WSDL & SOAP Explorer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@xmldom/xmldom": "0.9.12"
+    },
+    "keywords": [
+      "wsdl",
+      "soap",
+      "web service",
+      "soap request",
+      "envelope",
+      "soapaction",
+      "xml",
+      "rpc",
+      "document literal"
+    ]
+  },
   "xml-formatter": {
     "id": "xml-formatter",
     "name": "XML Formatter & Validator",
@@ -3061,6 +3258,26 @@
       "xpath 1.0",
       "node-set",
       "xxe"
+    ]
+  },
+  "xsd-validator": {
+    "id": "xsd-validator",
+    "name": "XML Schema (XSD) Validator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "libxml2-wasm": "0.7.2"
+    },
+    "keywords": [
+      "xsd",
+      "xml schema",
+      "xml",
+      "validator",
+      "validate",
+      "libxml2",
+      "schema",
+      "wasm",
+      "line numbers"
     ]
   },
   "yaml-formatter": {
