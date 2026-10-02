@@ -34,9 +34,52 @@ function tooManyCells(): TableImportError {
 const ASCII_WHITESPACE = '\\t\\n\\f\\r ';
 const NOT_BLANK = new RegExp(`[^${ASCII_WHITESPACE}]`);
 const isBlank = (text: string): boolean => !NOT_BLANK.test(text);
-const TRIM_ASCII = new RegExp(`^[${ASCII_WHITESPACE}]+|[${ASCII_WHITESPACE}]+$`, 'g');
-/** A run of white space that holds at least one tab, line break or form feed. */
-const SOURCE_BREAK_RUN = new RegExp(`[ ]*[\\t\\n\\f\\r][${ASCII_WHITESPACE}]*`, 'g');
+const ASCII_WHITESPACE_CHARS: ReadonlySet<string> = new Set(['\t', '\n', '\f', '\r', ' ']);
+const SPACE_AND_TAB: ReadonlySet<string> = new Set([' ', '\t']);
+
+/**
+ * Trims the characters in `chars` from both ends with two index loops. A regular expression such as `^[ ]+|[ ]+$`
+ * tries its end alternative from every position inside a long run of spaces and takes time that grows with the square
+ * of the run, so a cell of tens of thousands of spaces would freeze the tab.
+ */
+function trimChars(text: string, chars: ReadonlySet<string>): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && chars.has(text[start]!)) start++;
+  while (end > start && chars.has(text[end - 1]!)) end--;
+  return start === 0 && end === text.length ? text : text.slice(start, end);
+}
+
+const trimAscii = (text: string): string => trimChars(text, ASCII_WHITESPACE_CHARS);
+const trimSpaceTab = (text: string): string => trimChars(text, SPACE_AND_TAB);
+
+/**
+ * Reads each maximal run of ASCII white space that holds at least one tab, line break or form feed as one space, in a
+ * single pass; a run of spaces alone is left as written. `onCollapse` is called once for each run that was replaced.
+ */
+function collapseSourceBreaks(text: string, onCollapse: () => void): string {
+  let out = '';
+  let copied = 0;
+  let i = 0;
+  while (i < text.length) {
+    if (!ASCII_WHITESPACE_CHARS.has(text[i]!)) {
+      i++;
+      continue;
+    }
+    const start = i;
+    let hasBreak = false;
+    while (i < text.length && ASCII_WHITESPACE_CHARS.has(text[i]!)) {
+      if (text[i] !== ' ') hasBreak = true;
+      i++;
+    }
+    if (hasBreak) {
+      out += text.slice(copied, start) + ' ';
+      copied = i;
+      onCollapse();
+    }
+  }
+  return copied === 0 ? text : out + text.slice(copied);
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // HTML
@@ -164,13 +207,11 @@ function cellText(cell: Element, notes: HtmlNotes): string {
   if (lineOpen || lines.length === 0) lines.push(current);
 
   return lines
-    .map((line) => {
-      const trimmed = line.replace(TRIM_ASCII, '');
-      return trimmed.replace(SOURCE_BREAK_RUN, () => {
+    .map((line) =>
+      collapseSourceBreaks(trimAscii(line), () => {
         notes.collapsed = true;
-        return ' ';
-      });
-    })
+      }),
+    )
     .join('\n');
 }
 
@@ -325,7 +366,7 @@ const isPunctuation = (ch: string | undefined): boolean => ch !== undefined && A
  * as in CommonMark, so `\|` stays inside its cell. One leading and one trailing pipe are optional and are removed.
  */
 function splitRow(line: string): { cells: string[]; hasPipe: boolean } {
-  const text = line.replace(/^[ \t]+|[ \t]+$/g, '');
+  const text = trimSpaceTab(line);
   const pieces: string[] = [];
   let current = '';
   let endsWithPipe = false;
@@ -362,7 +403,7 @@ const CHARACTER_REFERENCE = /^&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-
  * character it names, and `<br>` as a line break; code spans and every other Markdown mark stay as written.
  */
 function readMarkdownCell(raw: string): string {
-  const text = raw.replace(/^[ \t]+|[ \t]+$/g, '');
+  const text = trimSpaceTab(raw);
   let out = '';
   let i = 0;
   while (i < text.length) {
@@ -420,10 +461,7 @@ function readMarkdownCell(raw: string): string {
       i++;
     }
   }
-  return out
-    .split('\n')
-    .map((line) => line.replace(/^[ \t]+|[ \t]+$/g, ''))
-    .join('\n');
+  return out.split('\n').map(trimSpaceTab).join('\n');
 }
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
