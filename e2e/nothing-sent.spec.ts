@@ -47,7 +47,7 @@ const PHASE_6_TOOL_IDS = [
 const ADDED_2026_09_29_NETWORK_TOOL_IDS = ['data-size'];
 
 /** The network-category tools Phase 13 adds (DATA-07, DATA-11). */
-const PHASE_13_NETWORK_TOOL_IDS = ['har-viewer'];
+const PHASE_13_NETWORK_TOOL_IDS = ['har-viewer', 'wsdl-explorer'];
 
 /**
  * An absolute, real-shaped URL a visitor might genuinely paste. The
