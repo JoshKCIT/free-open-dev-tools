@@ -145,12 +145,13 @@ function soapChild(node: XNode, local: string): XNode | undefined {
 // ---------------------------------------------------------------------------------------------------------------------
 // Schemas
 
-const SCHEMA_REFERENCE_KINDS: Record<string, NotLoaded['kind']> = {
-  import: 'xsd:import',
-  include: 'xsd:include',
-  redefine: 'xsd:redefine',
-  override: 'xsd:override',
-};
+/** A Map, not an object: a name such as constructor or toString must not find a member of Object.prototype. */
+const SCHEMA_REFERENCE_KINDS = new Map<string, NotLoaded['kind']>([
+  ['import', 'xsd:import'],
+  ['include', 'xsd:include'],
+  ['redefine', 'xsd:redefine'],
+  ['override', 'xsd:override'],
+]);
 
 /** Parses the particles of a compositor: an element is kept, a nested compositor is walked, a choice keeps its first. */
 function parseParticles(
@@ -249,7 +250,7 @@ function parseSchema(schema: XNode, notLoaded: NotLoaded[]): SchemaInfo {
   const info: SchemaInfo = { targetNamespace, elements: [], complexTypes: [], simpleTypes: [] };
   for (const child of elementsOf(schema)) {
     if (!XSD_NAMESPACES.includes(child.namespaceURI ?? '')) continue;
-    const kind = SCHEMA_REFERENCE_KINDS[child.localName ?? ''];
+    const kind = SCHEMA_REFERENCE_KINDS.get(child.localName ?? '');
     if (kind !== undefined) {
       const location = attr(child, 'schemaLocation');
       if (location !== '') notLoaded.push({ kind, namespace: attr(child, 'namespace'), location, line: lineOf(child) });
