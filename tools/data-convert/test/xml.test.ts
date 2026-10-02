@@ -6,7 +6,7 @@ import { writeXmlValue, isXmlName, XmlWriteError } from '../src/xml-write';
 // Extensible Markup Language (XML) 1.0, Fifth Edition: https://www.w3.org/TR/xml/
 //   section 2.4 (character data and the five predefined entities), 2.7 (CDATA sections, content is literal),
 //   section 4.6 and 4.1 (character references) and the well-formedness rules (every start tag has a matching end tag).
-// The attribute, text and repetition rules are the ones the site's XML and JSON page states: attributes become keys
+// The attribute, text and repetition rules are the ones this package states in its limits: attributes become keys
 // with the prefix @_, element text sits under #text beside attributes or children, repeated siblings become an array,
 // every value stays a string. The literals below were checked against fast-xml-parser 5.11.1 run as a second opinion.
 
@@ -207,3 +207,11 @@ it('an array root becomes root and row elements named by the options', () => {
   // A plain value is not a document.
   expect(() => writeXmlValue('text', {})).toThrowError(XmlWriteError);
 });
+
+it('the nesting limit of 512 levels applies to XML like every other format', () => {
+  const nest = (levels: number) => '<a>'.repeat(levels) + 'x' + '</a>'.repeat(levels);
+  // 500 levels of elements is inside the limit; 600 is refused with the message the other formats give.
+  expect(readXmlValue(nest(500), {}).value).toBeTruthy();
+  expect(() => readXmlValue(nest(600), {})).toThrowError(/nested more than 512 levels/);
+  expect(() => convertData(nest(600), { from: 'xml', to: 'json' })).toThrowError(DataConvertError);
+}, 60_000);

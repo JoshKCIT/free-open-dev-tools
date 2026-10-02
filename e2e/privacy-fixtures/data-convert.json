@@ -10,5 +10,20 @@
   {
     "values": { "from": "toml", "to": "json", "input": "name = \"Ada\"" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "from", "value": "xml" },
+    "values": { "input": "<a x=\"1\">text</a>", "attributePrefix": "@_", "textKey": "#text" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "from", "value": "csv" },
+    "values": { "input": "a,b\n1,2" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "to", "value": "tsv" },
+    "values": { "input": "[{\"a\":1}]" },
+    "attachesFile": false
   }
 ]

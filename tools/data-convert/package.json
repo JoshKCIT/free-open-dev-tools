@@ -1,7 +1,7 @@
 {
   "name": "@fodt/data-convert",
   "version": "1.0.0",
-  "description": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow.",
+  "description": "Convert between any two of JSON, YAML, TOML, XML, CSV and TSV, keeping comments and types where the formats allow.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,10 +24,19 @@
     "json",
     "yaml",
     "toml",
+    "xml",
+    "csv",
+    "tsv",
     "convert",
     "data convert",
+    "data format converter",
     "yaml to json",
-    "toml to json"
+    "toml to json",
+    "xml to json",
+    "json to xml",
+    "csv to json",
+    "json to csv",
+    "tsv to csv"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

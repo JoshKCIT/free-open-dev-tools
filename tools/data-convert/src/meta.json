@@ -1,10 +1,16 @@
 {
   "id": "data-convert",
-  "name": "JSON, YAML & TOML Converter",
-  "summary": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow.",
-  "about": "Converts a pasted document between JSON, YAML and TOML in any direction. A YAML document converted to YAML again keeps its comments; every other conversion states in a warning exactly what it drops, such as YAML comments, TOML dates becoming strings, or key order changing.",
+  "name": "Data Format Converter (JSON, YAML, TOML, XML, CSV, TSV)",
+  "summary": "Convert between any two of JSON, YAML, TOML, XML, CSV and TSV, keeping comments and types where the formats allow.",
+  "about": "Converts a pasted document between JSON, YAML, TOML, XML, CSV and TSV in any direction. A YAML document converted to YAML again keeps its comments; every other conversion states in a warning exactly what it drops, such as YAML comments, TOML dates becoming strings, key order changing, or a null becoming an empty cell. How XML attributes, nested data and CSV headers are carried follows stated rules, and anything that cannot be carried over without guessing is refused with its path.",
   "supports": [
+    "All thirty ordered pairs across JSON, YAML, TOML, XML, CSV and TSV",
     "All nine from/to pairs across JSON, YAML and TOML",
+    "XML read with attributes as keys starting with a prefix you can change (default @_), element text under a key you can change (default #text), repeated elements as arrays, and a DOCTYPE refused before parsing",
+    "XML written with an XML declaration, a root element you can name, XML 1.0 name checks and escaping, and a list written as one row element per item",
+    "CSV read by RFC 4180 and TSV read by the IANA tab-separated-values rules, with a header row you can turn off, empty or repeated headers renamed with a warning, and a row of the wrong width refused by row and line",
+    "CSV and TSV written from a list of objects, a list of lists or one object, with nested objects as dotted column names",
+    "Optional typed values from CSV and TSV: only true, false, null and RFC 8259 numbers a double holds exactly",
     "YAML to YAML re-serialising through the parsed document, so comments and their position survive",
     "The YAML 1.2 core schema, so unquoted yes and no stay strings rather than becoming booleans",
     "TOML dates and times, read as strings with a warning since JSON and YAML core scalars have no date type",
@@ -22,11 +28,23 @@
     "TOML output lists plain keys before any table, which can change the input's key order",
     "A JSON number beyond double precision is rounded, the same limit JSON.parse itself has",
     "Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0",
-    "Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; JSON and TOML sources have no such limit"
+    "Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; the other sources have no such limit",
+    "XML attributes become keys starting with @_ (you can change the prefix), element text sits under #text when the element also has attributes or children, and repeated elements become arrays.",
+    "CSV and TSV output flattens nested objects into dotted column names; an array inside a record, a key containing a dot, or rows of unequal length are refused with their path.",
+    "Records with different keys share one header of every key in order of first appearance; missing values become empty cells, with a warning.",
+    "CSV and TSV values are text unless Infer types is on; whole numbers beyond 2^53 stay text.",
+    "XML to JSON to XML loses comments, processing instructions, the XML declaration and the difference between CDATA and text.",
+    "Spaces and line breaks around XML element text are trimmed, and an entity other than the five predefined ones and numeric references is kept as written",
+    "An XML document has one root element; an element that mixes text with child elements keeps its text together under #text, so the text's place among the elements is lost, and a one item list and a single element look the same",
+    "JSON to CSV to JSON loses types unless Infer types is on, and never turns a dotted column name back into nested objects; TSV cannot hold a tab or a line break in a cell",
+    "Blank lines at the end of a CSV or TSV input are ignored, a header with no rows gives an empty list, and a nested XML document deeper than 512 levels is refused like every other format",
+    "XML output refuses a key that is not a valid XML 1.0 name and any text holding a character XML 1.0 cannot hold, naming its path"
   ],
   "ambiguities": [
     "Unquoted yes and no stay strings on the YAML side, per the YAML 1.2 core schema this reads with, not the YAML 1.1 boolean set some tools use",
-    "Which quoting style the YAML writer picks for a given string (plain, single or double quoted) is decided by the yaml package's own rules, not by this tool"
+    "Which quoting style the YAML writer picks for a given string (plain, single or double quoted) is decided by the yaml package's own rules, not by this tool",
+    "Neither XML 1.0 nor JSON says how an attribute differs from a child element in JSON, so the prefix is a convention; with an empty prefix an attribute reads as an ordinary key and writing XML treats every key as an element",
+    "Neither RFC 4180 nor the IANA tab-separated-values registration says what a header means for a nested record, so nested objects use dotted names and the column order is the order keys first appear"
   ],
   "standards": [
     {
@@ -34,13 +52,40 @@
       "url": "https://www.rfc-editor.org/rfc/rfc8259"
     },
     { "label": "YAML 1.2.2", "url": "https://yaml.org/spec/1.2.2/" },
-    { "label": "TOML 1.1.0", "url": "https://toml.io/en/v1.1.0" }
+    { "label": "TOML 1.1.0", "url": "https://toml.io/en/v1.1.0" },
+    { "label": "Extensible Markup Language (XML) 1.0 (Fifth Edition)", "url": "https://www.w3.org/TR/xml/" },
+    {
+      "label": "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files",
+      "url": "https://www.rfc-editor.org/rfc/rfc4180"
+    },
+    {
+      "label": "IANA media type text/tab-separated-values",
+      "url": "https://www.iana.org/assignments/media-types/text/tab-separated-values"
+    },
+    { "label": "RFC 6901 — JavaScript Object Notation (JSON) Pointer", "url": "https://www.rfc-editor.org/rfc/rfc6901" }
   ],
-  "keywords": ["json", "yaml", "toml", "convert", "data convert", "yaml to json", "toml to json"],
+  "keywords": [
+    "json",
+    "yaml",
+    "toml",
+    "xml",
+    "csv",
+    "tsv",
+    "convert",
+    "data convert",
+    "data format converter",
+    "yaml to json",
+    "toml to json",
+    "xml to json",
+    "json to xml",
+    "csv to json",
+    "json to csv",
+    "tsv to csv"
+  ],
   "primaryExport": "convertData",
   "usage": "import { convertData } from '@fodt/data-convert';\n\nconvertData('name: Ada\\ntags:\\n  - a\\n  - b', { from: 'yaml', to: 'json' });\n// { output: '{\\n  \"name\": \"Ada\",...', warnings: [] }",
-  "apiNotes": "`convertData(text, { from, to, indent })` returns `{ output, warnings }` for a successful conversion, `indent` defaults to 2 and only affects JSON and YAML output. It throws `DataConvertError` with `line`/`column` for a parse error, or `path` (an RFC 6901 pointer) for a structural problem such as a null on the way to TOML.",
-  "testNotes": "The JSON to YAML to JSON round trip is checked against a document mixing an array, a string that looks like a number, and a nested object. YAML comment retention, the YAML 1.2 core schema's yes/no handling, and TOML dates, tables and inline tables are each checked against the fetched YAML 1.2.2 and TOML 1.1.0 examples.",
+  "apiNotes": "`convertData(text, { from, to, indent })` returns `{ output, warnings }` for a successful conversion, `indent` defaults to 2 and only affects JSON, YAML and XML output. `from` and `to` are each one of `json`, `yaml`, `toml`, `xml`, `csv` or `tsv`. Optional members: `attributePrefix` (default `@_`) and `textKey` (default `#text`) for XML in either direction, `rootName` (default `root`) and `rowName` (default `row`) for XML output, `headerRow` (default true) and `inferTypes` (default false) for CSV and TSV input. It throws `DataConvertError` with `line`/`column` for a parse error or a CSV or TSV row of the wrong width, or `path` (an RFC 6901 pointer) for a structural problem such as a null on the way to TOML, an array inside a CSV row, or an XML name that is not valid.",
+  "testNotes": "The JSON to YAML to JSON round trip is checked against a document mixing an array, a string that looks like a number, and a nested object. YAML comment retention, the YAML 1.2 core schema's yes/no handling, and TOML dates, tables and inline tables are each checked against the fetched YAML 1.2.2 and TOML 1.1.0 examples. XML reading is checked against the XML 1.0 well-formedness rules and the five predefined entities, with fast-xml-parser 5.11.1 run as a second opinion for the key order of the result; XML writing against the XML 1.0 Name production and the escaping rules. CSV and TSV reading and writing are checked against hand-written texts from RFC 4180, the IANA registration and the RFC 8259 number grammar, and one reference record is converted through all thirty ordered pairs of the six formats against hand-written expected texts.",
   "dependencies": {
     "yaml": "2.9.1",
     "smol-toml": "1.9.0",

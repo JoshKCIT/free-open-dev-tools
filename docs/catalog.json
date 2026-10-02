@@ -295,10 +295,10 @@
   },
   {
     "id": "data-convert",
-    "name": "JSON, YAML & TOML Converter",
+    "name": "Data Format Converter (JSON, YAML, TOML, XML, CSV, TSV)",
     "category": "json-data",
     "tier": 1,
-    "summary": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow."
+    "summary": "Convert between any two of JSON, YAML, TOML, XML, CSV and TSV, keeping comments and types where the formats allow."
   },
   {
     "id": "csv-json",

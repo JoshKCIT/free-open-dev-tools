@@ -22,13 +22,31 @@ function involvesXml(values: Record<string, unknown>): boolean {
   return str(values, 'from', 'json') === 'xml' || str(values, 'to', 'yaml') === 'xml';
 }
 
+/** The rules for the formats that need some, shown under the output so the choices made for nesting, attributes and headers are never silent. */
+function rulesNote(from: DataFormat, to: DataFormat, options: ConvertOptions): string | null {
+  const lines: string[] = [];
+  if (from === 'xml' || to === 'xml') {
+    const prefix = options.attributePrefix ?? '@_';
+    const textKey = options.textKey ?? '#text';
+    lines.push(
+      `XML: an attribute becomes a key starting with ${prefix === '' ? '(no prefix)' : prefix}, the text of an element that also has attributes or children sits under ${textKey}, repeated elements become an array and every value is text. A DOCTYPE is refused. Comments, processing instructions and the XML declaration are dropped.`,
+    );
+  }
+  if (from === 'csv' || from === 'tsv' || to === 'csv' || to === 'tsv') {
+    lines.push(
+      'CSV and TSV: nested objects flatten into dotted column names. An array inside a record, a key containing a dot, or rows of unequal length are refused with their path. Records with different keys share one header of every key in order of first appearance, and a missing value is an empty cell. Values are text unless Infer types is on.',
+    );
+  }
+  return lines.length > 0 ? lines.join('\n') : null;
+}
+
 export default defineTool({
   id: 'data-convert',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   // A YAML source runs in a background worker with a 1.5 second time limit
   // (checking duplicate mapping keys grows quadratically with a flat
-  // mapping's key count, the same risk yaml-formatter carries), so that run
-  // can be cancelled. JSON and TOML sources stay synchronous.
+  // mapping's key count, the same risk any YAML parse here carries), so that run
+  // can be cancelled. The other sources (JSON, TOML, XML, CSV, TSV) stay synchronous.
   cancellable: true,
   fields: [
     {
@@ -153,9 +171,9 @@ export default defineTool({
 
     try {
       // Only a YAML source carries the quadratic duplicate-key risk (the
-      // same yaml package yaml-formatter already time-limits), so only it
-      // is routed through the worker; JSON and TOML sources stay
-      // synchronous, exactly as before.
+      // same yaml package that every YAML page here already time-limits), so only it
+      // is routed through the worker; the other sources stay
+      // synchronous, as JSON and TOML always were.
       const result =
         from === 'yaml'
           ? await dataConvertInWorker({ type: 'data-convert-job', source: input, options }, ctx)
@@ -163,6 +181,10 @@ export default defineTool({
       const outputs: OutputBlock[] = [{ kind: 'code', label: 'Output', language: LANGUAGE[to], value: result.output }];
       if (result.warnings.length > 0) {
         outputs.push({ kind: 'note', label: 'Warnings', tone: 'warn', value: result.warnings.join('\n') });
+      }
+      const rules = rulesNote(from, to, options);
+      if (rules !== null) {
+        outputs.push({ kind: 'note', label: 'Rules for these formats', tone: 'info', value: rules });
       }
       return {
         outputs,
