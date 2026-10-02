@@ -1,0 +1,8 @@
+[
+  { "values": { "value": "1", "from": "in", "to": "cm", "digits": "10" }, "attachesFile": false },
+  {
+    "mode": { "field": "quantity", "value": "temperature" },
+    "values": { "value": "32", "from": "F", "to": "K", "digits": "10" },
+    "attachesFile": false
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "id": "unit-converter",
+  "label": "NIST SP 811 Appendix B.8: 1 mile is exactly 1609.344 meters",
+  "steps": [
+    { "action": "fill", "field": "value", "value": "1" },
+    { "action": "fill", "field": "from", "value": "mi" },
+    { "action": "fill", "field": "to", "value": "m" }
+  ],
+  "expect": ["1609.344", "exact"]
+}
