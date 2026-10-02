@@ -23,7 +23,7 @@
  * Writing uses the YAML 1.1 compatibility mode, so a string such as `yes`, `on`, `null`, `1e3` or `2001-01-01` is
  * written quoted and reads back as a string in either YAML version.
  */
-import { Document, LineCounter, isAlias, parseAllDocuments, visit } from 'yaml';
+import { Document, LineCounter, isAlias, isScalar, parseAllDocuments, visit } from 'yaml';
 
 export class YamlValueError extends Error {
   readonly line?: number;
@@ -121,6 +121,18 @@ function scanDocument(doc: Document): TagScan {
   return found;
 }
 
+/**
+ * True for a document with no content at all: nothing after its `---`, or only comments. An explicit `null` or `~`
+ * has source text, a tag or an anchor, so it is a value and is kept.
+ */
+function isEmptyDocument(doc: Document.Parsed): boolean {
+  const contents = doc.contents as unknown;
+  if (contents === null) return true;
+  if (!isScalar(contents) || contents.value !== null) return false;
+  const shape = contents as unknown as { source?: string; tag?: string; anchor?: string };
+  return (shape.source ?? '') === '' && !shape.tag && !shape.anchor;
+}
+
 function isStackExhaustion(err: unknown): boolean {
   return err instanceof RangeError;
 }
@@ -138,7 +150,7 @@ export function readYamlValue(text: string, options: YamlReadOptions): YamlReadR
 
   // A document with no content at all (only `---`, or only comments) holds no value; it is skipped, like a blank line
   // in a list of one-line samples.
-  const present = docs.filter((doc) => doc.errors.length > 0 || doc.contents !== null);
+  const present = docs.filter((doc) => doc.errors.length > 0 || !isEmptyDocument(doc));
 
   for (const doc of present) {
     if (doc.errors.length > 0) {
