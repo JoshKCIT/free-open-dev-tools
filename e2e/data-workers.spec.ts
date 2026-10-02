@@ -315,6 +315,27 @@ const ENGINE_CASES: EngineCase[] = [
     limitSeconds: 20,
     limitMessage: 'Stopped after 20 seconds',
   },
+  {
+    id: 'json-to-code',
+    // The page's default sample format is JSON, which is read on the page; YAML is the one read in the worker. The page
+    // runs as you type, so the run starts when the sample is filled, after the format is chosen.
+    selects: { inputFormat: 'yaml' },
+    valid: { input: 'name: Ada\nage: 36\n' },
+    pressRun: false,
+    expectOutput: 'name: string;',
+    limitSeconds: 5,
+    limitMessage: 'Stopped after 5 seconds',
+  },
+  {
+    id: 'json-schema-generator',
+    // Same as json-to-code: YAML samples are read in the worker, JSON and XML on the page.
+    selects: { inputFormat: 'yaml' },
+    valid: { samples: 'name: Ada\nage: 36\n' },
+    pressRun: false,
+    expectOutput: '"name"',
+    limitSeconds: 5,
+    limitMessage: 'Stopped after 5 seconds',
+  },
 ];
 
 for (const c of ENGINE_CASES) {
@@ -544,3 +565,52 @@ test('jq-playground: Cancel stops a filter that never ends at once and the next 
   await fillFields(page, { filter: '.a | length' });
   await expect(outputArea(page).locator('pre.output')).toContainText('3', { timeout: 10_000 });
 });
+
+/**
+ * A flat mapping with 100,000 keys. The YAML package checks duplicate keys by scanning the whole mapping for every new
+ * key, so reading it takes tens of seconds (20,000 keys took 1.8 seconds and 40,000 took 9.4 on the review machine), far
+ * past the 5 second limit of the two YAML-reading pages on any plausible runner.
+ */
+function hugeYamlMapping(): string {
+  const lines: string[] = [];
+  for (let i = 0; i < 100_000; i++) lines.push(`k${i}: ${i}`);
+  return lines.join('\n') + '\n';
+}
+
+/** Sets a textarea's value through the native setter and one `input` event, since fill() is far too slow for a value this size. */
+async function setLargeValue(page: Page, selector: string, value: string): Promise<void> {
+  await page.locator(selector).evaluate((el, v) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
+    setter.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
+}
+
+for (const c of ENGINE_CASES.filter(
+  (engine) => engine.id === 'json-to-code' || engine.id === 'json-schema-generator',
+)) {
+  const field = Object.keys(c.valid)[0]!;
+
+  test(`${c.id}: a huge flat YAML mapping is stopped at 5 seconds in real time, the tab stays responsive and the next sample runs`, async ({
+    page,
+  }) => {
+    await openTool(page, c.id);
+    await setControls(page, c);
+    await setLargeValue(page, `#f-${field}`, hugeYamlMapping());
+    await expect(cancelButtonOf(page)).toBeVisible();
+
+    // The page's own event loop answers while the worker is stuck inside the read.
+    await page.waitForTimeout(500);
+    const answerStart = Date.now();
+    await page.evaluate(() => performance.now());
+    expect(Date.now() - answerStart).toBeLessThan(500);
+
+    await expect(outputArea(page).locator('.issue-list')).toContainText('Stopped after 5 seconds', { timeout: 20_000 });
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+
+    // A new worker reads the next sample.
+    await fillFields(page, c.valid);
+    await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+    await expect(outputArea(page).locator('.issue-list')).toHaveCount(0);
+  });
+}

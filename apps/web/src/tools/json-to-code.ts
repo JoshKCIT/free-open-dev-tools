@@ -1,4 +1,5 @@
 import { meta, jsonToCode, LANGUAGES, JsonToCodeError, type InputFormat, type Language } from '@fodt/json-to-code';
+import { jsonToCodeInWorker, JsonToCodeRunError } from '../lib/run-json-to-code-in-worker';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 const LANGUAGE_LABELS: Record<Language, string> = {
@@ -18,6 +19,10 @@ const LANGUAGE_LABELS: Record<Language, string> = {
 export default defineTool({
   id: 'json-to-code',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
+  // A YAML sample is read in a background worker with a 5 second time limit (checking a mapping's keys for
+  // duplicates grows with the square of the key count), so that run can be cancelled. JSON and XML samples stay
+  // synchronous.
+  cancellable: true,
   fields: [
     {
       name: 'input',
@@ -76,7 +81,7 @@ export default defineTool({
       values: { inputFormat: 'xml', input: '<person id="1"><name>Ada</name></person>', language: 'typescript' },
     },
   ],
-  run(values): ToolResult {
+  async run(values, ctx): Promise<ToolResult> {
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
 
@@ -86,19 +91,21 @@ export default defineTool({
     const parseValues = bool(values, 'parseValues', true);
 
     try {
-      const result = jsonToCode(input, {
-        language,
-        rootName: rootName.trim() === '' ? 'Root' : rootName,
-        inputFormat,
-        parseValues,
-      });
+      const options = { language, rootName: rootName.trim() === '' ? 'Root' : rootName, inputFormat, parseValues };
+      // Only a YAML sample carries the quadratic duplicate-key risk, so only it is routed through the worker.
+      const result =
+        inputFormat === 'yaml'
+          ? await jsonToCodeInWorker({ type: 'json-to-code-job', text: input, options }, ctx)
+          : jsonToCode(input, options);
       return {
         outputs: [{ kind: 'code', label: LANGUAGE_LABELS[language], language, value: result.output }],
         warnings: result.warnings,
         stats: [['Types', String(result.typeCount)]],
       };
     } catch (err) {
-      if (err instanceof JsonToCodeError) {
+      // An abort rejection is let through rather than swallowed: the runner's own cancellation note owns that message.
+      if (ctx.signal.aborted) throw err;
+      if (err instanceof JsonToCodeError || err instanceof JsonToCodeRunError) {
         return { outputs: [], errors: [{ message: err.message, line: err.line, column: err.column }] };
       }
       const message = err instanceof Error ? err.message : 'Could not process that document.';

@@ -1,9 +1,14 @@
 import { meta, generateSchema, SchemaGeneratorError, type InputFormat } from '@fodt/json-schema-generator';
+import { jsonSchemaGeneratorInWorker, JsonSchemaGeneratorRunError } from '../lib/run-json-schema-generator-in-worker';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
   id: 'json-schema-generator',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
+  // YAML samples are read in a background worker with a 5 second time limit (checking a mapping's keys for
+  // duplicates grows with the square of the key count), so that run can be cancelled. JSON and XML samples stay
+  // synchronous.
+  cancellable: true,
   fields: [
     {
       name: 'samples',
@@ -69,7 +74,7 @@ export default defineTool({
       values: { inputFormat: 'xml', samples: '<person id="1"><name>Ada</name></person>' },
     },
   ],
-  run(values): ToolResult {
+  async run(values, ctx): Promise<ToolResult> {
     const samples = str(values, 'samples');
     if (!samples.trim()) return { outputs: [] };
 
@@ -80,14 +85,21 @@ export default defineTool({
     const parseValues = bool(values, 'parseValues', true);
 
     try {
-      const result = generateSchema(samples, { samplesAre, draft, detectFormats, inputFormat, parseValues });
+      const options = { samplesAre, draft, detectFormats, inputFormat, parseValues };
+      // Only YAML samples carry the quadratic duplicate-key risk, so only they are routed through the worker.
+      const result =
+        inputFormat === 'yaml'
+          ? await jsonSchemaGeneratorInWorker({ type: 'json-schema-generator-job', samples, options }, ctx)
+          : generateSchema(samples, options);
       return {
         outputs: [{ kind: 'code', label: 'Generated schema', language: 'json', value: result.output }],
         warnings: result.warnings,
         stats: [['Samples', String(result.sampleCount)]],
       };
     } catch (err) {
-      if (err instanceof SchemaGeneratorError) {
+      // An abort rejection is let through rather than swallowed: the runner's own cancellation note owns that message.
+      if (ctx.signal.aborted) throw err;
+      if (err instanceof SchemaGeneratorError || err instanceof JsonSchemaGeneratorRunError) {
         return { outputs: [], errors: [{ message: err.message, line: err.line, column: err.column }] };
       }
       return {
