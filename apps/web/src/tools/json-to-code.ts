@@ -26,7 +26,7 @@ export default defineTool({
   fields: [
     {
       name: 'input',
-      label: 'JSON sample',
+      label: 'Sample',
       type: 'textarea',
       rows: 14,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
