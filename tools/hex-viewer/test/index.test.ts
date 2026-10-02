@@ -279,6 +279,8 @@ it('CA FE BA BE is told apart as a Java class or a Mach-O fat file by the next f
   );
 
   // Neither rule decides: both names are shown, and so are they when the head holds only the four magic bytes.
+  // 44 is below the first major version in JVMS Table 4.1-A (45) and above any realistic architecture count.
+  expect(names('cafebabe0000002c')).toEqual(['Mach-O universal (fat) binary', 'Java class file']);
   expect(names('cafebabe00000020')).toEqual(['Mach-O universal (fat) binary', 'Java class file']);
   expect(names('cafebabe00000000')).toEqual(['Mach-O universal (fat) binary', 'Java class file']);
   expect(names('cafebabe')).toEqual(['Mach-O universal (fat) binary', 'Java class file']);
@@ -325,6 +327,11 @@ it('a tar file is found by ustar at offset 257 and an empty ZIP by its end recor
   const behind = identifyFile(prefixed.subarray(0, 100), prefixed.subarray(78), 100);
   expect(behind.map((kind) => kind.name)).toEqual(['ZIP archive']);
   expect(behind[0]!.evidence).toContain('last 22 bytes');
+
+  // The record one byte later than the first of the last 22 bytes is not the closing record either.
+  const late = new Uint8Array(100).fill(0x55);
+  late.set(empty.subarray(0, 21), 79);
+  expect(identifyFile(late.subarray(0, 100), late.subarray(78), 100)[0]!.name).toBe('unknown');
 
   // The record anywhere but the last 22 bytes is not found.
   const early = new Uint8Array(100).fill(0x55);
@@ -393,7 +400,11 @@ it('text search ignores ASCII case only when match case is off', async () => {
     offsets: [0, 6, 12, 18],
     total: 4,
   });
-  expect(await searchChunks(chunksOf(text('xxaB'), text('cXX')), text('ABC'), { matchCase: false })).toEqual({
+  expect(await searchChunks(chunksOf(text('xxaB'), text('CXX')), text('abc'), { matchCase: false })).toEqual({
+    offsets: [2],
+    total: 1,
+  });
+  expect(await searchChunks(chunksOf(text('xxaB'), text('Cxx')), text('ABC'), { matchCase: false })).toEqual({
     offsets: [2],
     total: 1,
   });
@@ -447,7 +458,8 @@ it('a position past the end or below 0 is refused naming Go to byte', () => {
   // The window is one page: rows times bytes per row from the position, never past the end.
   expect(viewWindow(1000, 100, 16, 8)).toEqual({ start: 100, end: 228 });
   expect(viewWindow(1000, 100, 64, 16)).toEqual({ start: 100, end: 1000 });
-  expect(viewWindow(5000, 100, 256, 32)).toEqual({ start: 100, end: 100 + 256 * 32 });
+  expect(viewWindow(10000, 100, 256, 32)).toEqual({ start: 100, end: 100 + 256 * 32 });
+  expect(viewWindow(5000, 100, 256, 32)).toEqual({ start: 100, end: 5000 });
   expect(viewWindow(2147483648, 2147483647, 256, 32)).toEqual({ start: 2147483647, end: 2147483648 });
 });
 

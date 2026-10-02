@@ -36,6 +36,8 @@ interface Case {
   /** Hex text placed at the very end of the file. */
   end?: string;
   size?: number;
+  /** The bytes the evidence must show, when they are not the first bytes placed. */
+  show?: string;
 }
 
 const bytesOfHex = (hex: string): number[] => hex.match(/../g)!.map((pair) => parseInt(pair, 16));
@@ -54,7 +56,12 @@ const CASES: Case[] = [
   // values: 89 50 4E 47 0D 0A 1A 0A"
   { name: 'PNG image', spec: 'https://www.w3.org/TR/png-3/', at: [[0, '89504e470d0a1a0a']] },
   // RFC 1952: "ID1 = 31 (0x1f, \037), ID2 = 139 (0x8b, \213)" and "CM = 8 denotes the "deflate" compression method"
-  { name: 'gzip compressed data', spec: 'https://www.rfc-editor.org/rfc/rfc1952', at: [[0, '1f8b0800']] },
+  {
+    name: 'gzip compressed data',
+    spec: 'https://www.rfc-editor.org/rfc/rfc1952',
+    at: [[0, '1f8b0800']],
+    show: '1f8b08',
+  },
   // RFC 8878: "Magic_Number: 4 bytes, little-endian format. Value: 0xFD2FB528."
   { name: 'Zstandard compressed data', spec: 'https://www.rfc-editor.org/rfc/rfc8878', at: [[0, '28b52ffd']] },
   // RFC 3533: "capture_pattern: Magic number for page start "OggS""
@@ -126,6 +133,7 @@ const CASES: Case[] = [
     name: 'Mach-O universal (fat) binary',
     spec: 'https://raw.githubusercontent.com/apple-oss-distributions/xnu/main/EXTERNAL_HEADERS/mach-o/fat.h',
     at: [[0, 'cafebabe00000002']],
+    show: 'cafebabe',
   },
   // JVMS SE 21, 4.1: "magic ... has the value 0xCAFEBABE", then minor_version and major_version; javac 17.0.6 wrote
   // cafebabe 00000034 for --release 8
@@ -133,6 +141,7 @@ const CASES: Case[] = [
     name: 'Java class file',
     spec: 'https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html',
     at: [[0, 'cafebabe00000034']],
+    show: 'cafebabe',
   },
   // POSIX pax, ustar header block: magic at offset 257 holds "ustar" followed by NUL
   {
@@ -140,6 +149,7 @@ const CASES: Case[] = [
     spec: 'https://pubs.opengroup.org/onlinepubs/9699919799/utilities/pax.html',
     at: [[257, '757374617200']],
     size: 512,
+    show: '7573746172',
   },
   // RFC 1950: CM = 8, CINFO up to 7, (CMF*256 + FLG) a multiple of 31; Python's zlib wrote 7801, 785e, 789c and 78da
   { name: 'zlib compressed data', spec: 'https://www.rfc-editor.org/rfc/rfc1950', at: [[0, '789c']] },
@@ -232,12 +242,14 @@ const CASES: Case[] = [
       [4, '66747970'],
       [8, '69736f6d'],
     ],
+    show: '66747970',
   },
   // bzip2 format specification: HeaderMagic "BZ" then Version "h"; Python's bz2 wrote 425a6839 (level 9 block size)
   {
     name: 'bzip2 compressed data',
     spec: 'https://github.com/dsnet/compress/blob/master/doc/bzip2-format.pdf',
     at: [[0, '425a6839']],
+    show: '425a68',
   },
   // HDF5 specification: "Hexadecimal: 894844460d0a1a0a"
   {
@@ -252,7 +264,12 @@ const CASES: Case[] = [
     at: [[0, 'd0cf11e0a1b11ae1']],
   },
   // RTF Specification 1.5: "The \rtfN control word must follow the opening brace" (here {\rtf1)
-  { name: 'RTF document', spec: 'https://www.biblioscape.com/rtf15_spec.htm', at: [[0, '7b5c72746631']] },
+  {
+    name: 'RTF document',
+    spec: 'https://www.biblioscape.com/rtf15_spec.htm',
+    at: [[0, '7b5c72746631']],
+    show: '7b5c727466',
+  },
   // ID3v2.4.0: "ID3v2/file identifier "ID3""
   {
     name: 'ID3v2 tag (usually the start of an MP3 file)',
@@ -274,7 +291,7 @@ it('every signature in the table is built in code and named, with its specificat
     ).toBeDefined();
     // The specification address is the one the case cites, and the evidence shows the bytes that were found.
     expect(match!.spec).toBe(c.spec);
-    const shown = c.at[0]![1].toUpperCase().match(/../g)!.join(' ');
+    const shown = (c.show ?? c.at[0]![1]).toUpperCase().match(/../g)!.join(' ');
     expect(match!.evidence, c.name).toContain(shown);
   }
 
@@ -298,6 +315,10 @@ it('every signature in the table is built in code and named, with its specificat
   expect(identifyFile(endOnly.head, endOnly.tail, endOnly.size).some((k) => k.name === 'Apache Parquet file')).toBe(
     false,
   );
+
+  // Four bytes spelling PAR1 are one marker, not the two the format needs, so a file that short is not Parquet.
+  const tiny = buildFile({ name: 'x', spec: '', at: [[0, '50415231']], size: 4 });
+  expect(identifyFile(tiny.head, tiny.tail, tiny.size).some((k) => k.name === 'Apache Parquet file')).toBe(false);
 
   // A zlib header must pass the multiple of 31 rule: 7800 is not a zlib header, and neither is CM 9 (7909).
   for (const hex of ['7800', '7909', '8801']) {
