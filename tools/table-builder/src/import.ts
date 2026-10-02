@@ -138,8 +138,13 @@ function childrenOf(node: ChildNode | ParentNode): ChildNode[] {
   return 'childNodes' in node ? node.childNodes : [];
 }
 
-/** Finds the first table in document order without recursion, so deeply nested markup cannot exhaust the stack. */
-function findFirstTable(root: ParentNode): Element | null {
+/**
+ * Finds the first table in document order, and counts the tables beside it (not the ones nested inside a table, which
+ * have their own warning), without recursion, so deeply nested markup cannot exhaust the stack.
+ */
+function findTables(root: ParentNode): { first: Element | null; count: number } {
+  let first: Element | null = null;
+  let count = 0;
   const stack: { children: ChildNode[]; index: number }[] = [{ children: childrenOf(root), index: 0 }];
   while (stack.length > 0) {
     const top = stack[stack.length - 1]!;
@@ -149,41 +154,67 @@ function findFirstTable(root: ParentNode): Element | null {
     }
     const node = top.children[top.index++]!;
     if (isElement(node)) {
-      if (node.tagName === 'table') return node;
-      stack.push({ children: childrenOf(node), index: 0 });
+      if (node.tagName === 'table') {
+        first ??= node;
+        count++;
+      } else {
+        stack.push({ children: childrenOf(node), index: 0 });
+      }
     }
   }
-  return null;
+  return { first, count };
 }
 
 /** The text of one cell: character references decoded, a br as a line break, nested tables and script left out. */
 function cellText(cell: Element, notes: HtmlNotes): string {
-  const lines: string[] = [];
+  /** The lines of the cell; `keep` marks a line written inside a pre, whose white space is kept as written. */
+  const lines: { text: string; keep: boolean }[] = [];
   let current = '';
+  let currentKeep = false;
   /** True when a line has begun that has not been written to `lines` yet. */
   let lineOpen = false;
 
   const flush = (force: boolean): void => {
     if (force || !isBlank(current)) {
-      lines.push(current);
+      lines.push({ text: current, keep: currentKeep });
       lineOpen = false;
       current = '';
+      currentKeep = false;
     }
   };
 
-  const stack: { children: ChildNode[]; index: number; block: boolean }[] = [
-    { children: childrenOf(cell), index: 0, block: false },
+  const stack: { children: ChildNode[]; index: number; block: boolean; pre: boolean; preRoot: boolean }[] = [
+    { children: childrenOf(cell), index: 0, block: false, pre: false, preRoot: false },
   ];
   while (stack.length > 0) {
     const top = stack[stack.length - 1]!;
     if (top.index >= top.children.length) {
       stack.pop();
       if (top.block) flush(false);
+      // White space left over at the end of a pre belongs to no line, and must not join the text that follows it.
+      if (top.preRoot) {
+        current = '';
+        currentKeep = false;
+      }
       continue;
     }
     const node = top.children[top.index++]!;
     if (node.nodeName === '#text') {
       const value = (node as DefaultTreeAdapterTypes.TextNode).value;
+      if (top.pre) {
+        // A browser keeps the line breaks and spaces of a pre, so each line of it is a line of the cell, as written.
+        value.split('\n').forEach((part, k) => {
+          if (k > 0) {
+            lines.push({ text: current, keep: true });
+            current = '';
+            lineOpen = false;
+          }
+          current += part;
+          if (part !== '') currentKeep = true;
+          if (!isBlank(part)) lineOpen = true;
+        });
+        continue;
+      }
       current += value;
       if (!isBlank(value)) lineOpen = true;
       continue;
@@ -193,8 +224,9 @@ function cellText(cell: Element, notes: HtmlNotes): string {
     if (name === 'br') {
       // A br ends the line it follows. The next line only exists once something is written on it, so a br that ends
       // the cell (or a block) leaves no empty line behind it.
-      lines.push(current);
+      lines.push({ text: current, keep: currentKeep });
       current = '';
+      currentKeep = false;
       lineOpen = false;
     } else if (NOT_TEXT_ELEMENTS.has(name)) {
       notes.skippedCode = true;
@@ -203,16 +235,21 @@ function cellText(cell: Element, notes: HtmlNotes): string {
     } else {
       const block = BLOCK_ELEMENTS.has(name);
       if (block) flush(false);
-      stack.push({ children: childrenOf(node), index: 0, block });
+      const pre = top.pre || name === 'pre';
+      // White space before a pre is not part of it.
+      if (pre && !top.pre) current = isBlank(current) ? '' : current;
+      stack.push({ children: childrenOf(node), index: 0, block, pre, preRoot: name === 'pre' && !top.pre });
     }
   }
-  if (lineOpen || lines.length === 0) lines.push(current);
+  if (lineOpen || lines.length === 0) lines.push({ text: current, keep: currentKeep });
 
   return lines
     .map((line) =>
-      collapseSourceBreaks(trimAscii(line), () => {
-        notes.collapsed = true;
-      }),
+      line.keep
+        ? line.text
+        : collapseSourceBreaks(trimAscii(line.text), () => {
+            notes.collapsed = true;
+          }),
     )
     .join('\n');
 }
@@ -261,7 +298,7 @@ function rowGroups(table: Element): RowGroup[] {
 
 function importHtml(text: string, warnings: string[]): string[][] {
   const fragment = parseFragment(text);
-  const table = findFirstTable(fragment);
+  const { first: table, count: tableCount } = findTables(fragment);
   if (table === null) {
     throw new TableImportError('No table was found in the pasted HTML. Paste markup that holds a <table> element.');
   }
@@ -310,6 +347,9 @@ function importHtml(text: string, warnings: string[]): string[][] {
     warnings.push(
       'Merged cells (colspan or rowspan) were repeated into every cell they cover, because a grid has no merged cells.',
     );
+  }
+  if (tableCount > 1) {
+    warnings.push(`The pasted HTML holds ${tableCount} tables; only the first was read.`);
   }
   if (notes.nested) warnings.push('A table nested inside a cell was not read, and its text is not part of the cell.');
   if (notes.skippedCode) warnings.push('Script and style content inside a cell was not read.');
