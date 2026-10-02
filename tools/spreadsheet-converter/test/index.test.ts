@@ -598,6 +598,24 @@ it('a file that is not an xlsx package is refused with a plain message', () => {
   expect(thrown(() => readXlsx(zipSync(withoutSheet), { datesAsSerials: false })).message).toContain('"S"');
 });
 
+it('a relationship target that is the name of an object property is a missing part, not a crash', () => {
+  for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    // The sheet's own target.
+    const sheetParts = partsOf(sheetXmlOf(''));
+    sheetParts['xl/_rels/workbook.xml.rels'] = sheetParts['xl/_rels/workbook.xml.rels']!.replace(
+      'worksheets/sheet1.xml',
+      `/${name}`,
+    );
+    expect(thrown(() => readXlsx(zipSync(bytesOf(sheetParts)), { datesAsSerials: false })).message).toContain('"S"');
+    // The workbook's own target.
+    const rootParts = partsOf(sheetXmlOf(''));
+    rootParts['_rels/.rels'] = rootParts['_rels/.rels']!.replace('xl/workbook.xml', `/${name}`);
+    expect(thrown(() => readXlsx(zipSync(bytesOf(rootParts)), { datesAsSerials: false })).message).toContain(
+      'no workbook part',
+    );
+  }
+});
+
 it('TSV output refuses a cell holding a tab or a line break and names the cell', () => {
   // IANA text/tab-separated-values: one record per line, fields separated by a tab, and a field cannot hold a tab.
   expect(

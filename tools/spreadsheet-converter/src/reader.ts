@@ -70,7 +70,8 @@ function openPackage(bytes: Uint8Array): Parts {
 }
 
 function partText(parts: Parts, name: string): string | undefined {
-  const bytes = parts[name];
+  // Own properties only: a relationship target such as /constructor must be a missing part, not an inherited function.
+  const bytes = Object.hasOwn(parts, name) ? parts[name] : undefined;
   return bytes === undefined ? undefined : decoder.decode(bytes);
 }
 
