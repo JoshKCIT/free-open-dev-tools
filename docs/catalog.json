@@ -1272,5 +1272,12 @@
     "category": "media",
     "tier": 2,
     "summary": "View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature."
+  },
+  {
+    "id": "msgpack-cbor",
+    "name": "MessagePack & CBOR Converter",
+    "category": "json-data",
+    "tier": 2,
+    "summary": "Convert MessagePack and CBOR to JSON and back, from hex, Base64 or a file, with binary values and tags kept visible."
   }
 ]
