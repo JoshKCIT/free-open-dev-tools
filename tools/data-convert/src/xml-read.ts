@@ -12,6 +12,8 @@
  *  - the text of an element is gathered across its child elements and trimmed of spaces, tabs and line breaks once, at
  *    its two ends, so `<p>Hello <b>big</b> world</p>` keeps the space between its words; text that is only white
  *    space is dropped; what a CDATA section holds, and an attribute value, is never trimmed;
+ *  - an element named like a member of Object.prototype (`constructor`, `toString`, `__proto__` and so on) is an
+ *    ordinary key under its own name;
  *  - comments, processing instructions and the XML declaration are dropped, and a warning says so;
  *  - namespace prefixes stay in the names;
  *  - a DOCTYPE anywhere refuses the whole document before any parser reads it, so no entity is ever declared,
@@ -62,6 +64,14 @@ const DEPTH_MESSAGE =
  */
 const INTERNAL_ATTRIBUTE_PREFIX = '\u0001';
 const INTERNAL_TEXT_KEY = '\u0002';
+/** Put in front of an element name that is also a member of every object, so the parser never meets the real name. */
+const INTERNAL_NAME_ESCAPE = '\u0003';
+
+/** True for a name that is a member of Object.prototype (or `prototype`), which a plain object would treat as special. */
+function isReservedElementName(name: string): boolean {
+  return name === 'prototype' || name in Object.prototype;
+}
+
 const XML_WHITESPACE = new Set([' ', '\t', '\n', '\r']);
 
 /** Trims spaces, tabs and line breaks (the four XML 1.0 white space characters) from both ends, in one pass each way. */
@@ -238,7 +248,7 @@ function rebuild(node: unknown, state: RebuildState): unknown {
       name = state.attributePrefix + key.slice(INTERNAL_ATTRIBUTE_PREFIX.length);
       value = typeof raw === 'string' ? attributeValue(raw, state) : raw;
     } else {
-      name = key;
+      name = key.startsWith(INTERNAL_NAME_ESCAPE) ? key.slice(INTERNAL_NAME_ESCAPE.length) : key;
       value = rebuild(raw, state);
       hasChild = true;
     }
@@ -282,6 +292,8 @@ export function readXmlValue(text: string, options: XmlReadOptions = {}): XmlRea
     trimValues: false,
     parseTagValue: false,
     parseAttributeValue: false,
+    // An element named like a member of every object is parsed under an escaped name and restored in `rebuild`.
+    transformTagName: (name: string) => (isReservedElementName(name) ? INTERNAL_NAME_ESCAPE + name : name),
     ignoreDeclaration: true,
     ignorePiTags: true,
     // The parser's own default is 100 levels; this keeps the one depth limit every other format here has.
