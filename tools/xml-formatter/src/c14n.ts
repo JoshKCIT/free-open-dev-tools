@@ -53,7 +53,7 @@ const CANONICALIZE_FAILED = 'Failed to canonicalize XML document';
  * canonicalization failed, with no position, so the tool says what it means.
  */
 const RELATIVE_NAMESPACE_MESSAGE =
-  'libxml2 could not canonicalize this document. One known cause is a namespace name that libxml2 reads as a relative address, such as x:y (a one-letter scheme) or a name with no scheme; Canonical XML does not allow those. Use an absolute name such as urn:x or http://example.com/ns.';
+  'libxml2 could not canonicalize this XML. One known cause is a namespace name that libxml2 reads as a relative address, such as x:y (a one-letter scheme) or a name with no scheme; Canonical XML does not allow those. Use an absolute name such as urn:x or http://example.com/ns.';
 
 function engineMode(engine: Libxml2Engine, mode: C14nMode): 0 | 1 | 2 {
   if (mode === 'exclusive') return engine.XmlC14NMode.XML_C14N_EXCLUSIVE_1_0;
