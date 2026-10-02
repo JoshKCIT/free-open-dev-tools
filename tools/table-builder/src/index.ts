@@ -1,10 +1,16 @@
 import meta from './meta.json';
 import { formatCsv } from './csv';
 import { setOwn } from './own-property';
+import { TableBuilderError } from './errors';
+import { formatTsv } from './tsv';
 
 export { meta };
+export { TableBuilderError, TableImportError } from './errors';
+export { formatTsv } from './tsv';
+export { importTable, MAX_IMPORT_CELLS } from './import';
+export type { ImportFormat, ImportOptions, ImportResult } from './import';
 
-export type TableFormat = 'markdown' | 'html' | 'csv' | 'json';
+export type TableFormat = 'markdown' | 'html' | 'csv' | 'tsv' | 'json';
 export type ColumnAlignment = 'left' | 'center' | 'right' | 'none';
 
 export interface BuildTableOptions {
@@ -16,7 +22,7 @@ export interface BuildTableOptions {
   alignments?: string;
   /** Pad cell text to its column's width. Markdown only. Default true. */
   pad?: boolean;
-  /** Field separator for CSV output. Default a comma. */
+  /** Field separator for CSV output. Default a comma. TSV always uses a tab. */
   csvDelimiter?: string;
   /** Indent HTML, or pretty-print JSON. Default true. */
   pretty?: boolean;
@@ -29,13 +35,6 @@ export interface BuildTableResult {
   /** Columns in the grid after the same trimming. */
   columns: number;
   warnings: string[];
-}
-
-export class TableBuilderError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'TableBuilderError';
-  }
 }
 
 /** Pads every row to the width of the widest row with empty cells. */
@@ -284,6 +283,9 @@ export function buildTable(rows: string[][], options: BuildTableOptions = {}): B
       break;
     case 'csv':
       output = buildCsv(grid, csvDelimiter);
+      break;
+    case 'tsv':
+      output = formatTsv(grid);
       break;
     case 'json': {
       const jsonResult = buildJson(grid, headerRow, pretty);

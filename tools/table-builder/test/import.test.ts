@@ -132,6 +132,15 @@ test('a GFM pipe table imports with alignment, escaped pipes and br line breaks,
     ['e\nf', 'g'],
   ]);
   expect(() => importTable(lines('```', '| a | b |', '| - | - |', '```'), 'markdown')).toThrow(TableImportError);
+
+  // CommonMark section 2.5 and 6.2: a character reference is read as the character it names (so is a numeric one),
+  // and an escaped ampersand is not a reference; a code span is not decoded.
+  expect(
+    importTable(
+      lines('| a &amp; b &lt;x&gt; &#35; &#x41; | \\&amp; \\* | `&amp;` &nosuchname; |', '| - | - | - |'),
+      'markdown',
+    ).rows,
+  ).toEqual([['a & b <x> # A', '&amp; *', '`&amp;` &nosuchname;']]);
 });
 
 test('an HTML table imports with th and td text, br line breaks and spans expanded with a warning, and nested tables are not read', () => {
@@ -303,8 +312,8 @@ test('TSV export refuses a cell containing a tab or line break naming its cell',
       ],
       { format: 'tsv' },
     ),
-  ).toThrow(/row 2, column 2.*tab/);
-  expect(() => buildTable([['a\nb', 'b']], { format: 'tsv' })).toThrow(/row 1, column 1.*line break/);
+  ).toThrow(/Row 2, column 2 holds a tab/);
+  expect(() => buildTable([['a\nb', 'b']], { format: 'tsv' })).toThrow(/Row 1, column 1 holds a line break/);
   expect(() =>
     buildTable(
       [
@@ -314,7 +323,7 @@ test('TSV export refuses a cell containing a tab or line break naming its cell',
       ],
       { format: 'tsv' },
     ),
-  ).toThrow(/row 3, column 2.*line break/);
+  ).toThrow(/Row 3, column 2 holds a line break/);
   expect(() => formatTsv([['a\tb']])).toThrow(TableBuilderError);
   // A cell's own space is kept exactly, because TSV has no trimming.
   expect(buildTable([[' a ', 'b ']], { format: 'tsv' }).output).toBe(' a \tb ');
@@ -354,10 +363,18 @@ test('every exported Markdown table rendered by micromark with GFM imports back 
     lines('| abc | def |', '| --- | --- |', '| bar | baz |', 'bar', '', 'bar'),
     lines('| abc | def |', '| --- | --- |', '| bar |', '| bar | baz | boo |'),
     lines('| abc | def |', '| --- | --- |'),
+    lines('| a | b |', '| - | - |', '| 1 | 2 |', '- item'),
+    lines('| a | b |', '| - | - |', '| 1 | 2 |', '# heading'),
+    lines('| a | b |', '| - | - |', '| &amp; &lt;x&gt; &#35; | \\&amp; \\* |'),
+    lines('a', '|-|', '1'),
   ];
   for (const example of examples) {
     expect(importTable(example, 'markdown').rows, example).toEqual(importTable(renderGfm(example), 'html').rows);
   }
+  // A delimiter line that begins a list item is not a delimiter row for either reader.
+  const listLike = lines('a | b', '- | -', '1 | 2');
+  expect(renderGfm(listLike)).not.toContain('<table>');
+  expect(() => importTable(listLike, 'markdown')).toThrow(TableImportError);
   expect(renderGfm(lines('| abc | def |', '| --- |', '| bar |'))).not.toContain('<table>');
 });
 

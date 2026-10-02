@@ -557,3 +557,44 @@ test('string-escape: XML attribute value escaping writes the quote and a line fe
   await fillField(page, 'input', '"a&nbsp;b"');
   await expect(outputArea(page).locator('.issue-list')).toContainText('&nbsp;', { timeout: 15_000 });
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// table-builder (DATA-13): import from HTML, CSV, TSV and Markdown, and TSV export
+// ---------------------------------------------------------------------------------------------------------------
+
+test('table-builder: an HTML table pasted for import exports as TSV with the same cells', async ({ page }) => {
+  // Anything the pasted markup names must stay unrequested: the page reads the table as text only.
+  const requested: string[] = [];
+  page.on('request', (request) => requested.push(request.url()));
+  await openTool(page, 'table-builder');
+  const titleBefore = await page.title();
+
+  await setControls(page, { selects: { importFrom: 'html' }, radios: { format: 'tsv' } });
+  // HTML 4.9: th and td are the cells of their row, and a br inside a cell is a line break. The IANA registration of
+  // text/tab-separated-values separates fields by a tab and records by a line break, and has no quoting, so a cell
+  // holding a line break cannot be written and is refused where it is.
+  await fillField(
+    page,
+    'importText',
+    '<script>document.title = "ran"</script><table><tr><th>Name</th><th>Qty</th></tr>' +
+      '<tr><td>Widget</td><td>3<img src="http://127.0.0.1:9/never.png"></td></tr></table>',
+  );
+  const output = outputArea(page).locator('pre.output');
+  await expect(output).toContainText('Widget', { timeout: 15_000 });
+  expect(await output.textContent()).toBe('Name\tQty\nWidget\t3');
+  await expect(outputArea(page)).toContainText('The imported rows replace the grid for this run.');
+
+  // Nothing ran and nothing the markup names was requested.
+  expect(await page.title()).toBe(titleBefore);
+  expect(requested.filter((url) => url.includes('127.0.0.1:9'))).toEqual([]);
+
+  // A cell with a line break cannot be TSV: the page names its row and column.
+  await fillField(page, 'importText', '<table><tr><td>a<br>b</td><td>c</td></tr></table>');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Row 1, column 1 holds a line break', {
+    timeout: 15_000,
+  });
+
+  // The grid is the default source again when Import from goes back to it, and the earlier four exports still work.
+  await setControls(page, { selects: { importFrom: 'grid' }, radios: { format: 'markdown' } });
+  await expect(output).toContainText('| Column 1 | Column 2 |', { timeout: 15_000 });
+});

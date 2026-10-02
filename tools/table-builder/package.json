@@ -1,7 +1,7 @@
 {
   "name": "@fodt/table-builder",
   "version": "1.0.0",
-  "description": "Build a table visually and export it as Markdown, HTML, CSV or JSON.",
+  "description": "Build a table visually or import one from HTML, CSV, TSV or Markdown, and export it as Markdown, HTML, CSV, TSV or JSON.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,12 +27,20 @@
     "csv",
     "json",
     "html",
-    "grid"
+    "grid",
+    "tsv",
+    "html table to markdown",
+    "markdown table to csv",
+    "csv to markdown",
+    "import table"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "dependencies": {
+    "parse5": "8.0.1"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

@@ -522,7 +522,7 @@
     "name": "Table Builder",
     "category": "code",
     "tier": 2,
-    "summary": "Build a table visually and export it as Markdown, HTML, CSV or JSON."
+    "summary": "Build a table visually or import one from HTML, CSV, TSV or Markdown, and export it as Markdown, HTML, CSV, TSV or JSON."
   },
   {
     "id": "bbcode",

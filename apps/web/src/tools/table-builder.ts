@@ -1,4 +1,4 @@
-import { meta, buildTable, TableBuilderError } from '@fodt/table-builder';
+import { meta, buildTable, importTable, TableBuilderError, TableImportError } from '@fodt/table-builder';
 import { defineTool, str, bool, grid, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const DELIMITERS: Record<string, string> = { comma: ',', semicolon: ';', tab: '\t', pipe: '|' };
@@ -6,12 +6,14 @@ const LANGUAGES: Record<string, string | undefined> = {
   markdown: 'markdown',
   html: 'html',
   csv: undefined,
+  tsv: undefined,
   json: 'json',
 };
 const DOWNLOADS: Record<string, string> = {
   markdown: 'table.md',
   html: 'table.html',
   csv: 'table.csv',
+  tsv: 'table.tsv',
   json: 'table.json',
 };
 
@@ -27,6 +29,42 @@ export default defineTool({
   fields: [
     { name: 'table', label: 'Table', type: 'grid', default: DEFAULT_GRID },
     {
+      name: 'importFrom',
+      label: 'Import from',
+      type: 'select',
+      default: 'grid',
+      options: [
+        { value: 'grid', label: 'The grid above' },
+        { value: 'html', label: 'HTML' },
+        { value: 'csv', label: 'CSV' },
+        { value: 'tsv', label: 'TSV' },
+        { value: 'markdown', label: 'Markdown' },
+      ],
+      help: 'Imported rows replace the grid for this run; the grid keeps what you typed.',
+    },
+    {
+      name: 'importText',
+      label: 'Table to import',
+      type: 'textarea',
+      rows: 8,
+      placeholder: 'Type or paste here. Nothing leaves your browser.',
+      help: 'The first table is read, up to 10,000 cells. HTML is read as text and never run.',
+      visible: (values) => str(values, 'importFrom', 'grid') !== 'grid',
+    },
+    {
+      name: 'importDelimiter',
+      label: 'Import delimiter',
+      type: 'select',
+      default: 'comma',
+      options: [
+        { value: 'comma', label: 'Comma' },
+        { value: 'semicolon', label: 'Semicolon' },
+        { value: 'tab', label: 'Tab' },
+        { value: 'pipe', label: 'Pipe' },
+      ],
+      visible: (values) => str(values, 'importFrom', 'grid') === 'csv',
+    },
+    {
       name: 'format',
       label: 'Format',
       type: 'radio',
@@ -35,6 +73,7 @@ export default defineTool({
         { value: 'markdown', label: 'Markdown' },
         { value: 'html', label: 'HTML' },
         { value: 'csv', label: 'CSV' },
+        { value: 'tsv', label: 'TSV' },
         { value: 'json', label: 'JSON' },
       ],
     },
@@ -87,10 +126,23 @@ export default defineTool({
     },
   ],
   run(values): ToolResult {
-    const format = str(values, 'format', 'markdown') as 'markdown' | 'html' | 'csv' | 'json';
+    const format = str(values, 'format', 'markdown') as 'markdown' | 'html' | 'csv' | 'tsv' | 'json';
+    const importFrom = str(values, 'importFrom', 'grid');
 
     try {
-      const result = buildTable(grid(values, 'table'), {
+      let source = grid(values, 'table');
+      const importWarnings: string[] = [];
+      if (importFrom !== 'grid') {
+        const text = str(values, 'importText');
+        if (text.trim() === '') return { outputs: [] };
+        const imported = importTable(text, importFrom as 'html' | 'csv' | 'tsv' | 'markdown', {
+          delimiter: (DELIMITERS[str(values, 'importDelimiter', 'comma')] ?? ',') as ',' | ';' | '\t' | '|',
+        });
+        source = imported.rows;
+        importWarnings.push(...imported.warnings);
+      }
+
+      const result = buildTable(source, {
         format,
         headerRow: bool(values, 'headerRow', true),
         alignments: str(values, 'alignments'),
@@ -108,8 +160,17 @@ export default defineTool({
           download: DOWNLOADS[format],
         },
       ];
-      if (result.warnings.length > 0) {
-        outputs.push({ kind: 'note', label: 'Warnings', tone: 'warn', value: result.warnings.join('\n') });
+      if (importFrom !== 'grid') {
+        outputs.push({
+          kind: 'note',
+          label: 'Imported table',
+          tone: 'info',
+          value: 'The imported rows replace the grid for this run.',
+        });
+      }
+      const warnings = [...importWarnings, ...result.warnings];
+      if (warnings.length > 0) {
+        outputs.push({ kind: 'note', label: 'Warnings', tone: 'warn', value: warnings.join('\n') });
       }
 
       return {
@@ -120,7 +181,7 @@ export default defineTool({
         ],
       };
     } catch (err) {
-      if (err instanceof TableBuilderError) {
+      if (err instanceof TableBuilderError || err instanceof TableImportError) {
         return { outputs: [], errors: [{ message: err.message }] };
       }
       const message = err instanceof Error ? err.message : 'Could not build a table from that grid.';
