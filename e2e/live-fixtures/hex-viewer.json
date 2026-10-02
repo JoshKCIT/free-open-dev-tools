@@ -1,0 +1,9 @@
+{
+  "id": "hex-viewer",
+  "label": "RFC 20 ASCII: Hello is the bytes 48 65 6c 6c 6f",
+  "steps": [
+    { "action": "radio", "field": "source", "value": "text" },
+    { "action": "fill", "field": "pasted", "value": "Hello" }
+  ],
+  "expect": ["48 65 6c 6c 6f", "|Hello|"]
+}

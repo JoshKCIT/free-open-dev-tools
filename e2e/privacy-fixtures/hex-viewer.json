@@ -1,0 +1,8 @@
+[
+  { "attachesFile": true, "file": "text" },
+  {
+    "mode": { "field": "source", "value": "hex" },
+    "values": { "pasted": "48656c6c6f", "search": "6c6c", "position": "0" },
+    "attachesFile": false
+  }
+]
