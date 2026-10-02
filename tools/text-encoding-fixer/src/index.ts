@@ -393,6 +393,51 @@ export function convertLineEndings(
   return { text: parts.join(''), counts };
 }
 
+/**
+ * Converts the line endings of a file's bytes, byte for byte, without reading the bytes as text: a line feed is 0A, a
+ * carriage return 0D, and every other byte is copied as it is. That is right for every encoding that keeps those two
+ * as single bytes (UTF-8, Latin-1, the Windows code pages, Shift_JIS, GBK and the like). A file that starts with a
+ * UTF-16 byte order mark is refused, because there a line ending is two bytes. The text box of a page cannot carry a
+ * carriage return (a browser turns every line break typed or pasted into it into a line feed), so a file is how a
+ * carriage return gets in.
+ */
+export function convertLineEndingBytes(
+  bytes: Uint8Array,
+  eol: 'lf' | 'crlf' | 'cr',
+): { bytes: Uint8Array; counts: LineEndingCounts } {
+  checkInputSize(bytes.length);
+  const mark = detectBom(bytes);
+  if (mark === 'utf16le' || mark === 'utf16be') {
+    throw new TextEncodingFixerError(
+      'This file starts with a UTF-16 byte order mark, where a line ending is two bytes, so its line endings cannot be changed one byte at a time. Decode it to text first.',
+    );
+  }
+  const counts: LineEndingCounts = { lf: 0, crlf: 0, cr: 0 };
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i]!;
+    if (byte === 0x0d) {
+      if (bytes[i + 1] === 0x0a) {
+        counts.crlf++;
+        i++;
+      } else counts.cr++;
+    } else if (byte === 0x0a) counts.lf++;
+  }
+  const ending = EOL_UNITS[eol];
+  const endings = counts.lf + counts.crlf + counts.cr;
+  const out = new Uint8Array(bytes.length - counts.lf - counts.crlf * 2 - counts.cr + endings * ending.length);
+  let written = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i]!;
+    if (byte === 0x0d && bytes[i + 1] === 0x0a) i++;
+    else if (byte !== 0x0d && byte !== 0x0a) {
+      out[written++] = byte;
+      continue;
+    }
+    for (const unitOfEnding of ending) out[written++] = unitOfEnding;
+  }
+  return { bytes: out, counts };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Byte order marks
 

@@ -14,7 +14,7 @@ Decodes bytes (a file or pasted hex) in a legacy text encoding, repairs text whe
 - Decoding bytes with every encoding label the WHATWG Encoding Standard defines that your browser can decode, such as windows-1252, windows-1251, koi8-r, iso-8859-2, shift_jis, gbk, big5, utf-16le and utf-8
 - The labels latin1, iso-8859-1, ascii and us-ascii as the WHATWG standard defines them (all mean windows-1252), and true ISO-8859-1, where bytes 80 to 9F stay control characters, as a separate choice
 - Repairing text where UTF-8 bytes were read as Windows-1252 or as true ISO-8859-1, for the whole text or line by line
-- Converting line endings to LF, CRLF or CR in one pass, counting each kind found
+- Converting line endings to LF, CRLF or CR in one pass, counting each kind found, in text or in a file (a file is converted byte for byte)
 - Adding or removing a byte order mark: EF BB BF for UTF-8, FF FE for UTF-16LE and FE FF for UTF-16BE, with the first 8 bytes shown as hex before and after
 - Bytes from a file or from pasted hex, up to 20 MiB, and the result as text or as a download of the exact bytes
 
@@ -24,6 +24,7 @@ Decodes bytes (a file or pasted hex) in a legacy text encoding, repairs text whe
 - The labels latin1 and iso-8859-1 mean windows-1252, as the WHATWG Encoding Standard defines them; choose true ISO-8859-1 to keep bytes 80 to 9F as control characters.
 - Repair works when the garbled text came from one pass of UTF-8 read as Windows-1252 or ISO-8859-1; a character outside that table, or bytes that are not UTF-8, are reported instead of guessed.
 - Text is not written into multi-byte legacy encodings such as Shift_JIS, GBK or Big5.
+- A text box keeps every line break as LF (a browser rule), so open a file to convert CRLF or CR line endings. A file is converted byte for byte, which suits UTF-8, Latin-1 and the Windows code pages; a file that starts with a UTF-16 byte order mark is refused, and UTF-16 without a mark cannot be told apart.
 
 ## Ambiguous cases, and what this does about them
 
@@ -33,6 +34,7 @@ Decodes bytes (a file or pasted hex) in a legacy text encoding, repairs text whe
 - Decoding keeps a byte order mark as the character U+FEFF at the start of the text instead of dropping it; the byte order mark mode removes it
 - Adding a mark to bytes that start with a different mark replaces it, so there is never more than one; removing takes off the first mark only, and a start of FF FE is read as UTF-16LE even when 00 00 follows (which would be UTF-32LE)
 - A UTF-16 mark is added without converting the bytes after it: it is for bytes that are already UTF-16
+- Pasting text with CRLF or CR line breaks into a text box gives LF line breaks, because the browser changes them before this page sees them; a file keeps its line endings exactly
 - A lone carriage return counts as a line ending, as it did on older Mac systems, and a carriage return followed by a line feed counts once; U+2028, U+2029 and U+0085 are ordinary characters here
 - Positions in messages count characters (code points); byte views and sizes count bytes
 - Unknown encoding labels are refused rather than guessed, and a label the browser has no decoder for is refused with the label named
@@ -72,7 +74,7 @@ console.log(result.changed);
 // true
 ```
 
-`repairMojibake(text, from, { perLine })` maps each character back to the byte the chosen table gives it and reads the bytes as UTF-8, returning `{ text, changed, unrepairedLines, problem }`; text that cannot be repaired comes back unchanged with `problem` saying why and where (`outside-table` with the character, or `not-utf8`, a position counting code points from 1), and `perLine` repairs only the lines that decode, listing the others in `unrepairedLines` and keeping every line ending. `decodeBytes(bytes, label, { strictLatin1 })` decodes with a WHATWG label, using the folder's own windows-1252 table, and returns `{ text, encoding, replacements }`. `convertLineEndings(text, eol)` returns the text and how many LF, CRLF and CR it found; `changeBom(bytes, action)` returns the new bytes and the first 8 bytes before and after as hex. `parseHex(text)` reads pasted hex and `utf8Bytes(text)` writes text as UTF-8, refusing a lone surrogate. Every expected failure is a `TextEncodingFixerError` with a plain message and, where one applies, a `position`. Input over `MAX_INPUT_BYTES` (20 MiB) is refused before any decoding, by `checkInputSize` for bytes and `checkTextSize` for text.
+`repairMojibake(text, from, { perLine })` maps each character back to the byte the chosen table gives it and reads the bytes as UTF-8, returning `{ text, changed, unrepairedLines, problem }`; text that cannot be repaired comes back unchanged with `problem` saying why and where (`outside-table` with the character, or `not-utf8`, a position counting code points from 1), and `perLine` repairs only the lines that decode, listing the others in `unrepairedLines` and keeping every line ending. `decodeBytes(bytes, label, { strictLatin1 })` decodes with a WHATWG label, using the folder's own windows-1252 table, and returns `{ text, encoding, replacements }`. `convertLineEndings(text, eol)` returns the text and how many LF, CRLF and CR it found, and `convertLineEndingBytes(bytes, eol)` does the same byte for byte for a file; `changeBom(bytes, action)` returns the new bytes and the first 8 bytes before and after as hex. `parseHex(text)` reads pasted hex and `utf8Bytes(text)` writes text as UTF-8, refusing a lone surrogate. Every expected failure is a `TextEncodingFixerError` with a plain message and, where one applies, a `position`. Input over `MAX_INPUT_BYTES` (20 MiB) is refused before any decoding, by `checkInputSize` for bytes and `checkTextSize` for text.
 
 ## Dependencies
 

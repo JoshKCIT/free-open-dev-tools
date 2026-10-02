@@ -4,6 +4,7 @@ import {
   MAX_INPUT_BYTES,
   TextEncodingFixerError,
   changeBom,
+  convertLineEndingBytes,
   convertLineEndings,
   decodeBytes,
   parseHex,
@@ -412,6 +413,33 @@ it('line endings convert LF, CRLF and lone CR in one pass and converting twice e
     text: 'no line ending',
     counts: { lf: 0, crlf: 0, cr: 0 },
   });
+  // A file is converted byte for byte, which gives the same endings as the text does (Python gave the same strings), and
+  // every other byte, such as the two bytes of \u{e9} (c3 a9) and a Shift_JIS pair (81 40), is copied as it was.
+  const fileBytes = Uint8Array.from([...text(source), 0xc3, 0xa9, 0x81, 0x40, 0x7f, 0x80, 0xff]);
+  for (const eol of ['lf', 'crlf', 'cr'] as const) {
+    const converted = convertLineEndingBytes(fileBytes, eol);
+    expect(converted.counts, eol).toEqual({ lf: 1, crlf: 2, cr: 1 });
+    expect(hex(converted.bytes), eol).toBe(
+      hex(Uint8Array.from([...text(expected[eol]), 0xc3, 0xa9, 0x81, 0x40, 0x7f, 0x80, 0xff])),
+    );
+    expect(hex(convertLineEndingBytes(converted.bytes, eol).bytes), eol).toBe(hex(converted.bytes));
+  }
+  expect(convertLineEndingBytes(text('x\r\ry\r\n\nz'), 'lf').counts).toEqual({ lf: 1, crlf: 1, cr: 2 });
+  expect(hex(convertLineEndingBytes(text('x\r\ry\r\n\nz'), 'lf').bytes)).toBe(hex(text('x\n\ny\n\nz')));
+  expect(convertLineEndingBytes(new Uint8Array(0), 'crlf')).toEqual({
+    bytes: new Uint8Array(0),
+    counts: { lf: 0, crlf: 0, cr: 0 },
+  });
+  // The copy is a new array even when nothing changes.
+  const plain = text('no endings');
+  expect(convertLineEndingBytes(plain, 'lf').bytes).not.toBe(plain);
+  // A file that starts with a UTF-16 byte order mark is refused: there a line ending is two bytes.
+  expect(() => convertLineEndingBytes(Uint8Array.from([0xff, 0xfe, 0x0a, 0x00]), 'crlf')).toThrow(/UTF-16/);
+  expect(() => convertLineEndingBytes(Uint8Array.from([0xfe, 0xff, 0x00, 0x0a]), 'crlf')).toThrow(/UTF-16/);
+  // The UTF-8 mark is fine and is kept.
+  expect(hex(convertLineEndingBytes(Uint8Array.from([0xef, 0xbb, 0xbf, 0x41, 0x0a]), 'crlf').bytes)).toBe(
+    'ef bb bf 41 0d 0a',
+  );
   // A long text converts in one pass without a stack or size problem.
   const long = 'line\r\n'.repeat(200000);
   expect(convertLineEndings(long, 'lf').text).toBe('line\n'.repeat(200000));
@@ -537,6 +565,7 @@ it('input over 20 MiB is refused before decoding and exactly 20 MiB is read', ()
       /20 MiB/,
     );
     expect(() => convertLineEndings('a'.repeat(MAX_INPUT_BYTES + 1), 'lf')).toThrow(/20 MiB/);
+    expect(() => convertLineEndingBytes(tooBig, 'lf')).toThrow(/20 MiB/);
     // Characters outside the BMP are four bytes each: 5,242,881 of them are over the limit by four bytes.
     expect(() => convertLineEndings('\u{1f600}'.repeat(MAX_INPUT_BYTES / 4 + 1), 'lf')).toThrow(/20 MiB/);
     expect(() => utf8Bytes('a'.repeat(MAX_INPUT_BYTES + 1))).toThrow(/20 MiB/);
@@ -552,6 +581,7 @@ it('input over 20 MiB is refused before decoding and exactly 20 MiB is read', ()
   expect(decoded.text.length).toBe(MAX_INPUT_BYTES);
   expect(decoded.text.startsWith('AAAA')).toBe(true);
   expect(changeBom(exact, 'remove').bytes.length).toBe(MAX_INPUT_BYTES);
+  expect(convertLineEndingBytes(exact, 'crlf').bytes.length).toBe(MAX_INPUT_BYTES);
   expect(decodeBytes(exact, 'utf-8', noLatin1).text.length).toBe(MAX_INPUT_BYTES);
   expect(convertLineEndings('a'.repeat(MAX_INPUT_BYTES), 'lf').text.length).toBe(MAX_INPUT_BYTES);
   expect(convertLineEndings('\u{1f600}'.repeat(MAX_INPUT_BYTES / 4), 'lf').text.length).toBe(MAX_INPUT_BYTES / 2);
