@@ -64,18 +64,24 @@ function csvRecordLines(rows: string[][]): number[] {
   return lines;
 }
 
+/** How many renamed headers the warning lists by name; the rest are counted. */
+const MAX_RENAMES_LISTED = 20;
+
 /** Headers made unique: an empty one becomes column_N, a repeated one gets _2, _3. */
 function uniqueHeaders(header: string[]): { names: string[]; renamed: string[] } {
   const used = new Set<string>();
+  // The next suffix to try for each base name, so a name repeated many times is not probed from _2 every time.
+  const nextSuffix = new Map<string, number>();
   const names: string[] = [];
   const renamed: string[] = [];
   header.forEach((raw, index) => {
     const base = raw === '' ? `column_${index + 1}` : raw;
     let name = base;
     if (used.has(name)) {
-      let n = 2;
+      let n = nextSuffix.get(base) ?? 2;
       while (used.has(`${base}_${n}`)) n++;
       name = `${base}_${n}`;
+      nextSuffix.set(base, n + 1);
     }
     if (name !== raw) renamed.push(name);
     used.add(name);
@@ -165,7 +171,9 @@ export function readTable(text: string, format: TableFormat, options: TableReadO
   if (options.headerRow) {
     const { names, renamed } = uniqueHeaders(rows[0]!);
     if (renamed.length > 0) {
-      warnings.push(`Some headers were empty or repeated, so they were renamed: ${renamed.join(', ')}.`);
+      const shown = renamed.slice(0, MAX_RENAMES_LISTED).join(', ');
+      const more = renamed.length > MAX_RENAMES_LISTED ? `, and ${renamed.length - MAX_RENAMES_LISTED} more` : '';
+      warnings.push(`Some headers were empty or repeated, so they were renamed: ${shown}${more}.`);
     }
     if (rows.length === 1) {
       warnings.push('The table has a header and no rows, so the result is an empty list; the header is not in it.');
