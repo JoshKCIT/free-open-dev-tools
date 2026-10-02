@@ -1,20 +1,12 @@
 import meta from './meta.json';
 import { XMLValidator } from 'fast-xml-parser';
 import { findDoctype, positionAt, DOCTYPE_REFUSAL_MESSAGE } from './xml-doctype';
+import { XmlFormatterError } from './errors';
 
 export { meta };
 
-export class XmlFormatterError extends Error {
-  readonly line?: number;
-  readonly column?: number;
-
-  constructor(message: string, detail: { line?: number; column?: number } = {}) {
-    super(message);
-    this.name = 'XmlFormatterError';
-    this.line = detail.line;
-    this.column = detail.column;
-  }
-}
+export { XmlFormatterError } from './errors';
+export * from './c14n';
 
 export type FormatMode = 'format' | 'minify' | 'check';
 

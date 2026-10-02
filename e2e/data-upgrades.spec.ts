@@ -56,6 +56,118 @@ async function fillField(page: Page, name: string, value: string): Promise<void>
   }).toPass({ timeout: 10_000 });
 }
 
+declare global {
+  interface Window {
+    /**
+     * What the Worker wrapper saw, for the upgraded tools that start a background worker (the XML formatter).
+     * `addresses` and `types` list every worker the page built, in construction order, by script address and by the
+     * type option it asked for; `log` lists, in the order they happened, `new:<n>`, `in:<n>:<message type>` (a
+     * message the worker sent) and `out:<n>:<message type>` (a message the page sent, `out-swallowed` when the
+     * wrapper dropped it); `ended` lists the position of every worker the page terminated.
+     */
+    __FODT_UPGRADE_WORKERS__?: { addresses: string[]; types: string[]; log: string[]; ended: number[] };
+  }
+}
+
+/**
+ * Installs a wrapper around the global Worker constructor, before any page script runs, so every construction, every
+ * message in either direction and every terminate() call is recorded. With `swallowFirstJob`, the first worker built
+ * never receives the job (as if the engine were stuck inside one synchronous call); with `swallowReady`, the first
+ * worker's message listeners never see a message whose type ends with `-ready` (as if the module never finished
+ * loading). Every later worker behaves normally, so the next run after a stop can be proven to work. A close copy of
+ * the wrapper in e2e/data-workers.spec.ts under this file's own global name, because a shared test helper would make
+ * every spec that imports it run whole for every tool.
+ */
+async function installWorkerWrapper(page: Page, options: { swallowFirstJob: boolean; swallowReady: boolean }) {
+  await page.addInitScript(
+    (modes: { swallowFirstJob: boolean; swallowReady: boolean }) => {
+      const OriginalWorker = window.Worker;
+      const state = {
+        addresses: [] as string[],
+        types: [] as string[],
+        log: [] as string[],
+        ended: [] as number[],
+      };
+      window.__FODT_UPGRADE_WORKERS__ = state;
+
+      const typeOf = (data: unknown): string => {
+        const type = (data as { type?: unknown } | null | undefined)?.type;
+        return typeof type === 'string' ? type : '?';
+      };
+
+      class WrappedWorker {
+        inner: Worker;
+        index: number;
+        swallowJob: boolean;
+        swallowReady: boolean;
+        wrapped = new Map<EventListenerOrEventListenerObject, EventListener>();
+        constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
+          this.inner = new OriginalWorker(scriptURL, workerOptions);
+          this.index = state.addresses.length;
+          this.swallowJob = modes.swallowFirstJob && this.index === 0;
+          this.swallowReady = modes.swallowReady && this.index === 0;
+          state.addresses.push(String(scriptURL));
+          state.types.push(workerOptions?.type ?? 'classic');
+          state.log.push(`new:${this.index}`);
+          // Registered first, so it runs before any listener the page adds: the log shows what the worker said even
+          // when the page is not allowed to hear it.
+          this.inner.addEventListener('message', (event) => {
+            state.log.push(`in:${this.index}:${typeOf((event as MessageEvent).data)}`);
+          });
+        }
+        postMessage(...args: Parameters<Worker['postMessage']>): void {
+          if (this.swallowJob) {
+            state.log.push(`out-swallowed:${this.index}:${typeOf(args[0])}`);
+            return;
+          }
+          state.log.push(`out:${this.index}:${typeOf(args[0])}`);
+          this.inner.postMessage(...args);
+        }
+        addEventListener(...args: Parameters<Worker['addEventListener']>): void {
+          const [type, listener, listenerOptions] = args;
+          if (this.swallowReady && type === 'message') {
+            const filtered: EventListener = (event) => {
+              if (typeOf((event as MessageEvent).data).endsWith('-ready')) return;
+              if (typeof listener === 'function') listener.call(this.inner, event);
+              else listener.handleEvent(event);
+            };
+            this.wrapped.set(listener, filtered);
+            this.inner.addEventListener(type, filtered, listenerOptions);
+            return;
+          }
+          this.inner.addEventListener(...args);
+        }
+        removeEventListener(...args: Parameters<Worker['removeEventListener']>): void {
+          const [type, listener, listenerOptions] = args;
+          const filtered = this.wrapped.get(listener);
+          if (filtered) {
+            this.inner.removeEventListener(type, filtered, listenerOptions);
+            return;
+          }
+          this.inner.removeEventListener(...args);
+        }
+        terminate(): void {
+          state.ended.push(this.index);
+          this.inner.terminate();
+        }
+        dispatchEvent(event: Event): boolean {
+          return this.inner.dispatchEvent(event);
+        }
+      }
+
+      window.Worker = WrappedWorker as unknown as typeof Worker;
+    },
+    { swallowFirstJob: options.swallowFirstJob, swallowReady: options.swallowReady },
+  );
+}
+
+/** Starts recording every request the page makes from now on, and returns the live list. */
+function recordRequests(page: Page): string[] {
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  return requests;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // data-convert (DATA-12): XML, CSV and TSV beside JSON, YAML and TOML
 // ---------------------------------------------------------------------------------------------------------------
@@ -153,4 +265,61 @@ test('mock-data: the YAML format gives the seeded records with yes kept as a str
   const output = outputArea(page).locator('pre.output');
   await expect(output).toContainText('answer: "yes"');
   expect(await output.textContent()).toBe('- id: 1\n  answer: "yes"\n- id: 2\n  answer: "yes"\n');
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// xml-formatter (DATA-14): Canonical XML, an equivalence check and a tree beside format, minify and check
+// ---------------------------------------------------------------------------------------------------------------
+
+test('xml-formatter: Canonical XML of a document with attributes out of order gives the canonical form', async ({
+  page,
+}) => {
+  await openTool(page, 'xml-formatter');
+  await setControls(page, { radios: { mode: 'canonical' } });
+  // Canonical XML 1.0 sections 2.3 and 3.3: attributes are written in lexicographic order with double quotes, and an
+  // empty element is written as a start tag and an end tag.
+  await fillField(page, 'input', `<doc b='2' a="1"><e/></doc>`);
+
+  await expect(outputArea(page).locator('pre.output')).toHaveText('<doc a="1" b="2"><e></e></doc>', {
+    timeout: 15_000,
+  });
+});
+
+test('xml-formatter: canonicalization runs in a module worker from a blob address after ready and requests nothing', async ({
+  page,
+}) => {
+  await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: false });
+  await openTool(page, 'xml-formatter');
+
+  // Recorded only after the page and its own chunk have loaded, so this asserts nothing is requested while running
+  // the visitor's own input, not that the page itself loaded with zero requests. Format runs first, on the page, and
+  // starts no worker.
+  const requests = recordRequests(page);
+  await fillField(page, 'input', '<a   y="2" x="1"><b/></a>');
+  await expect(outputArea(page).locator('pre.output')).toContainText('<a   y="2" x="1">');
+  expect(await page.evaluate(() => window.__FODT_UPGRADE_WORKERS__!.addresses.length)).toBe(0);
+
+  await setControls(page, { radios: { mode: 'canonical' } });
+  await expect(outputArea(page).locator('pre.output')).toHaveText('<a x="1" y="2"><b></b></a>', { timeout: 15_000 });
+
+  const seen = await page.evaluate(() => window.__FODT_UPGRADE_WORKERS__!);
+  expect(seen.addresses.length).toBeGreaterThanOrEqual(1);
+  for (const address of seen.addresses) expect(address.startsWith('blob:')).toBe(true);
+  // Every worker on the site is built as an ES module (apps/web/vite.config.ts), so the page asks for one.
+  for (const type of seen.types) expect(type).toBe('module');
+
+  // The job was posted only after the worker said it was ready, for every worker the page built.
+  for (let n = 0; n < seen.addresses.length; n++) {
+    const ready = seen.log.findIndex((entry) => entry.startsWith(`in:${n}:`) && entry.endsWith('-ready'));
+    const job = seen.log.findIndex((entry) => entry.startsWith(`out:${n}:`) && entry.endsWith('-job'));
+    expect(ready, `worker ${n} never reported ready: ${seen.log.join(' | ')}`).toBeGreaterThanOrEqual(0);
+    expect(job, `worker ${n} was never sent a job: ${seen.log.join(' | ')}`).toBeGreaterThan(ready);
+  }
+
+  // A worker that finished its job is ended too: every worker the page built has been terminated.
+  await expect
+    .poll(async () => (await page.evaluate(() => window.__FODT_UPGRADE_WORKERS__!.ended)).length)
+    .toBe(seen.addresses.length);
+
+  expect(requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'))).toEqual([]);
 });

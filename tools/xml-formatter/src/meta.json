@@ -31,6 +31,25 @@
   "apiNotes": "`formatXml(source, options)` returns `{ output, elements, attributes, maxDepth }` and throws `XmlFormatterError` with `line`/`column` for a DOCTYPE, a well-formedness error or an undeclared entity reference. `options.mode` is `'format'` (default), `'minify'` or `'check'`; `options.indent` (default 2, spaces per level) applies to `format`; `options.removeComments` (default false) applies to `minify`.",
   "testNotes": "A hand-written linear tokenizer (no backtracking regular expressions) splits already-validated text into markup tokens, then only whitespace-only text nodes between element-only content are added or removed; a seeded property test over 200 random documents proves the non-whitespace token sequence is identical before and after formatting or minifying. DOCTYPE refusal and the undeclared-entity refusal are each checked against a billion-laughs document and an external-entity document.",
   "dependencies": {
-    "fast-xml-parser": "5.11.1"
-  }
+    "fast-xml-parser": "5.11.1",
+    "libxml2-wasm": "0.7.2"
+  },
+  "bundledData": [
+    {
+      "name": "libxml2",
+      "source": "https://github.com/jameslan/libxml2/tree/f52e859efe97cf3f0b78d731976402748878529a",
+      "licence": "MIT",
+      "licenceUrl": "https://github.com/jameslan/libxml2-wasm/blob/v0.7.2/LICENSE.libxml2",
+      "attribution": "Copyright (C) 1998-2012 Daniel Veillard and The Libxml2 Contributors. libxml2 2.15.1 (the VERSION file of the source commit that libxml2-wasm 0.7.2 builds) is compiled into the WebAssembly module that libxml2-wasm 0.7.2 embeds in lib/libxml2raw.mjs. libxml2 is offered under the MIT licence; the files dict.c and list.c carry a similar licence with different copyright notices.",
+      "noticeFile": "src/libxml2-LICENSE.txt"
+    },
+    {
+      "name": "Emscripten runtime",
+      "source": "https://github.com/emscripten-core/emscripten/tree/5.0.2",
+      "licence": "MIT",
+      "licenceUrl": "https://github.com/emscripten-core/emscripten/blob/5.0.2/LICENSE",
+      "attribution": "Copyright (c) 2010-2014 Emscripten authors. The build workflow of libxml2-wasm 0.7.2 names Emscripten 5.0.2, and the Emscripten runtime and C library are part of the module that libxml2-wasm 0.7.2 embeds. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.",
+      "noticeFile": "src/emscripten-LICENSE.txt"
+    }
+  ]
 }

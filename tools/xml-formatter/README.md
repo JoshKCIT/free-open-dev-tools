@@ -35,6 +35,14 @@ Checks a pasted document for XML 1.0 well-formedness, formats it with indentatio
 
 - [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/)
 
+## Bundled data
+
+This folder ships a data file that is not an npm dependency, so it travels with the folder when it is
+copied out on its own:
+
+- **libxml2** (MIT) — [source](https://github.com/jameslan/libxml2/tree/f52e859efe97cf3f0b78d731976402748878529a). Copyright (C) 1998-2012 Daniel Veillard and The Libxml2 Contributors. libxml2 2.15.1 (the VERSION file of the source commit that libxml2-wasm 0.7.2 builds) is compiled into the WebAssembly module that libxml2-wasm 0.7.2 embeds in lib/libxml2raw.mjs. libxml2 is offered under the MIT licence; the files dict.c and list.c carry a similar licence with different copyright notices.
+- **Emscripten runtime** (MIT) — [source](https://github.com/emscripten-core/emscripten/tree/5.0.2). Copyright (c) 2010-2014 Emscripten authors. The build workflow of libxml2-wasm 0.7.2 names Emscripten 5.0.2, and the Emscripten runtime and C library are part of the module that libxml2-wasm 0.7.2 embeds. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.
+
 ## Use it on its own
 
 ```sh
@@ -67,6 +75,7 @@ formatXml('<a><b>1</b></a>', { mode: 'format', indent: 2 });
 ## Dependencies
 
 - `fast-xml-parser` 5.11.1
+- `libxml2-wasm` 0.7.2
 
 ## Tests
 
