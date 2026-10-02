@@ -3,10 +3,10 @@
 No file is copied into this folder. The tests build every recording in code, from the field list of the specification
 and from the values below, which are quoted as literals in `../index.test.ts` with their source named beside them.
 
-| Source                                   | Address                                                  | Fetched    | Rights                                                                                                   |
-| ---------------------------------------- | -------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
-| HAR 1.2 Spec                             | http://www.softwareishard.com/blog/har-12-spec/          | 2026-10-02 | The page says "Copyright (c) 2007 Software is hard. All rights reserved." It gives no licence.           |
-| RFC 6265, 7235, 6750, 7519, 3986 and 8259 | https://www.rfc-editor.org/rfc/rfcNNNN (txt)             | 2026-10-02 | IETF documents; short extracts and the examples in them are used with the number of the RFC named.       |
+| Source                                    | Address                                         | Fetched    | Rights                                                                                             |
+| ----------------------------------------- | ----------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| HAR 1.2 Spec                              | http://www.softwareishard.com/blog/har-12-spec/ | 2026-10-02 | The page says "Copyright (c) 2007 Software is hard. All rights reserved." It gives no licence.     |
+| RFC 6265, 7235, 6750, 7519, 3986 and 8259 | https://www.rfc-editor.org/rfc/rfcNNNN (txt)    | 2026-10-02 | IETF documents; short extracts and the examples in them are used with the number of the RFC named. |
 
 ## What is taken from the HAR 1.2 specification
 

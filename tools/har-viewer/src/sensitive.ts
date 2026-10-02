@@ -140,8 +140,45 @@ export function maskPairs(text: string): { text: string; count: number } {
 }
 
 /**
+ * Whether a user name in the user information of an address has the shape of a token: a JSON Web Token, a name that
+ * starts like a well-known token prefix, or a long run of letters, digits, hyphens and underscores that holds both a
+ * letter and a digit. A name with a dot, or one of letters only, is an ordinary name (or a look-alike address) and is
+ * left readable.
+ */
+function userNameLooksLikeToken(name: string): boolean {
+  if (looksLikeJwt(name)) return true;
+  if (
+    /^(?:gh[pousr]_|github_pat_|glpat-|xox[abprs]-|sk-|pk_|rk_|AKIA|ASIA|AIza|ya29\.)[A-Za-z0-9_.-]{8,}$/.test(name)
+  ) {
+    return true;
+  }
+  return name.length >= 20 && /^[A-Za-z0-9_-]+$/.test(name) && /[0-9]/.test(name) && /[A-Za-z]/.test(name);
+}
+
+/**
+ * Masks the user information of an address, given its authority (everything between the slashes and the next slash).
+ * The user information is everything before the last at sign of the authority, as the WHATWG URL Standard reads it, so
+ * a password that holds an at sign is masked whole. Everything after the first colon is masked (RFC 3986 section 3.2.1),
+ * and so is a user name that has the shape of a token. Returns the authority as it is shown, or undefined when there is
+ * nothing to mask.
+ */
+function maskUserInfo(authority: string): string | undefined {
+  const at = authority.lastIndexOf('@');
+  if (at < 0) return undefined;
+  const info = authority.slice(0, at);
+  const colon = info.indexOf(':');
+  const name = colon < 0 ? info : info.slice(0, colon);
+  const password = colon < 0 ? '' : info.slice(colon + 1);
+  const maskName = userNameLooksLikeToken(decode(name));
+  if (!maskName && password === '') return undefined;
+  const shownName = maskName ? maskValue(decode(name), 'token') : name;
+  const shownPassword = password === '' ? '' : maskValue(decode(password), 'password');
+  return `${shownName}${colon < 0 ? '' : ':'}${shownPassword}${authority.slice(at)}`;
+}
+
+/**
  * Masks the sensitive parts of an address: the password in its user information (RFC 3986 section 3.2.1: an
- * application should not render as clear text any data after the first colon), the sensitive parameters of its query
+ * application should not render as clear text any data after the first colon) and a user name shaped like a token, the sensitive parameters of its query
  * and, for an address that carries a fragment of parameters, of its fragment. `count` is how many were masked.
  */
 export function maskUrl(url: string): { url: string; userinfo: number; params: number } {
@@ -153,13 +190,12 @@ export function maskUrl(url: string): { url: string; userinfo: number; params: n
   let userinfo = 0;
   let params = 0;
 
-  const authority = /^([A-Za-z][A-Za-z0-9+.-]*:\/\/)([^/@]*)@/.exec(base);
+  const authority = /^((?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/)([^/]*)/.exec(base);
   if (authority) {
-    const info = authority[2]!;
-    const colon = info.indexOf(':');
-    if (colon >= 0 && colon < info.length - 1) {
+    const masked = maskUserInfo(authority[2]!);
+    if (masked !== undefined) {
       userinfo = 1;
-      base = `${authority[1]}${info.slice(0, colon + 1)}${maskValue(decode(info.slice(colon + 1)), 'password')}${base.slice(authority[0].length - 1)}`;
+      base = `${authority[1]}${masked}${base.slice(authority[0].length)}`;
     }
   }
   if (query.length > 1) {

@@ -8,7 +8,7 @@
     "A list of requests with start order, method, address, status, size and time, filtered by text in the address, by method and by status (404 or a class such as 4xx), and sorted by time, size or status",
     "One request opened in full: request and response headers, query parameters, cookies, posted data and the response body as text",
     "Base64 response bodies decoded before they are shown; only text bodies are shown, and a long body is cut with a note",
-    "Sensitive values flagged and masked: Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token headers, every cookie, parameters named like a token, key, secret or password, a password inside an address, and values shaped like a JSON Web Token or a Bearer credential",
+    "Sensitive values flagged and masked: Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token headers, every cookie, parameters named like a token, key, secret or password, the password and a token-shaped user name inside an address, and values shaped like a JSON Web Token or a Bearer credential",
     "Sizes of -1 shown as unknown and timings of -1 shown as not applicable and left out of the total, as the specification defines them",
     "Custom fields that start with an underscore are ignored"
   ],

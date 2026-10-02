@@ -240,7 +240,7 @@ const SENSITIVE_RULES = [
   'Headers named Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token (RFC 7235, RFC 6265).',
   'Every cookie value, in the cookie lists (RFC 6265).',
   'Query, form and posted parameters named key, apikey, api_key, sig or signature, or whose name holds token, secret, password or passwd (RFC 6750 names access_token).',
-  'A password in the user information of an address (RFC 3986 section 3.2.1).',
+  'In the user information of an address (everything before the last @ ahead of the first slash): everything after the first colon (RFC 3986 section 3.2.1), and a user name shaped like a token (a long run of letters and digits, or a prefix such as ghp_).',
   'Any value shaped like a JSON Web Token (RFC 7519) or a Bearer credential (RFC 6750), also inside a body.',
   'In a body: form fields and JSON members with those names.',
   'A masked value shows its first min(4, floor(length / 4)) characters and its length; a password, a secret and a value named like one show no character.',

@@ -120,3 +120,72 @@ it('every masked view applies the same short-value rule: query lists, form pairs
     '{"client_secret":"… (10 characters)"}',
   );
 });
+
+/** A token-shaped string assembled from pieces, so no file holds a literal that looks like a real credential. */
+const PAT = ['ghp', '_', 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8'].join('');
+
+it('the user information of an address ends at the last at sign of its authority, so a password holding one is masked whole', () => {
+  expect(maskUrl('https://user:p@ss@host.example/x')).toEqual({
+    url: 'https://user:… (4 characters)@host.example/x',
+    userinfo: 1,
+    params: 0,
+  });
+  // Several at signs and colons: the password is everything after the first colon.
+  expect(maskUrl('https://a:b@c:d@host/')).toEqual({ url: 'https://a:… (5 characters)@host/', userinfo: 1, params: 0 });
+  // A percent-encoded at sign is decoded before counting.
+  expect(maskUrl('https://ann:p%40ss@host/')).toEqual({
+    url: 'https://ann:… (4 characters)@host/',
+    userinfo: 1,
+    params: 0,
+  });
+  // An address with no scheme but the two slashes.
+  expect(maskUrl('//ann:secret1@host/x').url).toBe('//ann:… (7 characters)@host/x');
+  // An at sign after the authority belongs to the path, the query or the fragment, not to the user information.
+  for (const url of [
+    'https://example.com/a@b:c@d',
+    'https://example.com/p?next=a:b@c',
+    'https://example.com?x=u:p@y',
+    'https://example.com#u:p@y',
+    'https://ann:@example.com/x',
+    'https://ann@example.com/x',
+  ]) {
+    expect(maskUrl(url), url).toEqual({ url, userinfo: 0, params: 0 });
+  }
+});
+
+it('a token used as the user name of an address is masked, with or without a password, and an ordinary name is not', () => {
+  expect(maskUrl(`https://${PAT}@github.com/o/r.git`)).toEqual({
+    url: 'https://ghp_… (40 characters)@github.com/o/r.git',
+    userinfo: 1,
+    params: 0,
+  });
+  expect(maskUrl(`https://${PAT}:x-oauth-basic@github.com/o/r.git`)).toEqual({
+    url: 'https://ghp_… (40 characters):… (13 characters)@github.com/o/r.git',
+    userinfo: 1,
+    params: 0,
+  });
+  // A long name of letters and digits with no dots is token-shaped; a name with dots, a short name, a name of letters
+  // only and an address-like name (a phishing look-alike) are shown as they are.
+  const longName = ['k9x2', 'm4q7', 'z1c8', 'v5b3', 'n6w0'].join('');
+  expect(maskUrl(`https://${longName}@host/`).userinfo).toBe(1);
+  for (const name of ['admin', 'login.example.com.attacker', 'abcdefghijklmnopqrstuvwxyz', 'build-bot']) {
+    expect(maskUrl(`https://${name}@host/`), name).toEqual({ url: `https://${name}@host/`, userinfo: 0, params: 0 });
+  }
+});
+
+it('the list and the detail mask a password holding an at sign and count it once', () => {
+  const recording = har([entry({ url: 'https://user:p@ss@host.example/x', request: { queryString: [] } })]);
+  const detail = requestDetail(recording, 1, { reveal: false, bodies: false });
+  expect(detail.url).toBe('https://user:… (4 characters)@host.example/x');
+  expect(detail.flags).toBe(1);
+  const row = listRequests(recording, { ...LIST }).rows[0]!;
+  expect(row.url).toBe(detail.url);
+  expect(row.flags).toBe(1);
+  expect(listRequests(recording, { ...LIST, filter: 'ss@host' }).total).toBe(0);
+  expect(listRequests(recording, { ...LIST, filter: 'ss@host', reveal: true }).total).toBe(1);
+  const named = har([entry({ url: `https://${PAT}@github.com/o/r.git` })]);
+  expect(listRequests(named, { ...LIST }).rows[0]).toMatchObject({
+    url: 'https://ghp_… (40 characters)@github.com/o/r.git',
+    flags: 1,
+  });
+});
