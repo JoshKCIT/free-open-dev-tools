@@ -5,7 +5,9 @@
  * The rules, stated once so every folder that copies this file states the same thing:
  *  - YAML is read with the 1.2 core schema: `yes` and `no` are strings, `0o14` and `0x1F` are integers, a quoted
  *    scalar is always a string;
- *  - a mapping with the same key twice is refused, naming the second key's line and column;
+ *  - a mapping with the same key twice is refused, naming the second key's line and column; so is a mapping whose keys
+ *    are different in YAML but the same name once written as text (the integer 1 and the string "1", null and ""), which
+ *    would otherwise collapse into one entry and lose a value;
  *  - aliases are limited twice: by the library's own rule, `maxAliasCount: 100` (each use of an alias counts with the
  *    number of aliases inside what it points at, so a one-value anchor can be used 99 times and not 100), and by a
  *    count of the values the document expands to, aliases copied out: a document that expands to more than 2,000,000
@@ -15,6 +17,8 @@
  *  - every error carries its line and column when the library knows them;
  *  - anchors and aliases are expanded into separate copies, a tag outside the core schema is not interpreted, and a
  *    warning says so for each; a comment holds no data and is dropped without a warning;
+ *  - a merge key (`<<`) is an ordinary key, since YAML 1.2 has none, and a warning says nothing was merged; a `%YAML 1.1`
+ *    directive makes the library read that document with the 1.1 rules (yes is true, 0777 is octal), and a warning says so;
  *  - a value with no JSON form (a date or binary value that an explicit tag produced) is refused, never reshaped;
  *  - a key named `__proto__` or `constructor` stays an ordinary key of the value.
  *
@@ -24,7 +28,7 @@
  * Writing uses the YAML 1.1 compatibility mode, so a string such as `yes`, `on`, `null`, `1e3` or `2001-01-01` is
  * written quoted and reads back as a string in either YAML version.
  */
-import { Document, LineCounter, isAlias, isScalar, parseAllDocuments, visit } from 'yaml';
+import { Document, LineCounter, isAlias, isMap, isScalar, parseAllDocuments, visit, type YAMLMap } from 'yaml';
 
 export class YamlValueError extends Error {
   readonly line?: number;
@@ -63,6 +67,10 @@ const EXPANSION_MESSAGE =
   'This YAML expands, once its aliases are copied out, to more than 2,000,000 values, so it was refused rather than risk freezing the tab.';
 
 const ALIAS_WARNING = 'A YAML anchor and its aliases were expanded into separate copies of the same value.';
+const MERGE_KEY_WARNING =
+  'A YAML merge key (<<) was read as an ordinary key named <<, because YAML 1.2 has no merge key; nothing was merged.';
+const YAML_11_WARNING =
+  'A %YAML 1.1 directive makes this document follow the YAML 1.1 rules (yes and no are booleans, 0777 is octal), which differ from the YAML 1.2 rules used everywhere else here.';
 const TAG_WARNING = 'A YAML tag outside the core schema was dropped; the value is kept, the tag is not.';
 
 /** Core-schema tags a YAML scalar or collection resolves to without any explicit `!!` marker. */
@@ -120,15 +128,47 @@ function inspectValue(value: unknown, max: number): { deep: boolean; tooMany?: b
 interface TagScan {
   nonCoreTag: boolean;
   alias: boolean;
+  mergeKey: boolean;
 }
 
-function scanDocument(doc: Document): TagScan {
-  const found: TagScan = { nonCoreTag: false, alias: false };
+/**
+ * The name a plain scalar key gets once it is written as text, the way the library turns a key into a property name
+ * (null is the empty name, anything else its `String`); undefined for a key that is not a plain scalar value.
+ */
+function keyName(value: unknown): string | undefined {
+  if (value === null) return '';
+  if (typeof value === 'object' || typeof value === 'function' || typeof value === 'symbol') return undefined;
+  return String(value as string | number | boolean | bigint);
+}
+
+/** Notes a merge key and refuses two keys of one mapping that are the same name as text. */
+function checkMapKeys(map: YAMLMap, found: TagScan, lineCounter: LineCounter): void {
+  const seen = new Set<string>();
+  for (const pair of map.items) {
+    const key = pair.key as unknown;
+    if (!isScalar(key)) continue;
+    if (key.value === '<<' && key.type === 'PLAIN') found.mergeKey = true;
+    const name = keyName(key.value);
+    if (name === undefined) continue;
+    if (seen.has(name)) {
+      const start = key.range ? lineCounter.linePos(key.range[0]) : undefined;
+      throw new YamlValueError(
+        `Two keys of this mapping become the same name, "${name}", once written as text (for example 1 and "1"), so one value would replace the other. Make the keys different.`,
+        { line: start?.line, column: start?.col },
+      );
+    }
+    seen.add(name);
+  }
+}
+
+function scanDocument(doc: Document, lineCounter: LineCounter): TagScan {
+  const found: TagScan = { nonCoreTag: false, alias: false, mergeKey: false };
   visit(doc, {
     Node(_key, node) {
       const tag = (node as unknown as { tag?: string }).tag;
       if (tag && !CORE_SCHEMA_TAGS.has(tag)) found.nonCoreTag = true;
       if (isAlias(node)) found.alias = true;
+      if (isMap(node)) checkMapKeys(node, found, lineCounter);
     },
   });
   return found;
@@ -188,17 +228,23 @@ export function readYamlValue(text: string, options: YamlReadOptions): YamlReadR
   const warnings: string[] = [];
   let sawAlias = false;
   let sawTag = false;
+  let sawMergeKey = false;
+  let sawYaml11 = false;
   const values: unknown[] = [];
   for (const doc of present) {
     let scan: TagScan;
     try {
-      scan = scanDocument(doc);
+      scan = scanDocument(doc, lineCounter);
     } catch (err) {
       if (isStackExhaustion(err)) throw new YamlValueError(DEPTH_MESSAGE);
       throw err;
     }
     if (scan.alias) sawAlias = true;
     if (scan.nonCoreTag) sawTag = true;
+    // Under a %YAML 1.1 directive the library does merge `<<`, so only that warning applies to such a document.
+    const yaml11 = doc.directives.yaml.explicit && doc.directives.yaml.version === '1.1';
+    if (yaml11) sawYaml11 = true;
+    else if (scan.mergeKey) sawMergeKey = true;
 
     let value: unknown;
     try {
@@ -224,6 +270,8 @@ export function readYamlValue(text: string, options: YamlReadOptions): YamlReadR
 
   if (sawAlias) warnings.push(ALIAS_WARNING);
   if (sawTag) warnings.push(TAG_WARNING);
+  if (sawMergeKey) warnings.push(MERGE_KEY_WARNING);
+  if (sawYaml11) warnings.push(YAML_11_WARNING);
 
   return { value: options.documents === 'one' ? values[0] : values, warnings };
 }

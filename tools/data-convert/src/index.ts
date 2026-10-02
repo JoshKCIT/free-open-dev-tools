@@ -1,7 +1,7 @@
 import meta from './meta.json';
 import { parseJsonText, exceedsDepth, MAX_JSON_DEPTH } from './json-text';
 import { formatPointer } from './pointer';
-import { Document, parseDocument, visit, isAlias } from 'yaml';
+import { Document, LineCounter, parseDocument, visit, isAlias, isMap, isScalar, type YAMLMap } from 'yaml';
 import { parse as parseToml, stringify as stringifyToml, TomlError } from 'smol-toml';
 import { readXmlValue, XmlValueError } from './xml-read';
 import { writeXmlValue, XmlWriteError } from './xml-write';
@@ -68,6 +68,45 @@ interface YamlSourceScan {
   hasComment: boolean;
   hasNonCoreTag: boolean;
   hasAliasOrAnchor: boolean;
+  hasMergeKey: boolean;
+  hasYaml11Directive: boolean;
+}
+
+const MERGE_KEY_WARNING =
+  'A YAML merge key (<<) was read as an ordinary key named <<, because YAML 1.2 has no merge key; nothing was merged.';
+const YAML_11_WARNING =
+  'A %YAML 1.1 directive makes this document follow the YAML 1.1 rules (yes and no are booleans, 0777 is octal), which differ from the YAML 1.2 rules used everywhere else here.';
+
+/**
+ * The name a plain scalar key gets once it is written as text, the way the yaml package turns a key into a property
+ * name (null is the empty name, anything else its `String`); undefined for a key that is not a plain scalar value.
+ */
+function keyName(value: unknown): string | undefined {
+  if (value === null) return '';
+  if (typeof value === 'object' || typeof value === 'function' || typeof value === 'symbol') return undefined;
+  return String(value as string | number | boolean | bigint);
+}
+
+/** Refuses two keys of one mapping that are the same name as text (the integer 1 and the string "1"), and says whether one is a merge key. */
+function checkMapKeys(map: YAMLMap, lineCounter: LineCounter): boolean {
+  let mergeKey = false;
+  const seen = new Set<string>();
+  for (const pair of map.items) {
+    const key = pair.key as unknown;
+    if (!isScalar(key)) continue;
+    if (key.value === '<<' && key.type === 'PLAIN') mergeKey = true;
+    const name = keyName(key.value);
+    if (name === undefined) continue;
+    if (seen.has(name)) {
+      const start = key.range ? lineCounter.linePos(key.range[0]) : undefined;
+      throw new DataConvertError(
+        `Two keys of this mapping become the same name, "${name}", once written as text (for example 1 and "1"), so one value would replace the other. Make the keys different.`,
+        { line: start?.line, column: start?.col },
+      );
+    }
+    seen.add(name);
+  }
+  return mergeKey;
 }
 
 /**
@@ -94,11 +133,12 @@ function exceedsNodeCount(value: unknown, max: number): boolean {
  * 1.2 core schema, or an alias/anchor pair — each is a loss this tool
  * reports when the target format cannot hold it.
  */
-function scanYamlSource(doc: Document.Parsed): YamlSourceScan {
+function scanYamlSource(doc: Document.Parsed, lineCounter: LineCounter): YamlSourceScan {
   const docShape = doc as unknown as YamlDocumentShape;
   let hasComment = Boolean(docShape.commentBefore || docShape.comment);
   let hasNonCoreTag = false;
   let hasAliasOrAnchor = false;
+  let hasMergeKey = false;
 
   visit(doc, {
     Node(_key, node) {
@@ -106,10 +146,19 @@ function scanYamlSource(doc: Document.Parsed): YamlSourceScan {
       if (shape.comment || shape.commentBefore) hasComment = true;
       if (shape.tag && !CORE_SCHEMA_TAGS.has(shape.tag)) hasNonCoreTag = true;
       if (isAlias(node)) hasAliasOrAnchor = true;
+      if (isMap(node) && checkMapKeys(node, lineCounter)) hasMergeKey = true;
     },
   });
 
-  return { hasComment, hasNonCoreTag, hasAliasOrAnchor };
+  // Under a %YAML 1.1 directive the yaml package does merge `<<`, so only the directive is reported for such a document.
+  const hasYaml11Directive = doc.directives.yaml.explicit === true && doc.directives.yaml.version === '1.1';
+  return {
+    hasComment,
+    hasNonCoreTag,
+    hasAliasOrAnchor,
+    hasMergeKey: hasMergeKey && !hasYaml11Directive,
+    hasYaml11Directive,
+  };
 }
 
 /**
@@ -300,13 +349,14 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
     }
     value = parsed.value;
   } else if (from === 'yaml') {
-    const doc = parseDocument(text, { logLevel: 'error', uniqueKeys: true, prettyErrors: true });
+    const lineCounter = new LineCounter();
+    const doc = parseDocument(text, { logLevel: 'error', uniqueKeys: true, prettyErrors: true, lineCounter });
     if (doc.errors.length > 0) {
       const err = doc.errors[0]!;
       const pos = err.linePos?.[0];
       throw new DataConvertError(err.message, { line: pos?.line, column: pos?.col });
     }
-    const scan = scanYamlSource(doc);
+    const scan = scanYamlSource(doc, lineCounter);
     if (scan.hasComment) {
       warnings.push('Comments in the YAML input were dropped, since the output format here is not YAML.');
     }
@@ -316,6 +366,8 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
     if (scan.hasAliasOrAnchor) {
       warnings.push('A YAML anchor and its aliases were expanded into separate copies of the same value.');
     }
+    if (scan.hasMergeKey) warnings.push(MERGE_KEY_WARNING);
+    if (scan.hasYaml11Directive) warnings.push(YAML_11_WARNING);
     try {
       value = doc.toJS({ maxAliasCount: 100 });
     } catch (err) {

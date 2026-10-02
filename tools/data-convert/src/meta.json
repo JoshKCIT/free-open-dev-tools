@@ -23,6 +23,7 @@
     "JSON has no comments; a YAML comment survives only a YAML to YAML conversion, never a conversion to JSON or TOML",
     "TOML has no comment syntax the reader keeps, so every TOML input's comments are dropped even converting TOML to TOML",
     "TOML has no null; a null anywhere in the input is refused by its RFC 6901 path rather than being dropped, since TOML libraries otherwise drop it silently",
+    "A YAML merge key (<<) is read as an ordinary key named << and a %YAML 1.1 directive switches that document to the YAML 1.1 rules (yes is true, 0777 is octal), each with a warning; two keys that become the same name as text (1 and \"1\", null and an empty name) are refused with their line, except in a YAML to YAML conversion, which keeps them",
     "A YAML tag outside the core schema, and a YAML anchor or alias, are resolved to a plain copy on output; the tag or the sharing is not preserved",
     "TOML has no distinct date type on the JSON/YAML side of a conversion; a TOML date or time becomes a string",
     "A YAML timestamp written with the !!timestamp tag becomes ISO 8601 text with a warning; binary data (!!binary), a set (!!set) or an ordered map (!!omap) is refused with its path, because no other format here can hold it; a YAML to YAML conversion keeps all of them as written",
