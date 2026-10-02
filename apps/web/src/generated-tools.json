@@ -714,21 +714,31 @@
   },
   "data-convert": {
     "id": "data-convert",
-    "name": "JSON, YAML & TOML Converter",
+    "name": "Data Format Converter (JSON, YAML, TOML, XML, CSV, TSV)",
     "version": "1.0.0",
     "license": "MIT",
     "dependencies": {
       "yaml": "2.9.1",
-      "smol-toml": "1.9.0"
+      "smol-toml": "1.9.0",
+      "fast-xml-parser": "5.11.1"
     },
     "keywords": [
       "json",
       "yaml",
       "toml",
+      "xml",
+      "csv",
+      "tsv",
       "convert",
       "data convert",
+      "data format converter",
       "yaml to json",
-      "toml to json"
+      "toml to json",
+      "xml to json",
+      "json to xml",
+      "csv to json",
+      "json to csv",
+      "tsv to csv"
     ]
   },
   "data-size": {
@@ -766,7 +776,12 @@
       "sql server",
       "create table",
       "insert",
-      "ddl"
+      "ddl",
+      "insert to json",
+      "sql to csv",
+      "sql to json",
+      "read insert statements",
+      "parse sql dump"
     ]
   },
   "data-uri": {
@@ -1658,14 +1673,19 @@
     "name": "JSON Schema Generator",
     "version": "1.0.0",
     "license": "MIT",
-    "dependencies": {},
+    "dependencies": {
+      "yaml": "2.9.1",
+      "fast-xml-parser": "5.11.1"
+    },
     "keywords": [
       "json schema",
       "infer",
       "generate",
       "draft-07",
       "2020-12",
-      "type inference"
+      "type inference",
+      "yaml",
+      "xml"
     ]
   },
   "json-schema-validator": {
@@ -1705,7 +1725,10 @@
     "name": "JSON to Typed Code",
     "version": "1.0.0",
     "license": "MIT",
-    "dependencies": {},
+    "dependencies": {
+      "yaml": "2.9.1",
+      "fast-xml-parser": "5.11.1"
+    },
     "keywords": [
       "json",
       "code generation",
@@ -1722,7 +1745,9 @@
       "protobuf",
       "protocol buffers",
       "proto3",
-      "type inference"
+      "type inference",
+      "yaml",
+      "xml"
     ]
   },
   "json-to-graphql": {
@@ -2050,7 +2075,9 @@
     "name": "Mock Data Generator",
     "version": "1.0.0",
     "license": "MIT",
-    "dependencies": {},
+    "dependencies": {
+      "yaml": "2.9.1"
+    },
     "keywords": [
       "mock data",
       "fake data",
@@ -2058,7 +2085,9 @@
       "seeded",
       "deterministic",
       "fixtures",
-      "faker"
+      "faker",
+      "xml",
+      "yaml"
     ]
   },
   "morse-code": {
@@ -2859,7 +2888,9 @@
       "sql",
       "csv",
       "shell",
-      "regex"
+      "regex",
+      "xml",
+      "xml attribute"
     ]
   },
   "svg-optimizer": {
@@ -2887,7 +2918,9 @@
     "name": "Table Builder",
     "version": "1.0.0",
     "license": "MIT",
-    "dependencies": {},
+    "dependencies": {
+      "parse5": "8.0.1"
+    },
     "keywords": [
       "table",
       "markdown",
@@ -2895,7 +2928,12 @@
       "csv",
       "json",
       "html",
-      "grid"
+      "grid",
+      "tsv",
+      "html table to markdown",
+      "markdown table to csv",
+      "csv to markdown",
+      "import table"
     ]
   },
   "tailwind-css": {
@@ -2960,7 +2998,14 @@
       "sort",
       "dedupe",
       "shuffle",
-      "text"
+      "text",
+      "tabs to spaces",
+      "spaces to tabs",
+      "wrap lines",
+      "word wrap",
+      "sort ip addresses",
+      "expand",
+      "unexpand"
     ]
   },
   "text-radix": {
@@ -3212,7 +3257,8 @@
     "version": "1.0.0",
     "license": "MIT",
     "dependencies": {
-      "fast-xml-parser": "5.11.1"
+      "fast-xml-parser": "5.11.1",
+      "libxml2-wasm": "0.7.2"
     },
     "keywords": [
       "xml",
@@ -3222,7 +3268,11 @@
       "validate",
       "well-formed",
       "pretty print",
-      "xxe"
+      "xxe",
+      "canonical xml",
+      "c14n",
+      "compare",
+      "tree"
     ]
   },
   "xml-json": {

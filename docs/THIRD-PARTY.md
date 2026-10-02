@@ -24,7 +24,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@jridgewell/trace-mapping](https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping) | 0.3.31 | MIT | transitive (via @jridgewell/gen-mapping, @jridgewell/source-map) | tools/html-formatter, tools/js-formatter |
 | [@mixmark-io/domino](https://github.com/mixmark-io/domino) | 2.2.0 | BSD-2-Clause | transitive (via turndown) | tools/markdown-html |
 | [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/aes-encryption, tools/base58, tools/db-password-hash, tools/hash-file, tools/hash-text, tools/hmac, tools/uuid |
-| [@nodable/entities](https://github.com/nodable/val-parsers) | 3.0.0 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [@nodable/entities](https://github.com/nodable/val-parsers) | 3.0.0 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [@prettier/plugin-php]() | 0.25.0 | MIT | direct | tools/php-formatter |
 | [@types/debug](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/debug) | 4.1.13 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [@types/mdast](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mdast) | 4.0.4 | MIT | transitive (via mdast-util-find-and-replace, mdast-util-from-markdown, mdast-util-gfm-autolink-literal, mdast-util-gfm-footnote, mdast-util-gfm-strikethrough, mdast-util-gfm-table, mdast-util-gfm-task-list-item, mdast-util-phrasing, mdast-util-to-markdown, mdast-util-to-string) | tools/bbcode |
@@ -46,7 +46,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [ajv-formats](https://github.com/ajv-validator/ajv-formats#readme) | 3.0.1 | MIT | direct | tools/json-schema-validator, tools/openapi-validator |
 | [ansi-regex]() | 5.0.1 | MIT | transitive (via strip-ansi) | tools/qr-generator |
 | [ansi-styles]() | 4.3.0 | MIT | transitive (via wrap-ansi) | tools/qr-generator |
-| [anynum](https://github.com/NaturalIntelligence/anynum) | 1.0.1 | MIT | transitive (via strnum) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [anynum](https://github.com/NaturalIntelligence/anynum) | 1.0.1 | MIT | transitive (via strnum) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [argparse]() | 2.0.1 | Python-2.0 | transitive (via sql-formatter) | tools/sql-formatter |
 | [bcrypt-ts](git://github.com/Mister-Hope/bcrypt-ts) | 9.0.2 | MIT | direct | tools/bcrypt, tools/htaccess-generator |
 | [boolbase](https://github.com/fb55/boolbase) | 1.0.0 | ISC | transitive (via css-select, nth-check) | tools/svg-optimizer |
@@ -90,13 +90,13 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [dot-case](https://github.com/blakeembrey/change-case/tree/master/packages/dot-case#readme) | 3.0.4 | MIT | transitive (via param-case) | tools/html-formatter |
 | [emoji-regex](https://mths.be/emoji-regex) | 8.0.0 | MIT | transitive (via string-width) | tools/qr-generator |
 | [entities](git://github.com/fb55/entities) | 4.5.0 | BSD-2-Clause | transitive (via dom-serializer, html-minifier-terser) | tools/html-formatter, tools/svg-optimizer |
-| [entities](https://github.com/fb55/entities) | 8.1.0 | BSD-2-Clause | direct | tools/bbcode, tools/html-entities, tools/jsx-converter |
+| [entities](https://github.com/fb55/entities) | 8.1.0 | BSD-2-Clause | direct | tools/bbcode, tools/html-entities, tools/jsx-converter, tools/table-builder |
 | [escape-string-regexp]() | 5.0.0 | MIT | transitive (via mdast-util-find-and-replace) | tools/bbcode |
 | [exifr](https://mutiny.cz/exifr/) | 7.1.3 | MIT | direct | tools/exif-viewer |
 | [fast-deep-equal](https://github.com/epoberezkin/fast-deep-equal#readme) | 3.1.3 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [fast-uri](https://github.com/fastify/fast-uri) | 3.1.8 | BSD-3-Clause | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
-| [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
-| [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
 | [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/spreadsheet-converter |
 | [find-up]() | 4.1.0 | MIT | transitive (via yargs) | tools/qr-generator |
@@ -106,11 +106,11 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
 | [is-fullwidth-code-point]() | 3.0.0 | MIT | transitive (via string-width) | tools/qr-generator |
-| [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [jq-wasm](https://github.com/owenthereal/jq-wasm#readme) | 3.0.0-jq-1.8.2 | MIT | direct | tools/jq-playground |
 | [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 1.0.0 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [jsonpath-rfc9535](https://github.com/P0lip/jsonpath-rfc9535) | 1.3.0 | Apache-2.0 | direct | tools/jsonpath |
-| [libxml2-wasm](https://jameslan.github.io/libxml2-wasm/) | 0.7.2 | MIT | direct | tools/xsd-validator |
+| [libxml2-wasm](https://jameslan.github.io/libxml2-wasm/) | 0.7.2 | MIT | direct | tools/xml-formatter, tools/xsd-validator |
 | [linguist-languages](https://github.com/ikatyang-collab/linguist-languages#readme) | 8.2.0 | MIT | transitive (via @prettier/plugin-php) | tools/php-formatter |
 | [locate-path]() | 5.0.0 | MIT | transitive (via find-up) | tools/qr-generator |
 | [longest-streak]() | 3.1.0 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
@@ -168,9 +168,10 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [p-locate]() | 4.1.0 | MIT | transitive (via locate-path) | tools/qr-generator |
 | [p-try]() | 2.2.0 | MIT | transitive (via p-limit) | tools/qr-generator |
 | [param-case](https://github.com/blakeembrey/change-case/tree/master/packages/param-case#readme) | 3.0.4 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
+| [parse5](https://parse5.js.org) | 8.0.1 | MIT | direct | tools/table-builder |
 | [pascal-case](https://github.com/blakeembrey/change-case/tree/master/packages/pascal-case#readme) | 3.1.2 | MIT | transitive (via camel-case) | tools/html-formatter |
 | [path-exists]() | 4.0.0 | MIT | transitive (via find-up) | tools/qr-generator |
-| [path-expression-matcher](https://github.com/NaturalIntelligence/path-expression-matcher#readme) | 1.6.2 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [path-expression-matcher](https://github.com/NaturalIntelligence/path-expression-matcher#readme) | 1.6.2 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [pdfjs-dist](https://mozilla.github.io/pdf.js/) | 6.3.289 | Apache-2.0 | direct | tools/pdf-to-image |
 | [php-parser](https://glayzzle.com/) | 3.7.0 | BSD-3-Clause | transitive (via @prettier/plugin-php) | tools/php-formatter |
 | [picocolors]() | 1.1.1 | ISC | transitive (via svgo) | tools/svg-optimizer |
@@ -200,7 +201,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [sql.js](http://github.com/sql-js/sql.js) | 1.14.2 | MIT | direct | tools/sqlite-viewer |
 | [string-width]() | 4.2.3 | MIT | transitive (via cliui, wrap-ansi, yargs) | tools/qr-generator |
 | [strip-ansi]() | 6.0.1 | MIT | transitive (via cliui, string-width, wrap-ansi) | tools/qr-generator |
-| [strnum](https://github.com/NaturalIntelligence/strnum) | 2.4.2 | MIT | transitive (via fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [strnum](https://github.com/NaturalIntelligence/strnum) | 2.4.2 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [svgo](https://svgo.dev) | 4.1.0 | MIT | direct | tools/svg-optimizer |
 | [terser](https://terser.org) | 5.51.2 | BSD-2-Clause | direct | tools/html-formatter, tools/js-formatter |
 | [tslib](https://www.typescriptlang.org/) | 2.8.1 | 0BSD | transitive (via @cantoo/pdf-lib, camel-case, dot-case, lower-case, no-case, param-case, pascal-case) | tools/html-formatter, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
@@ -212,10 +213,10 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [unist-util-visit-parents]() | 6.0.2 | MIT | transitive (via mdast-util-find-and-replace, unist-util-visit) | tools/bbcode |
 | [which-module](https://github.com/nexdrew/which-module#readme) | 2.0.1 | ISC | transitive (via yargs) | tools/qr-generator |
 | [wrap-ansi]() | 6.2.0 | MIT | transitive (via cliui) | tools/qr-generator |
-| [xml-naming](https://github.com/NaturalIntelligence/xml-naming) | 0.3.0 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
+| [xml-naming](https://github.com/NaturalIntelligence/xml-naming) | 0.3.0 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [xpath](https://github.com/goto100/xpath) | 0.0.34 | MIT | direct | tools/xpath-tester |
 | [y18n](https://github.com/yargs/y18n) | 4.0.3 | ISC | transitive (via yargs) | tools/qr-generator |
-| [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/docker-compose-validator, tools/dotenv-toolkit, tools/eslint-to-biome, tools/github-actions-validator, tools/k8s-validator, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
+| [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/docker-compose-validator, tools/dotenv-toolkit, tools/eslint-to-biome, tools/github-actions-validator, tools/json-schema-generator, tools/json-to-code, tools/k8s-validator, tools/mock-data, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
 | [yargs](https://yargs.js.org/) | 15.4.1 | MIT | transitive (via qrcode) | tools/qr-generator |
 | [yargs-parser](https://github.com/yargs/yargs-parser) | 18.1.3 | ISC | transitive (via yargs) | tools/qr-generator |
 | [zwitch]() | 2.0.4 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
@@ -5263,6 +5264,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
+### parse5 8.0.1
+
+Licence: MIT
+
+```text
+Copyright (c) 2013-2019 Ivan Nikulin (ifaaan@gmail.com, https://github.com/inikulin)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ### pascal-case 3.1.2
 
 Licence: MIT
@@ -6867,6 +6894,8 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | Emscripten runtime | MIT | `tools/sqlite-viewer` | [source](https://github.com/emscripten-core/emscripten/tree/2.0.15) |
 | SQLite 3.49.1 | Public domain | `tools/sqlite-viewer` | [source](https://sqlite.org/2025/sqlite-amalgamation-3490100.zip) |
 | Tailwind CSS 4.3.3 default theme | MIT | `tools/tailwind-css` | [source](https://github.com/tailwindlabs/tailwindcss/blob/v4.3.3/packages/tailwindcss/theme.css) |
+| Emscripten runtime | MIT | `tools/xml-formatter` | [source](https://github.com/emscripten-core/emscripten/tree/5.0.2) |
+| libxml2 | MIT | `tools/xml-formatter` | [source](https://github.com/jameslan/libxml2/tree/f52e859efe97cf3f0b78d731976402748878529a) |
 | Emscripten runtime | MIT | `tools/xsd-validator` | [source](https://github.com/emscripten-core/emscripten/tree/5.0.2) |
 | libxml2 | MIT | `tools/xsd-validator` | [source](https://github.com/jameslan/libxml2/tree/f52e859efe97cf3f0b78d731976402748878529a) |
 
@@ -10006,6 +10035,152 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### Emscripten runtime (bundled into `tools/xml-formatter`)
+
+Licence: MIT ([full text](https://github.com/emscripten-core/emscripten/blob/5.0.2/LICENSE))
+
+Attribution: Copyright (c) 2010-2014 Emscripten authors. The build workflow of libxml2-wasm 0.7.2 names Emscripten 5.0.2, and the Emscripten runtime and C library are part of the module that libxml2-wasm 0.7.2 embeds. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.
+
+```text
+Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.
+
+Both are permissive open source licenses, with little if any
+practical difference between them.
+
+The reason for offering both is that (1) the MIT license is
+well-known, while (2) the University of Illinois/NCSA Open Source
+License allows Emscripten's code to be integrated upstream into
+LLVM, which uses that license, should the opportunity arise.
+
+The full text of both licenses follows.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal with the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+    Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimers.
+
+    Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimers
+    in the documentation and/or other materials provided with the
+    distribution.
+
+    Neither the names of Mozilla,
+    nor the names of its contributors may be used to endorse
+    or promote products derived from this Software without specific prior
+    written permission. 
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+
+==============================================================================
+
+This program uses portions of Node.js source code located in src/library_path.js,
+in accordance with the terms of the MIT license. Node's license follows:
+
+    """
+        Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to
+        deal in the Software without restriction, including without limitation the
+        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        IN THE SOFTWARE.
+    """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+```
+
+### libxml2 (bundled into `tools/xml-formatter`)
+
+Licence: MIT ([full text](https://github.com/jameslan/libxml2-wasm/blob/v0.7.2/LICENSE.libxml2))
+
+Attribution: Copyright (C) 1998-2012 Daniel Veillard and The Libxml2 Contributors. libxml2 2.15.1 (the VERSION file of the source commit that libxml2-wasm 0.7.2 builds) is compiled into the WebAssembly module that libxml2-wasm 0.7.2 embeds in lib/libxml2raw.mjs. libxml2 is offered under the MIT licence; the files dict.c and list.c carry a similar licence with different copyright notices.
+
+```text
+This package bundles a WebAssembly build of libxml2 (in lib/libxml2raw.mjs).
+The libxml2 source code is distributed under the following license:
+
+Except where otherwise noted in the source code (e.g. the files dict.c and
+list.c, which are covered by a similar licence but with different Copyright
+notices) all the files are:
+
+ Copyright (C) 1998-2012 Daniel Veillard.  All Rights Reserved.
+ Copyright (C) The Libxml2 Contributors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is fur-
+nished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FIT-
+NESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ### Emscripten runtime (bundled into `tools/xsd-validator`)

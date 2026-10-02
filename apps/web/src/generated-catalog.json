@@ -78,7 +78,7 @@
       "category": "encoding",
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
-      "summary": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell and regular expressions.",
+      "summary": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell, regular expressions and XML.",
       "implemented": true
     },
     {
@@ -348,7 +348,7 @@
       "category": "json-data",
       "categoryLabel": "JSON and structured data",
       "tier": 2,
-      "summary": "Infer a JSON Schema from one or more sample documents.",
+      "summary": "Infer a JSON Schema from one or more sample JSON, YAML or XML documents.",
       "implemented": true
     },
     {
@@ -366,7 +366,7 @@
       "category": "json-data",
       "categoryLabel": "JSON and structured data",
       "tier": 2,
-      "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON.",
+      "summary": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON, YAML or XML.",
       "implemented": true
     },
     {
@@ -380,11 +380,11 @@
     },
     {
       "id": "data-convert",
-      "name": "JSON, YAML & TOML Converter",
+      "name": "Data Format Converter (JSON, YAML, TOML, XML, CSV, TSV)",
       "category": "json-data",
       "categoryLabel": "JSON and structured data",
       "tier": 1,
-      "summary": "Convert between JSON, YAML and TOML, keeping comments and types where the formats allow.",
+      "summary": "Convert between any two of JSON, YAML, TOML, XML, CSV and TSV, keeping comments and types where the formats allow.",
       "implemented": true
     },
     {
@@ -420,7 +420,7 @@
       "category": "json-data",
       "categoryLabel": "JSON and structured data",
       "tier": 2,
-      "summary": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect.",
+      "summary": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect, or turn INSERT statements back into CSV or JSON rows.",
       "implemented": true
     },
     {
@@ -456,7 +456,7 @@
       "category": "json-data",
       "categoryLabel": "JSON and structured data",
       "tier": 2,
-      "summary": "Generate deterministic fake records from a seed, with no network calls.",
+      "summary": "Generate deterministic fake records from a seed as JSON, JSON Lines, CSV, XML or YAML, with no network calls.",
       "implemented": true
     },
     {
@@ -465,7 +465,7 @@
       "category": "text",
       "categoryLabel": "Text",
       "tier": 1,
-      "summary": "Sort, deduplicate, shuffle, number, trim, filter, join and split lines.",
+      "summary": "Sort (including as IP addresses), deduplicate, shuffle, number, trim, filter, join, split, wrap and convert tabs in lines.",
       "implemented": true
     },
     {
@@ -582,7 +582,7 @@
       "category": "code",
       "categoryLabel": "Code and markup",
       "tier": 1,
-      "summary": "Format, minify and well-formedness check XML, with external entities disabled.",
+      "summary": "Format, minify, check, canonicalize and compare XML and view it as a tree, with external entities disabled.",
       "implemented": true
     },
     {
@@ -672,7 +672,7 @@
       "category": "code",
       "categoryLabel": "Code and markup",
       "tier": 2,
-      "summary": "Build a table visually and export it as Markdown, HTML, CSV or JSON.",
+      "summary": "Build a table visually or import one from HTML, CSV, TSV or Markdown, and export it as Markdown, HTML, CSV, TSV or JSON.",
       "implemented": true
     },
     {

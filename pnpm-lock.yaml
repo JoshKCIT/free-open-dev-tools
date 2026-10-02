@@ -619,6 +619,9 @@ importers:
 
   tools/data-convert:
     dependencies:
+      fast-xml-parser:
+        specifier: 5.11.1
+        version: 5.11.1
       smol-toml:
         specifier: 1.9.0
         version: 1.9.0
@@ -1284,6 +1287,13 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/json-schema-generator:
+    dependencies:
+      fast-xml-parser:
+        specifier: 5.11.1
+        version: 5.11.1
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       ajv:
         specifier: 8.20.0
@@ -1324,6 +1334,13 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/json-to-code:
+    dependencies:
+      fast-xml-parser:
+        specifier: 5.11.1
+        version: 5.11.1
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -1578,6 +1595,10 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/mock-data:
+    dependencies:
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -2195,6 +2216,10 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(terser@5.51.2)(yaml@2.9.1)
 
   tools/table-builder:
+    dependencies:
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
     devDependencies:
       micromark:
         specifier: 4.0.2
@@ -2414,6 +2439,9 @@ importers:
       fast-xml-parser:
         specifier: 5.11.1
         version: 5.11.1
+      libxml2-wasm:
+        specifier: 0.7.2
+        version: 0.7.2
     devDependencies:
       typescript:
         specifier: ^5.7.3
