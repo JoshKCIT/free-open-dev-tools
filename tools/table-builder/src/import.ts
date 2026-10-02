@@ -191,9 +191,11 @@ function cellText(cell: Element, notes: HtmlNotes): string {
     if (!isElement(node)) continue;
     const name = node.tagName;
     if (name === 'br') {
+      // A br ends the line it follows. The next line only exists once something is written on it, so a br that ends
+      // the cell (or a block) leaves no empty line behind it.
       lines.push(current);
       current = '';
-      lineOpen = true;
+      lineOpen = false;
     } else if (NOT_TEXT_ELEMENTS.has(name)) {
       notes.skippedCode = true;
     } else if (name === 'table') {
