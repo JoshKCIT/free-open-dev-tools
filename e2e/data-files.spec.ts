@@ -475,7 +475,9 @@ test('hex-viewer: a hex search stays exact after Match case was switched off for
   const file = Buffer.alloc(4096);
   file.write('NEEDLE', 100, 'ascii');
   file.write('needle', 2000, 'ascii');
-  await page.locator('#f-file').setInputFiles({ name: 'cases.bin', mimeType: 'application/octet-stream', buffer: file });
+  await page
+    .locator('#f-file')
+    .setInputFiles({ name: 'cases.bin', mimeType: 'application/octet-stream', buffer: file });
   await expect(outputArea(page)).toContainText('cases.bin', { timeout: 20_000 });
 
   // With Match case off, a text search finds both spellings.
