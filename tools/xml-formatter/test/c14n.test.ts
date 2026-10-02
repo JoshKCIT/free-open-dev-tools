@@ -324,11 +324,14 @@ it('a document over 10 MiB is refused before parsing and exactly 10 MiB is accep
 }, 60_000);
 
 // Canonical XML 1.0 section 1.2 (Document Processing Model): a relative URI in a namespace declaration is deprecated
-// and the engine refuses it. libxml2 2.15.1 reads a name with a one-letter scheme (x:y) or no scheme as relative and
-// then gives only "Failed to canonicalize XML document", so the tool says what it means (run on 2026-10-02 for each
-// of u:x, x:y, a:b and x; urn:x, uu:x and http://x/ are accepted).
+// and the engine refuses it. libxml2 2.15.1 reads a name with no scheme as relative and then gives only "Failed to
+// canonicalize XML document", so the tool says what it means (run on Windows and on Linux on 2026-10-02 for each of
+// x, foo/bar, /x and ../x; urn:x, uu:x and http://x/ are accepted on both). A one-letter scheme such as x:y is left
+// out on purpose: libxml2-wasm turns on Windows drive-path handling only under Node on Windows (its process.platform
+// check), so x:y is refused there and accepted on Linux and in a browser; the first version of this test listed it
+// and failed in CI on Linux.
 it('a namespace name libxml2 reads as a relative address is refused with a plain sentence', () => {
-  for (const name of ['x:y', 'a:b', 'x']) {
+  for (const name of ['x', 'foo/bar', '/x', '../x']) {
     const input = `<p:a xmlns:p="${name}"/>`;
     expect(() => canonicalizeXml(libxml2, input, { mode: '1.0', withComments: false })).toThrow(
       /namespace name that libxml2 reads as a relative address/,

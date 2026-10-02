@@ -49,11 +49,13 @@ const CANONICALIZE_FAILED = 'Failed to canonicalize XML document';
 
 /**
  * Canonical XML 1.0 does not allow a relative URI as a namespace name (section 1.2), and libxml2 2.15.1 reads a name
- * with a one-letter scheme such as x:y, or with no scheme, as relative. The engine then says only that
- * canonicalization failed, with no position, so the tool says what it means.
+ * with no scheme (x, foo/bar, /x, ../x) as relative. The engine then says only that canonicalization failed, with no
+ * position, so the tool says what it means. A one-letter scheme such as x:y is not named here on purpose: the
+ * engine package turns on Windows drive-path handling only when it runs under Node on Windows, so it refuses x:y
+ * there and accepts it everywhere else, in a browser included.
  */
 const RELATIVE_NAMESPACE_MESSAGE =
-  'libxml2 could not canonicalize this XML. One known cause is a namespace name that libxml2 reads as a relative address, such as x:y (a one-letter scheme) or a name with no scheme; Canonical XML does not allow those. Use an absolute name such as urn:x or http://example.com/ns.';
+  'libxml2 could not canonicalize this XML. One known cause is a namespace name that libxml2 reads as a relative address, such as a name with no scheme (x or foo/bar); Canonical XML does not allow those. Use an absolute name such as urn:x or http://example.com/ns.';
 
 function engineMode(engine: Libxml2Engine, mode: C14nMode): 0 | 1 | 2 {
   if (mode === 'exclusive') return engine.XmlC14NMode.XML_C14N_EXCLUSIVE_1_0;

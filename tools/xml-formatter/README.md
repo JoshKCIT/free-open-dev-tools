@@ -33,7 +33,7 @@ Checks a pasted document for XML 1.0 well-formedness, formats it with indentatio
 - Canonical XML and comparison read documents up to 10 MiB each; a larger document is refused before anything starts.
 - Comparison ignores attribute order, quoting, empty-element form and whitespace inside tags; whitespace between elements and namespace prefix choice still count, so documents that differ only in those are reported as different.
 - The tree shows at most 2,000 elements.
-- A namespace name that libxml2 reads as a relative address, such as one with no scheme or a one-letter scheme like x:y, cannot be canonicalized; use an absolute name such as urn:x or http://example.com/ns.
+- A namespace name that libxml2 reads as a relative address, such as one with no scheme (x or foo/bar), cannot be canonicalized; use an absolute name such as urn:x or http://example.com/ns.
 
 ## Ambiguous cases, and what this does about them
 
