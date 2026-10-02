@@ -1265,5 +1265,12 @@
     "category": "json-data",
     "tier": 3,
     "summary": "Turn an .xlsx sheet into CSV, TSV, JSON or XML, or CSV, TSV and JSON into an .xlsx file, without uploading anything."
+  },
+  {
+    "id": "hex-viewer",
+    "name": "Hex Viewer & File Identifier",
+    "category": "media",
+    "tier": 2,
+    "summary": "View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature."
   }
 ]
