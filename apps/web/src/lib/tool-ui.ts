@@ -78,7 +78,13 @@ export type OutputBlock =
   | { kind: 'list'; label?: string; items: string[]; ordered?: boolean }
   | { kind: 'swatches'; label?: string; colors: { css: string; label: string; caption?: string }[] }
   /** HTML that the tool package has already sanitised. Rendered in a sandboxed frame. */
-  | { kind: 'sandboxed-html'; label?: string; html: string }
+  | {
+      kind: 'sandboxed-html';
+      label?: string;
+      html: string;
+      /** False hides the Copy HTML button, for a preview that is not the tool's output. */
+      copy?: boolean;
+    }
   | { kind: 'image'; label?: string; src: string; alt: string; width?: number; height?: number; download?: string }
   | { kind: 'files'; label?: string; files: DownloadableFile[] }
   | { kind: 'note'; label?: string; tone: Tone; value: string }

@@ -118,7 +118,12 @@ export default defineTool({
 
       const outputs: OutputBlock[] = [
         { kind: 'code', label: 'Markup', language: 'html', value: field.html, download: 'form-field-builder.html' },
-        { kind: 'sandboxed-html', label: 'Preview (addresses replaced, nothing is loaded)', html: field.preview },
+        {
+          kind: 'sandboxed-html',
+          label: 'Preview (addresses replaced, nothing is loaded)',
+          copy: false,
+          html: field.preview,
+        },
       ];
       if (field.accessibleName) {
         outputs.push({

@@ -889,3 +889,51 @@ test('media-embed-builder: clicking the media in the preview requests nothing an
     expect(await frame!.locator(element).count(), `${kind}: the preview still holds its element`).toBe(1);
   }
 });
+
+/**
+ * The preview of each of the four generator pages replaces every address, so the HTML it holds is not the markup the
+ * page builds; a Copy HTML button on it would copy the wrong text (carried review item WR-06). Those four previews offer
+ * no such button, their markup block keeps its own copy button, and a page whose preview IS its output keeps the button.
+ */
+test('the four generator previews offer no Copy HTML button while their markup keeps its copy button, and other previews keep theirs', async ({
+  page,
+}) => {
+  const output = page.locator('section[aria-label="Output"]');
+
+  for (const id of ['form-field-builder', 'link-builder', 'media-embed-builder', 'semantic-html-builder']) {
+    await page.goto(rel(`/tools/${id}`));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    // Run the first example, then wait for the page to show its own markup and a preview frame.
+    await page.locator('div.toolbar-small button').first().click();
+    await expect(output.locator('pre.output').first(), `${id}: the markup after the first example`).toContainText('<');
+    await expect(output.locator('iframe.preview-frame').first(), `${id}: the preview frame`).toBeVisible();
+    await settle(page);
+
+    // The preview block has its label and no Copy HTML button, and no other block offers one either.
+    await expect(output.getByRole('button', { name: 'Copy HTML' }), `${id}: Copy HTML on the preview`).toHaveCount(0);
+    const preview = output.locator('.output-block', {
+      has: page.locator('.output-label span', { hasText: 'Preview (addresses replaced, nothing is loaded)' }),
+    });
+    await expect(preview, `${id}: the preview block`).toHaveCount(1);
+    await expect(preview.getByRole('button'), `${id}: the preview block holds no button`).toHaveCount(0);
+
+    // The markup block still has its own copy button, beside its download.
+    const markup = output.locator('.output-block', {
+      has: page.locator('.output-label span', { hasText: /^Markup$/ }),
+    });
+    await expect(
+      markup.getByRole('button', { name: 'Copy', exact: true }),
+      `${id}: the markup's copy button`,
+    ).toHaveCount(1);
+  }
+
+  // A page whose preview is its real output keeps the button exactly as before.
+  await page.goto(rel('/tools/markdown-html'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  await page.locator('div.toolbar-small button').first().click();
+  await expect(output.locator('iframe.preview-frame').first(), 'markdown-html: the preview frame').toBeVisible();
+  await settle(page);
+  await expect(output.getByRole('button', { name: 'Copy HTML', exact: true }), 'markdown-html: Copy HTML').toHaveCount(
+    1,
+  );
+});

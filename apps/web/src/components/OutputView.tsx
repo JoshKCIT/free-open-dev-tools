@@ -222,7 +222,7 @@ export default function OutputView({ block }: { block: OutputBlock }) {
     case 'sandboxed-html':
       return (
         <div className="output-block">
-          {head(<CopyButton text={block.html} label="Copy HTML" />)}
+          {head(block.copy === false ? null : <CopyButton text={block.html} label="Copy HTML" />)}
           <SandboxedHtml html={block.html} />
         </div>
       );

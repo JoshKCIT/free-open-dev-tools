@@ -245,7 +245,12 @@ export default defineTool({
 
       const outputs: OutputBlock[] = [
         { kind: 'code', label: 'Markup', language: 'html', value: link.html, download: 'link-builder.html' },
-        { kind: 'sandboxed-html', label: 'Preview (addresses replaced, nothing is loaded)', html: link.preview },
+        {
+          kind: 'sandboxed-html',
+          label: 'Preview (addresses replaced, nothing is loaded)',
+          copy: false,
+          html: link.preview,
+        },
         { kind: 'code', label: 'Address only (for use outside HTML)', value: link.address },
       ];
       if (link.warnings.length > 0) {

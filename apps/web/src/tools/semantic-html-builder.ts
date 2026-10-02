@@ -325,7 +325,12 @@ export default defineTool({
 
       const outputs: OutputBlock[] = [
         { kind: 'code', label: 'Markup', language: 'html', value: built.html, download: 'semantic-html-builder.html' },
-        { kind: 'sandboxed-html', label: 'Preview (addresses replaced, nothing is loaded)', html: built.preview },
+        {
+          kind: 'sandboxed-html',
+          label: 'Preview (addresses replaced, nothing is loaded)',
+          copy: false,
+          html: built.preview,
+        },
       ];
       if (built.warnings.length > 0) {
         outputs.push({ kind: 'note', label: 'Notes', tone: 'warn', value: built.warnings.join('\n') });
