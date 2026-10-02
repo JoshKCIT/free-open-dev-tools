@@ -331,7 +331,19 @@ export function writeTable(value: unknown, format: TableFormat): TableWriteResul
   if (state.emptyObjectSeen) {
     warnings.push('An empty object became an empty cell.');
   }
-  const text =
-    format === 'csv' ? formatCsv(rows, { lineEnding: '\r\n' }) : rows.map((row) => row.join('\t')).join('\n');
-  return { text, warnings };
+  // In a table with one column an empty value is a whole record. Written bare it is a blank line, which a reader
+  // takes for the end of the text and so loses the record; CSV can quote it, TSV cannot.
+  const oneColumn = rows.every((row) => row.length === 1);
+  if (format === 'csv') {
+    const text = oneColumn
+      ? rows.map((row) => (row[0] === '' ? '""' : formatCsv([row]))).join('\r\n')
+      : formatCsv(rows, { lineEnding: '\r\n' });
+    return { text, warnings };
+  }
+  if (oneColumn && rows.some((row) => row[0] === '')) {
+    warnings.push(
+      'The only column holds an empty value, which TSV writes as a blank line; a blank line at the end of TSV text is ignored when it is read back.',
+    );
+  }
+  return { text: rows.map((row) => row.join('\t')).join('\n'), warnings };
 }
