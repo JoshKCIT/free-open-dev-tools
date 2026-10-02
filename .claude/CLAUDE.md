@@ -10,7 +10,7 @@ common utilities on code, tokens, configs and customer data without sending any 
 cannot inspect.
 
 It is live at https://joshkcit.github.io/free-open-dev-tools/. All 188 tools in the catalog are built;
-the catalog was first completed on 2026-09-28, grew by seven tools on 2026-09-29, by sixteen money calculators on 2026-10-01, by four HTML generators on 2026-10-01 by six code formatters on 2026-10-01 and by eleven data and conversion tools on 2026-10-02.
+the catalog was first completed on 2026-09-28, grew by seven tools on 2026-09-29, by sixteen money calculators on 2026-10-01, by four HTML generators on 2026-10-01, by six code formatters on 2026-10-01 and by eleven data and conversion tools on 2026-10-02.
 
 **Core Value:** A developer can use any tool without their input leaving the browser, and can take that tool's complete,
 tested source for their own project.

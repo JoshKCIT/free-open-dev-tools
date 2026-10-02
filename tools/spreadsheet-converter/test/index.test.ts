@@ -538,7 +538,9 @@ it('parts that would unzip past 100 MiB are refused and an understated size cann
   const cut = thrown(() => readXlsx(lying, { datesAsSerials: false }));
   expect(cut.message).toMatch(/cut short/);
   expect(cut.part).toBe('xl/worksheets/sheet1.xml');
-});
+  // Builds and zips more than 100 MiB of cells: under the full suite's parallel load this takes longer than the
+  // default 5 seconds (it timed out on CI), so it gets its own limit.
+}, 60_000);
 
 it('a file over 20 MiB is refused before it is unzipped and exactly 20 MiB is accepted', () => {
   expect(MAX_FILE_BYTES).toBe(20971520);

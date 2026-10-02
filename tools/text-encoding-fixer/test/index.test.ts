@@ -587,4 +587,6 @@ it('input over 20 MiB is refused before decoding and exactly 20 MiB is read', ()
   expect(convertLineEndings('\u{1f600}'.repeat(MAX_INPUT_BYTES / 4), 'lf').text.length).toBe(MAX_INPUT_BYTES / 2);
   expect(parseHex('ab'.repeat(MAX_INPUT_BYTES)).length).toBe(MAX_INPUT_BYTES);
   expect(utf8Bytes('a'.repeat(MAX_INPUT_BYTES)).length).toBe(MAX_INPUT_BYTES);
-});
+  // Builds several 20 MiB inputs: under the full suite's parallel load this can take longer than the default
+  // 5 seconds, so it gets its own limit.
+}, 60_000);
