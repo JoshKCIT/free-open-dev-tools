@@ -4,8 +4,11 @@ import { formatPointer } from './pointer';
 import { Document, parseDocument, visit, isAlias } from 'yaml';
 import { parse as parseToml, stringify as stringifyToml, TomlError } from 'smol-toml';
 import { readXmlValue, XmlValueError } from './xml-read';
+import { writeXmlValue, XmlWriteError } from './xml-write';
+import { readTable, writeTable } from './table';
+import { DataConvertError } from './errors';
 
-export { meta };
+export { meta, DataConvertError };
 
 export type DataFormat = 'json' | 'yaml' | 'toml' | 'xml' | 'csv' | 'tsv';
 
@@ -18,27 +21,19 @@ export interface ConvertOptions {
   attributePrefix?: string;
   /** XML only. Key an element's own text sits under when it also has attributes or children. Default '#text'. */
   textKey?: string;
+  /** XML output only. Name of the element that wraps several top-level keys or a list. Default 'root'. */
+  rootName?: string;
+  /** XML output only. Name of the element written for each item of a list. Default 'row'. */
+  rowName?: string;
+  /** CSV and TSV input only. The first row names the columns. Default true. */
+  headerRow?: boolean;
+  /** CSV and TSV input only. Read true, false, null and numbers as typed values instead of text. Default false. */
+  inferTypes?: boolean;
 }
 
 export interface ConvertResult {
   output: string;
   warnings: string[];
-}
-
-export class DataConvertError extends Error {
-  /** Set for a JSON, YAML, TOML or XML syntax error. */
-  readonly line?: number;
-  readonly column?: number;
-  /** RFC 6901 pointer, set instead of line/column for a structural problem such as a null on the way to TOML. */
-  readonly path?: string;
-
-  constructor(message: string, detail: { line?: number; column?: number; path?: string } = {}) {
-    super(message);
-    this.name = 'DataConvertError';
-    this.line = detail.line;
-    this.column = detail.column;
-    this.path = detail.path;
-  }
 }
 
 const DEPTH_MESSAGE =
@@ -224,10 +219,6 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
     return { output: doc.toString({ indent }), warnings: [] };
   }
 
-  if (to === 'xml' || to === 'csv' || to === 'tsv' || from === 'csv' || from === 'tsv') {
-    throw new DataConvertError('This format is not supported yet.');
-  }
-
   let value: unknown;
 
   if (from === 'json') {
@@ -271,6 +262,13 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
       if (err instanceof XmlValueError) throw new DataConvertError(err.message, { line: err.line, column: err.column });
       throw err;
     }
+  } else if (from === 'csv' || from === 'tsv') {
+    const read = readTable(text, from, {
+      headerRow: options.headerRow ?? true,
+      inferTypes: options.inferTypes ?? false,
+    });
+    value = read.value;
+    warnings.push(...read.warnings);
   } else {
     try {
       value = parseToml(text, { integersAsBigInt: 'asNeeded' });
@@ -299,6 +297,29 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
 
   if (to === 'json') return { output: toJsonOutput(value, indent), warnings };
   if (to === 'yaml') return { output: toYamlOutput(value, indent), warnings };
+
+  if (to === 'xml') {
+    try {
+      const written = writeXmlValue(value, {
+        attributePrefix: options.attributePrefix,
+        textKey: options.textKey,
+        rootName: options.rootName,
+        rowName: options.rowName,
+        indent,
+      });
+      warnings.push(...written.warnings);
+      return { output: written.xml, warnings };
+    } catch (err) {
+      if (err instanceof XmlWriteError) throw new DataConvertError(err.message, { path: err.path });
+      throw err;
+    }
+  }
+
+  if (to === 'csv' || to === 'tsv') {
+    const written = writeTable(value, to);
+    warnings.push(...written.warnings);
+    return { output: written.text, warnings };
+  }
 
   if (to === 'toml' && from !== 'toml') {
     // A TOML target written from a non-TOML source lists every plain key

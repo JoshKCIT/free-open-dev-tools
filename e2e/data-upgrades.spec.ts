@@ -70,3 +70,33 @@ test('data-convert: XML with an attribute converts to JSON with the @_ prefix', 
   await expect(outputArea(page)).toContainText('"@_id": "1"');
   await expect(outputArea(page)).toContainText('"#text": "Moby"');
 });
+
+test('data-convert: JSON records convert to CSV with dotted keys and a nested array is refused with its path', async ({
+  page,
+}) => {
+  await openTool(page, 'data-convert');
+  await setControls(page, { selects: { from: 'json', to: 'csv' } });
+
+  // A nested object becomes a dotted column name (the page's stated rule); the header is the first line.
+  await fillField(page, 'input', '[{"user":{"name":"Ada"},"ok":true}]');
+  await expect(outputArea(page)).toContainText('user.name,ok');
+  await expect(outputArea(page)).toContainText('Ada,true');
+
+  // An array inside a record cannot become a cell: the refusal names where it is, as a JSON Pointer into the input.
+  await fillField(page, 'input', '[{"a":1},{"a":2,"tags":["x"]}]');
+  const problems = outputArea(page).locator('.issue-list');
+  await expect(problems).toContainText('/1/tags');
+  await expect(problems).toContainText('cannot be flattened');
+});
+
+test('data-convert: a YAML source still converts to TSV through its worker', async ({ page }) => {
+  await openTool(page, 'data-convert');
+  await setControls(page, { selects: { from: 'yaml', to: 'tsv' } });
+  await fillField(page, 'input', '- id: "7"\n  name: Ada\n- id: "8"\n  name: Grace\n');
+
+  // TSV (IANA text/tab-separated-values): the first line names the fields, fields are separated by a tab and records
+  // by a line break. The raw text is read, because a text matcher would fold the tab into a space.
+  const output = outputArea(page).locator('pre.output');
+  await expect(output).toContainText('Grace');
+  expect(await output.textContent()).toContain('id\tname\n7\tAda\n8\tGrace');
+});

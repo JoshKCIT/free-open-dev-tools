@@ -1,6 +1,6 @@
 import { meta, convertData, DataConvertError, type ConvertOptions, type DataFormat } from '@fodt/data-convert';
 import { dataConvertInWorker, DataConvertRunError } from '../lib/run-data-convert-in-worker';
-import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const LANGUAGE: Record<string, string | undefined> = {
   json: 'json',
@@ -10,6 +10,12 @@ const LANGUAGE: Record<string, string | undefined> = {
   csv: undefined,
   tsv: undefined,
 };
+
+/** True when the source is CSV or TSV, so the header and type settings matter. */
+function readsTable(values: Record<string, unknown>): boolean {
+  const from = str(values, 'from', 'json');
+  return from === 'csv' || from === 'tsv';
+}
 
 /** True when either side of the conversion is XML, so the two XML key settings matter. */
 function involvesXml(values: Record<string, unknown>): boolean {
@@ -86,6 +92,38 @@ export default defineTool({
       help: 'Where an element text goes when the element also has attributes or children.',
       visible: involvesXml,
     },
+    {
+      name: 'rootName',
+      label: 'Root element',
+      type: 'text',
+      default: 'root',
+      help: 'XML needs one root element; several top-level keys, or a list, are wrapped in this one.',
+      visible: (values) => str(values, 'to', 'yaml') === 'xml',
+    },
+    {
+      name: 'rowName',
+      label: 'Row element',
+      type: 'text',
+      default: 'row',
+      help: 'Each item of a list is written as an element with this name.',
+      visible: (values) => str(values, 'to', 'yaml') === 'xml',
+    },
+    {
+      name: 'headerRow',
+      label: 'Header row',
+      type: 'checkbox',
+      default: true,
+      help: 'The first row names the columns. Turn it off to read every row as plain data.',
+      visible: readsTable,
+    },
+    {
+      name: 'inferTypes',
+      label: 'Infer types',
+      type: 'checkbox',
+      default: false,
+      help: 'Read true, false, null and numbers as typed values. Otherwise every value stays text.',
+      visible: readsTable,
+    },
   ],
   examples: [
     { label: 'JSON to YAML', values: { from: 'json', to: 'yaml', input: '{"name":"Ada","tags":["a","b"]}' } },
@@ -103,6 +141,14 @@ export default defineTool({
     if (from === 'xml' || to === 'xml') {
       options.attributePrefix = str(values, 'attributePrefix', '@_');
       options.textKey = str(values, 'textKey', '#text');
+    }
+    if (to === 'xml') {
+      options.rootName = str(values, 'rootName', 'root');
+      options.rowName = str(values, 'rowName', 'row');
+    }
+    if (from === 'csv' || from === 'tsv') {
+      options.headerRow = bool(values, 'headerRow', true);
+      options.inferTypes = bool(values, 'inferTypes', false);
     }
 
     try {
