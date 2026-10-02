@@ -326,7 +326,7 @@
     "name": "CSV & JSON to SQL",
     "category": "json-data",
     "tier": 2,
-    "summary": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect."
+    "summary": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect, or turn INSERT statements back into CSV or JSON rows."
   },
   {
     "id": "sql-to-types",

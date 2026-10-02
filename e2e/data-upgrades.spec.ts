@@ -598,3 +598,53 @@ test('table-builder: an HTML table pasted for import exports as TSV with the sam
   await setControls(page, { selects: { importFrom: 'grid' }, radios: { format: 'markdown' } });
   await expect(output).toContainText('| Column 1 | Column 2 |', { timeout: 15_000 });
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// data-to-sql (DATA-19): INSERT statements back into rows
+// ---------------------------------------------------------------------------------------------------------------
+
+test('data-to-sql: INSERT statements turn back into JSON rows', async ({ page }) => {
+  await openTool(page, 'data-to-sql');
+  await setControls(page, { radios: { direction: 'from-sql' } });
+
+  // PostgreSQL 4.1.2.1: a single quote inside a string constant is written as two quotes, so 'O''Brien' is O'Brien;
+  // TRUE is a boolean and NULL is null, so neither becomes text.
+  await fillField(
+    page,
+    'input',
+    "INSERT INTO users (id, name, active) VALUES (1, 'O''Brien', TRUE), (2, 'Ada', NULL);",
+  );
+  await expect(outputArea(page).locator('pre.output')).toHaveText(
+    [
+      '[',
+      '  {',
+      '    "id": 1,',
+      '    "name": "O\'Brien",',
+      '    "active": true',
+      '  },',
+      '  {',
+      '    "id": 2,',
+      '    "name": "Ada",',
+      '    "active": null',
+      '  }',
+      ']',
+    ].join('\n'),
+    { timeout: 15_000 },
+  );
+
+  // The same rows as CSV: a header from the column list, and NULL as an empty cell.
+  await setControls(page, { selects: { rowsFormat: 'csv' } });
+  const output = outputArea(page).locator('pre.output');
+  await expect(output).toContainText("1,O'Brien,true", { timeout: 15_000 });
+  await expect(output).toContainText('id,name,active');
+
+  // INSERT ... SELECT cannot be read, and the refusal names the statement.
+  await fillField(page, 'input', 'INSERT INTO t (a) SELECT 1;');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Statement 1', { timeout: 15_000 });
+  await expect(outputArea(page).locator('.issue-list')).toContainText('INSERT ... SELECT');
+
+  // The default direction still writes SQL from JSON, as before.
+  await setControls(page, { radios: { direction: 'to-sql' } });
+  await fillField(page, 'input', '[{"id":1}]');
+  await expect(outputArea(page)).toContainText('CREATE TABLE', { timeout: 15_000 });
+});

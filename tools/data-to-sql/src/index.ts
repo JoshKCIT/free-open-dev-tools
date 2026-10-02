@@ -2,6 +2,7 @@ import meta from './meta.json';
 import { parseCsv, CsvSyntaxError } from './csv';
 import { parseJsonText, exceedsDepth, MAX_JSON_DEPTH } from './json-text';
 import { hasOwn, getOwn } from './own-property';
+import { DataToSqlError } from './errors';
 import {
   quoteIdentifier,
   quoteString,
@@ -12,7 +13,9 @@ import {
   type SqlTypeKind,
 } from './dialects';
 
-export { meta, DIALECTS };
+export { meta, DIALECTS, DataToSqlError };
+export { sqlToRows } from './from-sql';
+export type { SqlToRowsOptions, SqlToRowsResult } from './from-sql';
 export type { Dialect };
 
 const DEPTH_MESSAGE =
@@ -20,17 +23,6 @@ const DEPTH_MESSAGE =
 
 /** No dialect in this package needs more than this many rows per INSERT; SQL Server's own table-value-constructor limit (1,000) is the tightest of the four, so every dialect uses it uniformly. */
 const MAX_INSERT_ROWS = 1000;
-
-export class DataToSqlError extends Error {
-  readonly line?: number;
-  readonly column?: number;
-  constructor(message: string, detail: { line?: number; column?: number } = {}) {
-    super(message);
-    this.name = 'DataToSqlError';
-    this.line = detail.line;
-    this.column = detail.column;
-  }
-}
 
 export interface DataToSqlOptions {
   /** 'json' (an array of objects) or 'csv' (a header row plus data rows). Default 'json'. */

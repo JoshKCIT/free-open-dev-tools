@@ -150,7 +150,8 @@ test('each dialect reads its own quoting and identifier forms', () => {
     'u v': [{ 'b c': 1 }],
     w: [{ d: '0x4a4B' }, { d: '0x0A' }],
   });
-  expect(sqlite.warnings.join('\n')).toMatch(/0x/);
+  // Both hex forms are literals, not expressions: the only warning is the one about their notation.
+  expect(sqlite.warnings).toEqual([expect.stringMatching(/Hex values/)]);
 
   // SQL Server: [x] doubles a closing bracket, N'..' is a Unicode string, a backslash is an ordinary character, and
   // GO on a line of its own ends a batch. (A lower case n is not the prefix; the manual says it must be uppercase.)
@@ -165,6 +166,7 @@ test('each dialect reads its own quoting and identifier forms', () => {
     { dialect: 'sqlserver' },
   );
   expect(mssql.tables).toEqual(['dbo.T']);
+  expect(mssql.warnings).toEqual([expect.stringMatching(/Hex values/)]);
   expect(JSON.parse(mssql.output)).toEqual([
     { Id: 1, 'A]B': 'Michaël' },
     { Id: 2, 'A]B': "it's" },

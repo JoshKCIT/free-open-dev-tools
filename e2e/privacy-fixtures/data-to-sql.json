@@ -3,5 +3,10 @@
     "mode": { "field": "format", "value": "json" },
     "values": { "input": "[{\"id\":1,\"name\":\"Ada\"},{\"id\":2,\"name\":\"Alan\"}]" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "direction", "value": "from-sql" },
+    "values": { "input": "INSERT INTO t (a, b) VALUES (1, 'x');", "tableFilter": "" },
+    "attachesFile": false
   }
 ]

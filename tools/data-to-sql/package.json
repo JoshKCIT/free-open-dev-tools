@@ -1,7 +1,7 @@
 {
   "name": "@fodt/data-to-sql",
   "version": "1.0.0",
-  "description": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect.",
+  "description": "Generate CREATE TABLE and INSERT statements for a chosen SQL dialect, or turn INSERT statements back into CSV or JSON rows.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -30,7 +30,12 @@
     "sql server",
     "create table",
     "insert",
-    "ddl"
+    "ddl",
+    "insert to json",
+    "sql to csv",
+    "sql to json",
+    "read insert statements",
+    "parse sql dump"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
