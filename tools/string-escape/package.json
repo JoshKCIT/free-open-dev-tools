@@ -1,7 +1,7 @@
 {
   "name": "@fodt/string-escape",
   "version": "1.0.0",
-  "description": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell and regular expressions.",
+  "description": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell, regular expressions and XML.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,9 @@
     "sql",
     "csv",
     "shell",
-    "regex"
+    "regex",
+    "xml",
+    "xml attribute"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

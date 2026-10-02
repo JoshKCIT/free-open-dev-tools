@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "language", "value": "xml-attribute" },
+    "values": { "input": "a \"quoted\" <value> & more" },
+    "attachesFile": false
+  }
+]

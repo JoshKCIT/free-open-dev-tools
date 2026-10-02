@@ -15,11 +15,13 @@ import * as sql from './sql';
 import * as csv from './csv';
 import * as shell from './shell';
 import * as regex from './regex';
+import { escapeXml, unescapeXml, XML_LANGUAGES, type XmlContext } from './xml';
 
-export { meta, StringEscapeError };
+export { meta, StringEscapeError, XML_LANGUAGES };
 export type { LiteralResult, LiteralWarning };
 
-export type Language = 'javascript' | 'java' | 'csharp' | 'python' | 'go' | 'sql' | 'csv' | 'shell' | 'regex';
+export type Language =
+  'javascript' | 'java' | 'csharp' | 'python' | 'go' | 'sql' | 'csv' | 'shell' | 'regex' | XmlContext;
 
 export const LANGUAGES: readonly { id: Language; label: string }[] = [
   { id: 'javascript', label: 'JavaScript / TypeScript' },
@@ -95,6 +97,14 @@ function escapeOne(text: string, options: EscapeOptions): LiteralResult {
       return shell.escape(text);
     case 'regex':
       return regex.escape(text);
+    case 'xml-text':
+    case 'xml-attribute':
+      return escapeXml(text, {
+        context: options.language,
+        quote: options.quote,
+        escapeNonAscii: options.escapeNonAscii,
+        wrap: options.wrap,
+      });
     default: {
       const exhaustive: never = options.language;
       throw new StringEscapeError(`unsupported language "${String(exhaustive)}"`);
@@ -205,6 +215,9 @@ export function unescapeLiteral(input: string, options: UnescapeOptions): Litera
       return shell.unescape(input);
     case 'regex':
       return regex.unescape(input);
+    case 'xml-text':
+    case 'xml-attribute':
+      return unescapeXml(input, { context: options.language, quote: options.quote, wrap });
     default: {
       const exhaustive: never = options.language;
       throw new StringEscapeError(`unsupported language "${String(exhaustive)}"`);

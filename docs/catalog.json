@@ -60,7 +60,7 @@
     "name": "String Literal Escaper",
     "category": "encoding",
     "tier": 1,
-    "summary": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell and regular expressions."
+    "summary": "Escape and unescape string literals for JavaScript, Java, C#, Python, Go, SQL, CSV, POSIX shell, regular expressions and XML."
   },
   {
     "id": "data-uri",

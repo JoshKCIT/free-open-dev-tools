@@ -530,3 +530,30 @@ test('xml-formatter: a worker that never reports ready stops after 10 seconds wi
   expect(log.filter((entry) => entry.startsWith('out')).length, log.join(' | ')).toBe(0);
   expect(await endedWorkers(page)).toEqual([0]);
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// string-escape (DATA-15): XML element content and attribute values beside the nine languages
+// ---------------------------------------------------------------------------------------------------------------
+
+test('string-escape: XML attribute value escaping writes the quote and a line feed as references', async ({ page }) => {
+  await openTool(page, 'string-escape');
+  await setControls(page, { selects: { language: 'xml-attribute' } });
+  // XML 1.0 section 4.6 writes a double quote as &quot;, and section 3.3.3 says a raw line feed in an attribute value
+  // would be read back as a space, so it is written as &#10;. The surrounding quotes are included by default.
+  await fillField(page, 'input', 'say "hi"\nbye <now> & later');
+  await expect(outputArea(page).locator('pre.output')).toHaveText(
+    '"say &quot;hi&quot;&#10;bye &lt;now&gt; &amp; later"',
+    { timeout: 15_000 },
+  );
+
+  // The same value read back: the two quotes around it are removed and every reference is read.
+  await setControls(page, { radios: { direction: 'unescape' } });
+  await fillField(page, 'input', '"say &quot;hi&quot;&#10;bye &lt;now&gt; &amp; later"');
+  await expect(outputArea(page).locator('pre.output')).toHaveText('say "hi"\nbye <now> & later', {
+    timeout: 15_000,
+  });
+
+  // An entity no DTD declares is refused where it is.
+  await fillField(page, 'input', '"a&nbsp;b"');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('&nbsp;', { timeout: 15_000 });
+});

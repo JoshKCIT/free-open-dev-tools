@@ -1,4 +1,12 @@
-import { meta, escapeLiteral, unescapeLiteral, StringEscapeError, LANGUAGES, type Language } from '@fodt/string-escape';
+import {
+  meta,
+  escapeLiteral,
+  unescapeLiteral,
+  StringEscapeError,
+  LANGUAGES,
+  XML_LANGUAGES,
+  type Language,
+} from '@fodt/string-escape';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 /** Converts a character-offset position into a one-based line and column for multi-line input. */
@@ -15,9 +23,9 @@ function lineColumn(text: string, position: number): { line: number; column: num
 }
 
 const PER_LINE_LANGUAGES = new Set(['javascript', 'java', 'csharp', 'python', 'go']);
-const QUOTE_LANGUAGES = new Set(['javascript', 'python']);
-const NON_ASCII_LANGUAGES = new Set(['javascript', 'java', 'csharp', 'python', 'go']);
-const WRAP_LANGUAGES = new Set(['javascript', 'java', 'csharp', 'python', 'go', 'sql']);
+const QUOTE_LANGUAGES = new Set(['javascript', 'python', 'xml-attribute']);
+const NON_ASCII_LANGUAGES = new Set(['javascript', 'java', 'csharp', 'python', 'go', 'xml-text', 'xml-attribute']);
+const WRAP_LANGUAGES = new Set(['javascript', 'java', 'csharp', 'python', 'go', 'sql', 'xml-attribute']);
 
 export default defineTool({
   id: 'string-escape',
@@ -43,7 +51,7 @@ export default defineTool({
       label: 'Language',
       type: 'select',
       default: 'javascript',
-      options: LANGUAGES.map((l) => ({ value: l.id, label: l.label })),
+      options: [...LANGUAGES, ...XML_LANGUAGES].map((l) => ({ value: l.id, label: l.label })),
     },
     {
       name: 'input',

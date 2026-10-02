@@ -39,6 +39,9 @@ it('XML attribute values escape the chosen quote and write tab, line feed and ca
   expect(escapeXml('say "hi" it\'s', { ...double, quote: "'" }).value).toBe('say "hi" it&apos;s');
   expect(escapeXml('a & b < c > d', double).value).toBe('a &amp; b &lt; c &gt; d');
   expect(escapeLiteral('x"y', { language: 'xml-attribute', quote: '"' }).value).toBe('"x&quot;y"');
+  // The quote chosen on the page reaches the writer: a single-quoted value escapes the apostrophe, not the double quote.
+  expect(escapeLiteral('x\'y"z', { language: 'xml-attribute', quote: "'" }).value).toBe("'x&apos;y\"z'");
+  expect(escapeLiteral('x\'y"z', { language: 'xml-attribute', quote: "'", wrap: false }).value).toBe('x&apos;y"z');
 });
 
 it('characters XML 1.0 does not allow are refused with their position, even as references', () => {
