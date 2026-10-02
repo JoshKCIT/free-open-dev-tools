@@ -6,8 +6,12 @@ import {
   listRequests,
   meta,
   readHar,
+  requestDetail,
+  type CookieRow,
   type Har,
   type ListOptions,
+  type NameValue,
+  type RequestDetail,
 } from '@fodt/har-viewer';
 import {
   bool,
@@ -231,6 +235,75 @@ function count(n: number): string {
   return n.toLocaleString('en-US');
 }
 
+/** The rules the page uses to flag a value, in words. */
+const SENSITIVE_RULES = [
+  'Headers named Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token (RFC 7235, RFC 6265).',
+  'Every cookie value, in the cookie lists (RFC 6265).',
+  'Query, form and posted parameters named key, apikey, api_key, sig or signature, or whose name holds token, secret, password or passwd (RFC 6750 names access_token).',
+  'A password in the user information of an address (RFC 3986 section 3.2.1).',
+  'Any value shaped like a JSON Web Token (RFC 7519) or a Bearer credential (RFC 6750), also inside a body.',
+  'In a body: form fields and JSON members with those names.',
+  'A masked value shows its first four characters (none when it has eight or fewer) and its length.',
+];
+
+/** Name and value pairs as a block of facts; a flagged value says so in its name. */
+function pairsOf(items: NameValue[]): [string, string][] {
+  return items.map((item) => [item.sensitive ? `${item.name} (sensitive)` : item.name, item.value]);
+}
+
+function cookiePairs(items: CookieRow[]): [string, string][] {
+  return items.map((item) => [
+    item.sensitive ? `${item.name} (sensitive)` : item.name,
+    item.details === '' ? item.value : `${item.value}; ${item.details}`,
+  ]);
+}
+
+function blockOf(label: string, pairs: [string, string][]): OutputBlock[] {
+  return pairs.length === 0 ? [] : [{ kind: 'keyvalue', label, pairs }];
+}
+
+/** Everything one request holds, as text blocks. */
+function detailBlocks(detail: RequestDetail): OutputBlock[] {
+  const out: OutputBlock[] = [];
+  const response = detail.response;
+  out.push({
+    kind: 'keyvalue',
+    label: `Request ${detail.index}`,
+    pairs: [
+      ['Method', detail.method],
+      ['URL', detail.url],
+      ['HTTP version', detail.httpVersion],
+      ['Started', detail.started],
+      ['Status', `${response.status} ${response.statusText}`.trim()],
+      ['Content type', response.mimeType],
+      ['Size', response.size],
+      ...(response.redirectURL === '' ? [] : ([['Redirects to', response.redirectURL]] as [string, string][])),
+    ],
+  });
+  out.push(...blockOf('Request headers', pairsOf(detail.headers)));
+  out.push(...blockOf('Query parameters', pairsOf(detail.query)));
+  out.push(...blockOf('Request cookies', cookiePairs(detail.cookies)));
+  if (detail.postData) {
+    out.push({
+      kind: 'keyvalue',
+      label: 'Posted data',
+      pairs: [['Type', detail.postData.mimeType], ...pairsOf(detail.postData.params)],
+    });
+    if (detail.postData.text !== undefined) {
+      out.push({ kind: 'code', label: 'Posted body', language: 'text', value: detail.postData.text });
+    }
+    if (detail.postData.note !== undefined) out.push({ kind: 'note', tone: 'info', value: detail.postData.note });
+  }
+  out.push(...blockOf('Response headers', pairsOf(response.headers)));
+  out.push(...blockOf('Response cookies', cookiePairs(response.cookies)));
+  out.push({ kind: 'keyvalue', label: 'Timings', pairs: detail.timings });
+  if (detail.body !== undefined) {
+    out.push({ kind: 'code', label: 'Response body', language: 'text', value: detail.body });
+  }
+  if (detail.bodyNote !== undefined) out.push({ kind: 'note', tone: 'info', value: detail.bodyNote });
+  return out;
+}
+
 export default defineTool({
   id: 'har-viewer',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
@@ -239,20 +312,27 @@ export default defineTool({
   async run(values, ctx): Promise<ToolResult> {
     try {
       const page = wholeNumber(values, 'page', 'Page', 1, 1, MAX_ENTRIES / PAGE_SIZE);
-      wholeNumber(values, 'row', 'Request to inspect', 0, 0, MAX_ENTRIES);
+      const row = wholeNumber(values, 'row', 'Request to inspect', 0, 0, MAX_ENTRIES);
       const har = await recordingOf(values);
       if (har === undefined) return { outputs: [] };
 
+      const reveal = bool(values, 'reveal', false);
       const options: ListOptions = {
         filter: str(values, 'filter'),
         method: str(values, 'method'),
         status: str(values, 'status'),
         sort: str(values, 'sort', 'start') as ListOptions['sort'],
-        reveal: bool(values, 'reveal', false),
+        reveal,
         page,
       };
       const result = listRequests(har, options);
-      const outputs: OutputBlock[] = [];
+      const outputs: OutputBlock[] = [
+        {
+          kind: 'note',
+          tone: 'info',
+          value: 'Nothing in this recording is sent, replayed or opened. Addresses and bodies are shown as text only.',
+        },
+      ];
       if (har.truncated) {
         outputs.push({
           kind: 'note',
@@ -260,16 +340,18 @@ export default defineTool({
           value: `The recording holds ${count(har.total)} requests. The first ${count(MAX_ENTRIES)} are listed.`,
         });
       }
+      let flagged = result.rows.some((r) => r.flags > 0);
       if (har.entries.length === 0) {
         outputs.push({ kind: 'note', tone: 'info', value: 'No requests in this recording.' });
       } else if (result.rows.length === 0) {
+        const pages = Math.ceil(result.total / PAGE_SIZE);
         outputs.push({
           kind: 'note',
           tone: 'info',
           value:
             result.total === 0
               ? 'No request matches the filters.'
-              : `Page ${page} has no requests: there ${Math.ceil(result.total / PAGE_SIZE) === 1 ? 'is 1 page' : `are ${Math.ceil(result.total / PAGE_SIZE)} pages`}.`,
+              : `Page ${page} has no requests: there ${pages === 1 ? 'is 1 page' : `are ${pages} pages`}.`,
         });
       } else {
         outputs.push({
@@ -277,19 +359,34 @@ export default defineTool({
           label: 'Requests',
           table: {
             headers: ['#', 'Method', 'URL', 'Status', 'Size', 'Time (ms)', 'Flags'],
-            rows: result.rows.map((row) => [
-              row.index,
-              row.method,
-              row.url,
-              row.status,
-              row.size,
-              row.time,
-              row.flags > 0 ? `Sensitive (${row.flags})` : '',
+            rows: result.rows.map((r) => [
+              r.index,
+              r.method,
+              r.url,
+              r.status,
+              r.size,
+              r.time,
+              r.flags > 0 ? `Sensitive (${r.flags})` : '',
             ]),
             mono: [1, 2],
           },
         });
+        if (result.total > PAGE_SIZE) {
+          outputs.push({
+            kind: 'note',
+            tone: 'info',
+            value: `Showing ${count(result.rows.length)} of ${count(result.total)} requests. Change Page to see the others.`,
+          });
+        }
       }
+
+      if (row > 0) {
+        const detail = requestDetail(har, row, { reveal, bodies: bool(values, 'bodies', false) });
+        outputs.push(...detailBlocks(detail));
+        if (detail.flags > 0) flagged = true;
+      }
+      if (flagged) outputs.push({ kind: 'list', label: 'What is treated as sensitive', items: SENSITIVE_RULES });
+
       return {
         outputs,
         stats: [

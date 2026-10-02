@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { test, expect, type Page } from '@playwright/test';
 import { writeZip } from './fixture-files';
 
@@ -228,6 +230,49 @@ function markerWorkbook(): Buffer {
   return Buffer.from(zip);
 }
 
+/** One request of a HAR 1.2 recording, with the fields the specification lists for an entry. */
+function harEntry(parts: {
+  url: string;
+  headers?: { name: string; value: string }[];
+  cookies?: { name: string; value: string }[];
+  queryString?: { name: string; value: string }[];
+  redirectURL?: string;
+  body?: string;
+}): Record<string, unknown> {
+  return {
+    startedDateTime: '2009-04-16T12:07:23.596Z',
+    time: 12,
+    request: {
+      method: 'GET',
+      url: parts.url,
+      httpVersion: 'HTTP/1.1',
+      cookies: parts.cookies ?? [],
+      headers: parts.headers ?? [],
+      queryString: parts.queryString ?? [],
+      headersSize: -1,
+      bodySize: 0,
+    },
+    response: {
+      status: 200,
+      statusText: 'OK',
+      httpVersion: 'HTTP/1.1',
+      cookies: [],
+      headers: [],
+      content: { size: parts.body?.length ?? 0, mimeType: 'text/html', ...(parts.body ? { text: parts.body } : {}) },
+      redirectURL: parts.redirectURL ?? '',
+      headersSize: -1,
+      bodySize: parts.body?.length ?? 0,
+    },
+    cache: {},
+    timings: { send: 1, wait: 10, receive: 1 },
+  };
+}
+
+/** A HAR 1.2 log, as text. */
+function harRecording(entries: unknown[]): string {
+  return JSON.stringify({ log: { version: '1.2', creator: { name: 'spec', version: '1' }, entries } });
+}
+
 const FILE_CASES: FileCase[] = [
   {
     id: 'sqlite-viewer',
@@ -303,6 +348,32 @@ const FILE_CASES: FileCase[] = [
     radios: { mode: 'decode' },
     pressRun: false,
     expectText: `${MARKER}€`,
+  },
+  {
+    id: 'har-viewer',
+    // A HAR 1.2 recording (http://www.softwareishard.com/blog/har-12-spec/) of one request to a host that never
+    // resolves (the .invalid top-level domain is reserved by RFC 6761 section 6.4). The marker is in the address, in a
+    // request header and in a cookie, so a request to that host, or any use of the marker outside the page, is found
+    // by the recorder below. The page runs as you type; the request is opened with Request to inspect, so the header
+    // and the masked cookie are on the page, and the address is shown as text in the list.
+    file: () => ({
+      name: 'recording.har',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        harRecording([
+          harEntry({
+            url: `https://example.invalid/search?q=${MARKER}`,
+            headers: [{ name: 'X-Note', value: MARKER }],
+            cookies: [{ name: 'session', value: MARKER }],
+            queryString: [{ name: 'q', value: MARKER }],
+          }),
+        ]),
+        'utf8',
+      ),
+    }),
+    fill: { row: '1' },
+    pressRun: false,
+    expectText: MARKER,
   },
 ];
 
@@ -425,4 +496,78 @@ test('hex-viewer: a zero-byte file shows its name, size 0 B and type empty file 
   await fillAndHold(page, 'position', '1');
   await expect(outputArea(page).locator('.issue-list')).toContainText('Go to byte is 1');
   await expect(outputArea(page).locator('.issue-list')).toContainText('past the end of 1 bytes');
+});
+
+/**
+ * Runs `body` with the address of a local HTTP server that records every request it receives, then waits a moment for
+ * a stray request to land, and returns what the server saw. A page that read an address in a document and requested it
+ * would show up here, because the document names this server.
+ */
+async function withRecordingServer(body: (address: string) => Promise<void>): Promise<string[]> {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(`${request.method} ${request.url}`);
+    response.end('x');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await body(`http://127.0.0.1:${port}`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+  return seen;
+}
+
+test('har-viewer: a recorded cookie stays masked until Show sensitive values is on, and a local server named in the recording receives no request', async ({
+  page,
+}) => {
+  // The cookie value is built from pieces so the file holds no literal that looks like a credential.
+  const cookieValue = ['cookie', 'value', '1234567890'].join('-');
+  const seen = await withRecordingServer(async (address) => {
+    const body = `<img src="${address}/pixel.png"><script src="${address}/x.js"></script><a href="${address}/y">y</a>`;
+    await page.goto(rel('/tools/har-viewer'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    const requests: string[] = [];
+    page.on('request', (request) => requests.push(request.url()));
+
+    await page.locator('#f-file').setInputFiles({
+      name: 'recording.har',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        harRecording([
+          harEntry({
+            url: `${address}/page?q=1`,
+            redirectURL: `${address}/next`,
+            headers: [{ name: 'Referer', value: `${address}/from` }],
+            cookies: [{ name: 'session', value: cookieValue }],
+            body,
+          }),
+        ]),
+        'utf8',
+      ),
+    });
+    await expect(outputArea(page)).toContainText(`${address}/page?q=1`, { timeout: 20_000 });
+
+    await fillAndHold(page, 'row', '1');
+    await page.locator('#f-bodies').check();
+    // The cookie is masked: its first four characters and its length, never the value itself.
+    await expect(outputArea(page)).toContainText(`cook… (${cookieValue.length} characters)`);
+    await expect(outputArea(page)).not.toContainText(cookieValue);
+    // The body is text: the markup in it is on the page as characters, and nothing in the output can load an address.
+    await expect(outputArea(page)).toContainText(`<img src="${address}/pixel.png">`);
+    expect(await outputArea(page).locator('img, iframe, script, link, form, a[href], object, embed').count()).toBe(0);
+
+    await page.locator('#f-reveal').check();
+    await expect(outputArea(page)).toContainText(cookieValue);
+    await page.waitForTimeout(500);
+    // Every request the page made went to its own origin; none went to the server the recording names.
+    const origin = new URL(page.url()).origin;
+    const strays = requests.filter(
+      (url) => !url.startsWith('data:') && !url.startsWith('blob:') && !url.startsWith(`${origin}/`),
+    );
+    expect(strays).toEqual([]);
+  });
+  expect(seen).toEqual([]);
 });
