@@ -141,9 +141,15 @@ export default defineTool({
       // that message.
       if (ctx.signal.aborted) throw err;
       if (err instanceof JqPlaygroundError || err instanceof JqPlaygroundRunError) {
+        const before: OutputBlock[] =
+          err.output === '' ? [] : [outputBlock(err.output, options.raw, 'Output before the error')];
+        // What debug and stderr wrote before the failure stays visible too.
+        if (err.diagnostics !== '') {
+          before.push({ kind: 'code', label: 'Messages from debug and stderr', value: err.diagnostics });
+        }
         return {
           // What the filter produced before it failed stays visible above the error.
-          outputs: err.output === '' ? [] : [outputBlock(err.output, options.raw, 'Output before the error')],
+          outputs: before,
           errors: [{ message: problemMessage(err.part, err.message), line: err.line, column: err.column }],
         };
       }

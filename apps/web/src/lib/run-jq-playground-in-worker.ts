@@ -50,10 +50,18 @@ export class JqPlaygroundRunError extends Error {
   readonly line?: number;
   readonly column?: number;
   readonly output: string;
+  /** What debug and stderr wrote before the run failed. */
+  readonly diagnostics: string;
 
   constructor(
     message: string,
-    detail: { part?: 'input' | 'filter' | 'arguments' | 'run'; line?: number; column?: number; output?: string } = {},
+    detail: {
+      part?: 'input' | 'filter' | 'arguments' | 'run';
+      line?: number;
+      column?: number;
+      output?: string;
+      diagnostics?: string;
+    } = {},
   ) {
     super(message);
     this.name = 'JqPlaygroundRunError';
@@ -61,6 +69,7 @@ export class JqPlaygroundRunError extends Error {
     this.line = detail.line;
     this.column = detail.column;
     this.output = detail.output ?? '';
+    this.diagnostics = detail.diagnostics ?? '';
   }
 }
 
@@ -130,6 +139,7 @@ export function jqPlaygroundInWorker(job: JqPlaygroundJobMessage, ctx: RunContex
             line: data.line,
             column: data.column,
             output: data.output,
+            diagnostics: data.diagnostics,
           }),
         });
       }

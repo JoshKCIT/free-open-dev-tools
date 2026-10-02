@@ -49,6 +49,8 @@ export interface JqPlaygroundErrorMessage {
   line?: number;
   column?: number;
   output?: string;
+  /** What debug and stderr wrote before the run failed. */
+  diagnostics?: string;
 }
 
 export type JqPlaygroundWorkerMessage = JqPlaygroundReadyMessage | JqPlaygroundDoneMessage | JqPlaygroundErrorMessage;
@@ -82,6 +84,7 @@ async function handleJob(job: JqPlaygroundJobMessage): Promise<void> {
         line: err.line,
         column: err.column,
         output: err.output,
+        diagnostics: err.diagnostics,
       });
     } else {
       workerGlobal.postMessage({ type: 'jq-playground-error', message: engineFailureMessage(err) });

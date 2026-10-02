@@ -20,21 +20,29 @@ type ErrorPart = 'input' | 'filter' | 'arguments' | 'run';
 /**
  * A problem with what was pasted, in jq's own words. `part` says where it is: the JSON input, the filter, the
  * arguments object, or the run itself. A compile error carries the filter's line and column as jq counts them (the
- * column counts bytes); `output` holds whatever the filter had produced before it failed.
+ * column counts bytes); `output` holds whatever the filter had produced before it failed, and `diagnostics` whatever
+ * debug and stderr wrote.
  */
 export class JqPlaygroundError extends Error {
   readonly part?: ErrorPart;
   readonly line?: number;
   readonly column?: number;
   readonly output: string;
+  /** What debug, stderr and halt_error wrote before the run failed, kept apart from the error itself. */
+  readonly diagnostics: string;
 
-  constructor(message: string, part?: ErrorPart, detail: { line?: number; column?: number; output?: string } = {}) {
+  constructor(
+    message: string,
+    part?: ErrorPart,
+    detail: { line?: number; column?: number; output?: string; diagnostics?: string } = {},
+  ) {
     super(message);
     this.name = 'JqPlaygroundError';
     this.part = part;
     this.line = detail.line;
     this.column = detail.column;
     this.output = detail.output ?? '';
+    this.diagnostics = detail.diagnostics ?? '';
   }
 }
 
@@ -186,19 +194,36 @@ interface StderrReading {
   diagnostics: string;
 }
 
-function readStderr(stderr: string): StderrReading {
+/**
+ * Splits what the engine wrote to stderr into jq's own messages and everything else. A run that ended with exit status
+ * 0 has no message of jq's, so a line a filter printed that starts with `jq: ` stays what it is: text from stderr or
+ * halt_error. After a failure, a line that does not start with `jq: ` and follows a run-time message continues that
+ * message (an error text can hold line breaks); a debug line is never part of one.
+ */
+function readStderr(stderr: string, exitCode: number): StderrReading {
   const messages: string[] = [];
   const rest: string[] = [];
-  for (const line of stderr.split('\n')) {
-    if (line.startsWith('jq: ')) messages.push(line.slice(4));
-    else rest.push(line);
+  const trimmed = stderr.replace(/\n+$/, '');
+  if (exitCode === 0) return { messages, diagnostics: trimmed };
+  let continues = false;
+  for (const line of trimmed.split('\n')) {
+    if (line.startsWith('jq: ')) {
+      messages.push(line.slice(4));
+      // A compile error is followed by an excerpt of the filter and a caret line; those stay out of its message.
+      continues = !isCompileMessage(line.slice(4)) && !/^\d+ compile errors?$/.test(line.slice(4));
+    } else if (continues && !line.startsWith('["DEBUG:",')) {
+      messages[messages.length - 1] += `\n${line}`;
+    } else {
+      rest.push(line);
+    }
   }
-  // A compile error is followed by an excerpt of the filter and a caret line, then jq's count of compile errors; the
-  // excerpt lines are indented and belong to the message, not to the diagnostics.
-  const compileAt = messages.findIndex((m) => /^error: /.test(m) && !/^error \(at /.test(m));
-  const diagnostics =
-    compileAt >= 0 ? '' : rest.filter((line, index, all) => !(line === '' && index === all.length - 1)).join('\n');
+  // The excerpt lines of a compile error are not diagnostics either.
+  const diagnostics = messages.some(isCompileMessage) ? '' : rest.join('\n');
   return { messages, diagnostics: diagnostics.replace(/\n+$/, '') };
+}
+
+function isCompileMessage(message: string): boolean {
+  return /^error: /.test(message) && !/^error \(at /.test(message);
 }
 
 /** The message of a compile error with the line and column jq reports, and how many follow it. */
@@ -219,7 +244,7 @@ function compileProblem(messages: string[], output: string): JqPlaygroundError {
 }
 
 /** A run-time error with the stdin location removed: jq's message for the value that failed. */
-function runProblem(messages: string[], output: string): JqPlaygroundError {
+function runProblem(messages: string[], output: string, diagnostics: string): JqPlaygroundError {
   const failures = messages.filter((m) => /^error \(at [^)]*\)/.test(m));
   const clean = (m: string) => {
     const rest = m.replace(/^error \(at [^)]*\)/, '');
@@ -230,7 +255,7 @@ function runProblem(messages: string[], output: string): JqPlaygroundError {
     const more = failures.length - 1;
     message += ` (${more} more ${more === 1 ? 'error' : 'errors'} followed)`;
   }
-  return new JqPlaygroundError(message, 'run', { output });
+  return new JqPlaygroundError(message, 'run', { output, diagnostics });
 }
 
 /**
@@ -247,14 +272,14 @@ export function runJq(engine: JqEngine, input: string, filter: string, options: 
   // The final -- ends jq's options, so a filter that starts with a dash is still a filter.
   const result = engine.raw(input, filter, [...optionFlags(options), ...argFlags, '--']);
 
-  const { messages, diagnostics } = readStderr(result.stderr);
+  const { messages, diagnostics } = readStderr(result.stderr, result.exitCode);
   const { output, truncated } = capOutput(result.stdout);
 
   if (messages.some((m) => /^error: /.test(m) && !/^error \(at /.test(m))) throw compileProblem(messages, output);
-  if (messages.some((m) => /^error \(at /.test(m))) throw runProblem(messages, output);
+  if (messages.some((m) => /^error \(at /.test(m))) throw runProblem(messages, output, diagnostics);
   const other = messages.find((m) => !/^\d+ compile errors?$/.test(m));
   if (other !== undefined) {
-    throw new JqPlaygroundError(other, /^parse error/.test(other) ? 'input' : 'run', { output });
+    throw new JqPlaygroundError(other, /^parse error/.test(other) ? 'input' : 'run', { output, diagnostics });
   }
   return { output, truncated, stderr: diagnostics, exitCode: result.exitCode };
 }

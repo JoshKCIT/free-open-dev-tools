@@ -147,6 +147,32 @@ it('debug and stderr output come back apart from the result and halt_error is no
   expect(halted.stderr).toContain('bye');
 });
 
+it('an error message with line breaks keeps every line, and debug output printed before the error is kept with it', () => {
+  // jq prints: jq: error (at /dev/stdin:0): first<newline>second
+  const multi = failure(() => runJq(engine, 'null', 'error("first\nsecond")', COMPACT));
+  expect(multi.message).toBe('first\nsecond');
+  expect(multi.part).toBe('run');
+  // fromjson quotes the text it could not parse, and that text holds a line break.
+  const parsed = failure(() => runJq(engine, '"{\\n bad"', 'fromjson', COMPACT));
+  expect(parsed.message).toContain("(while parsing '{\n bad')");
+  // debug writes a line to stderr before the error: the error is the message and the debug line is kept apart.
+  const withDebug = failure(() => runJq(engine, 'null', '(1,2) | debug | error("e")', COMPACT));
+  expect(withDebug.message).toBe('e');
+  expect(withDebug.diagnostics).toBe('["DEBUG:",1]');
+  const both = failure(() => runJq(engine, 'null', '1 | debug | error("a\nb")', COMPACT));
+  expect([both.message, both.diagnostics]).toEqual(['a\nb', '["DEBUG:",1]']);
+  // An error with nothing else on stderr has no diagnostics.
+  expect(failure(() => runJq(engine, 'null', 'error("x")', COMPACT)).diagnostics).toBe('');
+});
+
+it('a filter that prints a line starting with jq: is not mistaken for a jq error when the run succeeds', () => {
+  // stderr writes the text as it is; the run ends with exit status 0, so no line of it can be an error of jq's.
+  const result = runJq(engine, 'null', '"jq: oops" | stderr', COMPACT)!;
+  expect([result.output, result.stderr, result.exitCode]).toEqual(['"jq: oops"', 'jq: oops', 0]);
+  const halted = runJq(engine, 'null', '"jq: error: not real" | halt_error(0)', COMPACT)!;
+  expect([halted.stderr, halted.exitCode]).toEqual(['jq: error: not real', 0]);
+});
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Limits.
 // ---------------------------------------------------------------------------------------------------------------------

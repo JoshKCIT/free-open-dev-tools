@@ -526,6 +526,19 @@ test('hex-viewer: a zero-byte file shows its name, size 0 B and type empty file 
   await expect(outputArea(page).locator('.issue-list')).toContainText('past the end of 1 bytes');
 });
 
+test('jq-playground: an error with a line break is shown whole and the debug line printed before it stays on the page', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/jq-playground'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  // The page runs as you type, so the input comes after the filter.
+  await fillAndHold(page, 'filter', '(1, 2) | debug | error("first\\nsecond")');
+  await fillAndHold(page, 'input', '1');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('first second', { timeout: 20_000 });
+  await expect(outputArea(page)).toContainText('Messages from debug and stderr');
+  await expect(outputArea(page).locator('pre.output')).toContainText('["DEBUG:",1]');
+});
+
 /**
  * Runs `body` with the address of a local HTTP server that records every request it receives, then waits a moment for
  * a stray request to land, and returns what the server saw. A page that read an address in a document and requested it
