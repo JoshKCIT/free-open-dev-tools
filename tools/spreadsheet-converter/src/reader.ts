@@ -329,8 +329,17 @@ function readSheetRows(xml: string, context: SheetContext, part: string): Cell[]
       continue;
     }
     if (outer === 'row') {
-      const r = scanner.attr('r');
-      rowIndex = r === undefined ? rowIndex + 1 : parseInt(r, 10) - 1;
+      // A row number that is missing, is not a whole number or lies outside Excel's rows (1 to MAX_ROWS) is not a
+      // position: the row follows the one before it, and that may not run past the last row either.
+      const r = scanner.attr('r')?.trim();
+      const given = r !== undefined && /^\d{1,8}$/.test(r) ? parseInt(r, 10) : 0;
+      rowIndex = given >= 1 && given <= MAX_ROWS ? given - 1 : rowIndex + 1;
+      if (rowIndex >= MAX_ROWS) {
+        throw new SpreadsheetConverterError(
+          `This sheet has more rows than the ${MAX_ROWS.toLocaleString('en-US')} rows a spreadsheet holds, so a row without a usable row number has no place to go.`,
+          { part },
+        );
+      }
       nextColumn = 0;
       continue;
     }

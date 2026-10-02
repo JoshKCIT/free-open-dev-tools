@@ -1243,6 +1243,29 @@ it('custom number formats are classified as date, time or neither by their token
   ]);
 });
 
+it('a row without a usable row number follows the row before it, and rows never run past the last row Excel has', () => {
+  const read = (rows: string) => readXlsx(xlsxFrom(sheetXmlOf(rows)), { datesAsSerials: false }).sheets[0]!.rows;
+  const texts = (rows: ReturnType<typeof read>) => rows.map((row) => row.map((cell) => cell.text));
+  // A row number that is not a number is the next row, so its cell is kept (it used to vanish).
+  expect(texts(read('<row r="abc"><c><v>1</v></c></row><row><c><v>2</v></c></row>'))).toEqual([['1'], ['2']]);
+  // A negative or zero row number is not a row either; it used to merge into row 1.
+  expect(texts(read('<row r="1"><c><v>a</v></c></row><row r="-4"><c><v>b</v></c></row>'))).toEqual([['a'], ['b']]);
+  expect(texts(read('<row r="1"><c><v>a</v></c></row><row r="0"><c><v>b</v></c></row>'))).toEqual([['a'], ['b']]);
+  // A row number past Excel's last row (1,048,576) is not a row either, where 5,000,000 once asked for that many rows.
+  expect(texts(read('<row r="1"><c><v>a</v></c></row><row r="5000000"><c><v>b</v></c></row>'))).toEqual([['a'], ['b']]);
+  // A good row number is still used, with gaps left empty, and the next row without a number follows it.
+  expect(texts(read('<row r="3"><c><v>a</v></c></row><row><c><v>b</v></c></row>'))).toEqual([[], [], ['a'], ['b']]);
+  // Rows without numbers count too: the one after the last row of the sheet is refused.
+  const last = read('<row r="1048576"><c><v>z</v></c></row>');
+  expect(last).toHaveLength(1048576);
+  const past = thrown(() =>
+    readXlsx(xlsxFrom(sheetXmlOf('<row r="1048576"><c><v>z</v></c></row><row><c><v>y</v></c></row>')), {
+      datesAsSerials: false,
+    }),
+  );
+  expect(past.message).toMatch(/1,048,576 rows/);
+}, 60_000);
+
 it('a damaged sheet that was not chosen does not stop the chosen sheet from being read', () => {
   const parts = partsOf(sheetXmlOf('<row r="1"><c r="A1"><v>1</v></c></row>'), {
     workbook: `<workbook xmlns="${MAIN_NS}" xmlns:r="${REL_NS}"><sheets><sheet name="Good" sheetId="1" r:id="rId1"/><sheet name="Bad" sheetId="2" r:id="rId9"/></sheets></workbook>`,
