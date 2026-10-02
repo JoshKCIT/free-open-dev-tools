@@ -5,7 +5,7 @@
 - **Document:** RFC 8949, Concise Binary Object Representation (CBOR), C. Bormann and P. Hoffman, December 2020 (STD 94,
   obsoletes RFC 7049).
 - **Address:** https://www.rfc-editor.org/rfc/rfc8949 (the text fetched from https://www.rfc-editor.org/rfc/rfc8949.txt,
-  Appendix A, from the heading "Appendix A.  Examples of Encoded CBOR Data Items" to the caption of Table 6).
+  Appendix A, from the heading "Appendix A. Examples of Encoded CBOR Data Items" to the caption of Table 6).
 - **Fetched:** 2026-10-02.
 - **Copyright and licence:** Copyright (c) 2020 IETF Trust and the persons identified as the document authors. All rights
   reserved. The rows are reproduced unmodified (only the table's own line wraps are joined) and attributed to IETF and to

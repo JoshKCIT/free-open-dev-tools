@@ -1,5 +1,5 @@
 import { bignumItem, bignumValue, isShortBignum, type CborItem } from './cbor';
-import { MAX_BIGINT_DIGITS, MAX_DEPTH, MsgpackCborError } from './common';
+import { MAX_BIGINT_DIGITS, MAX_DEPTH, MAX_OUTPUT_CHARS, MsgpackCborError } from './common';
 import type { MsgpackItem } from './msgpack';
 
 /**
@@ -187,8 +187,76 @@ function floatText(value: number): string {
   return /^-?\d+$/.test(text) ? `${text}.0` : text;
 }
 
-/** The JSON text of a tree, indented two spaces. */
+/** The length of an integer's decimal text, or a lower bound close to it for a very large one (a hex digit is 4 bits). */
+function intLength(value: bigint): number {
+  const hex = (value < 0n ? -value : value).toString(16).length;
+  if (hex <= 13) return value.toString().length;
+  return Math.floor((hex - 1) * 4 * 0.30103) + 1 + (value < 0n ? 1 : 0);
+}
+
+/**
+ * Refuses a tree whose JSON text would be longer than `MAX_OUTPUT_CHARS`, before any text is built. The length is
+ * counted from the tree (every token, line break and indentation space; a string counts its characters and two quotes,
+ * so an escape makes the real text a little longer), and the count stops at the limit.
+ */
+function checkOutputSize(node: JsonNode, indent: number): void {
+  let total = 0;
+  const add = (n: number): void => {
+    total += n;
+    if (total > MAX_OUTPUT_CHARS) {
+      throw new MsgpackCborError(
+        `The JSON text would be more than 32 MiB (${MAX_OUTPUT_CHARS.toLocaleString('en-US')} characters), because every nested array and map indents its lines. Nothing was written. For CBOR, choose diagnostic notation, which does not indent.`,
+      );
+    }
+  };
+  const measure = (n: JsonNode, level: number): void => {
+    switch (n.t) {
+      case 'null':
+        add(4);
+        return;
+      case 'bool':
+        add(n.v ? 4 : 5);
+        return;
+      case 'str':
+        add(n.v.length + 2);
+        return;
+      case 'int':
+        add(intLength(n.v));
+        return;
+      case 'float':
+        add(floatText(n.v).length);
+        return;
+      case 'arr':
+        if (n.items.length === 0) {
+          add(2);
+          return;
+        }
+        // The brackets, the line breaks after the opening one, between the items and before the closing one.
+        add(2 + (n.items.length - 1) * 2 + 1 + indent * level + 1);
+        for (const item of n.items) {
+          add(indent * (level + 1));
+          measure(item, level + 1);
+        }
+        return;
+      case 'obj':
+        if (n.entries.length === 0) {
+          add(2);
+          return;
+        }
+        add(2 + (n.entries.length - 1) * 2 + 1 + indent * level + 1);
+        for (const [key, value] of n.entries) {
+          add(indent * (level + 1) + key.length + 2 + 2);
+          measure(value, level + 1);
+        }
+        return;
+    }
+  };
+  measure(node, 0);
+}
+
+/** The JSON text of a tree, indented two spaces. A tree whose text would pass 32 MiB is refused (`MAX_OUTPUT_CHARS`). */
 export function stringifyJson(node: JsonNode, indent = 2): string {
+  checkOutputSize(node, indent);
   const write = (n: JsonNode, level: number): string => {
     const pad = ' '.repeat(indent * (level + 1));
     const closePad = ' '.repeat(indent * level);

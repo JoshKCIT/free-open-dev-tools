@@ -1,10 +1,10 @@
 import meta from './meta.json';
 import { cborToDiagnostic, decodeCborWithNotes, encodeCbor, type CborItem } from './cbor';
-import { MAX_DEPTH, MAX_INPUT_BYTES, MsgpackCborError, decodeUtf8, tooLarge } from './common';
+import { MAX_DEPTH, MAX_INPUT_BYTES, MAX_OUTPUT_CHARS, MsgpackCborError, decodeUtf8, tooLarge } from './common';
 import { bytesToBase64, fromJsonValue, parseJson, stringifyJson, toJsonValue } from './json-markers';
 import { decodeMsgpackWithNotes, encodeMsgpack, type MsgpackItem } from './msgpack';
 
-export { meta, MAX_DEPTH, MAX_INPUT_BYTES, MsgpackCborError };
+export { meta, MAX_DEPTH, MAX_INPUT_BYTES, MAX_OUTPUT_CHARS, MsgpackCborError };
 
 const isSpace = (code: number): boolean => code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d;
 const hexValue = (code: number): number =>

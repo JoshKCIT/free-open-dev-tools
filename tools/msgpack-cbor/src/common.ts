@@ -43,6 +43,13 @@ export function tooLarge(bytes: number, what = 'The input'): MsgpackCborError {
   );
 }
 
+/**
+ * The most characters of JSON text one conversion writes: 32 MiB. Indentation makes a deeply nested value much longer than
+ * its bytes (255 levels and a million small numbers would be over 500 MB), so a value that would pass this is refused
+ * before any text is built.
+ */
+export const MAX_OUTPUT_CHARS = 33554432;
+
 /** A bignum or `$bigint` longer than this many digits is not turned into a number: the conversion would take too long. */
 export const MAX_BIGINT_DIGITS = 20000;
 /** The same limit in bytes for a CBOR bignum's byte string (8192 bytes hold at most 19,729 digits, under the digit limit). */
