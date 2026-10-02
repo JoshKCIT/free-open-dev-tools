@@ -1,0 +1,10 @@
+{
+  "id": "spreadsheet-converter",
+  "label": "ECMA-376 cell types: 00123 is written as an inline string and 1 as a number",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "text-to-xlsx" },
+    { "action": "fill", "field": "input", "value": "id,code\n1,00123" },
+    { "action": "run" }
+  ],
+  "expect": ["00123", "inlineStr", "converted.xlsx"]
+}

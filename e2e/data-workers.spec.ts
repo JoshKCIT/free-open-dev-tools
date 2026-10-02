@@ -283,6 +283,16 @@ const ENGINE_CASES: EngineCase[] = [
     limitSeconds: 5,
     limitMessage: 'Stopped after 5 seconds',
   },
+  {
+    id: 'spreadsheet-converter',
+    // The page's default mode reads a file; the worker runs the same way for pasted text, which needs no file.
+    radios: { mode: 'text-to-xlsx' },
+    valid: { input: 'a,b\n1,2' },
+    pressRun: true,
+    expectOutput: 'converted.xlsx',
+    limitSeconds: 30,
+    limitMessage: 'Stopped after 30 seconds',
+  },
 ];
 
 for (const c of ENGINE_CASES) {

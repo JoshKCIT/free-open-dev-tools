@@ -1,0 +1,8 @@
+[
+  { "mode": { "field": "mode", "value": "xlsx-to-text" }, "attachesFile": true },
+  {
+    "mode": { "field": "mode", "value": "text-to-xlsx" },
+    "values": { "input": "a,b\n1,2", "sheetName": "Sheet1" },
+    "attachesFile": false
+  }
+]
