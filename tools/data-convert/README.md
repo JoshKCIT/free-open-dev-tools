@@ -76,6 +76,7 @@ convertData('name: Ada\ntags:\n  - a\n  - b', { from: 'yaml', to: 'json' });
 
 - `yaml` 2.9.1
 - `smol-toml` 1.9.0
+- `fast-xml-parser` 5.11.1
 
 ## Tests
 

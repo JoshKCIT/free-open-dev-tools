@@ -3,16 +3,21 @@ import { parseJsonText, exceedsDepth, MAX_JSON_DEPTH } from './json-text';
 import { formatPointer } from './pointer';
 import { Document, parseDocument, visit, isAlias } from 'yaml';
 import { parse as parseToml, stringify as stringifyToml, TomlError } from 'smol-toml';
+import { readXmlValue, XmlValueError } from './xml-read';
 
 export { meta };
 
-export type DataFormat = 'json' | 'yaml' | 'toml';
+export type DataFormat = 'json' | 'yaml' | 'toml' | 'xml' | 'csv' | 'tsv';
 
 export interface ConvertOptions {
   from: DataFormat;
   to: DataFormat;
   /** Spaces per indent level for JSON and YAML output. Default 2. Ignored for TOML. */
   indent?: number;
+  /** XML only. Prefix an attribute's key gets, in either direction. Default '@_'. */
+  attributePrefix?: string;
+  /** XML only. Key an element's own text sits under when it also has attributes or children. Default '#text'. */
+  textKey?: string;
 }
 
 export interface ConvertResult {
@@ -21,7 +26,7 @@ export interface ConvertResult {
 }
 
 export class DataConvertError extends Error {
-  /** Set for a JSON, YAML or TOML syntax error. */
+  /** Set for a JSON, YAML, TOML or XML syntax error. */
   readonly line?: number;
   readonly column?: number;
   /** RFC 6901 pointer, set instead of line/column for a structural problem such as a null on the way to TOML. */
@@ -192,7 +197,7 @@ function toTomlOutput(value: unknown): string {
   return stringifyToml(value as Record<string, unknown>);
 }
 
-/** Converts `text` from one of `json`/`yaml`/`toml` to another, returning the output and any loss warnings. Throws `DataConvertError` on a parse or structural problem. */
+/** Converts `text` from one of the six formats to another, returning the output and any loss warnings. Throws `DataConvertError` on a parse or structural problem. */
 export function convertData(text: string, options: ConvertOptions): ConvertResult {
   const { from, to } = options;
   const indent = options.indent ?? 2;
@@ -217,6 +222,10 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
     }
     if (exceedsDepth(resolved, MAX_JSON_DEPTH)) throw new DataConvertError(DEPTH_MESSAGE);
     return { output: doc.toString({ indent }), warnings: [] };
+  }
+
+  if (to === 'xml' || to === 'csv' || to === 'tsv' || from === 'csv' || from === 'tsv') {
+    throw new DataConvertError('This format is not supported yet.');
   }
 
   let value: unknown;
@@ -251,6 +260,15 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
       value = doc.toJS({ maxAliasCount: 100 });
     } catch (err) {
       if (err instanceof ReferenceError) throw new DataConvertError(ALIAS_BOMB_MESSAGE);
+      throw err;
+    }
+  } else if (from === 'xml') {
+    try {
+      const read = readXmlValue(text, { attributePrefix: options.attributePrefix, textKey: options.textKey });
+      value = read.value;
+      warnings.push(...read.warnings);
+    } catch (err) {
+      if (err instanceof XmlValueError) throw new DataConvertError(err.message, { line: err.line, column: err.column });
       throw err;
     }
   } else {

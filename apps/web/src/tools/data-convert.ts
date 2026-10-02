@@ -1,8 +1,20 @@
-import { meta, convertData, DataConvertError, type ConvertOptions } from '@fodt/data-convert';
+import { meta, convertData, DataConvertError, type ConvertOptions, type DataFormat } from '@fodt/data-convert';
 import { dataConvertInWorker, DataConvertRunError } from '../lib/run-data-convert-in-worker';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
-const LANGUAGE: Record<string, string | undefined> = { json: 'json', yaml: 'yaml', toml: undefined };
+const LANGUAGE: Record<string, string | undefined> = {
+  json: 'json',
+  yaml: 'yaml',
+  toml: undefined,
+  xml: 'xml',
+  csv: undefined,
+  tsv: undefined,
+};
+
+/** True when either side of the conversion is XML, so the two XML key settings matter. */
+function involvesXml(values: Record<string, unknown>): boolean {
+  return str(values, 'from', 'json') === 'xml' || str(values, 'to', 'yaml') === 'xml';
+}
 
 export default defineTool({
   id: 'data-convert',
@@ -22,6 +34,9 @@ export default defineTool({
         { value: 'json', label: 'JSON' },
         { value: 'yaml', label: 'YAML' },
         { value: 'toml', label: 'TOML' },
+        { value: 'xml', label: 'XML' },
+        { value: 'csv', label: 'CSV' },
+        { value: 'tsv', label: 'TSV' },
       ],
     },
     {
@@ -33,6 +48,9 @@ export default defineTool({
         { value: 'json', label: 'JSON' },
         { value: 'yaml', label: 'YAML' },
         { value: 'toml', label: 'TOML' },
+        { value: 'xml', label: 'XML' },
+        { value: 'csv', label: 'CSV' },
+        { value: 'tsv', label: 'TSV' },
       ],
     },
     {
@@ -52,6 +70,22 @@ export default defineTool({
         { value: '4', label: '4 spaces' },
       ],
     },
+    {
+      name: 'attributePrefix',
+      label: 'Attribute prefix',
+      type: 'text',
+      default: '@_',
+      help: 'XML attributes become keys that start with this. It can be empty.',
+      visible: involvesXml,
+    },
+    {
+      name: 'textKey',
+      label: 'Text key',
+      type: 'text',
+      default: '#text',
+      help: 'Where an element text goes when the element also has attributes or children.',
+      visible: involvesXml,
+    },
   ],
   examples: [
     { label: 'JSON to YAML', values: { from: 'json', to: 'yaml', input: '{"name":"Ada","tags":["a","b"]}' } },
@@ -62,10 +96,14 @@ export default defineTool({
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
 
-    const from = str(values, 'from', 'json') as 'json' | 'yaml' | 'toml';
-    const to = str(values, 'to', 'yaml') as 'json' | 'yaml' | 'toml';
+    const from = str(values, 'from', 'json') as DataFormat;
+    const to = str(values, 'to', 'yaml') as DataFormat;
     const indent = Number(str(values, 'indent', '2')) === 4 ? 4 : 2;
     const options: ConvertOptions = { from, to, indent };
+    if (from === 'xml' || to === 'xml') {
+      options.attributePrefix = str(values, 'attributePrefix', '@_');
+      options.textKey = str(values, 'textKey', '#text');
+    }
 
     try {
       // Only a YAML source carries the quadratic duplicate-key risk (the
