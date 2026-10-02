@@ -1300,5 +1300,12 @@
     "category": "reference",
     "tier": 1,
     "summary": "Convert length, mass, temperature, volume, area, speed, pressure, energy, power, angle, fuel economy, charge, frequency and time."
+  },
+  {
+    "id": "har-viewer",
+    "name": "HAR Viewer",
+    "category": "network",
+    "tier": 3,
+    "summary": "List the requests in a browser network recording with headers, bodies and timings, with cookies and tokens flagged."
   }
 ]
