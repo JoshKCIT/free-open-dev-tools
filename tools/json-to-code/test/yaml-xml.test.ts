@@ -68,7 +68,7 @@ it('YAML input gives the same types as the equivalent JSON for every language', 
       const fromJson = jsonToCode(sample.json, { language, rootName: 'Root' });
       expect(fromYaml.output, `${language}: ${sample.yaml}`).toBe(fromJson.output);
       expect(fromYaml.typeCount).toBe(fromJson.typeCount);
-      expect(fromYaml.warnings).toEqual([...fromJson.warnings, ...sample.extraWarnings]);
+      expect(fromYaml.warnings).toEqual([...sample.extraWarnings, ...fromJson.warnings]);
     }
   }
 
@@ -105,8 +105,8 @@ it('valueToCode of a parsed JSON value equals jsonToCode of its text for every l
 it('XML input with read values gives the same types as the equivalent JSON and without it every leaf is a string', () => {
   const xml =
     '<person id="1"><name>Ada</name><age>36</age><score>9.5</score><active>true</active><tag>a</tag><tag>b</tag></person>';
-  const typedJson = '{"person":{"@_id":1,"name":"Ada","age":36,"score":9.5,"active":true,"tag":["a","b"]}}';
-  const stringJson = '{"person":{"@_id":"1","name":"Ada","age":"36","score":"9.5","active":"true","tag":["a","b"]}}';
+  const typedJson = '{"person":{"name":"Ada","age":36,"score":9.5,"active":true,"tag":["a","b"],"@_id":1}}';
+  const stringJson = '{"person":{"name":"Ada","age":"36","score":"9.5","active":"true","tag":["a","b"],"@_id":"1"}}';
 
   for (const language of LANGUAGES) {
     const typed = jsonToCode(xml, { language, inputFormat: 'xml', parseValues: true });
@@ -149,7 +149,8 @@ it('a YAML stream, a scalar root, a duplicate key or too many aliases is refused
   // Several documents in one stream: one box holds one document.
   const stream = refusal('a: 1\n---\nb: 2\n');
   expect(stream.message).toMatch(/more than one document/);
-  expect(stream.line).toBe(3);
+  // The second document starts at its --- marker on line 2.
+  expect(stream.line).toBe(2);
 
   // A document that is a single value has no fields to give types to.
   expect(refusal('hello\n').message).toMatch(/single value/);
@@ -165,10 +166,13 @@ it('a YAML stream, a scalar root, a duplicate key or too many aliases is refused
   const aliases = 'base: &a x\n' + Array.from({ length: 150 }, (_, i) => `k${i}: *a`).join('\n') + '\n';
   expect(refusal(aliases).message).toMatch(/alias/i);
 
-  // An unterminated quote on line 2 is reported on line 2, with a column.
-  const syntax = refusal('a: 1\nb: "open\n');
+  // YAML 1.2.2 section 6.1: a tab cannot indent a line; the tab starts line 2, column 1.
+  const syntax = refusal('a: 1\n\tb: 2\n');
   expect(syntax.line).toBe(2);
-  expect(typeof syntax.column).toBe('number');
+  expect(syntax.column).toBe(1);
+
+  // An alias with no anchor before it is refused, and the message says so rather than blaming the alias limit.
+  expect(refusal('a: *nope\n').message).toMatch(/nope/);
 
   // Nesting beyond 512 levels is refused before anything walks it.
   expect(refusal('['.repeat(600) + ']'.repeat(600)).message).toMatch(/512 levels/);
@@ -205,7 +209,8 @@ it('XML input with a DOCTYPE is refused naming its line, and malformed XML names
 
 it('a YAML key named __proto__ stays an ordinary field and never reaches the prototype', () => {
   const result = jsonToCode('__proto__:\n  x: 1\nconstructor: 2\n', { language: 'typescript', inputFormat: 'yaml' });
-  expect(result.output).toContain('"__proto__"');
+  expect(result.output).toContain('__proto__: Proto;');
+  expect(result.output).toContain('constructor: number;');
   expect(result.output).toContain('x: number;');
   expect(({} as Record<string, unknown>).x).toBeUndefined();
 });

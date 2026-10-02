@@ -1,6 +1,28 @@
 [
   {
-    "values": { "input": "{\"id\":1,\"name\":\"Ada\",\"tags\":[\"a\"]}" },
+    "values": {
+      "input": "{\"id\":1,\"name\":\"Ada\",\"tags\":[\"a\"]}"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "inputFormat",
+      "value": "yaml"
+    },
+    "values": {
+      "input": "name: Ada\nage: 36"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "inputFormat",
+      "value": "xml"
+    },
+    "values": {
+      "input": "<person id=\"1\"><name>Ada</name></person>"
+    },
     "attachesFile": false
   }
 ]

@@ -1,7 +1,7 @@
 {
   "name": "@fodt/json-to-code",
   "version": "1.0.0",
-  "description": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON.",
+  "description": "Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON, YAML or XML.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -36,12 +36,18 @@
     "protobuf",
     "protocol buffers",
     "proto3",
-    "type inference"
+    "type inference",
+    "yaml",
+    "xml"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "fast-xml-parser": "5.11.1"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

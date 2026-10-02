@@ -100,3 +100,21 @@ test('data-convert: a YAML source still converts to TSV through its worker', asy
   await expect(output).toContainText('Grace');
   expect(await output.textContent()).toContain('id\tname\n7\tAda\n8\tGrace');
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// json-to-code (DATA-17): YAML and XML input beside JSON
+// ---------------------------------------------------------------------------------------------------------------
+
+test('json-to-code: YAML input gives a TypeScript interface with the same fields as the equivalent JSON', async ({
+  page,
+}) => {
+  await openTool(page, 'json-to-code');
+  await setControls(page, { selects: { inputFormat: 'yaml', language: 'typescript' } });
+  // YAML 1.2 core schema: 36 is an integer and Ada is a string, exactly as the JSON {"name":"Ada","age":36} says.
+  await fillField(page, 'input', 'name: Ada\nage: 36\ntags:\n  - a\n');
+
+  await expect(outputArea(page)).toContainText('export interface Root {');
+  await expect(outputArea(page)).toContainText('name: string;');
+  await expect(outputArea(page)).toContainText('age: number;');
+  await expect(outputArea(page)).toContainText('tags: string[];');
+});

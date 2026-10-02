@@ -12,6 +12,9 @@ import { emitSwift } from './emit-swift';
 import { emitTypeScript } from './emit-typescript';
 import { type InferredModel, inferModel } from './infer';
 import { MAX_JSON_DEPTH, exceedsDepth, parseJsonText } from './json-text';
+import { XmlValueError, readXmlValue } from './xml-read';
+import { typeXmlValues } from './xml-typed';
+import { YamlValueError, readYamlValue } from './yaml-value';
 
 export { meta };
 export { MAX_JSON_DEPTH };
@@ -46,9 +49,20 @@ export class JsonToCodeError extends Error {
   }
 }
 
-export interface JsonToCodeOptions {
+/** What the input text is written in. `json` is the default and reads exactly as it always has. */
+export const INPUT_FORMATS = ['json', 'yaml', 'xml'] as const;
+export type InputFormat = (typeof INPUT_FORMATS)[number];
+
+export interface ValueToCodeOptions {
   language: Language;
   rootName?: string;
+}
+
+export interface JsonToCodeOptions extends ValueToCodeOptions {
+  /** How `text` is written. Default `json`. */
+  inputFormat?: InputFormat;
+  /** XML input only. Read text written like a JSON number, `true` or `false` as a number or boolean. Default false: every XML leaf is a string. */
+  parseValues?: boolean;
 }
 
 export interface JsonToCodeResult {
@@ -89,18 +103,14 @@ function emit(model: InferredModel, language: Language): { output: string; warni
   }
 }
 
-/** Turns a JSON sample into typed source text for the chosen language. `rootName` names the top-level type and is sanitised to a valid identifier. */
-export function jsonToCode(text: string, options: JsonToCodeOptions): JsonToCodeResult {
-  const parsed = parseJsonText(text);
-  if (!parsed.ok) {
-    throw new JsonToCodeError(parsed.message ?? 'The document could not be parsed.', {
-      line: parsed.line,
-      column: parsed.column,
-    });
-  }
-  if (exceedsDepth(parsed.value, MAX_JSON_DEPTH)) throw new JsonToCodeError(DEPTH_MESSAGE);
+const SINGLE_VALUE_MESSAGE =
+  'A YAML document needs a mapping or a list at the top to give types; this one is a single value.';
 
-  const model = inferModel(parsed.value, options.rootName ?? 'Root');
+/** Turns an already parsed value into typed source text for the chosen language. This is the part of `jsonToCode` that comes after the text has been read, so every input format reaches the same generator. */
+export function valueToCode(value: unknown, options: ValueToCodeOptions): JsonToCodeResult {
+  if (exceedsDepth(value, MAX_JSON_DEPTH)) throw new JsonToCodeError(DEPTH_MESSAGE);
+
+  const model = inferModel(value, options.rootName ?? 'Root');
   const result = emit(model, options.language);
 
   return {
@@ -108,4 +118,48 @@ export function jsonToCode(text: string, options: JsonToCodeOptions): JsonToCode
     warnings: [...model.warnings, ...result.warnings],
     typeCount: model.objects.length,
   };
+}
+
+/** Reads YAML or XML text into a value, with the warnings the reader gave. */
+function readStructured(
+  text: string,
+  format: 'yaml' | 'xml',
+  parseValues: boolean,
+): { value: unknown; warnings: string[] } {
+  if (format === 'yaml') {
+    try {
+      const read = readYamlValue(text, { documents: 'one' });
+      if (read.value === null || typeof read.value !== 'object') throw new JsonToCodeError(SINGLE_VALUE_MESSAGE);
+      return read;
+    } catch (err) {
+      if (err instanceof YamlValueError) throw new JsonToCodeError(err.message, { line: err.line, column: err.column });
+      throw err;
+    }
+  }
+  try {
+    const read = readXmlValue(text);
+    return { value: parseValues ? typeXmlValues(read.value) : read.value, warnings: read.warnings };
+  } catch (err) {
+    if (err instanceof XmlValueError) throw new JsonToCodeError(err.message, { line: err.line, column: err.column });
+    throw err;
+  }
+}
+
+/** Turns a sample into typed source text for the chosen language. The sample is JSON unless `inputFormat` says YAML or XML. `rootName` names the top-level type and is sanitised to a valid identifier. */
+export function jsonToCode(text: string, options: JsonToCodeOptions): JsonToCodeResult {
+  const inputFormat = options.inputFormat ?? 'json';
+  if (inputFormat !== 'json') {
+    const read = readStructured(text, inputFormat, options.parseValues ?? false);
+    const result = valueToCode(read.value, options);
+    return { ...result, warnings: [...read.warnings, ...result.warnings] };
+  }
+
+  const parsed = parseJsonText(text);
+  if (!parsed.ok) {
+    throw new JsonToCodeError(parsed.message ?? 'The document could not be parsed.', {
+      line: parsed.line,
+      column: parsed.column,
+    });
+  }
+  return valueToCode(parsed.value, options);
 }

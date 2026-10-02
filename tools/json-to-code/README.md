@@ -1,13 +1,13 @@
 # JSON to Typed Code
 
-Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON.
+Generate TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers types from JSON, YAML or XML.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Infers a type model from a pasted JSON sample and renders typed source text in eleven languages -- TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers -- checked directly against each language's own naming rules; the TypeScript output is also checked with the real TypeScript compiler under strict mode.
+Infers a type model from a pasted JSON, YAML or XML sample and renders typed source text in eleven languages -- TypeScript, Go, Rust, Python, Java, C#, Kotlin, PHP, Swift, Dart and Protocol Buffers -- checked directly against each language's own naming rules; the TypeScript output is also checked with the real TypeScript compiler under strict mode.
 
 ## Supported
 
@@ -21,6 +21,8 @@ Infers a type model from a pasted JSON sample and renders typed source text in e
 - Protocol Buffers proto3 messages with snake_case field names, a json_name option only when the key differs from protoc's default JSON name, and optional presence for a scalar field that was ever missing or null
 - Swift Codable structs with a CodingKeys enum only when a property name differs from its key, and one shared JSONValue enum for any-JSON
 - Dart json_serializable classes with @JsonKey only when a field name differs from its key
+- The sample can be written in JSON (the default), YAML 1.2 or XML 1.0; YAML and XML reach the same inferred model and the same eleven languages as JSON does
+- XML attributes become fields named with @_ and an element's text beside attributes or child elements becomes #text; repeated sibling elements become a list
 
 ## Limits
 
@@ -34,16 +36,27 @@ Infers a type model from a pasted JSON sample and renders typed source text in e
 - Protocol Buffers any-JSON, a nested array, and an array that ever held null all become google.protobuf.Value or google.protobuf.ListValue and lose their element type; ProtoJSON writes an int64 value as a JSON string even though it also reads a JSON number; a repeated field cannot tell null from an empty list; no package line is written; a non-object top-level JSON value cannot become a proto3 message
 - Swift's JSONValue stores every number as Double, so an integer inside any-JSON above 2^53 loses precision
 - Dart's int is a JavaScript number when compiled for the web, so a value above 2^53 loses precision there
+- YAML and XML input give the same types as the equivalent JSON; XML attributes become fields named with @_ and text beside them #text.
+- XML text is read as numbers and booleans only while Read numbers and booleans is on; with it off every XML value is a string.
+- With Read numbers and booleans on, XML text counts as a number only when it is written the way JSON writes one (no leading zeros, no plus sign, no hexadecimal), so 01234 and +4412 stay strings.
+- YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, more than 100 aliases and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.
+- A YAML anchor and its aliases are expanded into separate copies, and a YAML tag outside the core schema is not interpreted; each is reported as a warning.
+- An XML document with a DOCTYPE is refused before it is read, so no entity is ever declared, loaded or expanded; comments, processing instructions and the XML declaration are dropped with a warning.
 
 ## Ambiguous cases, and what this does about them
 
 - An object whose keys are seen at two different locations with an identical shape still gets two separate named types; nothing here deduplicates by shape, only by name
 - Python output targets 3.11 or later, the first version with typing.NotRequired
+- YAML 1.0 is read as the number 1, so it infers as an integer, exactly as JSON 1.0 does; only a value with a fractional part is a floating number
+- The YAML merge key << is read as an ordinary key named <<, as YAML 1.2 does, and is not expanded
 
 ## Defined by
 
 - [Protocol Buffers Language Specification (proto3)](https://protobuf.dev/reference/protobuf/proto3-spec/)
 - [ProtoJSON Format](https://protobuf.dev/programming-guides/json/)
+- [YAML Ain't Markup Language (YAML) version 1.2.2](https://yaml.org/spec/1.2.2/)
+- [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/)
+- [RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
 
 ## Use it on its own
 
@@ -72,11 +85,12 @@ jsonToCode('{"id":1,"name":"Ada"}', { language: 'typescript', rootName: 'User' }
 // { output: 'export interface User {\n  id: number;\n  name: string;\n}\n', warnings: [] }
 ```
 
-`inferModel` builds one language-independent model shared by every emitter; each `emit-<language>.ts` file renders that model and returns its own extra warnings alongside the model's own structural ones, including `emit-protobuf.ts`, `emit-swift.ts` and `emit-dart.ts`. `naming.ts` holds every language's fetched keyword list and escaping rule.
+`inferModel` builds one language-independent model shared by every emitter; each `emit-<language>.ts` file renders that model and returns its own extra warnings alongside the model's own structural ones, including `emit-protobuf.ts`, `emit-swift.ts` and `emit-dart.ts`. `naming.ts` holds every language's fetched keyword list and escaping rule. `valueToCode` takes an already parsed value, so any reader reaches the same generators; `jsonToCode` reads JSON unless `inputFormat` says `yaml` or `xml`, and `parseValues` turns XML text written like a JSON number or boolean into one.
 
 ## Dependencies
 
-None. This package has no runtime dependencies.
+- `yaml` 2.9.1
+- `fast-xml-parser` 5.11.1
 
 ## Tests
 
@@ -84,7 +98,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-No standards body defines JSON-to-typed-code inference; correctness is checked instead by compiling the TypeScript output with the real TypeScript compiler under strict mode, and by asserting every emitted identifier matches its own language's fetched identifier rule and keyword list. Protocol Buffers, Swift and Dart are additionally checked against their published keyword lists, protoc's own default JSON-name rule, and hand-derived golden outputs; no Swift, Dart or protoc compiler was available to run locally, so none of their output was compiled.
+No standards body defines JSON-to-typed-code inference; correctness is checked instead by compiling the TypeScript output with the real TypeScript compiler under strict mode, and by asserting every emitted identifier matches its own language's fetched identifier rule and keyword list. Protocol Buffers, Swift and Dart are additionally checked against their published keyword lists, protoc's own default JSON-name rule, and hand-derived golden outputs; no Swift, Dart or protoc compiler was available to run locally, so none of their output was compiled. YAML and XML input are checked against equivalent JSON written by hand from the YAML 1.2.2 core schema, the XML 1.0 rules and the RFC 8259 number grammar, for every language.
 
 ## Licence
 

@@ -1,5 +1,5 @@
-import { meta, jsonToCode, LANGUAGES, JsonToCodeError, type Language } from '@fodt/json-to-code';
-import { defineTool, str, type ToolResult } from '../lib/tool-ui';
+import { meta, jsonToCode, LANGUAGES, JsonToCodeError, type InputFormat, type Language } from '@fodt/json-to-code';
+import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 const LANGUAGE_LABELS: Record<Language, string> = {
   typescript: 'TypeScript',
@@ -27,6 +27,26 @@ export default defineTool({
       placeholder: 'Type or paste here. Nothing leaves your browser.',
     },
     {
+      name: 'inputFormat',
+      label: 'Input format',
+      type: 'select',
+      default: 'json',
+      help: 'The sample above is read in this format. XML attributes become fields named with @_ and text beside them #text.',
+      options: [
+        { value: 'json', label: 'JSON' },
+        { value: 'yaml', label: 'YAML' },
+        { value: 'xml', label: 'XML' },
+      ],
+    },
+    {
+      name: 'parseValues',
+      label: 'Read numbers and booleans',
+      type: 'checkbox',
+      default: true,
+      help: 'XML text is a number or boolean only when written the way JSON writes one; otherwise every XML value is a string.',
+      visible: (values) => str(values, 'inputFormat', 'json') === 'xml',
+    },
+    {
       name: 'language',
       label: 'Language',
       type: 'select',
@@ -47,6 +67,14 @@ export default defineTool({
       label: 'Protocol Buffers message',
       values: { input: '{"userId":1,"weird key":"x","tags":["a"],"extra":[1,"a"]}', language: 'protobuf' },
     },
+    {
+      label: 'YAML input',
+      values: { inputFormat: 'yaml', input: 'name: Ada\nage: 36\ntags:\n  - a', language: 'typescript' },
+    },
+    {
+      label: 'XML input with an attribute',
+      values: { inputFormat: 'xml', input: '<person id="1"><name>Ada</name></person>', language: 'typescript' },
+    },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
@@ -54,9 +82,16 @@ export default defineTool({
 
     const language = str(values, 'language', 'typescript') as Language;
     const rootName = str(values, 'rootName', 'Root');
+    const inputFormat = str(values, 'inputFormat', 'json') as InputFormat;
+    const parseValues = bool(values, 'parseValues', true);
 
     try {
-      const result = jsonToCode(input, { language, rootName: rootName.trim() === '' ? 'Root' : rootName });
+      const result = jsonToCode(input, {
+        language,
+        rootName: rootName.trim() === '' ? 'Root' : rootName,
+        inputFormat,
+        parseValues,
+      });
       return {
         outputs: [{ kind: 'code', label: LANGUAGE_LABELS[language], language, value: result.output }],
         warnings: result.warnings,
