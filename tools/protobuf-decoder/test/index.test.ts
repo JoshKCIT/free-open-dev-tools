@@ -4,6 +4,7 @@ import {
   MAX_GUESS_DEPTH,
   MAX_INPUT_BYTES,
   ProtobufDecoderError,
+  checkInputSize,
   decodeProtobuf,
   decodeProtobufInfo,
   formatDecodeRaw,
@@ -263,6 +264,9 @@ it('packed repeated varints are read only when asked', () => {
   expect(reading(decodeProtobuf(bytes('0a0aff' + 'ff'.repeat(8) + '01'), PACKED)[0]!, 'Packed varints (signed)')).toBe(
     '-1',
   );
+  // A long list shows its first 100 values and says how many there are.
+  const long = reading(decodeProtobuf(bytes('0a78' + '01'.repeat(120)), PACKED)[0]!, 'Packed varints')!;
+  expect(long).toBe(Array(100).fill('1').join(', ') + ', … (120 values in all)');
   // An empty payload is neither a message nor a list.
   expect(decodeProtobuf(bytes('0a00'), PACKED)[0]!.readings).toEqual([
     { label: 'Text', value: '' },
@@ -290,7 +294,9 @@ it('a start group and an end group with the same number are matched', () => {
   expect(mismatch.offset).toBe(3);
   expect(mismatch.message).toContain('byte 3');
   // An end group with no start, and a start group that never ends (named by where it starts).
-  expect(refuse(bytes('0c')).offset).toBe(0);
+  const orphan = refuse(bytes('0c'));
+  expect(orphan.offset).toBe(0);
+  expect(orphan.message).toContain('no start group');
   expect(refuse(bytes('0801' + '0c')).offset).toBe(2);
   const open = refuse(bytes('0801' + '0b1005'));
   expect(open.offset).toBe(2);
@@ -401,6 +407,8 @@ it('empty input shows nothing and input over 5 MiB is refused', () => {
   const over = refuse(new Uint8Array(MAX + 1));
   expect(over.message).toContain('5 MiB');
   expect(over.message).not.toContain('Field number 0');
+  expect(() => checkInputSize(MAX)).not.toThrow();
+  expect(() => checkInputSize(MAX + 1)).toThrow('5 MiB');
   expect(() => readInputBytes('00'.repeat(MAX + 1), 'hex')).toThrow('5 MiB');
   expect(() => readInputBytes('AAAA'.repeat(Math.ceil((MAX + 2) / 3)), 'base64')).toThrow('5 MiB');
   expect(readInputBytes('00'.repeat(MAX), 'hex')).toHaveLength(MAX);
@@ -475,6 +483,7 @@ it('text is shown only when the bytes are valid UTF-8 without control characters
   expect(text('0a03eda080')).toBeUndefined();
   expect(text('0a04f4908080')).toBeUndefined();
   expect(text('0a03e28261')).toBeUndefined();
+  expect(text('0a03e08080')).toBeUndefined();
   // Four byte characters and the byte order mark are text.
   expect(text('0a04f0908591')).toBe('\u{10151}');
   expect(text('0a03efbbbf')).toBe('﻿');
@@ -493,6 +502,17 @@ it('fields keep the order and offsets of the bytes, and a length-delimited field
   // Bytes that start like a message but end inside a field are not one: 08 2a is a complete varint field, then 2a is a
   // tag (field 5, length-delimited) with nothing after it.
   expect(decodeProtobuf(bytes('1203082a2a'), ON)[0]!.children).toBeUndefined();
+  // A guess that fails halfway leaves no trace in the count: 08 01 is a field, then 0f is wire type 7, so the payload is
+  // not a message, and the only field is the length-delimited one.
+  const failed = decodeProtobufInfo(bytes('0a03' + '08010f'), ON);
+  expect(failed.total).toBe(1);
+  expect(failed.fields[0]!.children).toBeUndefined();
+  // Long text is cut for display, at a character, and marked.
+  const long = decodeProtobuf(bytes('0aac02' + '61'.repeat(300)), ON)[0]!;
+  expect(long.length).toBe(300);
+  expect(reading(long, 'Text')).toBe('a'.repeat(200) + '…');
+  const accents = decodeProtobuf(bytes('0a8204' + 'c3a9'.repeat(257)), ON)[0]!;
+  expect(reading(accents, 'Text')).toBe('é'.repeat(200) + '…');
   // Interleaved repeats of one field keep their order and each one's own offset.
   const repeated = decodeProtobuf(bytes('2801' + '220161' + '2802'), ON);
   expect(repeated.map((f) => [f.number, f.offset])).toEqual([
