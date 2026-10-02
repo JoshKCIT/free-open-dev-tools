@@ -35,7 +35,7 @@
     "Records with different keys share one header of every key in order of first appearance; missing values become empty cells, with a warning.",
     "CSV and TSV values are text unless Infer types is on; whole numbers beyond 2^53 stay text.",
     "XML to JSON to XML loses comments, processing instructions, the XML declaration and the difference between CDATA and text.",
-    "Spaces and line breaks around XML element text are trimmed, and an entity other than the five predefined ones and numeric references is kept as written",
+    "Spaces, tabs and line breaks at the two ends of an XML element's text are trimmed once (words around a child element keep the space between them), text that is only white space is dropped, a CDATA section and an attribute value are never trimmed, and an entity other than the five predefined ones and numeric references is kept as written",
     "An XML document has one root element; an element that mixes text with child elements keeps its text together under #text, so the text's place among the elements is lost, and a one item list and a single element look the same",
     "JSON to CSV to JSON loses types unless Infer types is on, and never turns a dotted column name back into nested objects; TSV cannot hold a tab or a line break in a cell",
     "Blank lines at the end of a CSV or TSV input are ignored, a header with no rows gives an empty list, and a nested XML document deeper than 512 levels is refused like every other format",

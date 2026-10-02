@@ -9,6 +9,9 @@
  *  - every value stays a string unless `parseValues` is on;
  *  - the five predefined entities and numeric character references are decoded once; the content of a CDATA section
  *    is literal text (XML 1.0 section 2.7), so `&amp;` inside CDATA stays those five characters;
+ *  - the text of an element is gathered across its child elements and trimmed of spaces, tabs and line breaks once, at
+ *    its two ends, so `<p>Hello <b>big</b> world</p>` keeps the space between its words; text that is only white
+ *    space is dropped; what a CDATA section holds, and an attribute value, is never trimmed;
  *  - comments, processing instructions and the XML declaration are dropped, and a warning says so;
  *  - namespace prefixes stay in the names;
  *  - a DOCTYPE anywhere refuses the whole document before any parser reads it, so no entity is ever declared,
@@ -59,6 +62,16 @@ const DEPTH_MESSAGE =
  */
 const INTERNAL_ATTRIBUTE_PREFIX = '\u0001';
 const INTERNAL_TEXT_KEY = '\u0002';
+const XML_WHITESPACE = new Set([' ', '\t', '\n', '\r']);
+
+/** Trims spaces, tabs and line breaks (the four XML 1.0 white space characters) from both ends, in one pass each way. */
+function trimXmlWhitespace(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && XML_WHITESPACE.has(text[start]!)) start++;
+  while (end > start && XML_WHITESPACE.has(text[end - 1]!)) end--;
+  return start === 0 && end === text.length ? text : text.slice(start, end);
+}
 
 const PREDEFINED_ENTITIES: Record<string, string> = { quot: '"', amp: '&', apos: "'", lt: '<', gt: '>' };
 
@@ -79,15 +92,27 @@ function decodeXmlEntities(text: string): string {
   });
 }
 
-function escapeForParser(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/**
+ * Makes the content of a CDATA section read back as literal text: the markup characters become entities, and the
+ * white space becomes character references so the trimming of an element's text never touches it. Line breaks are
+ * normalised first (XML 1.0 section 2.11), because a character reference would otherwise keep a carriage return.
+ */
+function escapeCdata(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/ /g, '&#32;')
+    .replace(/\t/g, '&#9;')
+    .replace(/\n/g, '&#10;');
 }
 
 interface MarkupScan {
   comments: boolean;
   instructions: boolean;
   declaration: boolean;
-  /** The text with each CDATA section replaced by its content, escaped so it reads back as literal text. */
+  /** The text with each CDATA section replaced by its content, escaped so it reads back as literal text, white space included. */
   text: string;
 }
 
@@ -110,7 +135,7 @@ function scanMarkup(source: string): MarkupScan {
     } else if (source.startsWith('<![CDATA[', lt)) {
       const end = source.indexOf(']]>', lt + 9);
       const stop = end === -1 ? n : end;
-      out += source.slice(copied, lt) + escapeForParser(source.slice(lt + 9, stop));
+      out += source.slice(copied, lt) + escapeCdata(source.slice(lt + 9, stop));
       i = end === -1 ? n : end + 3;
       copied = i;
     } else if (source.startsWith('<?', lt)) {
@@ -152,14 +177,46 @@ interface RebuildState {
   attributePrefix: string;
   textKey: string;
   mixedContent: boolean;
+  /** Reads a number or the word true or false from already trimmed text; undefined for anything else. Set only when values are read. */
+  typed?: (text: string) => number | boolean | undefined;
 }
 
 /**
- * Copies the parser's result into fresh own-property objects, decoding entities in every string and giving the
+ * The reader for numbers and booleans, which is the XML parser's own (run on one small element), so the words it
+ * accepts as a number are the ones it always accepted. Text holding markup characters is never a number.
+ */
+function scalarReader(): (text: string) => number | boolean | undefined {
+  const parser = new XMLParser({ parseTagValue: true, trimValues: true, processEntities: false });
+  return (text) => {
+    if (text === '' || /[<&]/.test(text)) return undefined;
+    try {
+      const value = (parser.parse(`<v>${text}</v>`) as { v?: unknown }).v;
+      return typeof value === 'number' || typeof value === 'boolean' ? value : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+}
+
+/** The value of an element's text: trimmed at its two ends, typed when asked, then its entities decoded. */
+function textValue(raw: string, state: RebuildState): unknown {
+  const trimmed = trimXmlWhitespace(raw);
+  const typed = state.typed?.(trimmed);
+  return typed !== undefined ? typed : decodeXmlEntities(trimmed);
+}
+
+/** The value of an attribute: typed when asked (from its trimmed text), otherwise exactly as written, entities decoded. */
+function attributeValue(raw: string, state: RebuildState): unknown {
+  const typed = state.typed?.(trimXmlWhitespace(raw));
+  return typed !== undefined ? typed : decodeXmlEntities(raw);
+}
+
+/**
+ * Copies the parser's result into fresh own-property objects, trimming and decoding every string and giving the
  * caller's own attribute prefix and text key to the internal ones. Safe to recurse: the depth was checked first.
  */
 function rebuild(node: unknown, state: RebuildState): unknown {
-  if (typeof node === 'string') return decodeXmlEntities(node);
+  if (typeof node === 'string') return textValue(node, state);
   if (Array.isArray(node)) return node.map((item) => rebuild(item, state));
   if (node === null || typeof node !== 'object') return node;
 
@@ -168,14 +225,21 @@ function rebuild(node: unknown, state: RebuildState): unknown {
   let hasText = false;
   let hasChild = false;
   for (const key of Object.keys(source)) {
+    const raw = source[key];
     let name: string;
+    let value: unknown;
     if (key === INTERNAL_TEXT_KEY) {
+      // Text that is only white space (the line breaks between child elements) holds no data.
+      if (typeof raw === 'string' && trimXmlWhitespace(raw) === '') continue;
       name = state.textKey;
+      value = typeof raw === 'string' ? textValue(raw, state) : raw;
       hasText = true;
     } else if (key.startsWith(INTERNAL_ATTRIBUTE_PREFIX)) {
       name = state.attributePrefix + key.slice(INTERNAL_ATTRIBUTE_PREFIX.length);
+      value = typeof raw === 'string' ? attributeValue(raw, state) : raw;
     } else {
       name = key;
+      value = rebuild(raw, state);
       hasChild = true;
     }
     if (Object.prototype.hasOwnProperty.call(out, name)) {
@@ -183,7 +247,7 @@ function rebuild(node: unknown, state: RebuildState): unknown {
         `The attribute prefix and text key chosen here make two keys the same ("${name}"). Choose a different prefix or text key.`,
       );
     }
-    setOwn(out, name, rebuild(source[key], state));
+    setOwn(out, name, value);
   }
   if (hasText && hasChild) state.mixedContent = true;
   return out;
@@ -213,8 +277,11 @@ export function readXmlValue(text: string, options: XmlReadOptions = {}): XmlRea
     attributeNamePrefix: INTERNAL_ATTRIBUTE_PREFIX,
     textNodeName: INTERNAL_TEXT_KEY,
     processEntities: false,
-    parseTagValue: parseValues,
-    parseAttributeValue: parseValues,
+    // Nothing is trimmed or typed by the parser: text is gathered, trimmed once and typed in `rebuild`, so white space
+    // inside an element's text, in a CDATA section and in an attribute value is never lost to a per-piece trim.
+    trimValues: false,
+    parseTagValue: false,
+    parseAttributeValue: false,
     ignoreDeclaration: true,
     ignorePiTags: true,
     // The parser's own default is 100 levels; this keeps the one depth limit every other format here has.
@@ -236,7 +303,12 @@ export function readXmlValue(text: string, options: XmlReadOptions = {}): XmlRea
     throw new XmlValueError('An XML document has exactly one root element; this one has more than one, or none.');
   }
 
-  const state: RebuildState = { attributePrefix, textKey, mixedContent: false };
+  const state: RebuildState = {
+    attributePrefix,
+    textKey,
+    mixedContent: false,
+    typed: parseValues ? scalarReader() : undefined,
+  };
   const value = rebuild(parsed, state);
 
   const warnings: string[] = [];
