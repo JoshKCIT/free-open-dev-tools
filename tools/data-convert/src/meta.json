@@ -29,6 +29,7 @@
     "A YAML timestamp written with the !!timestamp tag becomes ISO 8601 text with a warning; binary data (!!binary), a set (!!set) or an ordered map (!!omap) is refused with its path, because no other format here can hold it; a YAML to YAML conversion keeps all of them as written",
     "TOML output lists plain keys before any table, which can change the input's key order",
     "A JSON number beyond double precision is rounded, the same limit JSON.parse itself has",
+    "Numbers written to XML, CSV and TSV are written the way JavaScript writes a number: negative zero as 0, 1e21 as 1e+21, and a number too large for a double (1e999) as Infinity, which is not a JSON number",
     "Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0",
     "Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; the other sources have no such limit",
     "XML attributes become keys starting with @_ (you can change the prefix), element text sits under #text when the element also has attributes or children, and repeated elements become arrays.",
