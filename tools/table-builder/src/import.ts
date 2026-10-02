@@ -390,10 +390,17 @@ function splitRow(line: string): { cells: string[]; hasPipe: boolean } {
   return { cells: pieces, hasPipe };
 }
 
-/** A character reference as a Markdown renderer reads it; text that is not a valid reference stays as written. */
+/**
+ * A character reference as a Markdown renderer reads it; text that is not a valid reference stays as written.
+ * parse5 follows the HTML parser, which also reads a legacy name such as `&copy` without its semicolon, so
+ * `&copyright;` comes back as the copyright sign followed by `right;`. A real reference names one character, or two at
+ * most (`&NotEqualTilde;`), so a result longer than that did not consume the whole reference and is not one.
+ */
 function decodeReference(reference: string): string {
   const node = parseFragment(reference).childNodes[0];
-  return node !== undefined && node.nodeName === '#text' ? (node as DefaultTreeAdapterTypes.TextNode).value : reference;
+  if (node === undefined || node.nodeName !== '#text') return reference;
+  const value = (node as DefaultTreeAdapterTypes.TextNode).value;
+  return [...value].length <= 2 ? value : reference;
 }
 
 const CHARACTER_REFERENCE = /^&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{1,31});/;
