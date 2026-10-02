@@ -1251,5 +1251,12 @@
     "category": "code",
     "tier": 3,
     "summary": "Validate an XML document against a pasted XML Schema and list each error with its line number."
+  },
+  {
+    "id": "jq-playground",
+    "name": "jq Playground",
+    "category": "json-data",
+    "tier": 3,
+    "summary": "Run a jq filter against pasted JSON and see its output or error, with a time limit for runaway filters."
   }
 ]
