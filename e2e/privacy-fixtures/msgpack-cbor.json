@@ -1,0 +1,8 @@
+[
+  { "attachesFile": true },
+  {
+    "mode": { "field": "format", "value": "cbor" },
+    "values": { "input": "c2 49 01 00 00 00 00 00 00 00 00" },
+    "attachesFile": false
+  }
+]

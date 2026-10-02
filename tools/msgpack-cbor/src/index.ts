@@ -126,8 +126,18 @@ export interface ConvertJob {
 
 export interface ConvertResult {
   text: string;
+  /** The bytes written, when the direction is from JSON. */
   bytes?: Uint8Array;
   warnings: string[];
+  /** Bytes read: the binary input for to-json, the UTF-8 bytes of the JSON for from-json. */
+  bytesIn: number;
+  /** Bytes written: the UTF-8 bytes of the text for to-json, the binary output for from-json. */
+  bytesOut: number;
+}
+
+/** Refuses a size over 5 MiB, so a file can be refused before a byte of it is read. */
+export function checkInputSize(size: number): void {
+  if (size > MAX_INPUT_BYTES) throw tooLarge(size, 'This input');
 }
 
 /** Converts between MessagePack or CBOR and JSON. */
@@ -136,7 +146,8 @@ export function convert(job: ConvertJob): ConvertResult {
     const bytes = typeof job.input === 'string' ? readInputBytes(job.input, job.inputEncoding) : job.input;
     if (bytes.length > MAX_INPUT_BYTES) throw tooLarge(bytes.length);
     const item = decodeCbor(bytes);
-    return { text: stringifyJson(toJsonValue(item, 'cbor')), warnings: [] };
+    const text = stringifyJson(toJsonValue(item, 'cbor'));
+    return { text, warnings: [], bytesIn: bytes.length, bytesOut: new TextEncoder().encode(text).length };
   }
   throw new MsgpackCborError('This conversion is not available yet.');
 }

@@ -1,0 +1,9 @@
+{
+  "id": "msgpack-cbor",
+  "label": "RFC 8949 Appendix A: c249010000000000000000 is the bignum 18446744073709551616",
+  "steps": [
+    { "action": "radio", "field": "format", "value": "cbor" },
+    { "action": "fill", "field": "input", "value": "c249010000000000000000" }
+  ],
+  "expect": ["18446744073709551616", "$bigint"]
+}
