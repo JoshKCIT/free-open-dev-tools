@@ -24,6 +24,7 @@ Reads a pasted WSDL 1.1 document and lists its services and ports, bindings, ope
 - WSDL 1.1 only; a WSDL 2.0 description is refused.
 - Nothing the document names is loaded: wsdl:import and xsd:import locations are listed as not loaded, and the service address is shown as text.
 - Sample values are placeholders chosen by type and are not validated against the schema; complex types expand four levels.
+- Elements may nest at most 200 levels deep, and a sample request has at most 2,000 elements; a larger sample is cut with a comment and a warning.
 - Only the schema types written inside the document are known. Types from an import that is not loaded are listed as not found, and the sample writes them as an empty element or the text string.
 
 ## Ambiguous cases, and what this does about them

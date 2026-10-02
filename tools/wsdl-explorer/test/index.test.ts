@@ -44,7 +44,6 @@ import {
  * Example 4 name xsd:string where an element belongs. None of these is corrected.
  */
 
-const NS_WSDL = 'http://schemas.xmlsoap.org/wsdl/';
 const NS_XSD_2000 = 'http://www.w3.org/2000/10/XMLSchema';
 const NS_ENVELOPE_11 = 'http://schemas.xmlsoap.org/soap/envelope/';
 const NS_ENVELOPE_12 = 'http://www.w3.org/2003/05/soap-envelope';
@@ -813,4 +812,1030 @@ it('an operation that is not in the document is refused naming the operations it
   expect(sampleRequest(explain(http), 'Op', { soap: '1.1', fill: true }).warnings).toContain(
     'The binding B is not a SOAP binding, so the envelope is only a guide to its messages.',
   );
+});
+
+/** A document that uses the parts of WSDL 1.1 the Note's examples do not: faults, headers, an HTTP binding and others. */
+const ALL_PARTS = [
+  '<definitions name="all" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t"',
+  '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/"',
+  '    xmlns:x="urn:foreign" xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+  '  <import namespace="urn:no-location"/>',
+  '  <x:message name="ForeignMessage"/>',
+  '  <message name="M"><part name="a" type="xs:string"/><part name="b" element="tns:E"/></message>',
+  '  <message name="Fault"><part name="why" type="xs:string"/></message>',
+  '  <portType name="P">',
+  '    <operation name="Op" parameterOrder="a b">',
+  '      <input message="tns:M"/><output message="tns:M"/><fault name="Oops" message="tns:Fault"/>',
+  '    </operation>',
+  '  </portType>',
+  '  <binding name="H" type="tns:P"><http:binding verb="POST"/><operation name="Op"/></binding>',
+  '  <binding name="S" type="tns:P">',
+  '    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>',
+  '    <operation name="Op">',
+  '      <soap:operation soapAction="urn:op" style="rpc"/>',
+  '      <input><soap:body use="literal" parts="a',
+  '         b"/><soap:header message="tns:M" part="a" use="encoded" namespace="urn:h"/></input>',
+  '    </operation>',
+  '  </binding>',
+  '  <binding name="R" type="tns:P"><soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>',
+  '    <operation name="Op"><soap:operation style="weird"/></operation></binding>',
+  '  <binding name="W" type="tns:P"><soap:binding style="weird"/><operation name="Op"/></binding>',
+  '  <service name="Sv"><documentation>',
+  '     Some words',
+  '  </documentation>',
+  '    <port name="HP" binding="tns:H"><http:address location="http://example.com/h"/></port>',
+  '    <port name="XP" binding="tns:S"><x:address location="urn:ignored"/></port>',
+  '  </service>',
+  '</definitions>',
+].join('\n');
+
+it('the parts of a document that the note examples do not use are read, and elements of other namespaces are ignored', () => {
+  const model = explain(ALL_PARTS);
+  // An import with no location has nothing to load, so it is not listed; a foreign element called message is not a message.
+  expect(model.notLoaded).toEqual([]);
+  expect(model.messages.map((message) => message.name)).toEqual(['M', 'Fault']);
+  expect(model.messages[0]!.parts).toMatchObject([
+    { name: 'a', type: { local: 'string' } },
+    { name: 'b', element: { namespace: 'urn:t', local: 'E' } },
+  ]);
+  // The operation of the port type: its parameter order, input, output and fault.
+  expect(model.portTypes[0]!.operations).toMatchObject([
+    {
+      name: 'Op',
+      parameterOrder: ['a', 'b'],
+      input: { local: 'M' },
+      output: { local: 'M' },
+      faults: [{ name: 'Oops', message: { local: 'Fault' } }],
+    },
+  ]);
+  const [http, soap, rpc, weird] = model.bindings;
+  // An HTTP binding is read as that and has no style or transport; a binding with no style is document style.
+  expect(http).toMatchObject({ name: 'H', protocol: 'HTTP', style: 'document', transport: '' });
+  expect(soap).toMatchObject({ name: 'S', protocol: 'SOAP 1.1', style: 'document' });
+  expect(rpc).toMatchObject({ name: 'R', style: 'rpc' });
+  expect(weird).toMatchObject({ name: 'W', style: 'document' });
+  // The soap binding's operation: its own style, the parts of the Body split on any white space, the header.
+  expect(soap!.operations[0]).toMatchObject({
+    name: 'Op',
+    soapAction: 'urn:op',
+    style: 'rpc',
+    input: {
+      body: { use: 'literal', parts: ['a', 'b'] },
+      headers: [{ part: 'a', use: 'encoded', namespace: 'urn:h', message: { local: 'M' } }],
+    },
+  });
+  // An operation style the Note does not allow is no style, and a binding with no soap:operation has no action.
+  expect(rpc!.operations[0]).toMatchObject({ style: '', soapAction: '' });
+  expect(http!.operations[0]).toMatchObject({ style: '', soapAction: '', input: undefined, output: undefined });
+  // Services: the documentation is trimmed; an HTTP address is read; an address of another namespace is not one.
+  expect(model.services[0]!.documentation).toBe('Some words');
+  expect(model.services[0]!.ports).toMatchObject([
+    { name: 'HP', address: 'http://example.com/h', protocol: 'HTTP' },
+    { name: 'XP', address: '', protocol: '' },
+  ]);
+
+  // The style of the operation wins over the style of the binding: the operation is RPC here, in a document binding.
+  const request = sampleRequest(model, 'Op', { soap: '1.1', fill: true });
+  expect(request.envelope).toContain('    <Op>');
+  expect(request.envelope).toContain('<a>string</a>');
+  expect(request.soapAction).toBe('urn:op');
+});
+
+it('a root that is in the namespace of WSDL 1.1 but is not definitions is refused, and parser warnings do not stop a document', () => {
+  const wrongRoot = refusal(() => explainWsdl('<description xmlns="http://schemas.xmlsoap.org/wsdl/"/>'));
+  expect(wrongRoot.message).toContain('"description"');
+  expect(wrongRoot.message).toContain('"http://schemas.xmlsoap.org/wsdl/"');
+  expect(wrongRoot.message).not.toContain('WSDL 2.0 description');
+  // An attribute value with no quotes is a warning in the parser, and the document is read.
+  expect(explain('<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" name=loose/>').name).toBe('loose');
+  // An undefined entity is an error, with the message of the parser and the line.
+  const entity = refusal(() =>
+    explainWsdl('<definitions xmlns="http://schemas.xmlsoap.org/wsdl/">&nope;</definitions>'),
+  );
+  expect(entity.message).toContain('entity not found');
+  expect(entity.line).toBe(1);
+  expect(entity.column).toBeGreaterThan(0);
+});
+
+/** The element names an envelope shows, in order, for a document with the given elements in one schema. */
+function sampledChildren(elements: string, fill = true): { name: string; text: string }[] {
+  const schema = [
+    '<xs:element name="Root"><xs:complexType><xs:sequence>',
+    elements,
+    '</xs:sequence></xs:complexType></xs:element>',
+  ].join('\n');
+  const request = sampleRequest(explain(withSchema(schema, ' xmlns:z="http://www.w3.org/2000/10/XMLSchema"')), 'Op', {
+    soap: '1.1',
+    fill,
+  });
+  const root = childElements(childElements(parseXml(request.envelope))[0]!)[0]!;
+  return childElements(root).map((item) => ({ name: item.localName, text: item.textContent ?? '' }));
+}
+
+it('the example value of every built-in type, in the 2001 namespace and in the draft namespace of the note', () => {
+  const values: [string, string][] = [
+    ['string', 'string'],
+    ['normalizedString', 'string'],
+    ['token', 'string'],
+    ['int', '0'],
+    ['integer', '0'],
+    ['long', '0'],
+    ['short', '0'],
+    ['byte', '0'],
+    ['decimal', '0'],
+    ['float', '0'],
+    ['double', '0'],
+    ['nonNegativeInteger', '0'],
+    ['nonPositiveInteger', '0'],
+    ['unsignedInt', '0'],
+    ['unsignedLong', '0'],
+    ['unsignedShort', '0'],
+    ['unsignedByte', '0'],
+    ['positiveInteger', '1'],
+    ['negativeInteger', '-1'],
+    ['boolean', 'false'],
+    ['date', '2000-01-01'],
+    ['dateTime', '2000-01-01T00:00:00'],
+    ['time', '00:00:00'],
+    ['duration', 'P1D'],
+    ['gYear', '2000'],
+    ['gYearMonth', '2000-01'],
+    ['hexBinary', '00'],
+    ['base64Binary', 'AA=='],
+    ['anyURI', 'http://example.com/'],
+  ];
+  const elements = values.map(([type]) => `<xs:element name="e_${type}" type="xs:${type}"/>`).join('\n');
+  expect(sampledChildren(elements).map((item) => [item.name, item.text])).toEqual(
+    values.map(([type, value]) => [`e_${type}`, value]),
+  );
+  // The draft namespace of the Note has timeInstant, timeDuration and uriReference.
+  const draft: [string, string][] = [
+    ['timeInstant', '2000-01-01T00:00:00'],
+    ['timeDuration', 'P1D'],
+    ['uriReference', 'http://example.com/'],
+    ['string', 'string'],
+    ['float', '0'],
+  ];
+  const draftElements = draft.map(([type]) => `<xs:element name="d_${type}" type="z:${type}"/>`).join('\n');
+  expect(sampledChildren(draftElements).map((item) => [item.name, item.text])).toEqual(
+    draft.map(([type, value]) => [`d_${type}`, value]),
+  );
+  // Without example values every one of them is empty.
+  expect(sampledChildren(elements, false).every((item) => item.text === '')).toBe(true);
+});
+
+it('an element name must be a valid XML name to be written, or it is replaced and reported', () => {
+  const accented = String.fromCodePoint(0xe9);
+  const good = ['a1', 'a.b', 'a-b', '_a', `${accented}a`, 'A_1.2-3'];
+  const bad = ['1a', 'a b', 'a:b', '-a', '.a', 'a<b', 'a&b', 'a"b', 'a/b', 'a>b'];
+  const written = sampledChildren(
+    [...good, ...bad]
+      .map(
+        (name) =>
+          `<xs:element name="${name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')}" type="xs:string"/>`,
+      )
+      .join('\n'),
+  );
+  expect(written.map((item) => item.name)).toEqual([...good, ...bad.map(() => 'invalid-name')]);
+});
+
+it('namespace prefixes in an envelope come from the document when they can, and are made up when they cannot', () => {
+  const parts = (declarations: string, list: string[]) =>
+    [
+      `<definitions name="p" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t" ${declarations}`,
+      '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">',
+      `  <message name="In">${list.join('')}</message>`,
+      '  <portType name="P"><operation name="Op"><input message="tns:In"/></operation></portType>',
+      '  <binding name="B" type="tns:P"><soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>',
+      '    <operation name="Op"><input><soap:body use="literal"/></input></operation></binding>',
+      '</definitions>',
+    ].join('\n');
+  const root = (text: string) =>
+    sampleRequest(explain(text), 'Op', { soap: '1.1', fill: true }).envelope.split('\n')[0];
+
+  // The prefixes of the document are used.
+  expect(
+    root(
+      parts('xmlns:one="urn:one" xmlns:two="urn:two"', [
+        '<part name="a" element="one:X"/>',
+        '<part name="b" element="two:Y"/>',
+      ]),
+    ),
+  ).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:one="urn:one" xmlns:two="urn:two">',
+  );
+  // The same prefix for two namespaces (the second declared further in): the second gets a made-up prefix.
+  expect(
+    root(
+      parts('xmlns:a="urn:one"', [
+        '<part name="a" element="a:X"/>',
+        '<part name="b" xmlns:a="urn:two" element="a:Y"/>',
+      ]),
+    ),
+  ).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a="urn:one" xmlns:ns1="urn:two">',
+  );
+  // A prefix the envelope already uses for itself, or that XML reserves, is not taken again.
+  expect(root(parts('xmlns:soapenv="urn:one"', ['<part name="a" element="soapenv:X"/>']))).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="urn:one">',
+  );
+  // The XML namespace is only ever bound to the prefix xml, which needs no declaration.
+  const xmlRequest = sampleRequest(explain(parts('', ['<part name="a" element="xml:X"/>'])), 'Op', {
+    soap: '1.1',
+    fill: true,
+  });
+  expect(xmlRequest.envelope).toBe(
+    [
+      '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">',
+      '  <soapenv:Body>',
+      '    <xml:X/>',
+      '  </soapenv:Body>',
+      '</soapenv:Envelope>',
+    ].join('\n'),
+  );
+  // Namespaces with no prefix in the document are numbered from 1, each once.
+  // (the third part is written with a prefix, so that the default namespace can be another one for its name)
+  const bare = parts('xmlns:w="http://schemas.xmlsoap.org/wsdl/"', [
+    '<part name="a" element="tns:A"/>',
+    '<part name="b" xmlns:q="urn:q" element="q:B"/>',
+    '<w:part name="c" xmlns="urn:default" element="C"/>',
+  ]);
+  expect(root(bare)).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="urn:t" xmlns:q="urn:q" xmlns:ns1="urn:default">',
+  );
+  // Two prefixes for one namespace: the first one the document writes is used, whether it names a type or an element.
+  expect(
+    root(parts('xmlns:p="urn:p" xmlns:x="urn:p"', ['<part name="a" type="p:T"/>', '<part name="b" element="x:E"/>'])),
+  ).toBe('<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:p="urn:p">');
+  expect(
+    root(parts('xmlns:p="urn:p" xmlns:x="urn:p"', ['<part name="a" element="x:E"/>', '<part name="b" type="p:T"/>'])),
+  ).toBe('<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:x="urn:p">');
+  // A part with a type only has no namespace to learn a prefix from; a part with neither is written empty.
+  expect(root(parts('', ['<part name="a" type="tns:T"/>', '<part name="b"/>']))).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">',
+  );
+});
+
+it('a sample request is cut at 2,000 elements, and a document nested too deeply is refused', () => {
+  // Twenty elements of one type that holds twenty of the next, five levels deep: 3.2 million elements if all are written.
+  const types = ['T1', 'T2', 'T3', 'T4', 'T5'];
+  const schema = [
+    '<xs:element name="Root" type="tns:T1"/>',
+    ...types.map((name, index) => {
+      const next = types[index + 1];
+      const children = Array.from(
+        { length: 20 },
+        (_, i) => `<xs:element name="c${i}" type="${next ? `tns:${next}` : 'xs:string'}"/>`,
+      );
+      return `<xs:complexType name="${name}"><xs:sequence>${children.join('')}</xs:sequence></xs:complexType>`;
+    }),
+  ].join('\n');
+  const request = sampleRequest(explain(withSchema(schema)), 'Op', { soap: '1.1', fill: true });
+  // Every element written is the root or one of the c elements: exactly 2,000 of them.
+  expect((request.envelope.match(/<(?:tns:Root|c\d+)[ >/]/g) ?? []).length).toBe(2000);
+  expect(request.warnings).toContain('The sample request is cut at 2,000 elements.');
+
+  // Nesting of 300 levels is refused with its line (a crafted document could otherwise exhaust the stack).
+  const open = '<xs:sequence>'.repeat(300);
+  const close = '</xs:sequence>'.repeat(300);
+  const deep = withSchema(`<xs:element name="Root"><xs:complexType>${open}${close}</xs:complexType></xs:element>`);
+  const refused = refusal(() => explainWsdl(deep));
+  expect(refused.message).toBe('The document nests elements more than 200 levels deep.');
+  expect(refused.line).toBeGreaterThan(0);
+  // 100 levels is read.
+  const fine = withSchema(
+    `<xs:element name="Root"><xs:complexType>${'<xs:sequence>'.repeat(100)}${'</xs:sequence>'.repeat(100)}</xs:complexType></xs:element>`,
+  );
+  expect(explain(fine).types[0]!.elements[0]!.name).toBe('Root');
+});
+
+/** A document with one operation, to say what is missing from it; each argument is the XML that goes in its place. */
+function sparse(options: {
+  messages?: string;
+  operation?: string;
+  style?: string;
+  bodyParts?: string;
+  header?: string;
+  schema?: string;
+}): string {
+  return [
+    '<definitions name="s" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t"',
+    '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema"',
+    '    xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/">',
+    `  <types><xs:schema targetNamespace="urn:t">${options.schema ?? '<xs:element name="E" type="xs:string"/>'}</xs:schema></types>`,
+    options.messages ?? '  <message name="In"><part name="a" element="tns:E"/></message>',
+    `  <portType name="P"><operation name="Op">${options.operation ?? '<input message="tns:In"/>'}</operation></portType>`,
+    `  <binding name="B" type="tns:P"><soap:binding style="${options.style ?? 'document'}" transport="http://schemas.xmlsoap.org/soap/http"/>`,
+    `    <operation name="Op"><input><soap:body use="literal" namespace="urn:t"${options.bodyParts ?? ''}/>${options.header ?? ''}</input></operation></binding>`,
+    '</definitions>',
+  ].join('\n');
+}
+
+it('what a document leaves out is said in the warnings of the request', () => {
+  const warningsOf = (text: string) => sampleRequest(explain(text), 'Op', { soap: '1.1', fill: true });
+  // The message of the operation is not in the document, or the operation has no input at all.
+  expect(warningsOf(sparse({ operation: '<input message="tns:Gone"/>' }))).toMatchObject({
+    warnings: ['The message tns:Gone is not in the document, so the Body is empty.'],
+  });
+  expect(warningsOf(sparse({ operation: '<output message="tns:In"/>' }))).toMatchObject({
+    warnings: ['The operation Op has no input message, so the Body is empty.'],
+  });
+  // An element a part names is not in the document: written empty, in document style and in RPC style.
+  const missingElement = warningsOf(
+    sparse({ messages: '<message name="In"><part name="a" element="tns:Nope"/></message>' }),
+  );
+  expect(missingElement.warnings).toEqual([
+    'The element tns:Nope of part a is not in the document, so it is written empty.',
+  ]);
+  expect(missingElement.envelope).toContain('<tns:Nope/>');
+  const missingRpc = warningsOf(
+    sparse({ style: 'rpc', messages: '<message name="In"><part name="a" element="tns:Nope"/></message>' }),
+  );
+  expect(missingRpc.warnings).toEqual([
+    'The element tns:Nope of part a is not in the document, so it is written empty.',
+  ]);
+  expect(missingRpc.envelope).toContain('      <a>\n        <tns:Nope/>\n      </a>');
+  // A part with a type and no element, in document style, and a part with neither.
+  const typed = warningsOf(
+    sparse({ messages: '<message name="In"><part name="a" type="xs:int"/><part name="b"/></message>' }),
+  );
+  expect(typed.warnings).toEqual(['Part a has a type and no element, so its element is named after the part.']);
+  expect(typed.envelope).toContain('    <a>0</a>\n    <b>string</b>');
+  const typedRpc = warningsOf(
+    sparse({ style: 'rpc', messages: '<message name="In"><part name="a" type="xs:int"/><part name="b"/></message>' }),
+  );
+  expect(typedRpc.warnings).toEqual([]);
+  expect(typedRpc.envelope).toContain('      <a>0</a>\n      <b>string</b>');
+  // A header part that is not in the document, or whose message is not.
+  const header = (message: string, part: string) => `<soap:header message="${message}" part="${part}" use="literal"/>`;
+  expect(warningsOf(sparse({ header: header('tns:In', 'zz') })).warnings).toEqual([
+    'The header part zz of tns:In is not in the document, so it is left out.',
+  ]);
+  expect(warningsOf(sparse({ header: header('tns:Gone', 'a') })).warnings).toEqual([
+    'The header part a of tns:Gone is not in the document, so it is left out.',
+  ]);
+  // A type that restricts an array type of the SOAP encoding is not expanded, and an element reference that is missing.
+  const array = warningsOf(
+    sparse({
+      messages: '<message name="In"><part name="a" element="tns:Holder"/></message>',
+      schema:
+        '<xs:element name="Holder" type="tns:Arr"/><xs:complexType name="Arr"><xs:complexContent><xs:restriction base="soapenc:Array"><xs:sequence><xs:element name="x" type="xs:string"/></xs:sequence></xs:restriction></xs:complexContent></xs:complexType>',
+    }),
+  );
+  expect(array.warnings).toEqual([
+    'The type Arr restricts soapenc:Array (an array type of the SOAP encoding), so its content is not expanded.',
+  ]);
+  expect(array.envelope).not.toContain('<x>');
+  const ref = warningsOf(
+    sparse({
+      messages: '<message name="In"><part name="a" element="tns:Holder"/></message>',
+      schema:
+        '<xs:element name="Holder"><xs:complexType><xs:sequence><xs:element ref="tns:Nope"/></xs:sequence></xs:complexType></xs:element>',
+    }),
+  );
+  expect(ref.warnings).toEqual(['The element tns:Nope is not in the document, so it is written empty.']);
+  expect(ref.envelope).toContain('<tns:Nope/>');
+  // The references of the schema that do not resolve are listed as not found, with where they are written.
+  const notFound = explain(
+    sparse({
+      messages: '<message name="In"><part name="a" element="tns:Holder"/></message>',
+      schema:
+        '<xs:element name="Holder" type="tns:NoType"><xs:annotation/></xs:element><xs:element name="Two"><xs:complexType><xs:complexContent><xs:extension base="tns:NoBase"><xs:attribute name="at" type="tns:NoAttr"/></xs:extension></xs:complexContent></xs:complexType></xs:element><xs:simpleType name="S"><xs:restriction base="tns:NoSimple"/></xs:simpleType>',
+    }),
+  ).notFound;
+  expect(notFound.map((item) => [item.kind, item.reference])).toEqual([
+    ['type', 'tns:NoType'],
+    ['type', 'tns:NoBase'],
+    ['type', 'tns:NoAttr'],
+    ['type', 'tns:NoSimple'],
+  ]);
+  expect(notFound[0]!.where).toBe('element Holder of the schema for urn:t');
+  expect(notFound[3]!.where).toBe('simple type S');
+});
+
+it('operation names are listed once each, in document order, from the bindings first and from the port types when there are none', () => {
+  const head =
+    '<definitions targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">';
+  const portType = '<portType name="P"><operation name="Z"/><operation name="A"/><operation/></portType>';
+  const bindings = [
+    '<binding name="B1" type="tns:P"><soap:binding/><operation name="B"/><operation name="A"/><operation/></binding>',
+    '<binding name="B2" type="tns:P"><soap:binding/><operation name="B"/><operation name="C"/></binding>',
+  ].join('');
+  expect(operationNames(explain(`${head}${portType}${bindings}</definitions>`))).toEqual(['B', 'A', 'C']);
+  expect(operationNames(explain(`${head}${portType}</definitions>`))).toEqual(['Z', 'A']);
+  // The first of the names is the operation a blank name means.
+  const model = explain(`${head}${portType}${bindings}</definitions>`);
+  expect(sampleRequest(model, '', { soap: '1.1', fill: true }).warnings[0]).toContain('The port type');
+  expect(refusal(() => sampleRequest(model, 'Z', { soap: '1.1', fill: true })).message).toBe(
+    'The document has no operation named Z. Its operations are B, A, C.',
+  );
+});
+
+it('names are split at the first colon, a name with no prefix and no default namespace has none, and attribute values are trimmed', () => {
+  const doc = [
+    '<w:definitions targetNamespace="urn:t" xmlns:w="http://schemas.xmlsoap.org/wsdl/" xmlns:x="urn:x">',
+    '  <w:message name=" M ">',
+    '    <w:part name="a" element="x:y:z"/>',
+    '    <w:part name="b" element="E"/>',
+    '    <w:part name=" c " type="  x:T  "/>',
+    '  </w:message>',
+    '</w:definitions>',
+  ].join('\n');
+  const [message] = explain(doc).messages;
+  expect(message!.name).toBe('M');
+  expect(message!.parts[0]).toMatchObject({ name: 'a', element: { namespace: 'urn:x', local: 'y:z', declared: true } });
+  // No prefix and no default namespace in scope: no namespace, and nothing is undeclared.
+  expect(message!.parts[1]).toMatchObject({ element: { text: 'E', namespace: '', local: 'E', declared: true } });
+  expect(message!.parts[2]).toMatchObject({ name: 'c', type: { text: 'x:T', namespace: 'urn:x', local: 'T' } });
+  // The line of a message is the line of its start tag.
+  expect(message!.line).toBe(2);
+  expect(explain(EXAMPLE_1_STOCK_QUOTE).messages.map((item) => item.line)).toEqual([
+    lineHolding(EXAMPLE_1_STOCK_QUOTE, '<message name="GetLastTradePriceInput"'),
+    lineHolding(EXAMPLE_1_STOCK_QUOTE, '<message name="GetLastTradePriceOutput"'),
+  ]);
+});
+
+it('elements of other namespaces inside WSDL elements are ignored, and schema imports without a location are not listed', () => {
+  const doc = [
+    '<definitions targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:x="urn:x" xmlns:tns="urn:t"',
+    '    xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">',
+    '  <types>',
+    '    <x:schema targetNamespace="urn:ignored"/>',
+    '    <xs:schema targetNamespace="urn:t">',
+    '      <xs:import namespace="urn:no-location"/>',
+    '      <xs:import namespace="urn:o" schemaLocation="http://example.com/o.xsd"/>',
+    '      <x:element name="Foreign"/>',
+    '      <x:complexType name="ForeignType"/>',
+    '      <xs:element name="Own" type="xs:string"/>',
+    '    </xs:schema>',
+    '  </types>',
+    '  <message name="M"><x:part name="zz"/><part name="a" element="tns:Own"/></message>',
+    '  <portType name="P">',
+    '    <x:operation name="Foreign"/>',
+    '    <operation name="Op"><x:input message="tns:M"/><input message="tns:M"/><x:output message="tns:M"/></operation>',
+    '  </portType>',
+    '  <binding name="B" type="tns:P"><x:binding style="rpc"/><soap:binding style="document"/>',
+    '    <x:operation name="Foreign"/><operation name="Op"><x:input><soap:body use="encoded"/></x:input><input><soap:body use="literal"/></input></operation>',
+    '  </binding>',
+    '  <x:service name="Foreign"/>',
+    '  <service name="S"><x:port name="foreign"/><port name="P" binding="tns:B"><soap:address location="urn:a"/></port></service>',
+    '</definitions>',
+  ].join('\n');
+  const model = explain(doc);
+  expect(model.types).toHaveLength(1);
+  expect(model.types[0]!.elements.map((item) => item.name)).toEqual(['Own']);
+  expect(model.types[0]!.complexTypes).toEqual([]);
+  expect(model.notLoaded).toEqual([
+    { kind: 'xsd:import', namespace: 'urn:o', location: 'http://example.com/o.xsd', line: lineHolding(doc, 'urn:o') },
+  ]);
+  expect(model.messages[0]!.parts.map((part) => part.name)).toEqual(['a']);
+  expect(
+    model.portTypes[0]!.operations.map((operation) => [operation.name, operation.input?.local, operation.output]),
+  ).toEqual([['Op', 'M', undefined]]);
+  expect(model.bindings[0]).toMatchObject({ style: 'document', protocol: 'SOAP 1.1' });
+  expect(model.bindings[0]!.operations.map((operation) => [operation.name, operation.input?.body?.use])).toEqual([
+    ['Op', 'literal'],
+  ]);
+  expect(model.services.map((service) => [service.name, service.ports.map((port) => port.name)])).toEqual([
+    ['S', ['P']],
+  ]);
+});
+
+it('a local element is in the namespace of its schema when the schema says so or the element does, and not otherwise', () => {
+  const schema = [
+    '<xs:element name="Root"><xs:complexType><xs:sequence>',
+    '<xs:element name="plain" type="xs:string"/>',
+    '<xs:element name="asked" form="qualified" type="xs:string"/>',
+    '<xs:element name="refused" form="unqualified" type="xs:string"/>',
+    '</xs:sequence></xs:complexType></xs:element>',
+  ].join('\n');
+  const namespaces = (extra: string) => {
+    const request = sampleRequest(explain(withSchema(schema, extra)), 'Op', { soap: '1.1', fill: true });
+    const root = childElements(childElements(parseXml(request.envelope))[0]!)[0]!;
+    return childElements(root).map((item) => [item.localName, item.namespaceURI ?? '']);
+  };
+  expect(namespaces('')).toEqual([
+    ['plain', ''],
+    ['asked', 'urn:t'],
+    ['refused', ''],
+  ]);
+  expect(namespaces(' elementFormDefault="qualified"')).toEqual([
+    ['plain', 'urn:t'],
+    ['asked', 'urn:t'],
+    ['refused', ''],
+  ]);
+  expect(namespaces(' elementFormDefault="unqualified"')).toEqual([
+    ['plain', ''],
+    ['asked', 'urn:t'],
+    ['refused', ''],
+  ]);
+});
+
+it('a document with several parser errors is refused with the first of them', () => {
+  const doc = '<definitions xmlns="http://schemas.xmlsoap.org/wsdl/">&nope1;&nope2;</definitions>';
+  expect(refusal(() => explainWsdl(doc)).message).toContain('&nope1;');
+});
+
+const REFERENCES = [
+  '<definitions name="refs" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t" xmlns:other="urn:other"',
+  '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema"',
+  '    xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:x="urn:x">',
+  '  <types>',
+  '    <xs:schema targetNamespace="urn:t">',
+  '      <xs:element name="Known" type="xs:string"/>',
+  '      <xs:complexType name="Cx"><xs:sequence><xs:element name="c" type="tns:NoChild"/><x:element name="ignored"/></xs:sequence>',
+  '        <xs:attribute ref="tns:ra"/><xs:attribute name="n" type="xs:int"/></xs:complexType>',
+  '      <xs:complexType name="Price"><xs:simpleContent><xs:extension base="xs:decimal"><xs:attribute name="currency" type="xs:string"/></xs:extension></xs:simpleContent></xs:complexType>',
+  '      <xs:complexType name="Cnt"><xs:simpleContent><xs:restriction base="xs:int"/></xs:simpleContent></xs:complexType>',
+  '    </xs:schema>',
+  '  </types>',
+  '  <message name="M"><part name="a" element="xs:string"/><part name="b" type="tns:NoSuchType"/><part name="c" type="xs:int"/><part name="d" type="soapenc:Array"/></message>',
+  '  <portType name="P">',
+  '    <operation name="Op"><input message="tns:M"/><output message="tns:GoneOut"/><fault name="F" message="tns:GoneFault"/></operation>',
+  '  </portType>',
+  '  <binding name="B" type="tns:P"><soap:binding/>',
+  '    <operation name="Missing"/>',
+  '    <operation name="Op"><input><soap:body parts="a nope" use="literal"/><soap:header message="tns:M" part="zz" use="literal"/></input></operation>',
+  '  </binding>',
+  '  <binding name="Lost" type="other:Gone"><soap:binding/><operation name="Op"><input><soap:body parts="a" use="literal"/></input></operation></binding>',
+  '  <service name="S"><port name="p1" binding="other:B"/></service>',
+  '</definitions>',
+].join('\n');
+
+it('every kind of reference that does not resolve is listed as not found, with what it is, where it is written and why', () => {
+  const model = explain(REFERENCES);
+  expect(model.notFound.map((item) => [item.kind, item.reference, item.where])).toEqual([
+    ['binding', 'other:B', 'port p1 of service S'],
+    ['operation', 'Missing', 'binding B'],
+    ['part', 'zz', 'a input header of operation Op in binding B'],
+    ['part', 'nope', 'the input body of operation Op in binding B'],
+    ['portType', 'other:Gone', 'binding Lost'],
+    ['message', 'tns:GoneOut', 'the output of operation Op in port type P'],
+    ['message', 'tns:GoneFault', 'the fault F of operation Op in port type P'],
+    ['element', 'xs:string', 'part a of message M'],
+    ['type', 'tns:NoSuchType', 'part b of message M'],
+    ['type', 'tns:NoChild', 'complex type Cx'],
+  ]);
+  const reasons = model.notFound.map((item) => item.reason);
+  // A name in another namespace is not the binding of the same name in this one.
+  expect(reasons[0]).toBe('no binding with this name is declared in this document (declared: B, Lost)');
+  expect(reasons[1]).toBe('port type P has no operation with this name (declared: Op)');
+  expect(reasons[2]).toBe('message M has no part with this name');
+  expect(reasons[3]).toBe('message M has no part with this name');
+  expect(reasons[4]).toBe('no port type with this name is declared in this document (declared: P)');
+  expect(reasons[5]).toBe('no message with this name is declared in this document (declared: M)');
+  expect(reasons[7]).toBe('it names a type of XML Schema where an element is expected');
+  expect(reasons[8]).toBe('no type with this name is declared in this document (the document declares no type)');
+  // The lines are those of the elements that hold the references.
+  expect(model.notFound[0]!.line).toBe(lineHolding(REFERENCES, '<port name="p1"'));
+  expect(model.notFound[1]!.line).toBe(lineHolding(REFERENCES, '<operation name="Missing"'));
+  expect(model.notFound[5]!.line).toBe(lineHolding(REFERENCES, '<operation name="Op"><input message="tns:M"/>'));
+  expect(model.notFound[7]!.line).toBe(lineHolding(REFERENCES, '<message name="M"'));
+
+  // What is read from the schema around those references.
+  const [schema] = model.types;
+  const cx = schema!.complexTypes.find((def) => def.name === 'Cx')!;
+  expect(cx.elements.map((item) => item.name)).toEqual(['c']);
+  expect(cx.attributes).toEqual([{ name: 'n', type: expect.objectContaining({ local: 'int' }) }]);
+  const price = schema!.complexTypes.find((def) => def.name === 'Price')!;
+  expect(price).toMatchObject({
+    base: { local: 'decimal' },
+    textType: { local: 'decimal' },
+    attributes: [{ name: 'currency', type: { local: 'string' } }],
+  });
+  expect(schema!.complexTypes.find((def) => def.name === 'Cnt')).toMatchObject({ textType: { local: 'int' } });
+  expect(schema!.complexTypes.find((def) => def.name === 'Cnt')!.base).toBeUndefined();
+
+  // A request for a type with simple content has its attributes and its text.
+  const typed = withSchema(
+    [
+      '<xs:element name="Root"><xs:complexType><xs:sequence>',
+      '<xs:element name="price" type="tns:Price"/><xs:element name="count" type="tns:Cnt"/>',
+      '</xs:sequence></xs:complexType></xs:element>',
+      '<xs:complexType name="Price"><xs:simpleContent><xs:extension base="xs:decimal"><xs:attribute name="currency" type="xs:string"/></xs:extension></xs:simpleContent></xs:complexType>',
+      '<xs:complexType name="Cnt"><xs:simpleContent><xs:restriction base="xs:int"/></xs:simpleContent></xs:complexType>',
+    ].join('\n'),
+  );
+  const filled = sampleRequest(explain(typed), 'Op', { soap: '1.1', fill: true });
+  expect(filled.envelope).toContain('      <price currency="string">0</price>\n      <count>0</count>');
+  const empty = sampleRequest(explain(typed), 'Op', { soap: '1.1', fill: false });
+  expect(empty.envelope).toContain('      <price currency=""/>\n      <count/>');
+});
+
+it('references inside a schema are checked at every depth: element references, bases, restrictions and nested types', () => {
+  const doc = withSchema(
+    [
+      '<xs:element name="Root" type="xs:string"/>',
+      '<xs:element name="Out"><xs:complexType><xs:sequence><xs:element name="in" type="tns:NoIn"/><xs:element ref="tns:NoRef"/></xs:sequence></xs:complexType></xs:element>',
+      '<xs:element name="Inline"><xs:simpleType><xs:restriction base="tns:NoSimple"/></xs:simpleType></xs:element>',
+      '<xs:complexType name="R"><xs:complexContent><xs:restriction base="tns:NoRestriction"/></xs:complexContent></xs:complexType>',
+      '<xs:complexType name="T"><xs:simpleContent><xs:restriction base="tns:NoText"/></xs:simpleContent></xs:complexType>',
+      '<xs:complexType name="E"><xs:complexContent><xs:extension base="tns:NoBase"/></xs:complexContent></xs:complexType>',
+    ].join('\n'),
+  );
+  const found = explain(doc).notFound.map((item) => [item.kind, item.reference, item.where]);
+  expect(found).toEqual([
+    ['type', 'tns:NoIn', 'element Out of the schema for urn:t'],
+    ['element', 'tns:NoRef', 'element Out of the schema for urn:t'],
+    ['type', 'tns:NoSimple', 'element Inline of the schema for urn:t'],
+    ['type', 'tns:NoRestriction', 'complex type R'],
+    ['type', 'tns:NoText', 'complex type T'],
+    ['type', 'tns:NoBase', 'complex type E'],
+  ]);
+});
+
+it('a reference is not found when its namespace is not the one of the document, and the reason says why', () => {
+  const head = [
+    '<definitions targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t" xmlns:other="urn:other"',
+    '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+  ].join('\n');
+  // The names exist, in another namespace than the references use.
+  const wrong = explain(
+    [
+      head,
+      '<types><xs:schema targetNamespace="urn:t"><xs:element name="Known" type="xs:string"/></xs:schema></types>',
+      '<message name="M"><part name="a" element="other:Known"/></message>',
+      '<portType name="P"><operation name="Op"><input message="other:M"/></operation></portType>',
+      '<binding name="B" type="other:P"><soap:binding/><operation name="Op"/></binding>',
+      '</definitions>',
+    ].join('\n'),
+  );
+  expect(wrong.notFound.map((item) => [item.kind, item.reference])).toEqual([
+    ['portType', 'other:P'],
+    ['message', 'other:M'],
+    ['element', 'other:Known'],
+  ]);
+
+  // An import with no namespace does not explain a name that has none; one with a namespace explains its names.
+  // (written with a prefix for WSDL, so that a name with no prefix has no namespace)
+  const imports = explain(
+    [
+      '<w:definitions targetNamespace="urn:t" xmlns:w="http://schemas.xmlsoap.org/wsdl/" xmlns:other="urn:other">',
+      '<w:import location="http://example.com/a.wsdl"/>',
+      '<w:import namespace="urn:other" location="http://example.com/b.wsdl"/>',
+      '<w:message name="M"><w:part name="a" element="E"/><w:part name="b" element="other:F"/></w:message>',
+      '</w:definitions>',
+    ].join('\n'),
+  );
+  expect(imports.notFound.map((item) => item.reason)).toEqual([
+    'no element with this name is declared in this document (the document declares no element)',
+    'its namespace is imported from http://example.com/b.wsdl, which is not loaded',
+  ]);
+
+  // When nothing of a kind is declared the reason says so; a declared thing with no name is not listed.
+  const none = explain(
+    [
+      head,
+      '<portType name="P"><operation name="Op"><input message="tns:M"/></operation></portType>',
+      '</definitions>',
+    ].join('\n'),
+  );
+  expect(none.notFound[0]!.reason).toBe(
+    'no message with this name is declared in this document (the document declares no message)',
+  );
+  const unnamed = explain(
+    [
+      head,
+      '<binding type="tns:P"><soap:binding/></binding><binding name="Real" type="tns:P"><soap:binding/></binding>',
+      '<service name="S"><port name="p" binding="tns:Gone"/></service>',
+      '</definitions>',
+    ].join('\n'),
+  );
+  expect(unnamed.notFound.find((item) => item.kind === 'binding')!.reason).toBe(
+    'no binding with this name is declared in this document (declared: Real)',
+  );
+});
+
+it('the binding for a request is the one that has the operation, for the version asked, and a request needs the port type of that binding', () => {
+  const head = [
+    '<definitions targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t"',
+    '    xmlns:s11="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s12="http://schemas.xmlsoap.org/wsdl/soap12/"',
+    '    xmlns:http="http://schemas.xmlsoap.org/wsdl/http/">',
+    '<message name="In"/>',
+    '<portType name="P"><operation name="A"><input message="tns:In"/></operation><operation name="B"><input message="tns:In"/></operation></portType>',
+  ].join('\n');
+  // Only the binding that has the operation is used, and a SOAP binding of the other version is used before an HTTP one.
+  const model = explain(
+    [
+      head,
+      '<binding name="First" type="tns:P"><s11:binding/><operation name="A"><s11:operation soapAction="urn:first-a"/></operation></binding>',
+      '<binding name="Web" type="tns:P"><http:binding verb="GET"/><operation name="B"/></binding>',
+      '<binding name="Second" type="tns:P"><s12:binding/><operation name="B"><s12:operation soapAction="urn:second-b"/></operation></binding>',
+      '</definitions>',
+    ].join('\n'),
+  );
+  expect(sampleRequest(model, 'B', { soap: '1.1', fill: true })).toMatchObject({
+    soapAction: 'urn:second-b',
+    warnings: ['The binding Second is for SOAP 1.2; the envelope is written as SOAP 1.1.'],
+  });
+  expect(sampleRequest(model, 'A', { soap: '1.2', fill: true })).toMatchObject({ soapAction: 'urn:first-a' });
+  // A document with an HTTP binding only: the request is a guide, and says so.
+  const web = explain(
+    [
+      head,
+      '<binding name="Web" type="tns:P"><http:binding verb="GET"/><operation name="A"/></binding>',
+      '</definitions>',
+    ].join('\n'),
+  );
+  expect(sampleRequest(web, 'A', { soap: '1.1', fill: true }).warnings).toEqual([
+    'The binding Web is not a SOAP binding, so the envelope is only a guide to its messages.',
+  ]);
+  // The operation name is trimmed.
+  expect(sampleRequest(model, '  A  ', { soap: '1.1', fill: true }).soapAction).toBe('urn:first-a');
+
+  // A binding whose port type is not in the document gets an empty Body, even when another port type has the operation.
+  const lost = explain(
+    [
+      head,
+      '<binding name="Lost" type="tns:Gone"><s11:binding/><operation name="A"><s11:operation soapAction="urn:lost"/></operation></binding>',
+      '</definitions>',
+    ].join('\n'),
+  );
+  const request = sampleRequest(lost, 'A', { soap: '1.1', fill: true });
+  expect(request.soapAction).toBe('urn:lost');
+  expect(request.warnings).toEqual(['The port type of A is not in the document, so the Body is empty.']);
+  // With no binding at all the operation comes from the port types.
+  const nothing = sampleRequest(explain(`${head}</definitions>`), 'B', { soap: '1.1', fill: true });
+  expect(nothing.warnings).toEqual([
+    'No binding in this document describes B, so it is written in document style with no SOAPAction.',
+  ]);
+});
+
+it('an envelope is escaped in its attributes and declarations, declares the namespaces of nested elements, and does not repeat a prefix', () => {
+  const head = (declarations: string) =>
+    `<definitions name="e" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" ${declarations}>`;
+  const tail = (body: string) =>
+    [
+      '<portType name="P"><operation name="Op"><input message="tns:In"/></operation></portType>',
+      `<binding name="B" type="tns:P"><soap:binding style="rpc"/><operation name="Op"><input>${body}</input></operation></binding>`,
+      '</definitions>',
+    ].join('\n');
+
+  // An attribute value with the five characters, from an enumeration, and an empty enumeration value.
+  const schema = [
+    '<types><xs:schema targetNamespace="urn:t">',
+    '<xs:simpleType name="Odd"><xs:restriction base="xs:string"><xs:enumeration value="a&lt;b&amp;&quot;c&apos;&gt;"/></xs:restriction></xs:simpleType>',
+    '<xs:simpleType name="Empty"><xs:restriction base="xs:string"><xs:enumeration value=""/></xs:restriction></xs:simpleType>',
+    '<xs:complexType name="C"><xs:sequence><xs:element name="blank" type="tns:Empty"/></xs:sequence><xs:attribute name="at" type="tns:Odd"/></xs:complexType>',
+    '</xs:schema></types>',
+    '<message name="In"><part name="p" type="tns:C"/></message>',
+  ].join('\n');
+  const escaped = sampleRequest(
+    explain([head(''), schema, tail('<soap:body use="literal" namespace="urn:a&amp;b"/>')].join('\n')),
+    'Op',
+    {
+      soap: '1.1',
+      fill: true,
+    },
+  );
+  expect(escaped.envelope).toBe(
+    [
+      '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="urn:a&amp;b">',
+      '  <soapenv:Body>',
+      '    <ns1:Op>',
+      '      <p at="a&lt;b&amp;&quot;c&apos;&gt;">',
+      '        <blank/>',
+      '      </p>',
+      '    </ns1:Op>',
+      '  </soapenv:Body>',
+      '</soapenv:Envelope>',
+    ].join('\n'),
+  );
+  // The envelope reads back as well-formed XML with the namespace and the attribute as they were.
+  const back = parseXml(escaped.envelope);
+  const wrapper = childElements(childElements(back)[0]!)[0]!;
+  expect(wrapper.namespaceURI).toBe('urn:a&b');
+  expect(childElements(wrapper)[0]!.attributes[0]!.value).toBe('a<b&"c\'>');
+
+  // Encoded use with no encoding style writes no attribute for it.
+  const bare = sampleRequest(
+    explain([head(''), schema, tail('<soap:body use="encoded" namespace="urn:n"/>')].join('\n')),
+    'Op',
+    { soap: '1.1', fill: true },
+  );
+  expect(bare.envelope).not.toContain('encodingStyle');
+  expect(bare.warnings).toContain(
+    'The binding uses encoded parts: they are shown without the xsi:type attributes that a SOAP encoded body also carries.',
+  );
+
+  // A child in another namespace than its parent is declared, and a prefix the document uses is not taken twice
+  // by a made-up one.
+  const two = [
+    head('xmlns:ns1="urn:one"'),
+    '<types>',
+    '<xs:schema targetNamespace="urn:one"><xs:element name="Other" type="xs:string"/></xs:schema>',
+    '<xs:schema targetNamespace="urn:t"><xs:element name="Root"><xs:complexType><xs:sequence><xs:element ref="ns1:Other"/></xs:sequence></xs:complexType></xs:element></xs:schema>',
+    '</types>',
+    '<message name="In"><part name="p" element="tns:Root"/></message>',
+    '<portType name="P"><operation name="Op"><input message="tns:In"/></operation></portType>',
+    '<binding name="B" type="tns:P"><soap:binding/><operation name="Op"><input><soap:body use="literal"/></input></operation></binding>',
+    '</definitions>',
+  ].join('\n');
+  const nested = sampleRequest(explain(two), 'Op', { soap: '1.1', fill: true });
+  // urn:t has the prefix tns from the part and urn:one gets a made-up one: the nested element is declared too.
+  expect(nested.envelope.split('\n')[0]).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="urn:t" xmlns:ns1="urn:one">',
+  );
+  expect(nested.envelope).toContain('<ns1:Other>string</ns1:Other>');
+  // A made-up prefix steps over the ones the document uses: here ns1 is taken, so the next namespace gets ns2.
+  const steps = [
+    '<w:definitions targetNamespace="urn:t" xmlns:w="http://schemas.xmlsoap.org/wsdl/" xmlns:ns1="urn:one" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">',
+    '<w:message name="In"><w:part name="a" element="ns1:A"/><w:part name="b" xmlns="urn:default" element="B"/></w:message>',
+    '<w:portType name="P"><w:operation name="Op"><w:input message="In"/></w:operation></w:portType>',
+    '<w:binding name="Bd" type="P"><soap:binding/><w:operation name="Op"/></w:binding>',
+    '</w:definitions>',
+  ].join('\n');
+  const stepped = sampleRequest(explain(steps.replace('targetNamespace="urn:t"', 'targetNamespace=""')), 'Op', {
+    soap: '1.1',
+    fill: true,
+  });
+  expect(stepped.envelope.split('\n')[0]).toBe(
+    '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="urn:one" xmlns:ns2="urn:default">',
+  );
+});
+
+it('the same warning is given once however many times the cause comes up', () => {
+  const doc = [
+    '<definitions targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t">',
+    '<message name="In"><part name="a" element="tns:Nope"/><part name="b" element="tns:Nope"/><part name="c" element="tns:Other"/></message>',
+    '<portType name="P"><operation name="Op"><input message="tns:In"/></operation></portType>',
+    '</definitions>',
+  ].join('\n');
+  const request = sampleRequest(explain(doc), 'Op', { soap: '1.1', fill: true });
+  expect(request.warnings).toEqual([
+    'No binding in this document describes Op, so it is written in document style with no SOAPAction.',
+    'The element tns:Nope of part a is not in the document, so it is written empty.',
+    'The element tns:Nope of part b is not in the document, so it is written empty.',
+    'The element tns:Other of part c is not in the document, so it is written empty.',
+  ]);
+  // Two parts of one kind with the same name of element give the same text only when the part names match.
+  const same = doc.replace('part name="b"', 'part name="a"');
+  expect(sampleRequest(explain(same), 'Op', { soap: '1.1', fill: true }).warnings).toHaveLength(3);
+});
+
+it('a chain of types that extend each other is followed 50 levels and no further', () => {
+  // 8,000 types, each extending the next: followed all the way, this would exhaust the stack.
+  const count = 8000;
+  const types = Array.from(
+    { length: count },
+    (_, i) =>
+      `<xs:complexType name="T${i}"><xs:complexContent><xs:extension base="tns:T${i + 1}"><xs:sequence><xs:element name="e${i}" type="xs:string"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>`,
+  );
+  const doc = withSchema(
+    `<xs:element name="Root" type="tns:T0"/>${types.join('')}<xs:complexType name="T${count}"><xs:sequence><xs:element name="last" type="xs:string"/></xs:sequence></xs:complexType>`,
+  );
+  const request = sampleRequest(explain(doc), 'Op', { soap: '1.1', fill: true });
+  expect(request.warnings).toEqual(['Types that extend other types are followed 50 levels, no further.']);
+  // The content of the base comes first: e50 down to e0, and nothing of T51 or beyond.
+  const root = childElements(childElements(parseXml(request.envelope))[0]!)[0]!;
+  expect(childElements(root).map((item) => item.localName)).toEqual(Array.from({ length: 51 }, (_, i) => `e${50 - i}`));
+  // A chain of exactly the limit is followed whole, without a warning.
+  const short = withSchema(
+    `<xs:element name="Root" type="tns:T0"/>${types.slice(0, 50).join('')}<xs:complexType name="T50"><xs:sequence><xs:element name="last" type="xs:string"/></xs:sequence></xs:complexType>`,
+  );
+  const whole = sampleRequest(explain(short), 'Op', { soap: '1.1', fill: true });
+  expect(whole.warnings).toEqual([]);
+  expect(whole.envelope).toContain('<last>string</last>');
+});
+
+it('simple types follow their bases for a value, a chain of them stops far down and a loop of them does not run away', () => {
+  const chain = (length: number, last: string) =>
+    Array.from(
+      { length },
+      (_, i) =>
+        `<xs:simpleType name="S${i}"><xs:restriction base="${i + 1 < length ? `tns:S${i + 1}` : last}"/></xs:simpleType>`,
+    ).join('');
+  const valueOf = (types: string) => {
+    const root =
+      '<xs:element name="Root"><xs:complexType><xs:sequence><xs:element name="v" type="tns:S0"/></xs:sequence></xs:complexType></xs:element>';
+    const request = sampleRequest(explain(withSchema(`${root}${types}`)), 'Op', { soap: '1.1', fill: true });
+    return childElements(childElements(childElements(parseXml(request.envelope))[0]!)[0]!)[0]!.textContent;
+  };
+  // Through three simple types to a number, and to an enumeration in the last one.
+  expect(valueOf(chain(3, 'xs:int'))).toBe('0');
+  expect(valueOf(chain(3, 'xs:boolean'))).toBe('false');
+  const enumerated = `${chain(2, 'tns:E')}<xs:simpleType name="E"><xs:restriction base="xs:string"><xs:enumeration value="first"/></xs:restriction></xs:simpleType>`;
+  expect(valueOf(enumerated)).toBe('first');
+  // Eight steps are followed; a chain of twenty is cut and gives the text string, as does a loop.
+  expect(valueOf(chain(9, 'xs:int'))).toBe('0');
+  expect(valueOf(chain(20, 'xs:int'))).toBe('string');
+  expect(valueOf('<xs:simpleType name="S0"><xs:restriction base="tns:S0"/></xs:simpleType>')).toBe('string');
+});
+
+it('a type of the same name in two namespaces is not a loop, a loop of extensions stops, and a missing type gives text', () => {
+  // T of urn:t holds an element of the type T of urn:o: the same local name, another type.
+  const twoNamespaces = [
+    '<w:definitions targetNamespace="urn:t" xmlns:w="http://schemas.xmlsoap.org/wsdl/" xmlns:t="urn:t" xmlns:o="urn:o"',
+    '    xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">',
+    '<w:types>',
+    '<xs:schema targetNamespace="urn:o"><xs:complexType name="T"><xs:sequence><xs:element name="leaf" type="xs:string"/></xs:sequence></xs:complexType></xs:schema>',
+    '<xs:schema targetNamespace="urn:t"><xs:element name="Root" type="t:T"/>',
+    '<xs:complexType name="T"><xs:sequence><xs:element name="c" type="o:T"/></xs:sequence></xs:complexType></xs:schema>',
+    '</w:types>',
+    '<w:message name="In"><w:part name="p" element="t:Root"/></w:message>',
+    '<w:portType name="P"><w:operation name="Op"><w:input message="t:In"/></w:operation></w:portType>',
+    '<w:binding name="B" type="t:P"><soap:binding/><w:operation name="Op"/></w:binding>',
+    '</w:definitions>',
+  ].join('\n');
+  const nested = sampleRequest(explain(twoNamespaces), 'Op', { soap: '1.1', fill: true });
+  expect(nested.warnings).toEqual([]);
+  expect(nested.envelope).toContain('<c>\n        <leaf>string</leaf>\n      </c>');
+
+  // A extends B and B extends A: each is expanded once, the base first.
+  const loop = withSchema(
+    [
+      '<xs:element name="Root" type="tns:A"/>',
+      '<xs:complexType name="A"><xs:complexContent><xs:extension base="tns:B"><xs:sequence><xs:element name="a" type="xs:string"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>',
+      '<xs:complexType name="B"><xs:complexContent><xs:extension base="tns:A"><xs:sequence><xs:element name="b" type="xs:string"/></xs:sequence></xs:extension></xs:complexContent></xs:complexType>',
+    ].join('\n'),
+  );
+  const looped = sampleRequest(explain(loop), 'Op', { soap: '1.1', fill: true });
+  const root = childElements(childElements(parseXml(looped.envelope))[0]!)[0]!;
+  expect(childElements(root).map((item) => item.localName)).toEqual(['b', 'a']);
+
+  // An element of a type that is not in the document has the text string, and nothing when values are off.
+  const missing = withSchema(
+    '<xs:element name="Root"><xs:complexType><xs:sequence><xs:element name="m" type="tns:Missing"/></xs:sequence></xs:complexType></xs:element>',
+  );
+  expect(sampleRequest(explain(missing), 'Op', { soap: '1.1', fill: true }).envelope).toContain('<m>string</m>');
+  expect(sampleRequest(explain(missing), 'Op', { soap: '1.1', fill: false }).envelope).toContain('<m/>');
+});
+
+it('elements nest 200 levels and no deeper in a document', () => {
+  const nested = (sequences: number) =>
+    withSchema(
+      `<xs:element name="Root"><xs:complexType>${'<xs:sequence>'.repeat(sequences)}${'</xs:sequence>'.repeat(sequences)}</xs:complexType></xs:element>`,
+    );
+  // definitions, types, schema, element and complexType are five levels, so 195 sequences reach level 200.
+  expect(explain(nested(195)).types[0]!.elements[0]!.name).toBe('Root');
+  const refused = refusal(() => explainWsdl(nested(196)));
+  expect(refused.message).toBe('The document nests elements more than 200 levels deep.');
+  // The line is that of the element that is too deep.
+  expect(refused.line).toBe(lineHolding(nested(196), '<xs:element name="Root">'));
+});
+
+it('what a sample does with attributes that have no type, parts that name a type of XML Schema as an element, and empty types', () => {
+  // An attribute with no type has the text string; with values off it is empty.
+  const attribute = withSchema(
+    '<xs:element name="Root"><xs:complexType><xs:sequence/><xs:attribute name="plain"/><xs:attribute name="typed" type="xs:int"/></xs:complexType></xs:element>',
+  );
+  expect(sampleRequest(explain(attribute), 'Op', { soap: '1.1', fill: true }).envelope).toContain(
+    '<tns:Root plain="string" typed="0"/>',
+  );
+  expect(sampleRequest(explain(attribute), 'Op', { soap: '1.1', fill: false }).envelope).toContain(
+    '<tns:Root plain="" typed=""/>',
+  );
+
+  // A part that names xs:string or xs:int as its element (the note's own RPC example does) is written as an element
+  // named after the part, with the value of the type; with values off it is empty.
+  const builtIn = [
+    '<definitions targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t" xmlns:xs="http://www.w3.org/2001/XMLSchema"',
+    '    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">',
+    '<message name="In"><part name="first" element="xs:string"/><part name="second" element="xs:int"/></message>',
+    '<portType name="P"><operation name="Op"><input message="tns:In"/></operation></portType>',
+    '<binding name="B" type="tns:P"><soap:binding/><operation name="Op"/></binding>',
+    '</definitions>',
+  ].join('\n');
+  const typed = sampleRequest(explain(builtIn), 'Op', { soap: '1.1', fill: true });
+  expect(typed.warnings).toEqual([]);
+  expect(typed.envelope).toContain('    <first>string</first>\n    <second>0</second>');
+  expect(sampleRequest(explain(builtIn), 'Op', { soap: '1.1', fill: false }).envelope).toContain(
+    '    <first/>\n    <second/>',
+  );
+  // The same in RPC style, where the accessor is named after the part as well.
+  const rpc = builtIn.replace('<soap:binding/>', '<soap:binding style="rpc"/>');
+  expect(sampleRequest(explain(rpc), 'Op', { soap: '1.1', fill: true }).envelope).toContain(
+    '      <first>string</first>\n      <second>0</second>',
+  );
+
+  // A type with attributes and no elements, five levels down, is not cut and does not warn.
+  const levels = withSchema(
+    [
+      '<xs:element name="Root"><xs:complexType><xs:sequence><xs:element name="l2" type="tns:T2"/></xs:sequence></xs:complexType></xs:element>',
+      '<xs:complexType name="T2"><xs:sequence><xs:element name="l3" type="tns:T3"/></xs:sequence></xs:complexType>',
+      '<xs:complexType name="T3"><xs:sequence><xs:element name="l4" type="tns:T4"/></xs:sequence></xs:complexType>',
+      '<xs:complexType name="T4"><xs:sequence><xs:element name="l5" type="tns:T5"/></xs:sequence></xs:complexType>',
+      '<xs:complexType name="T5"><xs:attribute name="only" type="xs:int"/></xs:complexType>',
+    ].join('\n'),
+  );
+  const flat = sampleRequest(explain(levels), 'Op', { soap: '1.1', fill: true });
+  expect(flat.warnings).toEqual([]);
+  expect(flat.envelope).toContain('<l5 only="0"/>');
+  expect(flat.envelope).not.toContain('<!--');
+
+  // In RPC style a part with an element holds that element, expanded from the second level: three levels below it
+  // are written whole.
+  const rpcElement = withSchema(
+    [
+      '<xs:element name="Root"><xs:complexType><xs:sequence><xs:element name="c1" type="tns:T1"/></xs:sequence></xs:complexType></xs:element>',
+      '<xs:complexType name="T1"><xs:sequence><xs:element name="c2" type="tns:T2"/></xs:sequence></xs:complexType>',
+      '<xs:complexType name="T2"><xs:sequence><xs:element name="c3" type="xs:string"/></xs:sequence></xs:complexType>',
+    ].join('\n'),
+  ).replace('<soap:binding style="document"', '<soap:binding style="rpc"');
+  const held = sampleRequest(explain(rpcElement), 'Op', { soap: '1.1', fill: true });
+  expect(held.warnings).toEqual([
+    'The binding gives no namespace for the wrapper element, so it is written with none.',
+  ]);
+  expect(held.envelope).toContain('<c3>string</c3>');
+  expect(held.envelope).toContain('<body>\n        <tns:Root>');
 });

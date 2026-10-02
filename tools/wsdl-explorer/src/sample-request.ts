@@ -1,6 +1,7 @@
 import {
   NS_SOAP11_ENVELOPE,
   NS_SOAP12_ENVELOPE,
+  NS_XML,
   WsdlExplorerError,
   XSD_NAMESPACES,
   findComplexType,
@@ -36,6 +37,10 @@ export interface SampleResult {
 
 /** Complex types are expanded this many levels; deeper content is left out and marked with a comment. */
 const MAX_DEPTH = 4;
+/** A request has at most this many elements: a type with many children of a type with many children is cut. */
+const MAX_ELEMENTS = 2000;
+/** A type that extends a type that extends a type is followed this many levels, so a long chain cannot exhaust the stack. */
+const MAX_BASE_CHAIN = 50;
 
 /** A node of the envelope before it is written as text. */
 interface XmlNode {
@@ -51,6 +56,8 @@ interface Context {
   model: WsdlModel;
   fill: boolean;
   warnings: string[];
+  /** How many elements have been made from declarations so far. */
+  count: number;
 }
 
 function warn(context: Context, message: string): void {
@@ -186,8 +193,12 @@ function complexContent(context: Context, def: ComplexDef, target: XmlNode, dept
     // A type that extends another has the content of the other first.
     const baseKey = `${def.base.namespace}#${def.base.local}`;
     if (!isBuiltInType(def.base) && !seen.includes(baseKey)) {
-      const base = findComplexType(context.model, def.base);
-      if (base) complexContent(context, base, target, depth, [...seen, baseKey]);
+      if (seen.length > MAX_BASE_CHAIN) {
+        warn(context, `Types that extend other types are followed ${MAX_BASE_CHAIN} levels, no further.`);
+      } else {
+        const base = findComplexType(context.model, def.base);
+        if (base) complexContent(context, base, target, depth, [...seen, baseKey]);
+      }
     }
   }
   for (const attribute of def.attributes) {
@@ -206,11 +217,21 @@ function complexContent(context: Context, def: ComplexDef, target: XmlNode, dept
     warn(context, `Elements nested more than ${MAX_DEPTH} levels deep are left out and marked with a comment.`);
     return;
   }
-  for (const child of def.elements) target.children.push(elementNode(context, child, depth + 1, seen));
+  for (const child of def.elements) {
+    if (context.count >= MAX_ELEMENTS) {
+      const left = node('', '');
+      left.comment = '...';
+      target.children.push(left);
+      warn(context, 'The sample request is cut at 2,000 elements.');
+      break;
+    }
+    target.children.push(elementNode(context, child, depth + 1, seen));
+  }
 }
 
 /** The node an element declaration is written as, with its content expanded from `depth`. */
 function elementNode(context: Context, decl: ElementDecl, depth: number, seen: string[]): XmlNode {
+  context.count++;
   let declaration = decl;
   if (decl.ref) {
     const target = findElement(context.model, decl.ref);
@@ -309,6 +330,11 @@ function prefixesFor(
   let counter = 0;
   for (const namespace of namespaces) {
     if (map.has(namespace)) continue;
+    // The XML namespace has the prefix xml and needs no declaration.
+    if (namespace === NS_XML) {
+      map.set(namespace, 'xml');
+      continue;
+    }
     let prefix = preferred.get(namespace);
     if (prefix === undefined || taken.has(prefix) || !NC_NAME.test(prefix)) {
       do counter++;
@@ -320,7 +346,10 @@ function prefixesFor(
   }
   return {
     of: (namespace) => map.get(namespace) ?? 'ns0',
-    declarations: () => [...map].map(([namespace, prefix]) => `xmlns:${prefix}="${escapeXml(namespace)}"`),
+    declarations: () =>
+      [...map]
+        .filter(([namespace]) => namespace !== NS_XML)
+        .map(([namespace, prefix]) => `xmlns:${prefix}="${escapeXml(namespace)}"`),
   };
 }
 
@@ -394,7 +423,7 @@ export function sampleRequest(model: WsdlModel, operation: string, options: Samp
       `The document has no operation named ${wanted}. Its operations are ${names.join(', ')}.`,
     );
   }
-  const context: Context = { model, fill: options.fill, warnings: [] };
+  const context: Context = { model, fill: options.fill, warnings: [], count: 0 };
   const soap12 = options.soap === '1.2';
   const envelopeNamespace = soap12 ? NS_SOAP12_ENVELOPE : NS_SOAP11_ENVELOPE;
   const envelopePrefix = soap12 ? 'env' : 'soapenv';

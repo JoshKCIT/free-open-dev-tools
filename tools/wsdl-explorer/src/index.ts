@@ -6,6 +6,7 @@ import {
   NS_SOAP11_BINDING,
   NS_SOAP12_BINDING,
   NS_WSDL,
+  NS_XML,
   WsdlExplorerError,
   XSD_NAMESPACES,
   findComplexType,
@@ -15,16 +16,11 @@ import {
   findSimpleType,
   isBuiltInType,
   type AttributeDecl,
-  type BindingOperation,
-  type BodyBinding,
   type ComplexDef,
   type ElementDecl,
-  type HeaderBinding,
   type MessageBinding,
   type NotFound,
   type NotLoaded,
-  type PortTypeOperation,
-  type Protocol,
   type QNameRef,
   type SchemaInfo,
   type SimpleDef,
@@ -44,7 +40,6 @@ export const MAX_INPUT_BYTES = 2097152;
 
 /** The WSDL 2.0 description namespace, to tell it apart from 1.1. */
 const NS_WSDL20 = 'http://www.w3.org/ns/wsdl';
-const NS_XML = 'http://www.w3.org/XML/1998/namespace';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Reading the XML
@@ -596,6 +591,23 @@ function parseRoot(text: string): XNode {
   return root;
 }
 
+/** Elements nest at most this deep: a crafted document could otherwise exhaust the stack of the walks below. */
+const MAX_NESTING = 200;
+
+/** Refuses a document whose elements nest deeper than `MAX_NESTING`, counted without recursion. */
+function checkNesting(root: XNode): void {
+  const stack: { node: XNode; depth: number }[] = [{ node: root, depth: 1 }];
+  while (stack.length > 0) {
+    const { node: current, depth } = stack.pop()!;
+    if (depth > MAX_NESTING) {
+      throw new WsdlExplorerError(`The document nests elements more than ${MAX_NESTING} levels deep.`, {
+        line: lineOf(current),
+      });
+    }
+    for (const child of elementsOf(current)) stack.push({ node: child, depth: depth + 1 });
+  }
+}
+
 /**
  * Explains a pasted WSDL 1.1 document: its services, ports, bindings, operations, messages and inline schemas. A
  * reference is resolved through the document's own namespace declarations, by namespace URI and local name, and one
@@ -616,6 +628,7 @@ export function explainWsdl(text: string): WsdlModel | null {
     );
   }
 
+  checkNesting(root);
   const model: WsdlModel = {
     name: attr(root, 'name'),
     targetNamespace: attr(root, 'targetNamespace'),

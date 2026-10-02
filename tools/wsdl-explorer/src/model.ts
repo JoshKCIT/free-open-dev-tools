@@ -26,6 +26,8 @@ export const XSD_NAMESPACES: readonly string[] = [
   'http://www.w3.org/2000/10/XMLSchema',
   'http://www.w3.org/1999/XMLSchema',
 ];
+/** The namespace of the xml prefix, which is never declared and never bound to another prefix. */
+export const NS_XML = 'http://www.w3.org/XML/1998/namespace';
 /** The SOAP 1.1 encoding namespace; its types (Array and the others) are not defined in the document. */
 export const NS_SOAP_ENCODING = 'http://schemas.xmlsoap.org/soap/encoding/';
 /** The SOAP 1.1 envelope namespace and the SOAP 1.2 one. */
