@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { writeZip } from './fixture-files';
 
 /**
  * The browser proof, shared by every data tool of phase 13 that opens a real file, that the file stays in the page
@@ -182,6 +183,51 @@ const NOTES_SQLITE_BASE64 = [
   'Rk9EVC1EQVRBLUNBTkFSWQ==',
 ];
 
+/**
+ * A one-sheet .xlsx package, built in the test as a store-only zip: A1 is an inline string holding the marker and B1 the
+ * number 42. The parts are the ones ECMA-376 Part 1 (SpreadsheetML) needs, written as strings, so the file is real and
+ * binary (a zip) while the spec carries no binary file.
+ */
+function markerWorkbook(): Buffer {
+  const text = (value: string) => Uint8Array.from(Buffer.from(value, 'utf8'));
+  const main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const rel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const pkg = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  const zip = writeZip([
+    {
+      name: '[Content_Types].xml',
+      content: text(
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
+      ),
+    },
+    {
+      name: '_rels/.rels',
+      content: text(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+      ),
+    },
+    {
+      name: 'xl/workbook.xml',
+      content: text(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${main}" xmlns:r="${rel}"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      ),
+    },
+    {
+      name: 'xl/_rels/workbook.xml.rels',
+      content: text(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${pkg}"><Relationship Id="rId1" Type="${rel}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
+      ),
+    },
+    {
+      name: 'xl/worksheets/sheet1.xml',
+      content: text(
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="${main}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${MARKER}</t></is></c><c r="B1"><v>42</v></c></row></sheetData></worksheet>`,
+      ),
+    },
+  ]);
+  return Buffer.from(zip);
+}
+
 const FILE_CASES: FileCase[] = [
   {
     id: 'sqlite-viewer',
@@ -191,6 +237,17 @@ const FILE_CASES: FileCase[] = [
       buffer: fromBase64(NOTES_SQLITE_BASE64),
     }),
     fill: { sql: 'select body from notes;' },
+    pressRun: true,
+    expectText: MARKER,
+  },
+  {
+    id: 'spreadsheet-converter',
+    // The page's default mode reads a file, so no control is set first.
+    file: () => ({
+      name: 'marker.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: markerWorkbook(),
+    }),
     pressRun: true,
     expectText: MARKER,
   },
