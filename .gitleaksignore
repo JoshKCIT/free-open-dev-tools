@@ -52,3 +52,5 @@ f5755a1605a43bd7e153e4aa035800b7b03f9386:e2e/db-password-hash.spec.ts:generic-ap
 # Keys that `openssl enc -P` derived from a test passphrase and a fixed test salt, pinned as interop fixtures.
 9aab145f380c41e05ece00d05f7d0c1835833991:tools/aes-encryption/test/openssl.test.ts:generic-api-key:106
 9aab145f380c41e05ece00d05f7d0c1835833991:tools/aes-encryption/test/openssl.test.ts:generic-api-key:109
+# A made-up value (k-1234567890) inside the HAR viewer's own masking test data, not a credential.
+7c3e996aee2cb05868d9c6c239bb164f1ce46704:tools/har-viewer/test/index.test.ts:generic-api-key:495
