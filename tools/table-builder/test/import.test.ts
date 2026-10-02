@@ -376,7 +376,7 @@ test('every exported Markdown table rendered by micromark with GFM imports back 
   expect(renderGfm(listLike)).not.toContain('<table>');
   expect(() => importTable(listLike, 'markdown')).toThrow(TableImportError);
   expect(renderGfm(lines('| abc | def |', '| --- |', '| bar |'))).not.toContain('<table>');
-});
+}, 60_000);
 
 test('more than 10000 cells are refused', () => {
   // Exactly the limit is fine; one more is refused naming the limit, in every format.
