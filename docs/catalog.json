@@ -1258,5 +1258,12 @@
     "category": "json-data",
     "tier": 3,
     "summary": "Run a jq filter against pasted JSON and see its output or error, with a time limit for runaway filters."
+  },
+  {
+    "id": "spreadsheet-converter",
+    "name": "Spreadsheet Converter (XLSX, CSV, TSV, JSON, XML)",
+    "category": "json-data",
+    "tier": 3,
+    "summary": "Turn an .xlsx sheet into CSV, TSV, JSON or XML, or CSV, TSV and JSON into an .xlsx file, without uploading anything."
   }
 ]

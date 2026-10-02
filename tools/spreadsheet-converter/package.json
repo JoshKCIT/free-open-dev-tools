@@ -1,0 +1,52 @@
+{
+  "name": "@fodt/spreadsheet-converter",
+  "version": "1.0.0",
+  "description": "Turn an .xlsx sheet into CSV, TSV, JSON or XML, or CSV, TSV and JSON into an .xlsx file, without uploading anything.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "xlsx",
+    "excel",
+    "spreadsheet",
+    "spreadsheetml",
+    "openxml",
+    "csv",
+    "tsv",
+    "json",
+    "xml",
+    "convert"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "fflate": "0.8.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/spreadsheet-converter"
+  }
+}
