@@ -242,6 +242,7 @@ const SENSITIVE_RULES = [
   'The word rule for the name of a header, a query, form or posted parameter, a cookie or a body member: the name holds token, secret, password, passwd, credential, session or signature, or one of its words is key, sig, auth, pwd, pass or passcode (words are split at anything that is not a letter or digit and between a lower and an upper case letter, so x-goog-api-key and apiKey are found, and monkey, design and author are not). RFC 6750 names access_token.',
   'Parameter lists are split at & and at ; (a=1;token=abc).',
   'In the user information of an address (everything before the last @ ahead of the first slash): everything after the first colon (RFC 3986 section 3.2.1), and a user name shaped like a token (a long run of letters and digits, or a prefix such as ghp_).',
+  'An address inside a header value (Referer, Location, Origin, Link, Content-Location and Refresh are always read as addresses, any other header where its value holds ://), inside a parameter value (a redirect or return address) and the redirect address of a response: the rules for an address above apply to it.',
   'Any value shaped like a JSON Web Token (RFC 7519) or a Bearer credential (RFC 6750), also inside a body.',
   'In a body: form fields and JSON members with those names.',
   'A masked value shows its first min(4, floor(length / 4)) characters and its length; a password, a secret and a value named like one show no character.',

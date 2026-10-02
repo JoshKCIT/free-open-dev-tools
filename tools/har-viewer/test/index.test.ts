@@ -1097,9 +1097,10 @@ it('a redirect address is masked, a posted body is shown only with bodies, and a
   const hidden = requestDetail(har, 1, { reveal: false, bodies: false });
   expect(hidden.response.redirectURL).toBe('https://example.com/cb#access_token=abcd… (16 characters)&state=1');
   expect(hidden.postData).toEqual({ mimeType: 'text/plain', params: [] });
-  // No query list, so the token in the address is counted; the redirect is not part of the count.
-  expect(hidden.flags).toBe(1);
-  expect(listRequests(har, { ...LIST }).rows[0]!.flags).toBe(1);
+  // No query list, so the token in the address is counted, and so is the one in the redirect address that is masked
+  // in the same view (B-CR-02: the count follows the masking).
+  expect(hidden.flags).toBe(2);
+  expect(listRequests(har, { ...LIST }).rows[0]!.flags).toBe(2);
   expect(requestDetail(har, 1, { reveal: true, bodies: false }).response.redirectURL).toBe(
     `https://example.com/cb#access_token=${secret}&state=1`,
   );

@@ -1,6 +1,6 @@
 import meta from './meta.json';
 import { parseJsonText } from './json-text';
-import { isSensitive, maskBodyText, maskUrl, maskValue, type ValueKind } from './sensitive';
+import { maskBodyText, maskNameValue, maskUrl, type ValueKind } from './sensitive';
 
 export { meta };
 
@@ -262,8 +262,8 @@ export interface CookieRow extends NameValue {
 function pairOf(kind: ValueKind, item: JsonObject, reveal: boolean): NameValue {
   const name = textOf(item.name);
   const value = textOf(item.value);
-  const sensitive = isSensitive(kind, name, value);
-  return { name, value: sensitive && !reveal ? maskValue(value, name) : value, sensitive };
+  const masked = maskNameValue(kind, name, value);
+  return { name, value: masked.sensitive && !reveal ? masked.value : value, sensitive: masked.sensitive };
 }
 
 function cookieOf(item: JsonObject, reveal: boolean): CookieRow {
@@ -280,19 +280,21 @@ function cookieOf(item: JsonObject, reveal: boolean): CookieRow {
 /** How many values of a list the rules flag. */
 function countFlagged(kind: ValueKind, items: JsonObject[]): number {
   let count = 0;
-  for (const item of items) if (isSensitive(kind, textOf(item.name), textOf(item.value))) count++;
+  for (const item of items) if (maskNameValue(kind, textOf(item.name), textOf(item.value)).sensitive) count++;
   return count;
 }
 
 /**
- * How many sensitive values an entry holds in its headers, cookies, parameters and address. The parameters of the
- * address are counted only when the entry has no query list of its own, because the list repeats them.
+ * How many sensitive values an entry holds in its headers, cookies, parameters, address and redirect address, by the
+ * same rule that masks them in the list and the detail. The parameters of the address are counted only when the entry
+ * has no query list of its own, because the list repeats them. The contents of bodies are not counted.
  */
 function flagCount(raw: JsonObject): number {
   const request = objectOf(raw.request);
   const response = objectOf(raw.response);
   const query = objectsOf(request.queryString);
   const address = maskUrl(textOf(request.url));
+  const redirect = maskUrl(textOf(response.redirectURL));
   return (
     countFlagged('header', objectsOf(request.headers)) +
     countFlagged('cookie', objectsOf(request.cookies)) +
@@ -301,7 +303,9 @@ function flagCount(raw: JsonObject): number {
     countFlagged('header', objectsOf(response.headers)) +
     countFlagged('cookie', objectsOf(response.cookies)) +
     address.userinfo +
-    (query.length === 0 ? address.params : 0)
+    (query.length === 0 ? address.params : 0) +
+    redirect.userinfo +
+    redirect.params
   );
 }
 

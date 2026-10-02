@@ -293,3 +293,84 @@ it('headers named like a token, a key or a signature are masked, flagged and cou
   expect(detail.flags).toBe(4);
   expect(listRequests(recording, { ...LIST }).rows[0]!.flags).toBe(4);
 });
+
+const SECRET16 = 'abcdefghijklmnop';
+
+it('an address inside a header value is masked like any address: Referer, Location, Origin, Link, Content-Location, Refresh and a plain header', () => {
+  const headers = [
+    { name: 'Referer', value: `https://app.example/cb?access_token=${SECRET16}&x=1` },
+    { name: 'Location', value: `https://app.example/next#access_token=${SECRET16}&state=1` },
+    { name: 'Origin', value: 'https://app.example' },
+    {
+      name: 'Link',
+      value: `<https://api.example/items?page=2&token=${SECRET16}>; rel="next", </rel?sig=abcdefghijkl>; rel="prev"`,
+    },
+    { name: 'Content-Location', value: `/cb?access_token=${SECRET16}` },
+    { name: 'Refresh', value: `0; url=https://x.example/y?token=${SECRET16}` },
+    { name: 'X-Note', value: `see https://x.example/y?token=${SECRET16} for details` },
+    { name: 'X-Question', value: 'what?a=b' },
+    { name: 'Referrer', value: `https://u:pw@host.example/` },
+    { name: 'X-Plain', value: 'https://example.com/ok?page=2' },
+  ];
+  const recording = har([entry({ request: { headers }, response: { headers: [headers[1]!] } })]);
+  const hidden = requestDetail(recording, 1, { reveal: false, bodies: false });
+  expect(hidden.headers.map((h) => [h.value, h.sensitive])).toEqual([
+    ['https://app.example/cb?access_token=abcd… (16 characters)&x=1', true],
+    ['https://app.example/next#access_token=abcd… (16 characters)&state=1', true],
+    ['https://app.example', false],
+    [
+      '<https://api.example/items?page=2&token=abcd… (16 characters)>; rel="next", </rel?sig=abc… (12 characters)>; rel="prev"',
+      true,
+    ],
+    ['/cb?access_token=abcd… (16 characters)', true],
+    ['0; url=https://x.example/y?token=abcd… (16 characters)', true],
+    ['see https://x.example/y?token=abcd… (16 characters) for details', true],
+    ['what?a=b', false],
+    ['https://u:… (2 characters)@host.example/', true],
+    ['https://example.com/ok?page=2', false],
+  ]);
+  expect(hidden.response.headers[0]).toMatchObject({ sensitive: true });
+  // The flag count counts every one of them: seven request headers, one response header.
+  expect(hidden.flags).toBe(8);
+  expect(listRequests(recording, { ...LIST }).rows[0]!.flags).toBe(8);
+  // Shown in clear when asked, still flagged.
+  const shown = requestDetail(recording, 1, { reveal: true, bodies: false });
+  expect(shown.headers.map((h) => h.value)).toEqual(headers.map((h) => h.value));
+  expect(shown.flags).toBe(8);
+  expect(isSensitive('header', 'Referer', `https://app.example/cb?access_token=${SECRET16}`)).toBe(true);
+  expect(isSensitive('header', 'Referer', 'https://app.example/cb?page=2')).toBe(false);
+});
+
+it('an address inside the value of a parameter is masked, and a masked redirect address is counted', () => {
+  const nested = `https://app.example/cb?access_token=${SECRET16}`;
+  const recording = har([
+    entry({
+      url: `https://x.example/p?redirect_uri=${encodeURIComponent(nested)}&a=1`,
+      request: { queryString: [{ name: 'redirect_uri', value: nested }] },
+      response: { redirectURL: `https://x.example/cb?token=${SECRET16}` },
+    }),
+  ]);
+  const hidden = requestDetail(recording, 1, { reveal: false, bodies: false });
+  expect(hidden.query[0]).toMatchObject({
+    value: 'https://app.example/cb?access_token=abcd… (16 characters)',
+    sensitive: true,
+  });
+  expect(hidden.url).toBe(
+    'https://x.example/p?redirect_uri=https://app.example/cb?access_token=abcd… (16 characters)&a=1',
+  );
+  expect(hidden.response.redirectURL).toBe('https://x.example/cb?token=abcd… (16 characters)');
+  // The query list (1), the redirect address (1). The address of the request is not counted again: the list has it.
+  expect(hidden.flags).toBe(2);
+  expect(listRequests(recording, { ...LIST }).rows[0]!.flags).toBe(2);
+  expect(maskUrl(`https://x/p?next=${encodeURIComponent(nested)}`)).toEqual({
+    url: 'https://x/p?next=https://app.example/cb?access_token=abcd… (16 characters)',
+    userinfo: 0,
+    params: 1,
+  });
+  // An address with nothing sensitive inside a parameter is left exactly as written.
+  expect(maskUrl('https://x/p?next=https%3A%2F%2Fa.example%2Fb%3Fpage%3D2')).toEqual({
+    url: 'https://x/p?next=https%3A%2F%2Fa.example%2Fb%3Fpage%3D2',
+    userinfo: 0,
+    params: 0,
+  });
+});

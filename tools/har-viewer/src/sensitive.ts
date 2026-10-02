@@ -114,16 +114,67 @@ function nameIsSensitive(name: string): boolean {
 }
 
 /**
- * Whether a value is sensitive. A cookie value always is. A header or a parameter is by its name (the listed names, a
- * word in the name, or a part of it) and any value is by its shape (a JWT, a Bearer credential). An empty value has
- * nothing to hide.
+ * Whether a value is sensitive by its name or its shape. A cookie value always is. A header or a parameter is by its
+ * name (the listed names, a word in the name, or a part of it) and any value is by its shape (a JWT, a Bearer
+ * credential). An empty value has nothing to hide.
  */
-export function isSensitive(kind: ValueKind, name: string, value: string): boolean {
+function sensitiveByNameOrShape(kind: ValueKind, name: string, value: string): boolean {
   if (value === '') return false;
   if (looksLikeJwt(value) || looksLikeBearer(value)) return true;
   if (kind === 'cookie') return true;
   if (kind === 'header' && SENSITIVE_HEADERS.includes(name.trim().toLowerCase())) return true;
   return nameIsSensitive(name);
+}
+
+/**
+ * Header names (lower case) whose value is an address or holds addresses (RFC 9110 sections 10.2.2, 10.1.3, 8.7.1 and
+ * 10.2.4; RFC 8288 for Link; the Refresh header's `url=`): their value is read as an address even when it is a relative
+ * one such as `/cb?access_token=...`. In any other header a value is read as an address only where it holds `://`.
+ */
+export const ADDRESS_HEADERS: readonly string[] = [
+  'location',
+  'referer',
+  'referrer',
+  'origin',
+  'link',
+  'content-location',
+  'refresh',
+  'sourcemap',
+  'x-sourcemap',
+  'x-original-url',
+  'x-rewrite-url',
+];
+
+/** How many levels of address inside the value of a parameter inside an address are read. */
+const MAX_NESTING = 2;
+
+/** A value as it is shown and whether the rules flagged it. */
+export interface MaskedValue {
+  value: string;
+  sensitive: boolean;
+}
+
+/**
+ * The one rule every view uses for a name and value pair: the value masked, and whether anything in it was sensitive.
+ * A value is sensitive as a whole when its name or its shape says so, and the value is then masked to its first
+ * characters and its length. Otherwise, in a header or a parameter, the addresses it holds are masked in place (the
+ * password in their user information, the sensitive parameters of their query and fragment), and the value is
+ * sensitive when any was masked.
+ */
+export function maskNameValue(kind: ValueKind, name: string, value: string): MaskedValue {
+  if (value === '') return { value, sensitive: false };
+  if (sensitiveByNameOrShape(kind, name, value)) return { value: maskValue(value, name), sensitive: true };
+  if (kind === 'cookie') return { value, sensitive: false };
+  const lower = name.trim().toLowerCase();
+  let mode: AddressMode = 'text';
+  if (kind === 'header' && ADDRESS_HEADERS.includes(lower)) mode = lower === 'link' ? 'link' : 'address';
+  const masked = maskAddressText(value, mode);
+  return masked.count > 0 ? { value: masked.text, sensitive: true } : { value, sensitive: false };
+}
+
+/** Whether a value is sensitive: by its name, by its shape, or because it holds an address with something to mask. */
+export function isSensitive(kind: ValueKind, name: string, value: string): boolean {
+  return maskNameValue(kind, name, value).sensitive;
 }
 
 /** Whether a name is one of a password (password, passwd, pwd, pass, passcode) or a secret: its value shows no character. */
@@ -165,16 +216,24 @@ function decode(text: string): string {
  * takes everything after its equals sign up to the next `&`, semicolons included; any other value is searched for
  * `;name=value` pairs of its own (`a=1;token=...`).
  */
-export function maskPairs(text: string): { text: string; count: number } {
+export function maskPairs(text: string, depth = 0): { text: string; count: number } {
   let count = 0;
   const pieces = text.split('&').map((piece) => {
     const equals = piece.indexOf('=');
     if (equals < 0) return piece;
     const name = decode(piece.slice(0, equals));
     const value = decode(piece.slice(equals + 1));
-    if (isSensitive('param', name, value)) {
+    if (sensitiveByNameOrShape('param', name, value)) {
       count++;
       return `${piece.slice(0, equals + 1)}${maskValue(value, name)}`;
+    }
+    // An address inside the value (a redirect or a return address) is masked in place.
+    if (depth < MAX_NESTING && value.includes('://')) {
+      const inner = maskAddressText(value, 'text', depth + 1);
+      if (inner.count > 0) {
+        count += inner.count;
+        return `${piece.slice(0, equals + 1)}${inner.text}`;
+      }
     }
     const rest = piece.slice(equals + 1);
     if (!rest.includes(';')) return piece;
@@ -183,7 +242,7 @@ export function maskPairs(text: string): { text: string; count: number } {
       if (position === 0 || innerEquals < 0) return part;
       const innerName = decode(part.slice(0, innerEquals));
       const innerValue = decode(part.slice(innerEquals + 1));
-      if (!isSensitive('param', innerName, innerValue)) return part;
+      if (!sensitiveByNameOrShape('param', innerName, innerValue)) return part;
       count++;
       return `${part.slice(0, innerEquals + 1)}${maskValue(innerValue, innerName)}`;
     });
@@ -234,7 +293,7 @@ function maskUserInfo(authority: string): string | undefined {
  * application should not render as clear text any data after the first colon) and a user name shaped like a token, the sensitive parameters of its query
  * and, for an address that carries a fragment of parameters, of its fragment. `count` is how many were masked.
  */
-export function maskUrl(url: string): { url: string; userinfo: number; params: number } {
+export function maskUrl(url: string, depth = 0): { url: string; userinfo: number; params: number } {
   const split = /^([^?#]*)(\?[^#]*)?(#[\s\S]*)?$/.exec(url);
   if (!split) return { url, userinfo: 0, params: 0 };
   let base = split[1]!;
@@ -252,16 +311,90 @@ export function maskUrl(url: string): { url: string; userinfo: number; params: n
     }
   }
   if (query.length > 1) {
-    const masked = maskPairs(query.slice(1));
+    const masked = maskPairs(query.slice(1), depth);
     params += masked.count;
     query = `?${masked.text}`;
   }
   if (fragment.length > 1 && fragment.includes('=')) {
-    const masked = maskPairs(fragment.slice(1));
+    const masked = maskPairs(fragment.slice(1), depth);
     params += masked.count;
     fragment = `#${masked.text}`;
   }
   return { url: `${base}${query}${fragment}`, userinfo, params };
+}
+
+/** How an address inside a text is found: `text` reads only what holds `://`, `address` and `link` read the whole value. */
+type AddressMode = 'text' | 'address' | 'link';
+
+const SCHEME_CHARACTER = /[A-Za-z0-9+.-]/;
+const LETTER = /[A-Za-z]/;
+
+/** A character that ends an address found inside a text: white space, an angle bracket or a quote. */
+function endsAddress(character: string): boolean {
+  return character === '<' || character === '>' || character === '"' || character === "'" || /\s/.test(character);
+}
+
+/** Masks every address with a scheme (`scheme://...`) inside a text, in place, and counts what was masked. */
+function maskSchemeAddresses(text: string, depth: number): { text: string; count: number } {
+  let out = '';
+  let copied = 0;
+  let floor = 0;
+  let from = 0;
+  let count = 0;
+  for (;;) {
+    const at = text.indexOf('://', from);
+    if (at < 0) break;
+    let start = at;
+    while (start > floor && SCHEME_CHARACTER.test(text[start - 1]!)) start--;
+    while (start < at && !LETTER.test(text[start]!)) start++;
+    let end = at + 3;
+    while (end < text.length && !endsAddress(text[end]!)) end++;
+    from = end;
+    floor = end;
+    if (start === at) continue;
+    const masked = maskUrl(text.slice(start, end), depth);
+    const found = masked.userinfo + masked.params;
+    if (found === 0) continue;
+    out += text.slice(copied, start) + masked.url;
+    copied = end;
+    count += found;
+  }
+  return { text: out + text.slice(copied), count };
+}
+
+/** Masks the addresses between the angle brackets of a Link header (RFC 8288), and counts what was masked. */
+function maskLinkAddresses(text: string, depth: number): { text: string; count: number } {
+  let out = '';
+  let copied = 0;
+  let from = 0;
+  let count = 0;
+  for (;;) {
+    const open = text.indexOf('<', from);
+    if (open < 0) break;
+    const close = text.indexOf('>', open + 1);
+    if (close < 0) break;
+    from = close + 1;
+    const masked = maskUrl(text.slice(open + 1, close), depth);
+    const found = masked.userinfo + masked.params;
+    if (found === 0) continue;
+    out += text.slice(copied, open + 1) + masked.url;
+    copied = close;
+    count += found;
+  }
+  return { text: out + text.slice(copied), count };
+}
+
+/**
+ * Masks the addresses inside a text and counts what was masked. In `text` mode only an address with a scheme is read; in
+ * `address` mode a value with no scheme (a relative address such as `/cb?token=...`) is read as an address as a whole;
+ * `link` reads the addresses between the angle brackets of a Link header.
+ */
+function maskAddressText(text: string, mode: AddressMode, depth = 0): { text: string; count: number } {
+  if (mode === 'link' && text.includes('<')) return maskLinkAddresses(text, depth);
+  const found = maskSchemeAddresses(text, depth);
+  if (found.count > 0 || mode === 'text' || text.includes('://')) return found;
+  const whole = maskUrl(text, depth);
+  return { text: whole.url, count: whole.userinfo + whole.params };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
