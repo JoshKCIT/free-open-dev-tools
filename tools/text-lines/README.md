@@ -32,8 +32,8 @@ Treats pasted text as a list of lines and reshapes it: sort by code point, natur
 - Sort by code point compares UTF-16 code units, not full Unicode code points, so characters outside the basic multilingual plane may not sort the way a person expects.
 - Length sort counts Unicode code points, not user-perceived characters or display width, so a decomposed accented letter counts as more than one character and a multi-code-point emoji counts several
 - Filter and dedupe match a literal substring or a whole line, never a regular expression.
-- Wrap counts characters (code points), so a wide East Asian character counts as one; it drops the space at a break, unlike fold -s.
-- Sort as IP orders IPv4 before IPv6, then by address, then by prefix length; other lines follow in their original order.
+- Wrap counts characters (code points), so a wide East Asian character counts as one; it drops the space at a break, unlike fold -s. A line that already fits is left exactly as it is, trailing spaces included, while a line that is wrapped loses the spaces at its end.
+- Sort as IP orders IPv4 before IPv6, then by address, then by prefix length; other lines, blank lines included, follow in their original order, and the note that says how many lines were not addresses leaves blank lines (and a trailing line break) out of its count.
 - Tabs to spaces follows the tab stops of the expand command; spaces to tabs converts leading runs unless asked.
 - Tab conversion counts every character as one column, whatever its display width, and wrap breaks only at spaces, never at hyphens or tabs.
 - An address with a zone identifier such as %eth0, or an IPv4 address written with leading zeros, is not read as an address and is sorted with the other lines.

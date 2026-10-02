@@ -39,8 +39,10 @@ Infers a type model from a pasted JSON, YAML or XML sample and renders typed sou
 - YAML and XML input give the same types as the equivalent JSON; XML attributes become fields named with @_ and text beside them #text.
 - XML text is read as numbers and booleans only while Read numbers and booleans is on; with it off every XML value is a string.
 - With Read numbers and booleans on, XML text counts as a number only when it is written the way JSON writes one (no leading zeros, no plus sign, no hexadecimal), so 01234 and +4412 stay strings.
-- YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, an alias count at the library's limit of 100 and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.
+- YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, an alias count at the library's limit of 100, an expansion past 2,000,000 values once every alias is copied out, and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.
 - A YAML anchor and its aliases are expanded into separate copies, and a YAML tag outside the core schema is not interpreted; each is reported as a warning.
+- On the site, a YAML sample is read in a background worker with a fixed 5 second time limit and a Cancel button, because checking a mapping's keys for duplicates takes time that grows with the square of the key count (about 2 seconds at 20,000 keys); a JSON or XML sample is read on the page with no such limit
+- A YAML merge key (<<) stays an ordinary key and a %YAML 1.1 directive switches the document to the YAML 1.1 rules (yes is true, 0777 is octal), each reported as a warning; two keys that become the same name as text (1 and "1", null and an empty name) are refused with their line.
 - An XML document with a DOCTYPE is refused before it is read, so no entity is ever declared, loaded or expanded; comments, processing instructions and the XML declaration are dropped with a warning.
 
 ## Ambiguous cases, and what this does about them
@@ -86,7 +88,7 @@ jsonToCode('{"id":1,"name":"Ada"}', { language: 'typescript', rootName: 'User' }
 // { output: 'export interface User {\n  id: number;\n  name: string;\n}\n', warnings: [] }
 ```
 
-`inferModel` builds one language-independent model shared by every emitter; each `emit-<language>.ts` file renders that model and returns its own extra warnings alongside the model's own structural ones, including `emit-protobuf.ts`, `emit-swift.ts` and `emit-dart.ts`. `naming.ts` holds every language's fetched keyword list and escaping rule. `valueToCode` takes an already parsed value, so any reader reaches the same generators; `jsonToCode` reads JSON unless `inputFormat` says `yaml` or `xml`, and `parseValues` turns XML text written like a JSON number or boolean into one.
+`inferModel` builds one language-independent model shared by every emitter; each `emit-<language>.ts` file renders that model and returns its own extra warnings alongside the model's own structural ones, including `emit-protobuf.ts`, `emit-swift.ts` and `emit-dart.ts`. `naming.ts` holds every language's fetched keyword list and escaping rule. `valueToCode` takes an already parsed value, so any reader reaches the same generators; `jsonToCode` reads JSON unless `inputFormat` says `yaml` or `xml`, and `parseValues` turns XML text written like a JSON number or boolean into one (off by default in the package, so every XML value is a string unless you pass `parseValues: true`; the page's Read numbers and booleans box starts on).
 
 ## Dependencies
 

@@ -22,7 +22,7 @@ Converts a pasted document between JSON, YAML, TOML, XML, CSV and TSV in any dir
 - The YAML 1.2 core schema, so unquoted yes and no stay strings rather than becoming booleans
 - TOML dates and times, read as strings with a warning since JSON and YAML core scalars have no date type
 - TOML tables, arrays of tables and inline tables round tripping through JSON and back
-- A YAML alias bomb refused by an alias-count limit instead of being expanded
+- A YAML alias bomb refused instead of being expanded: by the library's alias-count limit, and by a limit of 2,000,000 values once every alias is copied out (an anchored list of 100,000 items used 99 times is 9.9 million)
 - A key named __proto__ or constructor surviving every conversion as an ordinary key
 - A parse error reported with a line and column for both YAML and TOML input
 
@@ -31,18 +31,23 @@ Converts a pasted document between JSON, YAML, TOML, XML, CSV and TSV in any dir
 - JSON has no comments; a YAML comment survives only a YAML to YAML conversion, never a conversion to JSON or TOML
 - TOML has no comment syntax the reader keeps, so every TOML input's comments are dropped even converting TOML to TOML
 - TOML has no null; a null anywhere in the input is refused by its RFC 6901 path rather than being dropped, since TOML libraries otherwise drop it silently
+- A YAML merge key (<<) is read as an ordinary key named << and a %YAML 1.1 directive switches that document to the YAML 1.1 rules (yes is true, 0777 is octal), each with a warning; two keys that become the same name as text (1 and "1", null and an empty name) are refused with their line, except in a YAML to YAML conversion, which keeps them
 - A YAML tag outside the core schema, and a YAML anchor or alias, are resolved to a plain copy on output; the tag or the sharing is not preserved
 - TOML has no distinct date type on the JSON/YAML side of a conversion; a TOML date or time becomes a string
+- A YAML timestamp written with the !!timestamp tag becomes ISO 8601 text with a warning; binary data (!!binary), a set (!!set) or an ordered map (!!omap) is refused with its path, because no other format here can hold it; a YAML to YAML conversion keeps all of them as written
 - TOML output lists plain keys before any table, which can change the input's key order
 - A JSON number beyond double precision is rounded, the same limit JSON.parse itself has
+- Numbers written to XML, CSV and TSV are written the way JavaScript writes a number: negative zero as 0, 1e21 as 1e+21, and a number too large for a double (1e999) as Infinity, which is not a JSON number
 - Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0
 - Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; the other sources have no such limit
 - XML attributes become keys starting with @_ (you can change the prefix), element text sits under #text when the element also has attributes or children, and repeated elements become arrays.
 - CSV and TSV output flattens nested objects into dotted column names; an array inside a record, a key containing a dot, or rows of unequal length are refused with their path.
 - Records with different keys share one header of every key in order of first appearance; missing values become empty cells, with a warning.
 - CSV and TSV values are text unless Infer types is on; whole numbers beyond 2^53 stay text.
+- CSV and TSV cells are written exactly as they are, so a cell that starts with =, +, - or @ is read by a spreadsheet program as a formula; this tool does not prefix or escape such cells, so check data from an untrusted source before opening the file in a spreadsheet
+- In a table with one column, CSV writes an empty value as "" so the record is not taken for the end of the text; TSV can only write a blank line there and says so in a warning, and a blank line at the end of TSV text is ignored when it is read back
 - XML to JSON to XML loses comments, processing instructions, the XML declaration and the difference between CDATA and text.
-- Spaces and line breaks around XML element text are trimmed, and an entity other than the five predefined ones and numeric references is kept as written
+- Spaces, tabs and line breaks at the two ends of an XML element's text are trimmed once (words around a child element keep the space between them), text that is only white space is dropped, a CDATA section and an attribute value are never trimmed, and an entity other than the five predefined ones and numeric references is kept as written
 - An XML document has one root element; an element that mixes text with child elements keeps its text together under #text, so the text's place among the elements is lost, and a one item list and a single element look the same
 - JSON to CSV to JSON loses types unless Infer types is on, and never turns a dotted column name back into nested objects; TSV cannot hold a tab or a line break in a cell
 - Blank lines at the end of a CSV or TSV input are ignored, a header with no rows gives an empty list, and a nested XML document deeper than 512 levels is refused like every other format

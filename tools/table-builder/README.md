@@ -29,10 +29,10 @@ Builds a table cell by cell in an editable grid, or imports one from pasted HTML
 - JSON output never infers a type: every cell value is always a string, including numbers and true/false/null
 - CSV has no way to express column alignment or to mark a row as a header distinct from the data
 - A cell's own leading or trailing space is not kept in the Markdown or HTML export, because GFM trims the space between a table pipe and a cell's content; CSV and JSON keep it
-- Import reads the first table of pasted HTML, CSV, TSV or Markdown, up to 10,000 cells; the imported rows replace the grid for that run.
+- Import reads the first table of pasted HTML, CSV, TSV or Markdown, up to 10,000 cells, and a warning says how many tables the pasted HTML held when there was more than one; the imported rows replace the grid for that run.
 - HTML is read as a tree and never run; spans are expanded into repeated cells with a warning and nested tables are not read.
 - TSV export refuses a cell holding a tab or line break, because TSV has no quoting.
-- In HTML, white space written across source lines inside a cell is read as one space and the spaces at the start and end of each line are removed; in Markdown, formatting marks such as bold or links stay as typed text, while backslash escapes and character references are read.
+- In HTML, white space written across source lines inside a cell is read as one space and the spaces at the start and end of each line are removed, except inside a pre, whose lines and spaces are kept as written; in Markdown, formatting marks such as bold or links stay as typed text, while backslash escapes and character references are read.
 
 ## Ambiguous cases, and what this does about them
 

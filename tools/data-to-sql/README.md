@@ -33,6 +33,7 @@ Turns a JSON array of objects, or CSV text with a header row, into a CREATE TABL
 - Function calls and expressions in values are kept as text, with a warning; nothing is evaluated.
 - Statements that are not INSERT statements are skipped and counted; a CREATE TABLE column list names the columns of an INSERT that has none, and otherwise the columns are column_1 onwards.
 - Hex values (X'..' and 0x..) are shown as text starting with 0x, and in CSV rows a NULL cannot be told from an empty string; the page says so each time it happens.
+- CSV rows are written exactly as the values are, so a cell that starts with =, +, - or @ is read by a spreadsheet program as a formula; this tool does not prefix or escape such cells, so check data from an untrusted source before opening the file in a spreadsheet
 - A whole number beyond 2^53 keeps all its digits in the JSON text, but a program that reads JSON numbers as ordinary doubles may round it; the page says so.
 
 ## Ambiguous cases, and what this does about them
