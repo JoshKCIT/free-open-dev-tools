@@ -212,6 +212,15 @@ it('each option changes the output the way the jq manual says', () => {
   expect(run('1 2 3', '. * 10', { compact: true })).toBe('10\n20\n30');
 });
 
+it('a filter that starts with a dash is a filter, never an option', () => {
+  // Without a final -- jq would read a filter such as -c as its compact option and the run would not be the filter.
+  expect(runJq(engine, '1', '-.', COMPACT)!.output).toBe('-1');
+  expect(runJq(engine, '[5]', '-.[0]', COMPACT)!.output).toBe('-5');
+  const err = failure(() => runJq(engine, '1', '-c', COMPACT));
+  expect(err.message).toBe('c/0 is not defined at <top-level>');
+  expect(err.part).toBe('filter');
+});
+
 it('arguments become argjson pairs and a name that is not a jq identifier is refused', () => {
   const run = (filter: string, args: string) => runJq(engine, 'null', filter, { ...COMPACT, args })!.output;
   expect(run('[$x, $y]', '{"x": 5, "y": "s"}')).toBe('[5,"s"]');
