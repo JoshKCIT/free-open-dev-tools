@@ -1,6 +1,7 @@
 import { it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { convertData, DataConvertError } from '../src/index';
 import { readXmlValue, XmlValueError } from '../src/xml-read';
+import { writeXmlValue, isXmlName, XmlWriteError } from '../src/xml-write';
 
 // Extensible Markup Language (XML) 1.0, Fifth Edition: https://www.w3.org/TR/xml/
 //   section 2.4 (character data and the five predefined entities), 2.7 (CDATA sections, content is literal),
@@ -123,4 +124,86 @@ it('a DOCTYPE is refused before parsing and malformed XML names its line and col
   expect(() => readXmlValue('<a><b>', {})).toThrowError(XmlValueError);
   expect(() => readXmlValue('<a/><b/>', {})).toThrowError(XmlValueError);
   expect(() => readXmlValue('just text', {})).toThrowError(XmlValueError);
+});
+
+it('XML out wraps several top-level keys in root with a warning and refuses a key that is not an XML name with its path', () => {
+  const declaration = '<?xml version="1.0" encoding="UTF-8"?>\n';
+
+  // Two top-level keys cannot be two root elements, so they are wrapped in root and a warning says so.
+  const wrapped = writeXmlValue({ a: '1', b: '2' }, {});
+  expect(wrapped.xml).toBe(declaration + '<root>\n  <a>1</a>\n  <b>2</b>\n</root>');
+  expect(wrapped.warnings.join(' ')).toContain('more than one top-level key');
+
+  // One top-level key is the root element itself; the prefix and the text key write an attribute and the text.
+  const single = writeXmlValue({ book: { '@_id': '1', '#text': 'Moby' } }, {});
+  expect(single.xml).toBe(declaration + '<book id="1">Moby</book>');
+  expect(single.warnings).toEqual([]);
+
+  // A list under a key is that element repeated; one key holding a list would be several roots, so it is wrapped.
+  const repeated = writeXmlValue({ a: ['1', '2'] }, {});
+  expect(repeated.xml).toBe(declaration + '<root>\n  <a>1</a>\n  <a>2</a>\n</root>');
+  expect(repeated.warnings.join(' ')).toContain('wrapped in a root element');
+
+  // XML 1.0 section 2.4: < and & must be escaped in text, and a quote in a double-quoted attribute value too.
+  expect(writeXmlValue({ a: 'x < y & z > w' }, {}).xml).toBe(declaration + '<a>x &lt; y &amp; z &gt; w</a>');
+  expect(writeXmlValue({ a: { '@_t': 'say "hi"\n' } }, {}).xml).toBe(declaration + '<a t="say &quot;hi&quot;&#10;"/>');
+
+  // A null is an empty element and the warning says it reads back as empty text.
+  const nulled = writeXmlValue({ a: null }, {});
+  expect(nulled.xml).toBe(declaration + '<a/>');
+  expect(nulled.warnings.join(' ')).toContain('null');
+
+  // A key that is not an XML 1.0 Name (section 2.3) is refused with its RFC 6901 path.
+  const refused = (value: unknown): XmlWriteError => {
+    try {
+      writeXmlValue(value, {});
+    } catch (err) {
+      expect(err).toBeInstanceOf(XmlWriteError);
+      return err as XmlWriteError;
+    }
+    throw new Error('expected a refusal');
+  };
+  expect(refused({ a: { '1x': 'v' } }).path).toBe('/a/1x');
+  expect(refused({ a: { 'two words': 'v' } }).path).toBe('/a/two words');
+  expect(refused({ a: { '@_1x': 'v' } }).path).toBe('/a/@_1x');
+  expect(refused({ a: { '@_t': { deep: 1 } } }).path).toBe('/a/@_t');
+  // XML 1.0 section 2.2: U+0001 is not a character an XML document may contain.
+  expect(refused({ a: 'x\u{1}y' }).path).toBe('/a');
+  // A list inside a list has no element form.
+  expect(refused({ a: [['1']] }).path).toBe('/a/0');
+
+  // The Name production: a letter, underscore or colon starts a name; digits, hyphen, dot and U+00B7 continue it.
+  for (const good of ['a', '_a', ':a', 'a1', 'a-b', 'a.b', 'ns:a', 'caf\u00e9', 'a\u00b7b'])
+    expect(isXmlName(good)).toBe(true);
+  for (const bad of ['', '1a', '-a', '.a', 'a b', 'a<b', '\u00b7a']) expect(isXmlName(bad)).toBe(false);
+
+  // Through the converter the same refusal is the converter's own error and carries the path.
+  try {
+    convertData('{"a":{"1x":"v"}}', { from: 'json', to: 'xml' });
+    expect.unreachable();
+  } catch (err) {
+    expect(err).toBeInstanceOf(DataConvertError);
+    expect((err as DataConvertError).path).toBe('/a/1x');
+  }
+});
+
+it('an array root becomes root and row elements named by the options', () => {
+  const declaration = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  expect(writeXmlValue([{ a: '1' }, { a: '2' }], { rootName: 'rows', rowName: 'r' }).xml).toBe(
+    declaration + '<rows>\n  <r>\n    <a>1</a>\n  </r>\n  <r>\n    <a>2</a>\n  </r>\n</rows>',
+  );
+  // Plain items are the text of their row element.
+  expect(writeXmlValue(['x', 'y'], {}).xml).toBe(declaration + '<root>\n  <row>x</row>\n  <row>y</row>\n</root>');
+  // Through the converter, root and row are the defaults and the options rename them; the indent is chosen too.
+  expect(convertData('[{"a":"1"}]', { from: 'json', to: 'xml' }).output).toBe(
+    declaration + '<root>\n  <row>\n    <a>1</a>\n  </row>\n</root>',
+  );
+  expect(
+    convertData('[{"a":"1"}]', { from: 'json', to: 'xml', rootName: 'items', rowName: 'item', indent: 4 }).output,
+  ).toBe(declaration + '<items>\n    <item>\n        <a>1</a>\n    </item>\n</items>');
+  // The names must be XML names too.
+  expect(() => writeXmlValue([{ a: '1' }], { rootName: 'bad name' })).toThrowError(XmlWriteError);
+  expect(() => writeXmlValue([{ a: '1' }], { rowName: '1row' })).toThrowError(XmlWriteError);
+  // A plain value is not a document.
+  expect(() => writeXmlValue('text', {})).toThrowError(XmlWriteError);
 });
