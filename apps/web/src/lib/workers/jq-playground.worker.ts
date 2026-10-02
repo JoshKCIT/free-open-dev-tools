@@ -16,6 +16,9 @@
  * engine's type, so the engine lands in this worker's source and in no page
  * chunk.
  *
+ * The engine is loaded before the ready message, so the time it takes counts
+ * against the page's 10 second start limit and never against the run limit.
+ *
  * This worker posts `jq-playground-ready` as the very last statement of the
  * module, after its message listener exists. The page posts the job only when
  * it has seen that message, so a job can never reach a worker that has not
@@ -70,9 +73,19 @@ interface WorkerGlobal {
 
 const workerGlobal = self as unknown as WorkerGlobal;
 
+// Loaded here, before the ready message, so a slow load is part of the start and not of the run. A failed load is kept
+// and reported as the answer to the job, with the same message the run would have given.
+let engine: Awaited<ReturnType<typeof loadJq>> | undefined;
+let engineFailure: unknown;
+try {
+  engine = await loadJq();
+} catch (err) {
+  engineFailure = err;
+}
+
 async function handleJob(job: JqPlaygroundJobMessage): Promise<void> {
   try {
-    const engine = await loadJq();
+    if (engine === undefined) throw engineFailure;
     const result = runJq(engine, job.input, job.filter, job.options);
     workerGlobal.postMessage({ type: 'jq-playground-done', result });
   } catch (err) {

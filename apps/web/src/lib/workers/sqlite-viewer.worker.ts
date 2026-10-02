@@ -14,6 +14,9 @@
  * bare import would not resolve from here. The path is five levels up from
  * lib/workers to the repository root.
  *
+ * The engine is loaded before the ready message, so the time it takes counts
+ * against the page's 10 second start limit and never against the run limit.
+ *
  * This worker posts `sqlite-viewer-ready` as the very last statement of the
  * module, after its message listener exists. The page posts the job only
  * when it has seen that message, so a job can never reach a worker that has
@@ -86,14 +89,20 @@ function describe(err: unknown): string {
   return err instanceof Error && err.message ? err.message : 'The background task failed for an unknown reason.';
 }
 
-let engineReady = false;
+// Loaded here, before the ready message, so a slow load is part of the start and not of the run. A failed load is kept
+// and reported as the answer to the job, with the same message the run would have given.
+let engineFailed = false;
+let engineFailure: unknown;
+try {
+  await loadEngine(bytesFromDataUrl(wasmDataUrl));
+} catch (err) {
+  engineFailed = true;
+  engineFailure = err;
+}
 
 async function handleJob(job: SqliteViewerJobMessage): Promise<void> {
   try {
-    if (!engineReady) {
-      await loadEngine(bytesFromDataUrl(wasmDataUrl));
-      engineReady = true;
-    }
+    if (engineFailed) throw engineFailure;
     const result = runSqlite(job.bytes, job.sql, job.options);
     workerGlobal.postMessage(
       { type: 'sqlite-viewer-done', result },
