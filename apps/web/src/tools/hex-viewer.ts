@@ -312,10 +312,11 @@ export default defineTool({
       // A search that is refused before it starts (hex that is not pairs of digits, a file over 1 GiB) is shown beside
       // the rows, which stay. A search that was started and failed, or stopped at its time limit, shows only its message.
       const term = str(values, 'search');
+      const searchAsHex = str(values, 'searchAs', 'text') === 'hex';
       let needle: Uint8Array | null = null;
       if (term !== '') {
         try {
-          needle = encodeNeedle(term, str(values, 'searchAs', 'text') === 'hex' ? 'hex' : 'text');
+          needle = encodeNeedle(term, searchAsHex ? 'hex' : 'text');
           if (needle.length === 0) needle = null;
           else if (searchable.kind === 'file') checkSearchSize(searchable.file.size);
         } catch (err) {
@@ -325,7 +326,9 @@ export default defineTool({
         }
       }
       if (needle !== null) {
-        const matchCase = bool(values, 'matchCase', true);
+        // The Match case box is hidden for a hex search and keeps its value, so it is read only for a text search: a
+        // hex search is always exact.
+        const matchCase = searchAsHex ? true : bool(values, 'matchCase', true);
         const result = await hexViewerInWorker(
           {
             type: 'hex-viewer-job',

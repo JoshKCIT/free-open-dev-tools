@@ -467,6 +467,34 @@ test('hex-viewer: a file is paged with Go to byte and searched, and every match 
   await expect(outputArea(page).locator('pre.output')).toContainText('|.......NEEDLEXYZ|');
 });
 
+test('hex-viewer: a hex search stays exact after Match case was switched off for a text search', async ({ page }) => {
+  await page.goto(rel('/tools/hex-viewer'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  // One upper case and one lower case spelling of the same six letters, far apart, in a file of zero bytes.
+  const file = Buffer.alloc(4096);
+  file.write('NEEDLE', 100, 'ascii');
+  file.write('needle', 2000, 'ascii');
+  await page.locator('#f-file').setInputFiles({ name: 'cases.bin', mimeType: 'application/octet-stream', buffer: file });
+  await expect(outputArea(page)).toContainText('cases.bin', { timeout: 20_000 });
+
+  // With Match case off, a text search finds both spellings.
+  await page.locator('#f-matchCase').uncheck();
+  await fillAndHold(page, 'search', 'needle');
+  await expect(outputArea(page)).toContainText('Found 2 matches.', { timeout: 20_000 });
+
+  // The box is hidden for a hex search, and a hex search is exact: only the upper case bytes match.
+  await page.locator('#f-searchAs').selectOption('hex');
+  await expect(page.locator('#f-matchCase')).toBeHidden();
+  await fillAndHold(page, 'search', '4e 45 45 44 4c 45');
+  await expect(outputArea(page)).toContainText('Found 1 match.', { timeout: 20_000 });
+  await expect(outputArea(page).locator('table')).toContainText('00000064');
+  await expect(outputArea(page).locator('table')).not.toContainText('000007d0');
+  await fillAndHold(page, 'search', '6e 65 65 64 6c 65');
+  await expect(outputArea(page)).toContainText('Found 1 match.', { timeout: 20_000 });
+  await expect(outputArea(page).locator('table')).toContainText('000007d0');
+});
+
 test('hex-viewer: a zero-byte file shows its name, size 0 B and type empty file with no rows, and a one-byte file shows one row at offset 00000000', async ({
   page,
 }) => {
