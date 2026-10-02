@@ -251,6 +251,18 @@ const FILE_CASES: FileCase[] = [
     pressRun: true,
     expectText: MARKER,
   },
+  {
+    id: 'hex-viewer',
+    // The page runs as you type, so picking the file is the whole action; no control is set first. The marker is
+    // exactly sixteen printable characters, so it is the whole text column of the first row, followed by the bytes 00 to 0f.
+    file: () => ({
+      name: 'marker.bin',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.concat([Buffer.from(MARKER, 'ascii'), Buffer.from(Array.from({ length: 16 }, (_, i) => i))]),
+    }),
+    pressRun: false,
+    expectText: MARKER,
+  },
 ];
 
 for (const c of FILE_CASES) {
@@ -272,3 +284,104 @@ for (const c of FILE_CASES) {
     await assertNothingLeft(page, recording);
   });
 }
+
+/** The value shown beside a label in the page's list of facts (Name, Type, Size, Showing bytes). */
+function factOf(page: Page, label: string) {
+  return outputArea(page).locator(`dt:text-is("${label}") + dd`);
+}
+
+/** Fills a text field and checks the value stayed; a prerendered page can clear a field filled just after load. */
+async function fillAndHold(page: Page, name: string, value: string): Promise<void> {
+  const field = page.locator(`#f-${name}`);
+  await expect(async () => {
+    await field.fill(value);
+    await expect(field).toHaveValue(value, { timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+}
+
+test('hex-viewer: a file is paged with Go to byte and searched, and every match across read chunks is found and listed', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/hex-viewer'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  // 200 KiB of zero bytes with the nine letters NEEDLEXYZ at three places: across the 64 KiB line (offset 65532, bytes
+  // 65532 to 65540), across the 128 KiB line (131068) and as the last nine bytes (204791, which is 0x31ff7).
+  const size = 200 * 1024;
+  const file = Buffer.alloc(size);
+  for (const at of [65532, 131068, size - 9]) file.write('NEEDLEXYZ', at, 'ascii');
+  await page.locator('#f-file').setInputFiles({ name: 'big.bin', mimeType: 'application/octet-stream', buffer: file });
+
+  // One page of rows from the start: 64 rows of 16 bytes, so bytes 0 to 1,023 of 204,800.
+  await expect(outputArea(page)).toContainText('big.bin', { timeout: 20_000 });
+  await expect(factOf(page, 'Showing bytes')).toHaveText('0 to 1,023 of 204,800 (64 rows of 16)');
+  await expect(factOf(page, 'Size')).toHaveText('200.0 KB (204,800 bytes)');
+  await expect(factOf(page, 'Type')).toHaveText('unknown');
+  expect(await outputArea(page).locator('pre.output').innerText()).toMatch(/^00000000 {2}00 /);
+
+  // Go to byte shows the last row only: the seven zero bytes and then the nine letters.
+  await fillAndHold(page, 'position', String(size - 16));
+  await expect(factOf(page, 'Showing bytes')).toHaveText(
+    `${(size - 16).toLocaleString('en-US')} to 204,799 of 204,800 (64 rows of 16)`,
+  );
+  await expect(outputArea(page).locator('pre.output')).toContainText('|.......NEEDLEXYZ|');
+  await expect(outputArea(page).locator('pre.output')).toContainText('00031ff0');
+
+  // Searching lists all three matches, whichever chunks the browser reads the file in.
+  await fillAndHold(page, 'search', 'NEEDLEXYZ');
+  await expect(outputArea(page)).toContainText('Found 3 matches.', { timeout: 20_000 });
+  const table = outputArea(page).locator('table');
+  await expect(table).toContainText('0000fffc');
+  await expect(table).toContainText('0001fffc');
+  await expect(table).toContainText('00031ff7');
+  await expect(table).toContainText('204791');
+
+  // Match case on finds nothing for the wrong case; match case off finds all three again.
+  await fillAndHold(page, 'search', 'needlexyz');
+  await expect(outputArea(page)).toContainText('Found 0 matches.', { timeout: 20_000 });
+  await page.locator('#f-matchCase').uncheck();
+  await expect(outputArea(page)).toContainText('Found 3 matches.', { timeout: 20_000 });
+
+  // A hex search for the same nine bytes finds the same three.
+  await page.locator('#f-searchAs').selectOption('hex');
+  await fillAndHold(page, 'search', '4e4545444c4558595a');
+  await expect(outputArea(page)).toContainText('Found 3 matches.', { timeout: 20_000 });
+  await expect(outputArea(page).locator('table')).toContainText('00031ff7');
+
+  // Hex that is not pairs of digits is refused beside the rows, which stay.
+  await fillAndHold(page, 'search', '4e4');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Search for');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('character 3');
+  await expect(outputArea(page).locator('pre.output')).toContainText('|.......NEEDLEXYZ|');
+});
+
+test('hex-viewer: a zero-byte file shows its name, size 0 B and type empty file with no rows, and a one-byte file shows one row at offset 00000000', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/hex-viewer'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  await page
+    .locator('#f-file')
+    .setInputFiles({ name: 'empty.bin', mimeType: 'application/octet-stream', buffer: Buffer.alloc(0) });
+  await expect(outputArea(page)).toContainText('empty.bin', { timeout: 20_000 });
+  await expect(factOf(page, 'Size')).toHaveText('0 B');
+  await expect(factOf(page, 'Type')).toHaveText('empty file');
+  await expect(factOf(page, 'Showing bytes')).toHaveText('none');
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+
+  await page
+    .locator('#f-file')
+    .setInputFiles({ name: 'one.bin', mimeType: 'application/octet-stream', buffer: Buffer.from('A', 'ascii') });
+  await expect(outputArea(page)).toContainText('one.bin', { timeout: 20_000 });
+  await expect(factOf(page, 'Size')).toHaveText('1 B');
+  const rows = await outputArea(page).locator('pre.output').innerText();
+  expect(rows.trim().split('\n')).toHaveLength(1);
+  expect(rows).toMatch(/^00000000 {2}41 /);
+  expect(rows).toContain('|A|');
+
+  // A position past the last byte is refused naming Go to byte, and the empty file's only position is 0.
+  await fillAndHold(page, 'position', '1');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Go to byte is 1');
+  await expect(outputArea(page).locator('.issue-list')).toContainText('past the end of 1 bytes');
+});

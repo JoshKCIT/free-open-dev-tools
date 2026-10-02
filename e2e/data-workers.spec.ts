@@ -293,6 +293,17 @@ const ENGINE_CASES: EngineCase[] = [
     limitSeconds: 30,
     limitMessage: 'Stopped after 30 seconds',
   },
+  {
+    id: 'hex-viewer',
+    // The page's default source is a file; the search worker runs the same way for pasted text, which needs no file.
+    // The page runs as you type, so the run starts when the search term is filled, after the pasted text is in.
+    radios: { source: 'text' },
+    valid: { pasted: 'module worker ok', search: 'worker' },
+    pressRun: false,
+    expectOutput: 'Found 1 match',
+    limitSeconds: 20,
+    limitMessage: 'Stopped after 20 seconds',
+  },
 ];
 
 for (const c of ENGINE_CASES) {
