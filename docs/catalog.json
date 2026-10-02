@@ -1293,5 +1293,12 @@
     "category": "encoding",
     "tier": 2,
     "summary": "Decode bytes in a legacy text encoding, repair UTF-8 read as Windows-1252, and convert line endings and byte order marks."
+  },
+  {
+    "id": "unit-converter",
+    "name": "Unit Converter",
+    "category": "reference",
+    "tier": 1,
+    "summary": "Convert length, mass, temperature, volume, area, speed, pressure, energy, power, angle, fuel economy, charge, frequency and time."
   }
 ]
