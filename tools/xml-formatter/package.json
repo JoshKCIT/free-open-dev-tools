@@ -1,7 +1,7 @@
 {
   "name": "@fodt/xml-formatter",
   "version": "1.0.0",
-  "description": "Format, minify and well-formedness check XML, with external entities disabled.",
+  "description": "Format, minify, check, canonicalize and compare XML and view it as a tree, with external entities disabled.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +28,11 @@
     "validate",
     "well-formed",
     "pretty print",
-    "xxe"
+    "xxe",
+    "canonical xml",
+    "c14n",
+    "compare",
+    "tree"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

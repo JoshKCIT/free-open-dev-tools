@@ -168,6 +168,45 @@ function recordRequests(page: Page): string[] {
   return requests;
 }
 
+function cancelButtonOf(page: Page) {
+  return page.getByRole('button', { name: 'Cancel', exact: true });
+}
+
+/** Page time in milliseconds, read from the page itself so it follows the page clock. */
+async function pageNow(page: Page): Promise<number> {
+  return page.evaluate(() => Date.now());
+}
+
+/**
+ * Freezes the page clock a little after `seen` and returns how much page time a timer that began between `before` and
+ * `seen` has used up at that point: at least `atLeast` and at most `atMost`. Page time stands still from here until
+ * `page.clock.runFor` moves it, so a limit is crossed to the millisecond, not at the speed of the machine.
+ */
+async function freezeClock(page: Page, before: number, seen: number): Promise<{ atLeast: number; atMost: number }> {
+  const pausedAt = seen + 2_000;
+  await page.clock.pauseAt(pausedAt);
+  return { atLeast: pausedAt - seen, atMost: pausedAt - before };
+}
+
+/** Waits until the wrapper's log holds an entry that starts and ends as given. */
+async function waitForLog(page: Page, startsWith: string, endsWith: string): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          ([start, end]) =>
+            window.__FODT_UPGRADE_WORKERS__!.log.some((entry) => entry.startsWith(start!) && entry.endsWith(end!)),
+          [startsWith, endsWith],
+        ),
+      { timeout: 15_000, intervals: [50, 100] },
+    )
+    .toBe(true);
+}
+
+async function endedWorkers(page: Page): Promise<number[]> {
+  return page.evaluate(() => window.__FODT_UPGRADE_WORKERS__!.ended);
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // data-convert (DATA-12): XML, CSV and TSV beside JSON, YAML and TOML
 // ---------------------------------------------------------------------------------------------------------------
@@ -322,4 +361,172 @@ test('xml-formatter: canonicalization runs in a module worker from a blob addres
     .toBe(seen.addresses.length);
 
   expect(requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'))).toEqual([]);
+});
+
+test('xml-formatter: two documents differing only in attribute order are equivalent', async ({ page }) => {
+  await openTool(page, 'xml-formatter');
+  await setControls(page, { radios: { mode: 'compare' } });
+  // Canonical XML 1.0 sections 2.3 and 3.3: attribute order, quote style, empty-element form and whitespace inside
+  // tags are normalized, so these two documents have the same canonical form.
+  await fillField(page, 'input', '<a  y="2" x="1"><b/>\n</a>');
+  await fillField(page, 'second', `<a x='1' y="2"><b></b>\n</a>`);
+  await expect(outputArea(page)).toContainText('Equivalent after canonicalization.', { timeout: 15_000 });
+
+  // Changing one value is a real difference: the page says where the canonical forms first differ. In
+  // `<a x="1" y="2">` the 2 is the 13th character.
+  await fillField(page, 'second', '<a x="1" y="3"><b></b>\n</a>');
+  await expect(outputArea(page)).toContainText(
+    'Not equivalent: the canonical forms first differ at character 13 (line 1, column 13).',
+    { timeout: 15_000 },
+  );
+  await expect(outputArea(page)).toContainText('--- first document, canonical form');
+});
+
+test('xml-formatter: the tree view opens and closes elements in the sandboxed preview and offers no Copy HTML', async ({
+  page,
+}) => {
+  await openTool(page, 'xml-formatter');
+  await setControls(page, { radios: { mode: 'tree' } });
+  await fillField(page, 'input', '<a><b><c>deep</c></b><d>x</d></a>');
+
+  // The view is the page's existing sandboxed frame: no permissions at all, so no script can run in it.
+  const frameElement = outputArea(page).locator('iframe.preview-frame');
+  await expect(frameElement).toHaveAttribute('sandbox', '', { timeout: 15_000 });
+  const frame = outputArea(page).frameLocator('iframe.preview-frame');
+
+  // The first two levels are open (the root a, and b and d below it); c is at the third level and starts closed.
+  await expect(frame.locator('details[open]')).toHaveCount(3);
+  await expect(frame.getByText('x', { exact: true })).toBeVisible();
+  await expect(frame.getByText('deep', { exact: true })).toBeHidden();
+
+  // Clicking the summary of c opens it and shows its text; clicking again closes it.
+  await frame.locator('summary', { hasText: '<c>' }).click();
+  await expect(frame.getByText('deep', { exact: true })).toBeVisible();
+  await expect(frame.locator('details[open]')).toHaveCount(4);
+  await frame.locator('summary', { hasText: '<c>' }).click();
+  await expect(frame.getByText('deep', { exact: true })).toBeHidden();
+
+  // Closing the root closes it. The element's own open state is read, because WebKit keeps a layout box for text under
+  // a closed ancestor whose own details are open and so reports it as visible although nothing is painted.
+  await frame.locator('summary', { hasText: '<a>' }).click();
+  await expect(frame.locator('details').first()).not.toHaveAttribute('open', '');
+  await frame.locator('summary', { hasText: '<a>' }).click();
+  await expect(frame.locator('details').first()).toHaveAttribute('open', '');
+
+  // The tree is a view of the document, not markup to copy: the block has no Copy HTML button, and no other copy
+  // button either, because the page shows nothing else in this mode.
+  expect(await outputArea(page).getByRole('button', { name: /Copy/ }).count()).toBe(0);
+});
+
+test('xml-formatter: a canonicalization past the 20 second limit stops with a plain message, not before', async ({
+  page,
+}) => {
+  // The first worker never receives its job, so the run stays in flight like a stuck engine, and the page clock (not
+  // real time) crosses the limit.
+  await installWorkerWrapper(page, { swallowFirstJob: true, swallowReady: false });
+  await page.clock.install();
+  await openTool(page, 'xml-formatter');
+  await setControls(page, { radios: { mode: 'canonical' } });
+
+  // The run's own timer begins after `before`. Page time is frozen once the job has been posted, then moved by exact
+  // amounts: the stuck run must still be running when no more than the limit minus half a second can have passed on
+  // it, and must have been stopped when at least the limit plus a tenth of a second has.
+  const before = await pageNow(page);
+  await fillField(page, 'input', '<note>a short note</note>');
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await waitForLog(page, 'out-swallowed:0:', '-job');
+  const used = await freezeClock(page, before, await pageNow(page));
+  const limit = 20_000;
+
+  // Short of the limit: still running, no stop message, and the stuck worker is not yet ended. A limit that fired at
+  // 19 seconds would already have stopped a 20 second run.
+  const early = Math.max(0, limit - 500 - used.atMost);
+  await page.clock.runFor(early);
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await expect(outputArea(page)).not.toContainText('Stopped after');
+  expect(await endedWorkers(page)).toEqual([]);
+
+  // Past the limit: stopped, with the plain message, and the timed-out worker is ended. A limit that fired at 21
+  // seconds would not have stopped it yet.
+  await page.clock.runFor(Math.max(1, limit + 100 - used.atLeast - early));
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'Stopped after 20 seconds: this document took too long. Try a smaller document.',
+    { timeout: 5_000 },
+  );
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  expect(await endedWorkers(page)).toEqual([0]);
+  await page.clock.resume();
+
+  // The page still answers a script call within a second.
+  const answerStart = Date.now();
+  await page.evaluate(() => 1 + 1);
+  expect(Date.now() - answerStart).toBeLessThan(1_000);
+
+  // The next run works, in a new worker: the page runs as you type, so one more space after the root starts it.
+  await fillField(page, 'input', '<note>a short note</note> ');
+  await expect(outputArea(page).locator('pre.output')).toHaveText('<note>a short note</note>', { timeout: 15_000 });
+  expect((await page.evaluate(() => window.__FODT_UPGRADE_WORKERS__!.addresses)).length).toBeGreaterThanOrEqual(2);
+});
+
+test('xml-formatter: Cancel stops a canonicalization at once and the next run works', async ({ page }) => {
+  await installWorkerWrapper(page, { swallowFirstJob: true, swallowReady: false });
+  await page.clock.install();
+  await openTool(page, 'xml-formatter');
+  await setControls(page, { radios: { mode: 'canonical' } });
+
+  await fillField(page, 'input', '<note>a short note</note>');
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await waitForLog(page, 'out-swallowed:0:', '-job');
+  expect(await endedWorkers(page)).toEqual([]);
+  await cancelButtonOf(page).click();
+
+  const note = outputArea(page).locator('.note-warn');
+  await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  // The cancelled worker has been terminated, not just forgotten.
+  expect(await endedWorkers(page)).toEqual([0]);
+
+  // A little past the limit of page clock later, the limit would have fired had Cancel not cleared it: it must not.
+  await page.clock.fastForward(21_000);
+  await page.waitForTimeout(300);
+  await expect(outputArea(page)).not.toContainText('Stopped after');
+  await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+
+  // The next run works: one more space after the root starts it.
+  await fillField(page, 'input', '<note>a short note</note> ');
+  await expect(outputArea(page).locator('pre.output')).toHaveText('<note>a short note</note>', { timeout: 15_000 });
+});
+
+test('xml-formatter: a worker that never reports ready stops after 10 seconds with a plain message', async ({
+  page,
+}) => {
+  // The worker starts and says it is ready, but the page is never allowed to hear it, as if the module never finished
+  // loading. The page must not post the job, and must stop waiting after 10 seconds of page clock.
+  await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: true });
+  await page.clock.install();
+  await openTool(page, 'xml-formatter');
+  await setControls(page, { radios: { mode: 'canonical' } });
+
+  const before = await pageNow(page);
+  await fillField(page, 'input', '<note>a short note</note>');
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await waitForLog(page, 'in:0:', '-ready');
+  // The start timer began between `before` and now. Page time is frozen, then moved by exact amounts: no message while
+  // no more than 9.5 seconds can have passed, the message once at least 10.1 seconds have.
+  const used = await freezeClock(page, before, await pageNow(page));
+
+  const early = Math.max(0, 9_500 - used.atMost);
+  await page.clock.runFor(early);
+  await expect(outputArea(page)).not.toContainText('did not start');
+  expect(await endedWorkers(page)).toEqual([]);
+
+  await page.clock.runFor(Math.max(1, 10_100 - used.atLeast - early));
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'The background task did not start within 10 seconds. Reload the page and try again.',
+    { timeout: 5_000 },
+  );
+  // The job was never posted, and the silent worker has been ended.
+  const log = await page.evaluate(() => window.__FODT_UPGRADE_WORKERS__!.log);
+  expect(log.filter((entry) => entry.startsWith('out')).length, log.join(' | ')).toBe(0);
+  expect(await endedWorkers(page)).toEqual([0]);
 });

@@ -452,7 +452,7 @@
     "name": "XML Formatter & Validator",
     "category": "code",
     "tier": 1,
-    "summary": "Format, minify and well-formedness check XML, with external entities disabled."
+    "summary": "Format, minify, check, canonicalize and compare XML and view it as a tree, with external entities disabled."
   },
   {
     "id": "yaml-formatter",

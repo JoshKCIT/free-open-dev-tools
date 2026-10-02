@@ -44,6 +44,17 @@ export function c14nParseOptions(engine: Libxml2Engine): Libxml2.ParseOption {
   );
 }
 
+/** The only words the engine gives when canonicalization fails after a successful parse, with no detail attached. */
+const CANONICALIZE_FAILED = 'Failed to canonicalize XML document';
+
+/**
+ * Canonical XML 1.0 does not allow a relative URI as a namespace name (section 1.2), and libxml2 2.15.1 reads a name
+ * with a one-letter scheme such as x:y, or with no scheme, as relative. The engine then says only that
+ * canonicalization failed, with no position, so the tool says what it means.
+ */
+const RELATIVE_NAMESPACE_MESSAGE =
+  'libxml2 could not canonicalize this document. One known cause is a namespace name that libxml2 reads as a relative address, such as x:y (a one-letter scheme) or a name with no scheme; Canonical XML does not allow those. Use an absolute name such as urn:x or http://example.com/ns.';
+
 function engineMode(engine: Libxml2Engine, mode: C14nMode): 0 | 1 | 2 {
   if (mode === 'exclusive') return engine.XmlC14NMode.XML_C14N_EXCLUSIVE_1_0;
   if (mode === '1.1') return engine.XmlC14NMode.XML_C14N_1_1;
@@ -120,6 +131,12 @@ export function c14nWithEngine(
     const node = doc.get(subtreeXPath);
     if (!node) throw new XmlFormatterError(`Nothing in the document matches ${subtreeXPath}.`);
     return node.canonicalizeToString(settings);
+  } catch (err) {
+    if (err instanceof XmlFormatterError) throw err;
+    if (err instanceof Error && err.message === CANONICALIZE_FAILED) {
+      throw new XmlFormatterError(RELATIVE_NAMESPACE_MESSAGE, { part });
+    }
+    throw err;
   } finally {
     doc.dispose();
   }

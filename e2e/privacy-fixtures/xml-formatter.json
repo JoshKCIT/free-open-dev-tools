@@ -13,5 +13,20 @@
     "mode": { "field": "mode", "value": "check" },
     "values": { "input": "<note><to>Ada</to></note>" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "tree" },
+    "values": { "input": "<note><to>Ada</to></note>" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "canonical" },
+    "values": { "input": "<note><to>Ada</to></note>" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "compare" },
+    "values": { "input": "<note><to>Ada</to></note>", "second": "<note><to>Grace</to></note>" },
+    "attachesFile": false
   }
 ]
