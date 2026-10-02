@@ -520,7 +520,8 @@ function responseBody(content: JsonObject, reveal: boolean): { body?: string; no
   let full = text;
   if (textOf(content.encoding).toLowerCase() === 'base64') {
     const clean = text.replace(/\s+/g, '');
-    const padding = /=*$/.exec(clean)![0].length;
+    let padding = 0;
+    while (padding < clean.length && clean[clean.length - 1 - padding] === '=') padding++;
     if (!/^[A-Za-z0-9+/]*={0,2}$/.test(clean) || clean.length % 4 === 1) {
       return { note: 'The body is marked Base64 but is not valid Base64, so it is not shown.' };
     }

@@ -407,7 +407,6 @@ const ESCAPED_JSON_MEMBER = /\\"([^"\\]*)\\"(\s*:\s*)\\"((?:[^"\\]|\\(?!"))*)\\"
 /** A JSON member whose value is a number, `"name": 123`. */
 const JSON_NUMBER_MEMBER = /"((?:[^"\\]|\\.)*)"(\s*:\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?![\w.])/g;
 const BEARER_TEXT = /\bBearer[ \t]+[A-Za-z0-9._~+/-]+=*/gi;
-const JWT_TEXT = /eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]*){1,3}/g;
 /** A line of a text of pairs: a name with no space, an equals sign, then anything. */
 const PAIR_LINE = /^[A-Za-z0-9_.\-[\]%+]+=/;
 
@@ -475,6 +474,62 @@ function maskMultipart(text: string, boundary: string): string {
     .join(`--${boundary}`);
 }
 
+/** Whether a UTF-16 unit is a letter, a digit, a hyphen or an underscore (the base64url alphabet of RFC 4648 section 5). */
+function isBase64Url(code: number): boolean {
+  return (
+    (code >= 0x30 && code <= 0x39) ||
+    (code >= 0x41 && code <= 0x5a) ||
+    (code >= 0x61 && code <= 0x7a) ||
+    code === 0x2d ||
+    code === 0x5f
+  );
+}
+
+/** The index after the run of base64url characters that starts at `from`. */
+function runEnd(text: string, from: number): number {
+  let end = from;
+  while (end < text.length && isBase64Url(text.charCodeAt(end))) end++;
+  return end;
+}
+
+/**
+ * Masks every text shaped like a JWT: `eyJ` and at least six more URL-safe characters, a period, a part, and one to three
+ * more periods each with a part (three parts for a signed token, five for an encrypted one). It reads the text once from
+ * left to right and skips a whole run of characters with no period after it, so a long run of `eyJ` costs nothing
+ * extra (a pattern for the same shape took seconds on 72,000 characters).
+ */
+function maskJwtText(text: string): string {
+  let out = '';
+  let copied = 0;
+  let from = 0;
+  for (;;) {
+    const at = text.indexOf('eyJ', from);
+    if (at < 0) break;
+    const firstEnd = runEnd(text, at);
+    if (firstEnd - at < 9 || text[firstEnd] !== '.') {
+      from = firstEnd;
+      continue;
+    }
+    const secondEnd = runEnd(text, firstEnd + 1);
+    let end = secondEnd;
+    let extra = 0;
+    if (secondEnd > firstEnd + 1) {
+      while (extra < 3 && text[end] === '.') {
+        end = runEnd(text, end + 1);
+        extra++;
+      }
+    }
+    if (extra === 0) {
+      from = firstEnd + 1;
+      continue;
+    }
+    out += text.slice(copied, at) + maskValue(text.slice(at, end));
+    copied = end;
+    from = end;
+  }
+  return out + text.slice(copied);
+}
+
 /**
  * Masks the sensitive values inside a body that is shown as text. A multipart form body is read part by part by the
  * name of each part. A body that is only `name=value` pairs (a form body, or a text of that shape whatever its type) is
@@ -514,6 +569,5 @@ export function maskBodyText(text: string, mimeType: string): string {
   // Addresses: not for pairs, whose values were read for addresses already (the masked text has spaces in it).
   if (!pairs) result = maskSchemeAddresses(result, 0).text;
   result = result.replace(BEARER_TEXT, (match) => maskValue(match));
-  result = result.replace(JWT_TEXT, (match) => maskValue(match));
-  return result;
+  return maskJwtText(result);
 }

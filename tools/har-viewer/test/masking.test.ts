@@ -491,3 +491,51 @@ it('an address inside a body is masked in place: in plain text, in a JSON string
   const clean = '{"url":"https://x.example/y?page=2"} and https://a.example/';
   expect(maskBodyText(clean, 'application/json')).toBe(clean);
 });
+
+/** The pattern the package used for a JWT inside a text before the linear scanner replaced it; the scanner must match it. */
+const OLD_JWT = /eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]*){1,3}/g;
+
+it('a text of repeated eyJ and a base64 body of equals signs are read in linear time', () => {
+  // Before the fix, 24,000 copies of eyJ took 3.6 s to mask and 80,000 equals signs took 6.3 s to open (both quadratic).
+  const started = performance.now();
+  const masked = maskBodyText('eyJ'.repeat(24000), 'text/plain');
+  const maskedMs = performance.now() - started;
+  expect(masked).toBe('eyJ'.repeat(24000));
+
+  const recording = har([
+    entry({ content: { size: 1, mimeType: 'text/plain', encoding: 'base64', text: `${'='.repeat(80000)}a` } }),
+  ]);
+  const opened = performance.now();
+  const detail = requestDetail(recording, 1, { reveal: false, bodies: true });
+  const openedMs = performance.now() - opened;
+  expect(detail.bodyNote).toBe('The body is marked Base64 but is not valid Base64, so it is not shown.');
+  // A generous limit that a loaded CI machine still meets: the quadratic code took seconds.
+  expect(maskedMs).toBeLessThan(1500);
+  expect(openedMs).toBeLessThan(1500);
+
+  // A long run of eyJ with a dot at its end is one token, found in linear time too.
+  const long = `${'eyJ'.repeat(30000)}.payload.signature`;
+  const again = performance.now();
+  expect(maskBodyText(`x ${long} y`, 'text/plain')).toBe(`x eyJe… (${long.length} characters) y`);
+  expect(performance.now() - again).toBeLessThan(1500);
+}, 60_000);
+
+it('the JWT scanner finds exactly what the pattern it replaced found, on generated texts', () => {
+  // A small deterministic generator (a linear congruential sequence), so a failure can be reproduced.
+  let seed = 12345;
+  const next = (n: number): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed % n;
+  };
+  const alphabet = ['eyJ', 'abcdef', 'A1_-', '.', '.', ' ', 'x', 'eyJhbGci', '..', '\n'];
+  let checked = 0;
+  for (let round = 0; round < 3000; round++) {
+    let text = '';
+    const pieces = 1 + next(14);
+    for (let i = 0; i < pieces; i++) text += alphabet[next(alphabet.length)]!;
+    const expected = text.replace(OLD_JWT, (match) => maskValue(match));
+    expect(maskBodyText(text, 'application/octet-stream'), JSON.stringify(text)).toBe(expected);
+    checked++;
+  }
+  expect(checked).toBe(3000);
+});
