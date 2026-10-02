@@ -87,6 +87,7 @@ function lineHolding(text: string, piece: string): number {
 }
 
 interface XmlElement {
+  nodeType: number;
   localName: string;
   namespaceURI: string | null;
   nodeName: string;
@@ -110,10 +111,23 @@ function childElements(element: XmlElement): XmlElement[] {
   return found;
 }
 
+/** An element as its namespace, name, text and children, with the prefixes it was written with left out. */
+function shape(element: XmlElement): unknown {
+  const children = childElements(element);
+  return {
+    namespace: element.namespaceURI,
+    name: element.localName,
+    text: children.length === 0 ? element.textContent : undefined,
+    children: children.map(shape),
+  };
+}
+
 /** The text of a model with the parts that depend on how a document was written (names as written, lines) left out. */
 function essence(model: WsdlModel): unknown {
   return JSON.parse(
-    JSON.stringify(model, (key, value: unknown) => (key === 'text' || key === 'line' ? undefined : value)),
+    JSON.stringify(model, (key, value: unknown) =>
+      key === 'text' || key === 'line' || key === 'reference' ? undefined : value,
+    ),
   );
 }
 
@@ -464,13 +478,14 @@ it('references compare by namespace and local name, so other prefixes give the s
   // The names as written are the only thing that differs.
   expect(other.services[0]!.ports[0]!.binding.text).toBe('a:StockQuoteBinding');
   expect(other.messages[0]!.parts[0]!.element!.text).toBe('b:TradePriceRequest');
-  expect(sampleRequest(other, '', { soap: '1.1', fill: true }).envelope).toBe(
-    sampleRequest(original, '', { soap: '1.1', fill: true }).envelope,
+  // The envelope is the same in everything but the prefixes it takes from the document.
+  expect(shape(parseXml(sampleRequest(other, '', { soap: '1.1', fill: true }).envelope))).toEqual(
+    shape(parseXml(sampleRequest(original, '', { soap: '1.1', fill: true }).envelope)),
   );
 
   // 2. Two prefixes swapped: tns now stands for the schema namespace and xsd1 for the namespace of the document.
-  const swapped = EXAMPLE_1_STOCK_QUOTE.replace(/tns/g, '__A__')
-    .replace(/xsd1/g, '__B__')
+  const swapped = EXAMPLE_1_STOCK_QUOTE.replace(/\btns\b/g, '__A__')
+    .replace(/\bxsd1\b/g, '__B__')
     .replace(/__A__/g, 'xsd1')
     .replace(/__B__/g, 'tns');
   expect(swapped).toContain('xmlns:tns="http://example.com/stockquote.xsd"');
@@ -741,14 +756,18 @@ it('input over 2 MiB is refused and invalid XML names its line and column', () =
   const mismatch = refusal(() =>
     explainWsdl('<definitions xmlns="http://schemas.xmlsoap.org/wsdl/">\n  <message name="m">\n</definitions>'),
   );
-  expect(mismatch.line).toBe(3);
+  // xmldom reports the element that was left open: the position is on line 2, where <message> starts, and not past it.
+  expect(mismatch.line).toBe(2);
   expect(mismatch.column).toBeGreaterThan(0);
+  expect(mismatch.column).toBeLessThanOrEqual('  <message name="m">'.length + 1);
   expect(mismatch.message).toContain('definitions');
   // Text that is not XML at all, and a document that stops early.
-  expect(refusal(() => explainWsdl('just some words')).line).toBeGreaterThan(0);
-  expect(
-    refusal(() => explainWsdl('<definitions xmlns="http://schemas.xmlsoap.org/wsdl/">\n<message')).line,
-  ).toBeGreaterThan(0);
+  const words = refusal(() => explainWsdl('just some words'));
+  expect(words.message).toBe('The document has no root element.');
+  expect(words.line).toBeUndefined();
+  const early = refusal(() => explainWsdl('<definitions xmlns="http://schemas.xmlsoap.org/wsdl/">\n<message'));
+  expect(early.message).toContain('message');
+  expect(early.line).toBe(2);
 });
 
 it('an operation that is not in the document is refused naming the operations it has, and a binding picks its parts', () => {
@@ -773,7 +792,7 @@ it('an operation that is not in the document is refused naming the operations it
   const request = sampleRequest(parts, 'Op', { soap: '1.1', fill: true });
   expect(request.envelope).toBe(
     [
-      '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="urn:t">',
+      '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="urn:t">',
       '  <soapenv:Body>',
       '    <ns1:Op>',
       '      <a>string</a>',
