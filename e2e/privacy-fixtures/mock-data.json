@@ -1,6 +1,31 @@
 [
   {
-    "values": { "count": "5", "fields": "id: id\nname: fullName" },
+    "values": {
+      "count": "5",
+      "fields": "id: id\nname: fullName"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "format",
+      "value": "xml"
+    },
+    "values": {
+      "count": "5",
+      "fields": "id: id\nname: fullName"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "format",
+      "value": "yaml"
+    },
+    "values": {
+      "count": "5",
+      "fields": "id: id\nname: fullName"
+    },
     "attachesFile": false
   }
 ]

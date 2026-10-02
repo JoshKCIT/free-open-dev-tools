@@ -12,7 +12,13 @@ const REFERENCE_FIELDS = [
   'key: uuid',
 ].join('\n');
 
-const LANGUAGE: Record<MockDataFormat, string | undefined> = { json: 'json', jsonl: undefined, csv: undefined };
+const LANGUAGE: Record<MockDataFormat, string | undefined> = {
+  json: 'json',
+  jsonl: undefined,
+  csv: undefined,
+  xml: 'xml',
+  yaml: 'yaml',
+};
 
 const fields: Field[] = [
   { name: 'seed', label: 'Seed', type: 'text', default: 'demo' },
@@ -33,6 +39,8 @@ const fields: Field[] = [
       { value: 'json', label: 'JSON' },
       { value: 'jsonl', label: 'JSON Lines' },
       { value: 'csv', label: 'CSV' },
+      { value: 'xml', label: 'XML' },
+      { value: 'yaml', label: 'YAML' },
     ],
   },
 ];

@@ -1,5 +1,8 @@
 import meta from './meta.json';
+import { Scalar } from 'yaml';
 import { formatCsv } from './csv';
+import { XmlWriteError, isXmlName, writeXmlValue } from './xml-write';
+import { writeYamlValue } from './yaml-value';
 import {
   FIRST_NAMES,
   LAST_NAMES,
@@ -438,7 +441,7 @@ function generateField(field: FieldDef, rng: () => number, recordIndex: number):
   }
 }
 
-export type MockDataFormat = 'json' | 'jsonl' | 'csv';
+export type MockDataFormat = 'json' | 'jsonl' | 'csv' | 'xml' | 'yaml';
 
 export interface GenerateMockDataOptions {
   seed: string;
@@ -484,6 +487,66 @@ function formatCsvRecords(fieldNames: string[], records: FieldValue[][]): string
   return formatCsv([fieldNames, ...rows]);
 }
 
+/** Sets an own data property, even for a name such as `__proto__`, which plain assignment would turn into a prototype change. */
+function setOwn(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+}
+
+/**
+ * XML: `<records>` holding one `<record>` per record, one element per field, every value as its text. A field name
+ * has to be an XML 1.0 Name to be an element name, so any other is refused naming its line in the field list.
+ */
+function formatXml(fields: FieldDef[], records: FieldValue[][]): string {
+  for (const field of fields) {
+    if (!isXmlName(field.name)) {
+      throw new MockDataError(
+        `Field name "${field.name}" on line ${field.line} cannot be an XML element name, so XML output refuses it. Start with a letter or an underscore and use only letters, digits, hyphens, periods and underscores.`,
+        field.line,
+      );
+    }
+  }
+  const items = records.map((record) => {
+    const item: Record<string, unknown> = {};
+    for (const field of record) setOwn(item, field.name, field.text);
+    return item;
+  });
+  try {
+    return writeXmlValue({ records: { record: items } }, { indent: 2 }).xml;
+  } catch (err) {
+    if (err instanceof XmlWriteError) {
+      // The path is /records/record/<index>/<field name>; the field name leads back to its line.
+      const name = err.path?.split('/')[4]?.replace(/~1/g, '/').replace(/~0/g, '~');
+      const field = fields.find((f) => f.name === name);
+      throw new MockDataError(
+        field ? `Field "${field.name}" on line ${field.line}: ${err.message}` : err.message,
+        field?.line,
+      );
+    }
+    throw err;
+  }
+}
+
+/** One field's value as YAML holds it: a bare number or boolean for a raw value (a decimal keeps its places), else a string. */
+function yamlValue(field: FieldValue): unknown {
+  if (!field.raw) return field.text;
+  if (field.text === 'true') return true;
+  if (field.text === 'false') return false;
+  const value = new Scalar(Number(field.text));
+  const point = field.text.indexOf('.');
+  if (point !== -1) value.minFractionDigits = field.text.length - point - 1;
+  return value;
+}
+
+/** YAML: a list with one mapping per record. A string that a reader could take for a number, a boolean or null is quoted. */
+function formatYaml(records: FieldValue[][]): string {
+  const items = records.map((record) => {
+    const item: Record<string, unknown> = {};
+    for (const field of record) setOwn(item, field.name, yamlValue(field));
+    return item;
+  });
+  return writeYamlValue(items, 2);
+}
+
 /**
  * Generates deterministic fake records. The same `seed`, `fields` and
  * `count` always give byte-identical output, on every run and in every
@@ -508,15 +571,26 @@ export function generateMockData(options: GenerateMockDataOptions): GenerateMock
     records.push(fields.map((field) => generateField(field, rng, i)));
   }
 
-  const output =
-    format === 'json'
-      ? formatJsonArray(records)
-      : format === 'jsonl'
-        ? formatJsonl(records)
-        : formatCsvRecords(
-            fields.map((f) => f.name),
-            records,
-          );
+  let output: string;
+  switch (format) {
+    case 'json':
+      output = formatJsonArray(records);
+      break;
+    case 'jsonl':
+      output = formatJsonl(records);
+      break;
+    case 'xml':
+      output = formatXml(fields, records);
+      break;
+    case 'yaml':
+      output = formatYaml(records);
+      break;
+    default:
+      output = formatCsvRecords(
+        fields.map((f) => f.name),
+        records,
+      );
+  }
 
   return { output, records: count, fields: fields.length };
 }

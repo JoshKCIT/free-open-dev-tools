@@ -137,3 +137,20 @@ test('json-schema-generator: an XML document gives a schema with its attribute a
   await expect(outputArea(page)).toContainText('"@_id"');
   await expect(outputArea(page)).toContainText('"type": "integer"');
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// mock-data (DATA-16): XML and YAML beside JSON, JSON Lines and CSV
+// ---------------------------------------------------------------------------------------------------------------
+
+test('mock-data: the YAML format gives the seeded records with yes kept as a string', async ({ page }) => {
+  await openTool(page, 'mock-data');
+  await setControls(page, { selects: { format: 'yaml' } });
+  // oneOf with one choice always gives that text. YAML 1.1 reads a bare yes as a boolean, so a writer that wants it to
+  // stay text writes it quoted; the id kind counts up from 1 and is a bare number.
+  await fillField(page, 'fields', 'id: id\nanswer: oneOf(yes)');
+  await fillField(page, 'count', '2');
+
+  const output = outputArea(page).locator('pre.output');
+  await expect(output).toContainText('answer: "yes"');
+  expect(await output.textContent()).toBe('- id: 1\n  answer: "yes"\n- id: 2\n  answer: "yes"\n');
+});
