@@ -83,6 +83,10 @@ function timeOfDay(msOfDay: number): string {
   return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(seconds, 2)}${millis === 0 ? '' : `.${pad(millis, 3)}`}`;
 }
 
+/** The longest text read as a serial: a double needs at most 25 characters, so 40 leaves room for padding zeros. */
+const MAX_SERIAL_LENGTH = 40;
+const SERIAL_TEXT = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/;
+
 /**
  * The ISO text of a serial, or null when the text is not a number or lies outside the dates a spreadsheet can hold.
  * 1900 system: serial 1 is 1900-01-01, serial 60 is the compatibility day 1900-02-29 (Excel counts 1900 as a leap year),
@@ -92,7 +96,9 @@ function timeOfDay(msOfDay: number): string {
  */
 export function tryDate(serial: string, date1904: boolean, timeOnly = false): string | null {
   const text = serial.trim();
-  if (text === '' || !/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(text)) return null;
+  // A serial is never long, and a hostile cell must not hold the worker: the length is refused before any pattern runs,
+  // and the pattern has no two branches that can both take the same digits, so it cannot backtrack quadratically.
+  if (text === '' || text.length > MAX_SERIAL_LENGTH || !SERIAL_TEXT.test(text)) return null;
   const value = Number(text);
   if (!Number.isFinite(value) || value < 0 || value >= (date1904 ? END_1904 : END_1900)) return null;
 

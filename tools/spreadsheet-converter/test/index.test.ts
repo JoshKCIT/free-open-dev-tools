@@ -444,6 +444,24 @@ it('dates follow the 1900 system with its leap-day quirk and the 1904 system, an
   ]);
 });
 
+it('a very long cell text that is not a date serial is refused at once, not after a quadratic regex scan', () => {
+  // 80,000 digits and then a letter kept the old pattern busy for about 15 seconds; a serial is never this long.
+  const started = performance.now();
+  expect(tryDate('9'.repeat(80_000) + 'x', false)).toBeNull();
+  expect(tryDate('9'.repeat(80_000), false)).toBeNull();
+  expect(tryDate('1.' + '0'.repeat(80_000) + 'x', true, true)).toBeNull();
+  expect(performance.now() - started).toBeLessThan(2000);
+  // Ordinary serials and near misses are unchanged.
+  expect(tryDate('43861', false)).toBe('2020-01-31');
+  expect(tryDate('43861.', false)).toBe('2020-01-31');
+  expect(tryDate('.5', false)).toBe('12:00:00');
+  expect(tryDate('4.3861E4', false)).toBe('2020-01-31');
+  expect(tryDate('43861x', false)).toBeNull();
+  expect(tryDate('1.5.5', false)).toBeNull();
+  expect(tryDate('.', false)).toBeNull();
+  expect(tryDate('e5', false)).toBeNull();
+}, 60_000);
+
 it('a time-only serial below 1 shows as a time of day', () => {
   // 8:30 is 0.3541666666666667 of a day (Python: 30600 / 86400). A value below 1 is a time of day, never a date.
   expect(serialToIso('0.3541666666666667', false)).toBe('08:30:00');
