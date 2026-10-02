@@ -1,7 +1,7 @@
 {
   "name": "@fodt/json-schema-generator",
   "version": "1.0.0",
-  "description": "Infer a JSON Schema from one or more sample documents.",
+  "description": "Infer a JSON Schema from one or more sample JSON, YAML or XML documents.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,12 +26,18 @@
     "generate",
     "draft-07",
     "2020-12",
-    "type inference"
+    "type inference",
+    "yaml",
+    "xml"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "fast-xml-parser": "5.11.1"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

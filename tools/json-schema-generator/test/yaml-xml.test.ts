@@ -197,6 +197,10 @@ it('a YAML stream in single mode, a non-list in array mode, a duplicate key and 
   expect(refusal('['.repeat(600) + ']'.repeat(600)).message).toMatch(/512 levels/);
   // Nothing but documents with no content gives nothing to infer from.
   expect(refusal('---\n---\n', 'lines').message).toMatch(/At least one sample/);
+  // An explicit null is a value, not an empty document: it is kept as a sample, and a trailing --- adds nothing.
+  const withNull = generateSchema('--- null\n---\nid: 1\n---\n', { inputFormat: 'yaml', samplesAre: 'lines' });
+  expect(withNull.sampleCount).toBe(2);
+  expect((withNull.schema as { type: unknown }).type).toEqual(['null', 'object']);
 });
 
 it('a YAML alias is reported as a warning and a key named __proto__ stays an ordinary property', () => {

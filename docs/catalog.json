@@ -270,7 +270,7 @@
     "name": "JSON Schema Generator",
     "category": "json-data",
     "tier": 2,
-    "summary": "Infer a JSON Schema from one or more sample documents."
+    "summary": "Infer a JSON Schema from one or more sample JSON, YAML or XML documents."
   },
   {
     "id": "json-flatten",

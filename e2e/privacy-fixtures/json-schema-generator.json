@@ -4,5 +4,25 @@
       "samples": "{\"id\":1,\"name\":\"Ada\"}"
     },
     "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "inputFormat",
+      "value": "yaml"
+    },
+    "values": {
+      "samples": "id: 1\nname: Ada"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "inputFormat",
+      "value": "xml"
+    },
+    "values": {
+      "samples": "<person id=\"1\"><name>Ada</name></person>"
+    },
+    "attachesFile": false
   }
 ]

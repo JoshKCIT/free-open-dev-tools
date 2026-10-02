@@ -1,6 +1,9 @@
 import meta from './meta.json';
 import { setOwn, hasOwn, getOwn } from './own-property';
 import { parseJsonText, exceedsDepth, MAX_JSON_DEPTH } from './json-text';
+import { XmlValueError, readXmlValue } from './xml-read';
+import { typeXmlValues } from './xml-typed';
+import { YamlValueError, readYamlValue } from './yaml-value';
 
 export { meta };
 export { MAX_JSON_DEPTH };
@@ -10,6 +13,10 @@ const DEPTH_MESSAGE =
 
 export type SchemaDraft = 'draft-07' | '2020-12';
 export type SamplesAre = 'single' | 'array' | 'lines';
+
+/** What the sample text is written in. `json` is the default and reads exactly as it always has. */
+export const INPUT_FORMATS = ['json', 'yaml', 'xml'] as const;
+export type InputFormat = (typeof INPUT_FORMATS)[number];
 
 export class SchemaGeneratorError extends Error {
   readonly line?: number;
@@ -23,16 +30,25 @@ export class SchemaGeneratorError extends Error {
   }
 }
 
-export interface GenerateSchemaOptions {
-  samplesAre?: SamplesAre;
+export interface GenerateSchemaFromValuesOptions {
   draft?: SchemaDraft;
   detectFormats?: boolean;
+}
+
+export interface GenerateSchemaOptions extends GenerateSchemaFromValuesOptions {
+  samplesAre?: SamplesAre;
+  /** How the sample text is written. Default `json`. */
+  inputFormat?: InputFormat;
+  /** XML input only. Read text written like a JSON number, `true` or `false` as a number or boolean. Default false: every XML leaf is a string. */
+  parseValues?: boolean;
 }
 
 export interface GenerateSchemaResult {
   schema: unknown;
   output: string;
   sampleCount: number;
+  /** Notes from reading YAML or XML; present only when there is something to report. */
+  warnings?: string[];
 }
 
 /**
@@ -280,19 +296,63 @@ function collectSamples(samplesText: string, samplesAre: SamplesAre): unknown[] 
   return samples;
 }
 
+function yamlError(err: YamlValueError): SchemaGeneratorError {
+  return new SchemaGeneratorError(err.message, { line: err.line, column: err.column });
+}
+
+/** Reads YAML samples by the same three choices JSON has: one document, a list at the top, or a `---` stream. */
+function collectYamlSamples(text: string, samplesAre: SamplesAre): { samples: unknown[]; warnings: string[] } {
+  try {
+    if (samplesAre === 'lines') {
+      const read = readYamlValue(text, { documents: 'many' });
+      return { samples: read.value as unknown[], warnings: read.warnings };
+    }
+    const read = readYamlValue(text, { documents: 'one' });
+    if (samplesAre === 'array') {
+      if (!Array.isArray(read.value)) {
+        throw new SchemaGeneratorError('Samples must be a YAML list whose items are the sample documents.');
+      }
+      return { samples: read.value, warnings: read.warnings };
+    }
+    return { samples: [read.value], warnings: read.warnings };
+  } catch (err) {
+    if (err instanceof YamlValueError) throw yamlError(err);
+    throw err;
+  }
+}
+
+/** Reads one XML document. The array and lines choices have no meaning for XML, so they are not applied and a warning says so. */
+function collectXmlSamples(
+  text: string,
+  samplesAre: SamplesAre,
+  parseValues: boolean,
+): { samples: unknown[]; warnings: string[] } {
+  try {
+    const read = readXmlValue(text);
+    const warnings = [...read.warnings];
+    if (samplesAre !== 'single') {
+      warnings.push('XML holds one document, so the choice of samples was not applied; the one document was used.');
+    }
+    return { samples: [parseValues ? typeXmlValues(read.value) : read.value], warnings };
+  } catch (err) {
+    if (err instanceof XmlValueError)
+      throw new SchemaGeneratorError(err.message, { line: err.line, column: err.column });
+    throw err;
+  }
+}
+
 /**
- * Infers a JSON Schema from one or more sample documents. `samplesAre`
- * selects how `samplesText` is read: `single` (one document), `array` (a
- * JSON array whose items are the samples) or `lines` (JSON Lines, one
- * document per non-blank line). Every sample is checked against the
+ * Infers a JSON Schema from samples that are already parsed values. This is the part of `generateSchema` that comes
+ * after the text has been read, so every input format reaches the same inference. Every sample is checked against the
  * 512-level depth limit before inference (E3).
  */
-export function generateSchema(samplesText: string, options: GenerateSchemaOptions = {}): GenerateSchemaResult {
-  const samplesAre = options.samplesAre ?? 'single';
+export function generateSchemaFromValues(
+  samples: unknown[],
+  options: GenerateSchemaFromValuesOptions = {},
+): GenerateSchemaResult {
   const draft = options.draft ?? '2020-12';
   const detectFormats = options.detectFormats ?? true;
 
-  const samples = collectSamples(samplesText, samplesAre);
   if (samples.length === 0) {
     throw new SchemaGeneratorError('At least one sample document is needed to infer a schema.');
   }
@@ -305,4 +365,26 @@ export function generateSchema(samplesText: string, options: GenerateSchemaOptio
   const schema: Record<string, unknown> = { $schema: SCHEMA_ID[draft], ...schemaBody };
 
   return { schema, output: JSON.stringify(schema, null, 2), sampleCount: samples.length };
+}
+
+/**
+ * Infers a JSON Schema from one or more sample documents. `samplesAre`
+ * selects how `samplesText` is read: `single` (one document), `array` (a
+ * JSON array whose items are the samples) or `lines` (JSON Lines, one
+ * document per non-blank line). `inputFormat` says the text is YAML or XML
+ * instead of JSON; YAML keeps the three choices (one document, a list at the
+ * top, a `---` stream) and XML reads one document.
+ */
+export function generateSchema(samplesText: string, options: GenerateSchemaOptions = {}): GenerateSchemaResult {
+  const samplesAre = options.samplesAre ?? 'single';
+  const inputFormat = options.inputFormat ?? 'json';
+
+  if (inputFormat === 'json') return generateSchemaFromValues(collectSamples(samplesText, samplesAre), options);
+
+  const read =
+    inputFormat === 'yaml'
+      ? collectYamlSamples(samplesText, samplesAre)
+      : collectXmlSamples(samplesText, samplesAre, options.parseValues ?? false);
+  const result = generateSchemaFromValues(read.samples, options);
+  return read.warnings.length > 0 ? { ...result, warnings: read.warnings } : result;
 }

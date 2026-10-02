@@ -1,4 +1,4 @@
-import { meta, generateSchema, SchemaGeneratorError } from '@fodt/json-schema-generator';
+import { meta, generateSchema, SchemaGeneratorError, type InputFormat } from '@fodt/json-schema-generator';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -11,6 +11,26 @@ export default defineTool({
       type: 'textarea',
       rows: 12,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
+    },
+    {
+      name: 'inputFormat',
+      label: 'Input format',
+      type: 'select',
+      default: 'json',
+      help: 'The samples above are read in this format. YAML keeps the choice below (a list at the top, or a --- stream of documents); XML reads one document.',
+      options: [
+        { value: 'json', label: 'JSON' },
+        { value: 'yaml', label: 'YAML' },
+        { value: 'xml', label: 'XML' },
+      ],
+    },
+    {
+      name: 'parseValues',
+      label: 'Read numbers and booleans',
+      type: 'checkbox',
+      default: true,
+      help: 'XML text is a number or boolean only when written the way JSON writes one; otherwise every XML value is a string.',
+      visible: (values) => str(values, 'inputFormat', 'json') === 'xml',
     },
     {
       name: 'samplesAre',
@@ -40,6 +60,14 @@ export default defineTool({
       label: 'Two users, one missing a name',
       values: { samples: '[{"id":1,"name":"Ada"},{"id":2}]', samplesAre: 'array' },
     },
+    {
+      label: 'YAML samples',
+      values: { inputFormat: 'yaml', samples: '- id: 1\n  name: Ada\n- id: 2\n', samplesAre: 'array' },
+    },
+    {
+      label: 'An XML document',
+      values: { inputFormat: 'xml', samples: '<person id="1"><name>Ada</name></person>' },
+    },
   ],
   run(values): ToolResult {
     const samples = str(values, 'samples');
@@ -48,11 +76,14 @@ export default defineTool({
     const samplesAre = str(values, 'samplesAre', 'single') as 'single' | 'array' | 'lines';
     const draft = str(values, 'draft', '2020-12') as 'draft-07' | '2020-12';
     const detectFormats = bool(values, 'detectFormats', true);
+    const inputFormat = str(values, 'inputFormat', 'json') as InputFormat;
+    const parseValues = bool(values, 'parseValues', true);
 
     try {
-      const result = generateSchema(samples, { samplesAre, draft, detectFormats });
+      const result = generateSchema(samples, { samplesAre, draft, detectFormats, inputFormat, parseValues });
       return {
         outputs: [{ kind: 'code', label: 'Generated schema', language: 'json', value: result.output }],
+        warnings: result.warnings,
         stats: [['Samples', String(result.sampleCount)]],
       };
     } catch (err) {

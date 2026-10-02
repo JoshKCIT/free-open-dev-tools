@@ -118,3 +118,22 @@ test('json-to-code: YAML input gives a TypeScript interface with the same fields
   await expect(outputArea(page)).toContainText('age: number;');
   await expect(outputArea(page)).toContainText('tags: string[];');
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// json-schema-generator (DATA-18): YAML and XML samples beside JSON
+// ---------------------------------------------------------------------------------------------------------------
+
+test('json-schema-generator: an XML document gives a schema with its attribute and element properties', async ({
+  page,
+}) => {
+  await openTool(page, 'json-schema-generator');
+  await setControls(page, { selects: { inputFormat: 'xml' } });
+  // XML 1.0: the attribute id and the child element name belong to the one element person. The page's stated rules:
+  // an attribute is a property named @_id, and text that is written like a JSON number is read as a number.
+  await fillField(page, 'samples', '<person id="1"><name>Ada</name></person>');
+
+  await expect(outputArea(page)).toContainText('"person"');
+  await expect(outputArea(page)).toContainText('"name"');
+  await expect(outputArea(page)).toContainText('"@_id"');
+  await expect(outputArea(page)).toContainText('"type": "integer"');
+});
