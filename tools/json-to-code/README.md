@@ -39,7 +39,7 @@ Infers a type model from a pasted JSON, YAML or XML sample and renders typed sou
 - YAML and XML input give the same types as the equivalent JSON; XML attributes become fields named with @_ and text beside them #text.
 - XML text is read as numbers and booleans only while Read numbers and booleans is on; with it off every XML value is a string.
 - With Read numbers and booleans on, XML text counts as a number only when it is written the way JSON writes one (no leading zeros, no plus sign, no hexadecimal), so 01234 and +4412 stay strings.
-- YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, more than 100 aliases and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.
+- YAML input holds one document with a mapping or a list at the top; a stream of several documents, a single plain value, a repeated key, an alias count at the library's limit of 100 and nesting beyond 512 levels are refused with a message, and a syntax error names its line and column.
 - A YAML anchor and its aliases are expanded into separate copies, and a YAML tag outside the core schema is not interpreted; each is reported as a warning.
 - An XML document with a DOCTYPE is refused before it is read, so no entity is ever declared, loaded or expanded; comments, processing instructions and the XML declaration are dropped with a warning.
 
@@ -49,6 +49,7 @@ Infers a type model from a pasted JSON, YAML or XML sample and renders typed sou
 - Python output targets 3.11 or later, the first version with typing.NotRequired
 - YAML 1.0 is read as the number 1, so it infers as an integer, exactly as JSON 1.0 does; only a value with a fractional part is a floating number
 - The YAML merge key << is read as an ordinary key named <<, as YAML 1.2 does, and is not expanded
+- Within a type made from an XML element, the fields for its child elements come first and the fields for its attributes after them
 
 ## Defined by
 
