@@ -665,3 +665,121 @@ test('wsdl-explorer: every address a document names is listed as text, and a loc
   });
   expect(seen).toEqual([]);
 });
+
+/**
+ * Starts watching, in the page, for a blocked request (a `securitypolicyviolation` event). It must be installed before
+ * the page loads. A request the page's policy blocked would never reach the recording server, so the server alone
+ * could not tell "never asked" from "asked and blocked"; this event, and the page's own request list, can.
+ */
+async function watchPolicyViolations(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __FODT_VIOLATIONS__: string[] }).__FODT_VIOLATIONS__ = seen;
+    document.addEventListener('securitypolicyviolation', (event) => seen.push(event.blockedURI));
+  });
+}
+
+/** Asserts the page asked nobody but itself, and that no request was blocked on the way out. */
+async function assertNoOutsideRequest(page: Page, requests: string[]): Promise<void> {
+  const origin = new URL(page.url()).origin;
+  const strays = requests.filter(
+    (url) => !url.startsWith('data:') && !url.startsWith('blob:') && !url.startsWith(`${origin}/`),
+  );
+  expect(strays).toEqual([]);
+  const violations = await page.evaluate(
+    () => (window as unknown as { __FODT_VIOLATIONS__?: string[] }).__FODT_VIOLATIONS__ ?? ['(watcher missing)'],
+  );
+  expect(violations).toEqual([]);
+}
+
+test('xsd-validator: schema includes and imports are listed as text, and a local server named in them receives no request', async ({
+  page,
+}) => {
+  await watchPolicyViolations(page);
+  const seen = await withRecordingServer(async (address) => {
+    await page.goto(rel('/tools/xsd-validator'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    const requests: string[] = [];
+    page.on('request', (request) => requests.push(request.url()));
+
+    // An include cannot be used, so the schema stops with an error; the include and the import are both listed.
+    const withInclude = [
+      '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:o="urn:o">',
+      `  <xs:import namespace="urn:o" schemaLocation="${address}/import.xsd"/>`,
+      `  <xs:include schemaLocation="${address}/include.xsd"/>`,
+      '  <xs:element name="a" type="xs:string"/>',
+      '</xs:schema>',
+    ].join('\n');
+    await fillAndHold(page, 'schema', withInclude);
+    await fillAndHold(page, 'xml', '<a>x</a>');
+    await runButtonOf(page).click();
+    await expect(outputArea(page)).toContainText(`${address}/include.xsd`, { timeout: 30_000 });
+    await expect(outputArea(page)).toContainText(`${address}/import.xsd`);
+
+    // An import alone is listed and the validation goes on and succeeds.
+    const importOnly = [
+      '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+      `  <xs:import namespace="urn:o" schemaLocation="${address}/import.xsd"/>`,
+      '  <xs:element name="a" type="xs:string"/>',
+      '</xs:schema>',
+    ].join('\n');
+    await fillAndHold(page, 'schema', importOnly);
+    await runButtonOf(page).click();
+    await expect(outputArea(page)).toContainText('Valid against the schema', { timeout: 30_000 });
+    await expect(outputArea(page)).toContainText(`import ${address}/import.xsd (line 2): not loaded`);
+    expect(await outputArea(page).locator('img, iframe, script, link, form, a[href], object, embed').count()).toBe(0);
+
+    await page.waitForTimeout(500);
+    await assertNoOutsideRequest(page, requests);
+  });
+  expect(seen).toEqual([]);
+});
+
+test('jq-playground: a filter that imports a module from an address never asks that address', async ({ page }) => {
+  await watchPolicyViolations(page);
+  const seen = await withRecordingServer(async (address) => {
+    await page.goto(rel('/tools/jq-playground'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    const requests: string[] = [];
+    page.on('request', (request) => requests.push(request.url()));
+
+    // The page runs as you type, so the input comes after the filter. A data import names the server too.
+    await fillAndHold(page, 'filter', `import "${address}/module" as x; .`);
+    await fillAndHold(page, 'input', '1');
+    // jq looks for the module in its own search path, finds nothing and says so; the page shows that as an error.
+    await expect(outputArea(page).locator('.issue-list')).toContainText('module', { timeout: 20_000 });
+    await fillAndHold(page, 'filter', `import "${address}/data" as $d; $d`);
+    await expect(outputArea(page).locator('.issue-list')).toContainText('data', { timeout: 20_000 });
+
+    await page.waitForTimeout(500);
+    await assertNoOutsideRequest(page, requests);
+  });
+  expect(seen).toEqual([]);
+});
+
+test('sqlite-viewer: ATTACH of an address is refused by the engine and never asks that address', async ({ page }) => {
+  await watchPolicyViolations(page);
+  const seen = await withRecordingServer(async (address) => {
+    await page.goto(rel('/tools/sqlite-viewer'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    const requests: string[] = [];
+    page.on('request', (request) => requests.push(request.url()));
+
+    // The address is only a file name for the engine's own memory file system, which has no such folder, so SQLite
+    // says it cannot open it: that sentence is the engine's whole answer and nothing was requested.
+    await fillAndHold(
+      page,
+      'sql',
+      `attach database '${address}/db.sqlite' as remote; create table remote.t(a); select a from remote.t;`,
+    );
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('.issue-list')).toContainText(
+      `unable to open database: ${address}/db.sqlite`,
+      { timeout: 30_000 },
+    );
+
+    await page.waitForTimeout(500);
+    await assertNoOutsideRequest(page, requests);
+  });
+  expect(seen).toEqual([]);
+});
