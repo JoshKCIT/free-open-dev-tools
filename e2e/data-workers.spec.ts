@@ -249,6 +249,18 @@ const ENGINE_CASES: EngineCase[] = [
     limitSeconds: 10,
     limitMessage: 'Stopped after 10 seconds',
   },
+  {
+    id: 'xsd-validator',
+    valid: {
+      schema:
+        '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="note" type="xs:string"/></xs:schema>',
+      xml: '<note>a short note</note>',
+    },
+    pressRun: true,
+    expectOutput: 'Valid against the schema',
+    limitSeconds: 20,
+    limitMessage: 'Stopped after 20 seconds',
+  },
 ];
 
 for (const c of ENGINE_CASES) {

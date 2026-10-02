@@ -1,0 +1,18 @@
+{
+  "id": "xsd-validator",
+  "label": "XML Schema Part 2 datatypes: -1 is not a positiveInteger, so the order is not valid",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "schema",
+      "value": "<?xml version=\"1.0\"?>\n<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">\n  <xs:element name=\"order\">\n    <xs:complexType>\n      <xs:sequence>\n        <xs:element name=\"qty\" type=\"xs:positiveInteger\"/>\n        <xs:element name=\"sku\" type=\"xs:string\"/>\n      </xs:sequence>\n      <xs:attribute name=\"id\" type=\"xs:int\" use=\"required\"/>\n    </xs:complexType>\n  </xs:element>\n</xs:schema>"
+    },
+    {
+      "action": "fill",
+      "field": "xml",
+      "value": "<order>\n  <qty>-1</qty>\n  <sku>A</sku>\n  <extra/>\n</order>"
+    },
+    { "action": "run" }
+  ],
+  "expect": ["'-1' is not a valid value of the atomic type 'xs:positiveInteger'"]
+}
