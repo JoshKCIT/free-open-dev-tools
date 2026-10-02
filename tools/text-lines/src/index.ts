@@ -1,6 +1,9 @@
 import meta from './meta.json';
+import { compareIp, expandLine, parseIp, unexpandLine, wrapLine, type ParsedIp } from './layout';
 
 export { meta };
+export { expandTabs, unexpandTabs, wrapLines, parseIp, compareIp } from './layout';
+export type { ParsedIp } from './layout';
 
 export class TextLinesError extends Error {
   constructor(message: string) {
@@ -21,11 +24,14 @@ export const OPERATIONS = [
   'affix',
   'reverse',
 ] as const;
-export type LineOperation = (typeof OPERATIONS)[number];
+
+/** Every operation the page offers: the original ten, then the three added later. `OPERATIONS` itself never changes. */
+export const ALL_OPERATIONS = [...OPERATIONS, 'tabs-to-spaces', 'spaces-to-tabs', 'wrap'] as const;
+export type LineOperation = (typeof ALL_OPERATIONS)[number];
 
 export interface LineOptions {
-  /** 'sort' only. Default 'codepoint'. */
-  order?: 'codepoint' | 'natural' | 'length';
+  /** 'sort' only. 'ip' orders IPv4 and IPv6 addresses, IPv4 first. Default 'codepoint'. */
+  order?: 'codepoint' | 'natural' | 'length' | 'ip';
   /** 'sort' only. Default false. */
   descending?: boolean;
   /** 'dedupe' and 'filter'. Default false. */
@@ -54,12 +60,22 @@ export interface LineOptions {
   suffix?: string;
   /** 'affix' only. A blank line (empty after trimming whitespace) is left unchanged when true. Default false. */
   skipBlank?: boolean;
+  /** 'tabs-to-spaces' and 'spaces-to-tabs' only. A whole number from 1 to 16. Default 4. */
+  tabWidth?: number;
+  /** 'spaces-to-tabs' only: convert every run of spaces, not only the one at the start of the line. Default false. */
+  allRuns?: boolean;
+  /** 'wrap' only. A whole number from 1 to 1000. Default 80. */
+  wrapWidth?: number;
+  /** 'wrap' only: cut a word longer than the width into pieces of exactly that width. Default false. */
+  breakLongWords?: boolean;
 }
 
 export interface LinesResult {
   output: string;
   linesIn: number;
   linesOut: number;
+  /** Sorting as IP addresses only: how many lines were not addresses and so follow the sorted ones. */
+  nonAddressLines?: number;
 }
 
 /** Splits on CRLF, LF or CR, so any of the three common line endings are read as line breaks. */
@@ -133,14 +149,35 @@ function shuffleWithSeed(lines: string[], seed: string): string[] {
   return result;
 }
 
+const isWhole = (value: unknown, min: number, max: number): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
+
+function tabWidthOf(options: LineOptions): number {
+  const width = options.tabWidth ?? 4;
+  if (!isWhole(width, 1, 16)) throw new TextLinesError('Tab width must be a whole number from 1 to 16.');
+  return width;
+}
+
 export function processLines(input: string, operation: LineOperation, options: LineOptions = {}): LinesResult {
   const lines = splitLines(input);
   const linesIn = lines.length;
   let result: string[];
+  let nonAddressLines: number | undefined;
 
   switch (operation) {
     case 'sort': {
       const order = options.order ?? 'codepoint';
+      if (order === 'ip') {
+        // Lines that are addresses are sorted (stably, so equal ones keep their input order, in both directions);
+        // every other line follows in its original order.
+        const parsed = lines.map((line) => ({ line, ip: parseIp(line) }));
+        const addresses = parsed.filter((entry): entry is { line: string; ip: ParsedIp } => entry.ip !== null);
+        const others = parsed.filter((entry) => entry.ip === null).map((entry) => entry.line);
+        addresses.sort(options.descending ? (a, b) => compareIp(b.ip, a.ip) : (a, b) => compareIp(a.ip, b.ip));
+        result = [...addresses.map((entry) => entry.line), ...others];
+        nonAddressLines = others.length;
+        break;
+      }
       if (order === 'length') {
         // Descending uses a negated comparator directly, rather than
         // sorting ascending and reversing, so a tie stays in its original
@@ -226,11 +263,32 @@ export function processLines(input: string, operation: LineOperation, options: L
       result = [...lines].reverse();
       break;
     }
+    case 'tabs-to-spaces': {
+      const width = tabWidthOf(options);
+      result = lines.map((line) => expandLine(line, width));
+      break;
+    }
+    case 'spaces-to-tabs': {
+      const width = tabWidthOf(options);
+      const allRuns = options.allRuns ?? false;
+      result = lines.map((line) => unexpandLine(line, width, allRuns));
+      break;
+    }
+    case 'wrap': {
+      const width = options.wrapWidth ?? 80;
+      if (!isWhole(width, 1, 1000)) throw new TextLinesError('Width must be a whole number from 1 to 1000.');
+      const breakLongWords = options.breakLongWords ?? false;
+      result = lines.flatMap((line) => wrapLine(line, width, breakLongWords));
+      break;
+    }
     default: {
       const exhaustive: never = operation;
       throw new TextLinesError(`Unknown operation "${String(exhaustive)}".`);
     }
   }
 
-  return { output: result.join('\n'), linesIn, linesOut: result.length };
+  const output = result.join('\n');
+  return nonAddressLines === undefined
+    ? { output, linesIn, linesOut: result.length }
+    : { output, linesIn, linesOut: result.length, nonAddressLines };
 }

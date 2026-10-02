@@ -361,7 +361,7 @@
     "name": "Line Toolkit",
     "category": "text",
     "tier": 1,
-    "summary": "Sort, deduplicate, shuffle, number, trim, filter, join and split lines."
+    "summary": "Sort (including as IP addresses), deduplicate, shuffle, number, trim, filter, join, split, wrap and convert tabs in lines."
   },
   {
     "id": "case-converter",

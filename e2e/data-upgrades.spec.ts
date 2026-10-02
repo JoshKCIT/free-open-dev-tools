@@ -648,3 +648,36 @@ test('data-to-sql: INSERT statements turn back into JSON rows', async ({ page })
   await fillField(page, 'input', '[{"id":1}]');
   await expect(outputArea(page)).toContainText('CREATE TABLE', { timeout: 15_000 });
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// text-lines (DATA-20): tabs, wrapping and IP ordering beside the earlier operations
+// ---------------------------------------------------------------------------------------------------------------
+
+test('text-lines: sorting as IP addresses puts 10.0.0.2 before 10.0.0.10 and IPv4 before IPv6', async ({ page }) => {
+  await openTool(page, 'text-lines');
+  await setControls(page, { selects: { order: 'ip' } });
+
+  // Python's ipaddress orders (version, address, prefix): 10.0.0.2 before 10.0.0.10 (a code point sort would put the
+  // longer one first), and IPv4 before IPv6 whatever the text looks like. A line that is not an address follows the
+  // sorted ones and the page says how many there were.
+  await fillField(page, 'input', '10.0.0.10\n::1\n10.0.0.2\nnot an address');
+  const output = outputArea(page).locator('pre.output');
+  await expect(output).toHaveText('10.0.0.2\n10.0.0.10\n::1\nnot an address', { timeout: 15_000 });
+  await expect(outputArea(page)).toContainText('1 of 4 lines were not IP addresses');
+
+  // Tabs to spaces, as GNU expand -t 4 prints it: a tab at column 1 reaches column 4, and one at a stop moves four.
+  await setControls(page, { selects: { operation: 'tabs-to-spaces' } });
+  await fillField(page, 'input', 'a\tb\nabcd\te');
+  await expect(output).toHaveText('a   b\nabcd    e', { timeout: 15_000 });
+
+  // Wrap drops the space at a break: "one two" is 7 characters and adding " three" would make 13.
+  await setControls(page, { selects: { operation: 'wrap' } });
+  await fillField(page, 'wrapWidth', '8');
+  await fillField(page, 'input', 'one two three four');
+  await expect(output).toHaveText('one two\nthree\nfour', { timeout: 15_000 });
+
+  // The earlier operations are still there and still sort by code point by default.
+  await setControls(page, { selects: { operation: 'sort', order: 'codepoint' } });
+  await fillField(page, 'input', '10.0.0.10\n10.0.0.2');
+  await expect(output).toHaveText('10.0.0.10\n10.0.0.2', { timeout: 15_000 });
+});

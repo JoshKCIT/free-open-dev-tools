@@ -31,6 +31,11 @@ const EXPAND_4: [string, string][] = [
   ['abcdefg\th', 'abcdefg h'],
   ['12345678\tx', '12345678    x'],
   ['\t \tx', '        x'],
+  ['abc\b\tx', 'abc\b  x'],
+  ['\b\tx', '\b    x'],
+  ['ab\b\b\b\tc', 'ab\b\b\b    c'],
+  ['a\b', 'a\b'],
+  ['abc\bd\te', 'abc\bd e'],
 ];
 
 /** `expand -t 8` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -49,6 +54,11 @@ const EXPAND_8: [string, string][] = [
   ['abcdefg\th', 'abcdefg h'],
   ['12345678\tx', '12345678        x'],
   ['\t \tx', '                x'],
+  ['abc\b\tx', 'abc\b      x'],
+  ['\b\tx', '\b        x'],
+  ['ab\b\b\b\tc', 'ab\b\b\b        c'],
+  ['a\b', 'a\b'],
+  ['abc\bd\te', 'abc\bd     e'],
 ];
 
 /** `expand -t 3` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -67,6 +77,11 @@ const EXPAND_3: [string, string][] = [
   ['abcdefg\th', 'abcdefg  h'],
   ['12345678\tx', '12345678 x'],
   ['\t \tx', '      x'],
+  ['abc\b\tx', 'abc\b x'],
+  ['\b\tx', '\b   x'],
+  ['ab\b\b\b\tc', 'ab\b\b\b   c'],
+  ['a\b', 'a\b'],
+  ['abc\bd\te', 'abc\bd   e'],
 ];
 
 /** `unexpand -t 4 --first-only` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -95,6 +110,13 @@ const UNEXPAND_4_FIRST: [string, string][] = [
   ['\t  x', '\t  x'],
   ['word     word', 'word     word'],
   ['       x', '\t   x'],
+  ['abc \tx', 'abc \tx'],
+  ['abc  \tx', 'abc  \tx'],
+  ['a \tb', 'a \tb'],
+  ['ab\b    c', 'ab\b    c'],
+  ['abc\b d', 'abc\b d'],
+  ['   \b    x', '   \b    x'],
+  ['abcdefg   \tx', 'abcdefg   \tx'],
 ];
 
 /** `unexpand -t 4 (all runs)` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -123,6 +145,13 @@ const UNEXPAND_4_ALL: [string, string][] = [
   ['\t  x', '\t  x'],
   ['word     word', 'word\t word'],
   ['       x', '\t   x'],
+  ['abc \tx', 'abc\t\tx'],
+  ['abc  \tx', 'abc\t\tx'],
+  ['a \tb', 'a\tb'],
+  ['ab\b    c', 'ab\b\t c'],
+  ['abc\b d', 'abc\b d'],
+  ['   \b    x', '   \b\t  x'],
+  ['abcdefg   \tx', 'abcdefg\t\tx'],
 ];
 
 /** `unexpand -t 8 --first-only` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -151,6 +180,13 @@ const UNEXPAND_8_FIRST: [string, string][] = [
   ['\t  x', '\t  x'],
   ['word     word', 'word     word'],
   ['       x', '       x'],
+  ['abc \tx', 'abc \tx'],
+  ['abc  \tx', 'abc  \tx'],
+  ['a \tb', 'a \tb'],
+  ['ab\b    c', 'ab\b    c'],
+  ['abc\b d', 'abc\b d'],
+  ['   \b    x', '   \b    x'],
+  ['abcdefg   \tx', 'abcdefg   \tx'],
 ];
 
 /** `unexpand -t 8 (all runs)` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -179,6 +215,13 @@ const UNEXPAND_8_ALL: [string, string][] = [
   ['\t  x', '\t  x'],
   ['word     word', 'word\t word'],
   ['       x', '       x'],
+  ['abc \tx', 'abc\tx'],
+  ['abc  \tx', 'abc\tx'],
+  ['a \tb', 'a\tb'],
+  ['ab\b    c', 'ab\b    c'],
+  ['abc\b d', 'abc\b d'],
+  ['   \b    x', '   \b    x'],
+  ['abcdefg   \tx', 'abcdefg\t\tx'],
 ];
 
 /** `fold -s -w 10` run over each input (GNU coreutils 8.32, Git Bash, 2026-10-02). */
@@ -309,20 +352,26 @@ test('wrap breaks at spaces at the chosen width, keeps blank lines and leaves a 
   // A run of spaces is kept inside a line and dropped at a break, trailing spaces are dropped at a break, and the
   // indentation of the first line is kept and counts toward the width.
   expect(wrapLines('a   b', 5, false)).toBe('a   b');
+  expect(wrapLines('a   b cccccc', 7, false)).toBe('a   b\ncccccc');
+  expect(wrapLines('ab   ', 5, false)).toBe('ab   ');
   expect(wrapLines('a   b', 3, false)).toBe('a\nb');
   expect(wrapLines('aaa bbb  ', 5, false)).toBe('aaa\nbbb');
   expect(wrapLines('  ab cd ef', 6, false)).toBe('  ab\ncd ef');
   // The width counts code points, so an emoji is one and a wide East Asian character is one.
   expect(wrapLines('😀😀😀 x', 3, false)).toBe('😀😀😀\nx');
   expect(wrapLines('日本語 日本語', 3, false)).toBe('日本語\n日本語');
+  // Four code points are four, though each emoji is two UTF-16 units: this line fits a width of 4 as it is.
+  expect(wrapLines('😀😀 x', 4, false)).toBe('😀😀 x');
+  expect(wrapLines('😀😀 x', 3, false)).toBe('😀😀\nx');
   // Width 1 puts every word on its own line; each line of the input is wrapped on its own and the line count says so.
   expect(wrapLines('a b c', 1, false)).toBe('a\nb\nc');
   const result = processLines('one two\nthree four five', 'wrap', { wrapWidth: 8 });
   expect(result.output).toBe('one two\nthree\nfour\nfive');
   expect(result.linesIn).toBe(2);
   expect(result.linesOut).toBe(4);
-  // The page's default width is 80.
-  expect(processLines('x '.repeat(50).trim(), 'wrap').output.split('\n')[0]!.length).toBeLessThanOrEqual(80);
+  // The page's default width is 80: a line of 79 characters is left as it is, and a longer one breaks after exactly 80.
+  expect(processLines('x '.repeat(40).trim(), 'wrap').output).toBe('x '.repeat(40).trim());
+  expect(processLines('ab '.repeat(30).trim(), 'wrap').output.split('\n')[0]!.length).toBe(80);
 });
 
 test('wrap differs from fold only in dropping the trailing space at a break', () => {
@@ -576,6 +625,9 @@ test('OPERATIONS is unchanged and ALL_OPERATIONS adds the three new operations',
   ]);
   expect(ALL_OPERATIONS).toEqual([...OPERATIONS, 'tabs-to-spaces', 'spaces-to-tabs', 'wrap']);
   expect(ALL_OPERATIONS.length).toBe(OPERATIONS.length + 3);
+  // The All runs option reaches the conversion: only the leading run by default, every run when asked.
+  expect(processLines('a   b', 'spaces-to-tabs').output).toBe('a   b');
+  expect(processLines('a   b', 'spaces-to-tabs', { allRuns: true }).output).toBe('a\tb');
   // Every earlier operation still behaves as before when the new options are not given.
   expect(processLines('b\na', 'sort').output).toBe('a\nb');
   expect(processLines('a\nb', 'reverse').output).toBe('b\na');

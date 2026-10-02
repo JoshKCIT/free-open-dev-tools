@@ -1,17 +1,18 @@
 # Line Toolkit
 
-Sort, deduplicate, shuffle, number, trim, filter, join and split lines.
+Sort (including as IP addresses), deduplicate, shuffle, number, trim, filter, join, split, wrap and convert tabs in lines.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Treats pasted text as a list of lines and reshapes it: sort by code point, natural or length order, remove duplicates, shuffle with a repeatable seed, number each line, trim whitespace, keep or drop lines matching a literal text, add a prefix or suffix, reverse the line order, or join and split against a chosen separator.
+Treats pasted text as a list of lines and reshapes it: sort by code point, natural or length order, or as IP addresses (IPv4 before IPv6, then by address); remove duplicates, shuffle with a repeatable seed, number each line, trim whitespace, keep or drop lines matching a literal text, add a prefix or suffix, reverse the line order, join and split against a chosen separator, turn tabs into spaces and spaces back into tabs at a chosen tab width, or wrap long lines at a chosen width.
 
 ## Supported
 
 - Sort by code point, natural or length order, so line 2 sorts before line 10 and a shorter line can sort before a longer one, ascending or descending
+- Sort as IP addresses: IPv4 and IPv6 in their usual text forms with an optional /prefix, IPv4 before IPv6, then by address value, then by prefix length, with other lines kept after the sorted ones in their original order
 - Deduplicate, keeping the first occurrence, case-sensitive or case-insensitive
 - Shuffle with a seed, so the same seed always gives the same order
 - Number each line from a chosen starting number with a custom separator
@@ -20,6 +21,8 @@ Treats pasted text as a list of lines and reshapes it: sort by code point, natur
 - Add a prefix and/or suffix to every line, optionally skipping blank lines so they stay unchanged
 - Reverse the order of the lines
 - Join lines into one line with a chosen separator, or split one line back into many
+- Convert tabs to spaces at tab stops 1 to 16 columns apart, as the expand command does, and spaces back to tabs, leading runs only or every run, as the unexpand command does
+- Wrap each line at a chosen width of 1 to 1000 characters, breaking at spaces, with an option to cut words longer than the width
 - Reads CRLF, LF and CR line endings the same way
 
 ## Limits
@@ -29,11 +32,27 @@ Treats pasted text as a list of lines and reshapes it: sort by code point, natur
 - Sort by code point compares UTF-16 code units, not full Unicode code points, so characters outside the basic multilingual plane may not sort the way a person expects.
 - Length sort counts Unicode code points, not user-perceived characters or display width, so a decomposed accented letter counts as more than one character and a multi-code-point emoji counts several
 - Filter and dedupe match a literal substring or a whole line, never a regular expression.
+- Wrap counts characters (code points), so a wide East Asian character counts as one; it drops the space at a break, unlike fold -s.
+- Sort as IP orders IPv4 before IPv6, then by address, then by prefix length; other lines follow in their original order.
+- Tabs to spaces follows the tab stops of the expand command; spaces to tabs converts leading runs unless asked.
+- Tab conversion counts every character as one column, whatever its display width, and wrap breaks only at spaces, never at hyphens or tabs.
+- An address with a zone identifier such as %eth0, or an IPv4 address written with leading zeros, is not read as an address and is sorted with the other lines.
 
 ## Ambiguous cases, and what this does about them
 
 - "Natural order" has no single agreed definition. This tool treats a maximal run of decimal digits as one number and compares runs of that kind numerically, comparing everything else by code point, which matches how most natural-sort implementations behave.
 - Shuffling with a seed is deterministic by design, so the same seed always gives the same order. That makes it unsuitable anywhere true unpredictability is required.
+- Wrap lets a line be exactly as long as the width, because the space at a break is dropped; fold -s counts that space inside the width and so breaks one word earlier when a line would be exactly as long as the width
+- Spaces at the start of a line count toward the width of its first line, and when they are as wide as the width the first word still follows them
+- Spaces and tabs around an address are ignored when sorting as IP, and the line is written back as it was; a bare address sorts as if it had the prefix length of a single host (32 or 128)
+
+## Defined by
+
+- [RFC 791 — Internet Protocol (the dotted-quad IPv4 form)](https://www.rfc-editor.org/rfc/rfc791)
+- [RFC 4291 — IP Version 6 Addressing Architecture, section 2.2 (text forms)](https://www.rfc-editor.org/rfc/rfc4291)
+- [RFC 5952 — A Recommendation for IPv6 Address Text Representation](https://www.rfc-editor.org/rfc/rfc5952)
+- [POSIX expand — convert tabs to spaces](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/expand.html)
+- [POSIX unexpand — convert spaces to tabs](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/unexpand.html)
 
 ## Use it on its own
 
@@ -56,13 +75,19 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { processLines, splitLines, OPERATIONS } from '@fodt/text-lines';
+import { processLines, splitLines, OPERATIONS, ALL_OPERATIONS } from '@fodt/text-lines';
 
 processLines('banana\napple\ncherry', 'sort', { order: 'codepoint' });
 // { output: 'apple\nbanana\ncherry', linesIn: 3, linesOut: 3 }
+
+processLines('10.0.0.10\n::1\n10.0.0.2', 'sort', { order: 'ip' });
+// { output: '10.0.0.2\n10.0.0.10\n::1', linesIn: 3, linesOut: 3, nonAddressLines: 0 }
+
+processLines('a\tb', 'tabs-to-spaces', { tabWidth: 4 });
+// { output: 'a   b', linesIn: 1, linesOut: 1 }
 ```
 
-`processLines` always joins its result with a single line feed, regardless of the input's own line endings. `splitLines` reads CRLF, LF and CR endings as line breaks so mixed input can still be read correctly. A bad option, such as an empty split separator, throws `TextLinesError`.
+`processLines` always joins its result with a single line feed, regardless of the input's own line endings. `splitLines` reads CRLF, LF and CR endings as line breaks so mixed input can still be read correctly. A bad option, such as an empty split separator or a tab width outside 1 to 16, throws `TextLinesError`. `OPERATIONS` lists the original ten operations and never changes; `ALL_OPERATIONS` adds `tabs-to-spaces`, `spaces-to-tabs` and `wrap`, each with its own options (`tabWidth`, `allRuns`, `wrapWidth`, `breakLongWords`), and `order: 'ip'` sorts as IP addresses and then reports `nonAddressLines`. The layout functions (`expandTabs`, `unexpandTabs`, `wrapLines`, `parseIp`, `compareIp`) are exported on their own and read a line as it is.
 
 ## Dependencies
 
@@ -74,7 +99,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-No standard defines line operations of this kind, so standards is empty; tests assert behaviour against hand-worked examples for every operation, including natural sort ordering, the seeded shuffle's determinism and permutation property, and reading all three common line-ending styles.
+The original operations have no standard behind them, so tests assert behaviour against hand-worked examples for each, including natural sort ordering, the seeded shuffle's determinism and permutation property, and reading all three common line-ending styles. The tab, wrap and IP operations are proven against programs that are not this package, with their output pasted as literals: GNU coreutils 8.32 expand and unexpand (every tab width tried, leading runs and all runs) for tab conversion, GNU fold -s for wrap (equal once the trailing space at a break is dropped, with the one difference stated), and Python 3.14.3's ipaddress module for which strings are addresses and in what order they sort.
 
 ## Licence
 

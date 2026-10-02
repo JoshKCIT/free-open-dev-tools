@@ -3,5 +3,20 @@
     "mode": { "field": "operation", "value": "sort" },
     "values": { "input": "banana apple cherry" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "operation", "value": "tabs-to-spaces" },
+    "values": { "input": "a\tb\n\tc", "tabWidth": "4" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "operation", "value": "wrap" },
+    "values": { "input": "one two three four five", "wrapWidth": "8" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "order", "value": "ip" },
+    "values": { "input": "10.0.0.10\n::1\n10.0.0.2\nnot an address", "operation": "sort" },
+    "attachesFile": false
   }
 ]

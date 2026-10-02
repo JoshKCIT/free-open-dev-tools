@@ -1,7 +1,7 @@
 {
   "name": "@fodt/text-lines",
   "version": "1.0.0",
-  "description": "Sort, deduplicate, shuffle, number, trim, filter, join and split lines.",
+  "description": "Sort (including as IP addresses), deduplicate, shuffle, number, trim, filter, join, split, wrap and convert tabs in lines.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,7 +25,14 @@
     "sort",
     "dedupe",
     "shuffle",
-    "text"
+    "text",
+    "tabs to spaces",
+    "spaces to tabs",
+    "wrap lines",
+    "word wrap",
+    "sort ip addresses",
+    "expand",
+    "unexpand"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
