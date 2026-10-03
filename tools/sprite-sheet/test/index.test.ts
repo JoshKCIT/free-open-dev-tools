@@ -552,7 +552,11 @@ function pngHeader(width: number, height: number): Uint8Array {
 
 it('files over 20 MB, over 4096 a side or not images are refused before decoding', () => {
   expect(MAX_IMAGE_BYTES).toBe(20 * 1024 * 1024);
-  expect(checkSpriteFile(pngHeader(4096, 4096 - 1), 1000)).toEqual({ kind: 'png', width: 4096, height: 4095 });
+  // 4096 by 3906 is 15,998,976 pixels, which fits a sheet; 4096 by 3907 is 16,003,072, which does not.
+  expect(checkSpriteFile(pngHeader(4096, 3906), 1000)).toEqual({ kind: 'png', width: 4096, height: 3906 });
+  expect(messageOf(() => checkSpriteFile(pngHeader(4096, 3907), 1000))).toBe(
+    'This image holds 16,003,072 pixels. A sheet may have at most 16,000,000 pixels, so it cannot fit.',
+  );
   expect(messageOf(() => checkSpriteFile(pngHeader(4, 4), MAX_IMAGE_BYTES + 1))).toBe(
     'This file is larger than 20 MB, the most this page accepts for one image.',
   );
