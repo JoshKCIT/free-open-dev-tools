@@ -1,4 +1,12 @@
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import {
+  test,
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+  type TestInfo,
+} from '@playwright/test';
 import { crc32, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -1874,3 +1882,340 @@ test('image-converter: the recording server sees a plain page request, so its si
   });
   expect(new Set(image)).toEqual(new Set(['GET /control-image.svg']));
 });
+
+// --- CSS spinner and CSS pattern (plan 15-08) ---------------------------------------------------------------------------
+
+/** Waits for the auto run to finish: the debounce, then the Output panel's own busy signal. */
+async function settlePreview(page: Page): Promise<void> {
+  await page.waitForTimeout(250);
+  await expect(outputArea(page)).toHaveAttribute('aria-busy', 'false', { timeout: 15_000 });
+}
+
+/** The CSS text shown beside the live preview. */
+async function previewCssText(page: Page): Promise<string> {
+  return (await page.locator('.css-preview pre.output').first().innerText()).trim();
+}
+
+/** The play state of every animation on the preview's own tree, in tree order. */
+async function previewAnimationStates(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const host = document.querySelector('.css-preview-stage');
+    const root = host?.shadowRoot?.querySelector('.css-preview-tree');
+    if (!root) return ['no preview was drawn'];
+    const elements = [root, ...Array.from(root.querySelectorAll('*'))];
+    return elements.flatMap((element) => element.getAnimations().map((animation) => animation.playState));
+  });
+}
+
+const SPINNER_KINDS: [string, number][] = [
+  ['ring', 1],
+  ['dual-ring', 1],
+  ['dots', 3],
+  ['bars', 4],
+  ['pulse', 1],
+  ['ripple', 2],
+];
+
+test('css-spinner: under reduced motion the preview stops and the copied CSS carries the reduced-motion rule', async ({
+  page,
+}) => {
+  await openTool(page, 'css-spinner');
+  const requests = recordRequests(page);
+  for (const [kind, animated] of SPINNER_KINDS) {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.locator(`input[type="radio"][name="type"][value="${kind}"]`).check();
+    await settlePreview(page);
+
+    // The CSS a visitor copies carries the exact rule, and it stops every animated class.
+    const css = await previewCssText(page);
+    expect(css, kind).toContain('@media (prefers-reduced-motion: reduce) {');
+    expect(css, kind).toContain('animation: none');
+
+    // Without the preference the spinner moves: one running animation for each animated element.
+    await expect
+      .poll(() => previewAnimationStates(page), { message: `${kind} should be moving` })
+      .toEqual(Array.from({ length: animated }, () => 'running'));
+
+    // With the preference the same preview has no animation at all.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), kind).toBe(true);
+    await expect.poll(() => previewAnimationStates(page), { message: `${kind} should have stopped` }).toEqual([]);
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
+const PATTERN_IDS = [
+  'stripes-diagonal',
+  'stripes-horizontal',
+  'stripes-vertical',
+  'checks',
+  'dots',
+  'grid',
+  'zigzag',
+  'cross',
+];
+
+/**
+ * A browser context like the project's own, with a whole number of device pixels to the CSS pixel. The mobile project
+ * has 2.625, and at a fraction of a device pixel two separate pages round some edges of a repeating pattern the other
+ * way (measured: up to 10 percent of the pixels of a frame against a blank page), which says nothing about the pattern.
+ * The page layout, the touch screen and the user agent are the project's own.
+ */
+async function wholeScaleContext(
+  browser: Browser,
+  baseURL: string | undefined,
+  testInfo: TestInfo,
+): Promise<BrowserContext> {
+  const use = testInfo.project.use;
+  const scale = use.deviceScaleFactor ?? 1;
+  return browser.newContext({
+    baseURL,
+    viewport: use.viewport ?? undefined,
+    userAgent: use.userAgent,
+    isMobile: use.isMobile,
+    hasTouch: use.hasTouch,
+    deviceScaleFactor: Number.isInteger(scale) ? scale : Math.ceil(scale),
+  });
+}
+
+/**
+ * Scrolls the element to the middle of the window and moves the page by up to four pixels, so the element's corner sits on
+ * a multiple of 8 CSS pixels: that is a whole device pixel at 1, 1.5, 2, 2.5, 2.625 and 3 device pixels to the CSS pixel.
+ * A screenshot of an element is cut from the page at whole device pixels, so an element at a fractional place would be
+ * captured a pixel away from where the browser paints it, and every edge of a repeating pattern would differ between
+ * two pages for that reason alone. The blank page the copy is drawn in puts its element at 8 by 8, which is such a place.
+ */
+async function sitOnWholePixel(page: Page, holder: Locator, element: Locator): Promise<void> {
+  await page.evaluate(() => {
+    document.body.style.position = 'relative';
+    document.body.style.left = '0px';
+    document.body.style.top = '0px';
+  });
+  await holder.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const box = await element.boundingBox();
+  if (!box) throw new Error('the element has no box');
+  const shiftX = Math.round(box.x / 8) * 8 - box.x;
+  const shiftY = Math.round(box.y / 8) * 8 - box.y;
+  await page.evaluate(
+    ([dx, dy]) => {
+      document.body.style.left = `${dx}px`;
+      document.body.style.top = `${dy}px`;
+    },
+    [shiftX, shiftY],
+  );
+  const placed = await element.boundingBox();
+  if (!placed) throw new Error('the element has no box');
+  expect(
+    Math.abs(placed.x - Math.round(placed.x / 8) * 8),
+    'the element is not on a multiple of 8 pixels',
+  ).toBeLessThan(0.02);
+  expect(
+    Math.abs(placed.y - Math.round(placed.y / 8) * 8),
+    'the element is not on a multiple of 8 pixels',
+  ).toBeLessThan(0.02);
+}
+
+/** Decodes two PNGs inside the blank page and counts the pixels that differ by more than a channel threshold. */
+async function comparePatternPixels(
+  blank: Page,
+  shown: Buffer,
+  copied: Buffer,
+  channelThreshold: number,
+): Promise<{ fraction: number; widthDiff: number; heightDiff: number; colours: number }> {
+  return blank.evaluate(
+    async ({ a, b, threshold }) => {
+      function loadImage(dataUrl: string): Promise<HTMLImageElement> {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('image failed to decode'));
+          img.src = dataUrl;
+        });
+      }
+      const [imgA, imgB] = await Promise.all([loadImage(a), loadImage(b)]);
+      const width = Math.min(imgA.width, imgB.width);
+      const height = Math.min(imgA.height, imgB.height);
+      const read = (img: HTMLImageElement) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(img, 0, 0);
+        return context.getImageData(0, 0, width, height).data;
+      };
+      const dataA = read(imgA);
+      const dataB = read(imgB);
+      let diff = 0;
+      const seen = new Set<number>();
+      for (let i = 0; i < dataA.length; i += 4) {
+        const dr = Math.abs(dataA[i]! - dataB[i]!);
+        const dg = Math.abs(dataA[i + 1]! - dataB[i + 1]!);
+        const db = Math.abs(dataA[i + 2]! - dataB[i + 2]!);
+        const da = Math.abs(dataA[i + 3]! - dataB[i + 3]!);
+        if (dr > threshold || dg > threshold || db > threshold || da > threshold) diff++;
+        if (seen.size < 8) seen.add((dataA[i]! << 16) | (dataA[i + 1]! << 8) | dataA[i + 2]!);
+      }
+      return {
+        fraction: width * height > 0 ? diff / (width * height) : 0,
+        widthDiff: Math.abs(imgA.width - imgB.width),
+        heightDiff: Math.abs(imgA.height - imgB.height),
+        colours: seen.size,
+      };
+    },
+    {
+      a: `data:image/png;base64,${shown.toString('base64')}`,
+      b: `data:image/png;base64,${copied.toString('base64')}`,
+      threshold: channelThreshold,
+    },
+  );
+}
+
+/**
+ * A repeat of 32 pixels with lines of 25 percent: the line is 8 pixels, so on a screen of 2.625 device pixels to the CSS
+ * pixel (the mobile project) every edge and every tile falls on a whole device pixel and the browser has no sub-pixel
+ * edge to round one way in one page and the other way in the other.
+ */
+async function setWholePixelPattern(page: Page): Promise<void> {
+  await page.locator('input[name="pattern"][value="stripes-diagonal"]').check();
+  await page.locator('#f-size').fill('32');
+  await page.locator('#f-thickness').fill('25');
+}
+
+/** The channel threshold and the share of pixels the shared preview spec allows. */
+const PATTERN_CHANNEL_THRESHOLD = 2;
+const PATTERN_MAX_FRACTION = 0.03;
+
+/**
+ * Draws the copied CSS and markup in a blank page and compares that page's pattern with the one the page shows.
+ *
+ * A pattern in a frame sits a few pixels inside the frame (its border and the frame page's margin: 13 pixels), and on a
+ * screen of 2.625 device pixels to the CSS pixel that is not a whole device pixel. The frame itself is placed on a whole
+ * device pixel and the blank page gives its element the same 13 pixel offset, so both pages put the pattern at the same
+ * fraction of a device pixel; otherwise every edge would differ for that reason alone. A pattern drawn straight into the
+ * page is placed on a whole device pixel itself and the blank page's element sits at 8 by 8, also a whole one.
+ */
+async function expectPatternCopyMatches(
+  page: Page,
+  context: BrowserContext,
+  holder: Locator,
+  shown: Locator,
+  css: string,
+  markup: string,
+  label: string,
+  inFrame: boolean,
+): Promise<void> {
+  await sitOnWholePixel(page, holder, inFrame ? holder : shown);
+  const holderBox = await holder.boundingBox();
+  const shownBox = await shown.boundingBox();
+  if (!holderBox || !shownBox) throw new Error('the pattern has no box');
+  const offsetX = inFrame ? shownBox.x - holderBox.x : 8;
+  const offsetY = inFrame ? shownBox.y - holderBox.y : 8;
+  const shownPng = await shown.screenshot();
+  const blank = await context.newPage();
+  try {
+    await blank.setContent(
+      `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body style="margin:${offsetY}px 0 0 ${offsetX}px">${markup}</body></html>`,
+    );
+    const copied = blank.locator('.pattern');
+    await expect(copied).toBeVisible();
+    const copiedPng = await copied.screenshot();
+    const result = await comparePatternPixels(blank, shownPng, copiedPng, PATTERN_CHANNEL_THRESHOLD);
+    expect(result.widthDiff, `${label}: the copied pattern differs in width`).toBe(0);
+    expect(result.heightDiff, `${label}: the copied pattern differs in height`).toBe(0);
+    expect(
+      result.colours,
+      `${label}: the shown pattern is flat, so the comparison would prove nothing`,
+    ).toBeGreaterThan(1);
+    expect(
+      result.fraction,
+      `${label}: ${(result.fraction * 100).toFixed(2)}% of pixels differ by more than ${PATTERN_CHANNEL_THRESHOLD} per channel`,
+    ).toBeLessThanOrEqual(PATTERN_MAX_FRACTION);
+  } finally {
+    await blank.close();
+  }
+}
+
+test('css-pattern: the inline SVG pattern copied into a blank page draws the same pixels as its preview frame', async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  const context = await wholeScaleContext(browser, baseURL, testInfo);
+  try {
+    await provePatternFrame(await context.newPage(), context);
+  } finally {
+    await context.close();
+  }
+});
+
+async function provePatternFrame(page: Page, context: BrowserContext): Promise<void> {
+  await openTool(page, 'css-pattern');
+  const requests = recordRequests(page);
+  await page.locator('input[name="output"][value="svg"]').check();
+  await setWholePixelPattern(page);
+  for (const pattern of PATTERN_IDS) {
+    await page.locator(`input[name="pattern"][value="${pattern}"]`).check();
+    await settlePreview(page);
+    const frame = page.frameLocator('iframe.preview-frame');
+    const shown = frame.locator('.pattern');
+    await expect(shown).toBeVisible();
+
+    // The frame holds exactly the CSS the code block offers to copy, and the CSS holds the whole tile.
+    const copiedCss = (await outputArea(page).locator('pre').first().innerText()).trim();
+    const frameCss = (await frame.locator('body style').evaluate((el) => el.textContent ?? '')).trim();
+    expect(frameCss, pattern).toBe(copiedCss);
+    expect(copiedCss, pattern).toContain('url("data:image/svg+xml,%3Csvg');
+
+    await expectPatternCopyMatches(
+      page,
+      context,
+      page.locator('iframe.preview-frame'),
+      shown,
+      copiedCss,
+      '<div class="pattern"></div>',
+      `${pattern} as SVG`,
+      true,
+    );
+  }
+  // The frame loaded a data address and nothing else: the page's own recorder saw only data and blob addresses.
+  expect(offending(requests)).toEqual([]);
+}
+
+test('css-pattern: every gradient pattern copied into a blank page draws the same pixels as its preview', async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  const context = await wholeScaleContext(browser, baseURL, testInfo);
+  try {
+    await provePatternGradients(await context.newPage(), context);
+  } finally {
+    await context.close();
+  }
+});
+
+async function provePatternGradients(page: Page, context: BrowserContext): Promise<void> {
+  await openTool(page, 'css-pattern');
+  const requests = recordRequests(page);
+  await page.locator('input[name="output"][value="gradient"]').check();
+  await setWholePixelPattern(page);
+  for (const pattern of PATTERN_IDS) {
+    await page.locator(`input[name="pattern"][value="${pattern}"]`).check();
+    await settlePreview(page);
+    const stage = page.locator('.css-preview-stage');
+    const shown = stage.locator('.pattern');
+    await expect(shown).toBeVisible();
+    const css = await previewCssText(page);
+    expect(css, pattern).toContain('gradient(');
+    expect(css, pattern).not.toContain('url(');
+    await expectPatternCopyMatches(
+      page,
+      context,
+      stage,
+      shown,
+      css,
+      '<div class="pattern"></div>',
+      `${pattern} as gradients`,
+      false,
+    );
+  }
+  expect(offending(requests)).toEqual([]);
+}
