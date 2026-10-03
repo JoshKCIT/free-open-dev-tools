@@ -2,7 +2,7 @@
  * Small helpers for the tests: the fixtures as bytes and as PEM text, and OpenSSL's printed dates as epoch milliseconds.
  * The PEM armour is built from pieces so that no file of this repository reads as a PEM block to a scanner.
  */
-import { CERTIFICATES, REQUESTS } from './certs';
+import { CERTIFICATES, CHAIN_CERTIFICATES, REQUESTS } from './certs';
 
 /** The clock reading every test passes to the decoder: 2026-10-03 12:00 UTC, inside every fixture's validity. */
 export const NOW_MS = Date.UTC(2026, 9, 3, 12, 0, 0);
@@ -32,6 +32,20 @@ export function pemText(label: string, base64: string, width = 64, eol = '\n'): 
 
 export function certificatePem(name: string, width = 64, eol = '\n'): string {
   const entry = CERTIFICATES[name];
+  if (entry === undefined) throw new Error(`no fixture certificate named ${name}`);
+  return pemText('CERTIFICATE', entry.derB64, width, eol);
+}
+
+/** The DER of a certificate of either fixture set, by name (the chain fixtures are CHAIN_CERTIFICATES in certs.ts). */
+export function anyCertificateDer(name: string): Uint8Array {
+  const entry = CERTIFICATES[name] ?? CHAIN_CERTIFICATES[name];
+  if (entry === undefined) throw new Error(`no fixture certificate named ${name}`);
+  return base64Bytes(entry.derB64);
+}
+
+/** PEM text of a certificate of either fixture set, by name. */
+export function anyCertificatePem(name: string, width = 64, eol = '\n'): string {
+  const entry = CERTIFICATES[name] ?? CHAIN_CERTIFICATES[name];
   if (entry === undefined) throw new Error(`no fixture certificate named ${name}`);
   return pemText('CERTIFICATE', entry.derB64, width, eol);
 }

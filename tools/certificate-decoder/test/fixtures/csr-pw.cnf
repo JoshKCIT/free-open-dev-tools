@@ -1,0 +1,13 @@
+[req]
+distinguished_name=dn_pw
+attributes=attrs_pw
+prompt=no
+string_mask=utf8only
+utf8=yes
+[dn_pw]
+C=US
+O=Challenge Org
+CN=pw.example.com
+[attrs_pw]
+challengePassword=FODT-CHALLENGE-MARKER-7391
+unstructuredName=Unstructured Test Name
