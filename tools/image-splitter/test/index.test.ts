@@ -516,6 +516,9 @@ it('the ZIP refuses names that are not plain generated names, repeats and too ma
   const one = new Uint8Array([1]);
   for (const bad of [
     '',
+    '__proto__',
+    'noextension',
+    'trailingdot.',
     '../x.png',
     'a/b.png',
     'a\\b.png',
@@ -540,6 +543,9 @@ it('the ZIP refuses names that are not plain generated names, repeats and too ma
   const many = Array.from({ length: 401 }, (_, i) => ({ name: `t${i}.png`, bytes: one }));
   expect(messageOf(() => zipTiles(many))).toBe('A ZIP of tiles holds at most 400 entries.');
   expect(zipTiles(many.slice(0, 400)).length).toBeGreaterThan(400);
+  // Names that are also object property names are plain names: nothing is lost and nothing is inherited.
+  const odd = ['__proto__.png', 'constructor.png', 'toString.png', 'hasOwnProperty.png'];
+  expect(readZip(zipTiles(odd.map((name) => ({ name, bytes: one })))).map((e) => e.name)).toEqual(odd);
   // The tiles together may be 1 GB and no more (checked as each tile is made, so a run stops before the memory is used).
   expect(MAX_ZIP_BYTES).toBe(1024 * 1024 * 1024);
   expect(checkZipTotal(MAX_ZIP_BYTES)).toBe(MAX_ZIP_BYTES);
