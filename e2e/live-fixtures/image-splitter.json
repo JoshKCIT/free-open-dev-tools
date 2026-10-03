@@ -1,0 +1,12 @@
+{
+  "id": "image-splitter",
+  "label": "PKWARE APPNOTE stored entries: a 16 by 16 image in 2 rows and 2 columns gives four 8 by 8 tiles, the last named for row 2 and column 2, in one tiles.zip",
+  "steps": [
+    { "action": "attach", "field": "file", "value": "png" },
+    { "action": "radio", "field": "mode", "value": "grid" },
+    { "action": "fill", "field": "rows", "value": "2" },
+    { "action": "fill", "field": "columns", "value": "2" },
+    { "action": "run" }
+  ],
+  "expect": ["tile-r2-c2.png", "tiles.zip"]
+}

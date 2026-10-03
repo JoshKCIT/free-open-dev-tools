@@ -1,0 +1,14 @@
+[
+  {
+    "mode": { "field": "mode", "value": "grid" },
+    "values": { "rows": "2", "columns": "2" },
+    "attachesFile": true,
+    "file": "png"
+  },
+  {
+    "mode": { "field": "mode", "value": "size" },
+    "values": { "tileWidth": "8", "tileHeight": "8" },
+    "attachesFile": true,
+    "file": "png"
+  }
+]
