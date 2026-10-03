@@ -1,7 +1,7 @@
 {
   "name": "@fodt/luhn",
   "version": "1.0.0",
-  "description": "Check a number against the Luhn algorithm and identify the issuer pattern.",
+  "description": "Validate or compute check digits for card numbers (Luhn), ISBN, EAN, UPC, IBAN, VIN and ISIN, and name a card number's issuer.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,11 +21,26 @@
   ],
   "sideEffects": false,
   "keywords": [
+    "luhn",
     "luhn algorithm",
+    "card",
+    "credit card",
     "check digit",
     "card number validator",
     "mod 10",
-    "issuer identification number"
+    "mod 97",
+    "issuer identification number",
+    "isbn",
+    "isbn-10",
+    "isbn-13",
+    "ean-8",
+    "ean-13",
+    "upc-a",
+    "gtin",
+    "barcode",
+    "iban",
+    "vin",
+    "isin"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

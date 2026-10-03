@@ -1,13 +1,13 @@
-# Luhn & Card Number Validator
+# Check Digit Validator (Luhn, ISBN, EAN, UPC, IBAN, VIN, ISIN)
 
-Check a number against the Luhn algorithm and identify the issuer pattern.
+Validate or compute check digits for card numbers (Luhn), ISBN, EAN, UPC, IBAN, VIN and ISIN, and name a card number's issuer.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Checks a number against the Luhn algorithm, the checksum formula ISO/IEC 7812-1 Annex B specifies for these numbers, computes the check digit a number without one should carry, and reports which published issuer numbering pattern the digits match. It never claims that a number which passes is real, active or issued -- only that its digits are internally consistent.
+Checks a number against the Luhn algorithm, the checksum formula ISO/IEC 7812-1 Annex B specifies for these numbers, computes the check digit a number without one should carry, and reports which published issuer numbering pattern the digits match. Beside the Luhn check it validates and computes the check digits of ISBN-10, ISBN-13, EAN-8, EAN-13, UPC-A, IBAN (with the length each country has in the SWIFT IBAN registry), VIN (49 CFR 565.15) and ISIN. It never claims that a number which passes is real, active, issued or in existence -- only that its digits are internally consistent.
 
 ## Supported
 
@@ -17,6 +17,10 @@ Checks a number against the Luhn algorithm, the checksum formula ISO/IEC 7812-1 
 - Stripping spaces and hyphens as separators and reporting how many were stripped
 - Reporting the raw Luhn sum alongside the pass or fail verdict
 - Returning every matching issuer pattern rather than only the first, including where two issuers' ranges genuinely overlap
+- Choosing a scheme (Luhn is the default, or ISBN-10, ISBN-13, EAN-8, EAN-13, UPC-A, IBAN, VIN or ISIN) and then checking a number or computing its check digit under it
+- Showing the other form of a number: the ISBN-13 of an ISBN-10 and back, the EAN-13 of a UPC-A, and whether an EAN-13 is also an ISBN-13
+- Checking an IBAN against the length its country has in the registry release, naming the expected length when it differs, and computing the two check digits (ISO 7064 MOD 97-10, carried exactly over short chunks of digits)
+- Reading a VIN with its check character at position 9 per 49 CFR 565.15, refusing the letters I, O and Q by position, and computing the check character from 16 characters or from 17 with any character at position 9
 
 ## Limits
 
@@ -24,15 +28,25 @@ Checks a number against the Luhn algorithm, the checksum formula ISO/IEC 7812-1 
 - Issuer ranges are published by the issuers and change over time. The table here is a snapshot compiled from public sources on 2026-09-24, not a live lookup.
 - The Luhn algorithm cannot detect every error: it is known not to catch the transposition of an adjacent 0 and 9 (or 9 and 0), which is documented and tested here rather than treated as a bug.
 - The number is processed entirely on this page and is never sent anywhere.
-- A string shorter than two digits is rejected outright; there is nothing to check with fewer.
+- In the Luhn scheme a string shorter than two digits is rejected outright; there is nothing to check with fewer.
+- Each scheme checks only the form and the check digit: a valid IBAN, ISBN, VIN or ISIN does not show that the account exists, the book was published, the vehicle was built or the security was issued.
+- IBAN lengths follow the SWIFT IBAN registry release named in the code (release 103, September 2026); a country outside it is refused. A territory that uses another country's code in its IBANs, such as French Guiana with FR, is not a separate country here.
+- The VIN check digit is required only for vehicles made for North America; elsewhere position 9 may be any character, so a VIN that fails the check is not necessarily wrong.
+- Inputs of up to 256 characters are read; spaces and hyphens are ignored and anything longer is refused before it is parsed.
+- The check digit of ISBN-13, EAN and UPC-A cannot detect every error: swapping two neighbouring digits that differ by 5 passes, which is documented and tested here. Only the check digit is read: no group, prefix, registrant or country of issue is looked up.
 
 ## Ambiguous cases, and what this does about them
 
 - Some issuer ranges genuinely overlap -- Discover's 622126-622925 range is co-branded with China UnionPay's own 62 range, per publicly published issuer tables. This tool reports both matches rather than silently preferring one.
+- An EAN-13 that begins 978 or 979 is also an ISBN-13, and a UPC-A is an EAN-13 with a leading zero. Both views are shown, because the same digits answer to either name.
+- A VIN made outside North America may carry any character at position 9, so a number that fails the check may still be a genuine VIN.
 
 ## Defined by
 
 - [ISO/IEC 7812-1 — Identification cards — Identification of issuers — Part 1: Numbering system (Annex B specifies the check digit formula)](https://www.iso.org/standard/70484.html)
+- [49 CFR 565.15 — Vehicle identification number: content requirements (the VIN check digit, Tables III to VI)](https://www.ecfr.gov/current/title-49/subtitle-B/chapter-V/part-565/subpart-B/section-565.15)
+- [ISBN Users' Manual, 2012 edition (Appendix 1: the ISBN-13 and ISBN-10 check digits)](https://www.isbn-international.org/sites/default/files/ISBN%20Manual%202012%20-corr.pdf)
+- [SWIFT IBAN Registry — the registration authority for ISO 13616 (the length of an IBAN by country)](https://www.swift.com/standards/data-standards/iban-international-bank-account-number)
 
 ## Use it on its own
 
@@ -55,14 +69,17 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { isValid, checkDigit, identify } from '@fodt/luhn';
+import { isValid, checkDigit, identify, validateScheme, computeScheme } from '@fodt/luhn';
 
 isValid('79927398713');        // true
 checkDigit('7892739979');      // wrong example digits omitted -- see tests
 identify('4242424242424242'); // [{ id: 'visa', label: 'Visa' }]
+
+validateScheme('isbn13', '978-0-11-000222-4').valid;      // true
+computeScheme('iban', 'GB WEST 1234 5698 7654 32').full; // 'GB82WEST12345698765432'
 ```
 
-isValid, checkDigit and identify all throw LuhnError, which carries a position field pointing at the offending character when a position is meaningful. checkDigit and isValid share one implementation of the digit-doubling walk rather than duplicating it.
+isValid, checkDigit and identify all throw LuhnError, which carries a position field pointing at the offending character when a position is meaningful. checkDigit and isValid share one implementation of the digit-doubling walk rather than duplicating it. validateScheme and computeScheme take a scheme name (isbn10, isbn13, ean8, ean13, upca, iban, vin or isin) and throw CheckDigitError, whose position field is the zero based index into the text as typed; its message names the place or the expected length and never repeats what was typed. A wrong check digit is a result (valid false, with the digit that was expected), not an error. IBAN_LENGTHS (a Map) and IBAN_REGISTRY_RELEASE hold the country lengths and the registry release they were checked against.
 
 ## Dependencies
 
@@ -74,7 +91,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-ISO/IEC 7812-1 is sold rather than freely published, and it was not opened for this tool -- Annex B is cited as the formula's normative home based on aggregated public confirmation, not a read of the paywalled text itself. The worked example the tests assert is widely reproduced across many independent descriptions of the algorithm, but is not established as an ISO-published vector; its correctness here rests on the hand computation written out in a comment beside the assertion, not on the citation. The issuer table is this project's own compilation from publicly published issuer identification number references.
+ISO/IEC 7812-1 is sold rather than freely published, and it was not opened for this tool -- Annex B is cited as the formula's normative home based on aggregated public confirmation, not a read of the paywalled text itself. The worked example the tests assert is widely reproduced across many independent descriptions of the algorithm, but is not established as an ISO-published vector; its correctness here rests on the hand computation written out in a comment beside the assertion, not on the citation. The issuer table is this project's own compilation from publicly published issuer identification number references. For the other schemes: the ISBN Users' Manual (2012) Appendix 1 was read for the ISBN-13 rule and its test numbers; ISO 2108, ISO 6166, ISO 13616, ISO 7064 and the GS1 General Specifications were not opened (sold or blocked), so the ISBN-10, ISIN and IBAN rules rest on python-stdnum 2.2 as a second opinion and on published examples, and the EAN and UPC-A rule rests on the identical ISBN-13 weights. 49 CFR 565.15 was read (Tables III to VI, including its worked VIN 1G4AH59H_5G118341 whose check digit is 4); its text does not itself exclude the letters I, O and Q (Table III gives them no value), so that exclusion rests on the VIN character set of ISO 3779, which was not opened. The IBAN lengths were read from the SWIFT IBAN Registry release 103 (September 2026) text file and PDF on 2026-10-03 and equal those of python-stdnum 2.2 for all 89 countries; each country's registry example is a test vector. 2,489 numbers made by python-stdnum 2.2 from a fixed seed (400 each of ISBN-10, ISBN-13, EAN-13, EAN-8, UPC-A and ISIN and one IBAN per country) are recorded in test/fixtures with the commands and versions, and every single-digit change in 200 of the EAN-13 numbers is detected.
 
 ## Licence
 

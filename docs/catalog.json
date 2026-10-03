@@ -211,10 +211,10 @@
   },
   {
     "id": "luhn",
-    "name": "Luhn & Card Number Validator",
+    "name": "Check Digit Validator (Luhn, ISBN, EAN, UPC, IBAN, VIN, ISIN)",
     "category": "hashing",
     "tier": 1,
-    "summary": "Check a number against the Luhn algorithm and identify the issuer pattern."
+    "summary": "Validate or compute check digits for card numbers (Luhn), ISBN, EAN, UPC, IBAN, VIN and ISIN, and name a card number's issuer."
   },
   {
     "id": "uuid",
