@@ -1314,5 +1314,12 @@
     "category": "network",
     "tier": 3,
     "summary": "List a WSDL document's services, ports, operations and messages, and build a sample SOAP request for one."
+  },
+  {
+    "id": "key-converter",
+    "name": "Key Pair Generator & Converter (PEM, JWK, OpenSSH)",
+    "category": "hashing",
+    "tier": 3,
+    "summary": "Generate RSA, ECDSA and Ed25519 key pairs or convert keys between PEM, JWK and OpenSSH formats, with SSH fingerprints."
   }
 ]
