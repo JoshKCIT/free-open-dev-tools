@@ -26,6 +26,10 @@ export const NO_LABEL_SENTENCE =
 export const NO_LABEL_BASE64_SENTENCE =
   'A bare Base64 string carries no label either; these are the digests whose size gives exactly this length, in the order they are most often met. Several are always possible.';
 
+/** The same for the two crypt shapes that have no marker, which are matched on length and alphabet alone. */
+export const NO_LABEL_CRYPT_SENTENCE =
+  'A string of ./0-9A-Za-z characters without a marker is matched on its length and alphabet alone; many other values (an ID, a number, a word) fit, so these are weak guesses.';
+
 /** A paste the page refuses to read. The message is a plain sentence that never echoes the paste. */
 export class HashIdentifierError extends Error {
   constructor(message: string) {
@@ -120,6 +124,14 @@ function previewOf(line: string): string {
   return out;
 }
 
+/** The rules that match a string on its length and its ./0-9A-Za-z alphabet alone (tier 3, but not digests). */
+const CRYPT_LENGTH_RULES: ReadonlySet<string> = new Set([
+  'descrypt',
+  'bigcrypt',
+  'ldap-crypt/descrypt',
+  'ldap-crypt/bigcrypt',
+]);
+
 /** Runs every rule and sorts by tier, then by the rule's place in the table. The sort is stable and the table is fixed. */
 function rank(line: string): Candidate[] {
   const found: { candidate: Candidate; index: number }[] = [];
@@ -187,6 +199,7 @@ export function identifyText(text: string): IdentifyResult {
   let full = false;
   let hexLength = false;
   let base64Length = false;
+  let cryptLength = false;
 
   const pieces = splitLines(text);
   for (let i = 0; i < pieces.length; i++) {
@@ -227,6 +240,7 @@ export function identifyText(text: string): IdentifyResult {
     for (const c of candidates) {
       if (c.tier === 3) {
         if (c.ruleId.startsWith('b64-')) base64Length = true;
+        else if (CRYPT_LENGTH_RULES.has(c.ruleId)) cryptLength = true;
         else hexLength = true;
       }
     }
@@ -242,5 +256,6 @@ export function identifyText(text: string): IdentifyResult {
   const notes: string[] = [];
   if (hexLength) notes.push(NO_LABEL_SENTENCE);
   if (base64Length) notes.push(NO_LABEL_BASE64_SENTENCE);
+  if (cryptLength) notes.push(NO_LABEL_CRYPT_SENTENCE);
   return { lines, blank, read, recognised, notRecognised: read - recognised, warnings, notes };
 }

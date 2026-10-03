@@ -182,22 +182,24 @@ const bsdiCrypt = rule('bsdicrypt', 'BSDi extended DES crypt', 1, SRC.crypt5, (l
 
 // --- traditional DES crypt and bigcrypt: shapes without a marker ----------------------------------------------------------
 
-const desCrypt = rule('descrypt', 'Traditional DES crypt', 2, SRC.crypt5, (line) => {
+// Both of these have no marker and no field that can be checked, so they are a length and an alphabet only (tier 3), like a raw
+// digest: any 13 digits, or any 24 hexadecimal characters, fit.
+const desCrypt = rule('descrypt', 'Traditional DES crypt', 3, SRC.crypt5, (line) => {
   if (line.length !== 13 || !only(line, ITOA)) return null;
-  return 'Exactly 13 characters from ./0-9A-Za-z and no marker: the layout of the oldest crypt hash, a 2-character salt and an 11-character hash.';
+  return 'Exactly 13 characters from ./0-9A-Za-z and no marker. This is a match on length and alphabet only: the oldest crypt hash is a 2-character salt and an 11-character hash, but any 13-character string of these characters fits, such as an ID or a number, so treat it as a weak guess.';
 });
 
 const bigCrypt = rule(
   'bigcrypt',
   'bigcrypt (DES crypt for long passphrases)',
-  2,
+  3,
   `${SRC.crypt5}; ${PASSLIB}, bigcrypt`,
   (line) => {
     const n = line.length;
     // crypt(5): 13 to 178 characters. Passlib: a 2-character salt then one 11-character checksum per 8 passphrase characters.
     if (n < 13 || n > 178 || (n - 2) % 11 !== 0 || !only(line, ITOA)) return null;
     const blocks = (n - 2) / 11;
-    return `${n} characters from ./0-9A-Za-z and no marker: a 2-character salt then ${blocks} checksum block${blocks === 1 ? '' : 's'} of 11 characters, one for each 8 characters of the passphrase (crypt(5) allows 13 to 178). A 13-character string is also exactly a traditional DES crypt string.`;
+    return `${n} characters from ./0-9A-Za-z and no marker. This is a match on length and alphabet only: bigcrypt is a 2-character salt then ${blocks} checksum block${blocks === 1 ? '' : 's'} of 11 characters, one for each 8 characters of the passphrase (crypt(5) allows 13 to 178), but any string of this length in these characters fits, such as an ID or a hexadecimal value, so treat it as a weak guess. A 13-character string is also exactly a traditional DES crypt string.`;
   },
 );
 

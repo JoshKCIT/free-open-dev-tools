@@ -164,9 +164,11 @@ const HEX_LISTS: [number, string[]][] = [
   [128, ['sha512', 'sha3-512', 'blake2b', 'whirlpool']],
 ];
 
+// The digest lists only: the two crypt shapes with no marker (descrypt, bigcrypt) are length-only too since review finding
+// B-WR-04, and a 57 character string of ./0-9A-Za-z has the length of a bigcrypt string. They are tested in review.test.ts.
 const lengthOnly = (line: string): string[] =>
   identifyLine(line)
-    .filter((c) => c.tier === 3)
+    .filter((c) => c.tier === 3 && c.ruleId !== 'descrypt' && c.ruleId !== 'bigcrypt')
     .map((c) => c.ruleId);
 
 it('hex lengths at and beside each boundary give disjoint lists in the stated order', () => {
@@ -305,7 +307,7 @@ it('the same paste gives the same candidates in the same order', () => {
   reversed.lines.forEach((l, i) => {
     expect(l.candidates).toEqual(byLine.get(lines[lines.length - 1 - i]));
   });
-  // Two tier 2 shapes of 13 characters keep their table order.
+  // Two length-only shapes of 13 characters keep their table order.
   expect(ids('6qs9wy8aNfoKQ')).toEqual(['descrypt', 'bigcrypt']);
 });
 
