@@ -329,6 +329,8 @@ it('the SVG scan runs in linear time on 1 MiB of hostile markup', () => {
     { name: 'many nested opens', text: wrap(fill('<g>')) },
     { name: 'a long style of safe references', text: wrap(`<style>${fill('a{fill:url(#a)}')}</style>`) },
     { name: 'many character references in one value', text: wrap(`<g d="${fill('&#65;')}"/>`) },
+    { name: 'many ampersands with no end', text: wrap(`<g d="${fill('&')}"/>`) },
+    { name: 'many hash and ampersand pairs with no end', text: wrap(`<style>${fill('&#')}</style>`) },
     { name: 'a long comment', text: wrap(`<!--${fill('-x')}-->`) },
     { name: 'a long CDATA section', text: wrap(`<style><![CDATA[${fill(']a')}]]></style>`) },
     { name: 'many CDATA pieces in one style', text: wrap(`<style>${fill('<![CDATA[a]]>')}</style>`) },

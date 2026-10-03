@@ -2,6 +2,7 @@ import meta from './meta.json';
 import { assertFileKind, type FileKind } from './file-sniff';
 import { planSize, largestFittingSize, MAX_OUTPUT_PIXELS, type ResizeMode, type SizeSource } from './sizing';
 import { formatInfo, type OutputFormatId } from './capabilities';
+import { planEdits, planEditedSize, type EditPlan, type ImageEdits } from './edits';
 
 export { meta };
 export { OUTPUT_FORMATS, formatInfo, interpretEncodeResult, writableFormats } from './capabilities';
@@ -10,6 +11,10 @@ export { planSize, largestFittingSize, MAX_OUTPUT_PIXELS } from './sizing';
 export type { SizeSource, SizeOptions, SizePlan, ResizeMode } from './sizing';
 export { sniffFile, assertFileKind, FileSignatureError, FILE_KINDS, MAX_HEADER_BYTES } from './file-sniff';
 export type { FileKind, SniffResult, FileKindLimits } from './file-sniff';
+export { planEdits, planEditedSize, ImageEditError, ROTATIONS, FLIPS } from './edits';
+export type { ImageEdits, EditPlan, CropRect, Rotation, FlipMode } from './edits';
+export { scanSvg, looksLikeSvg, looksLikeSvgStart, SvgGuardError } from './svg-guard';
+export { svgSize, SvgSizeError, MAX_SVG_PIXELS } from './svg-size';
 
 /** The five raster formats this tool reads. AVIF, HEIC and TIFF are never accepted as input (D-133). */
 const ACCEPTED_KINDS: FileKind[] = ['png', 'jpeg', 'gif', 'webp', 'bmp'];
@@ -45,6 +50,8 @@ export interface ConvertOptions {
     keepAspect?: boolean;
     enlarge?: boolean;
   };
+  /** Crop, rotate and flip, applied in that order before the resize. Left out, the picture is converted as it always was. */
+  edits?: ImageEdits;
 }
 
 export interface ConversionPlan {
@@ -102,7 +109,12 @@ export function planConversion(bytes: Uint8Array, fileName: string, options: Con
   }
   const source: SizeSource = { width: sniffed.width, height: sniffed.height };
 
-  const sizePlan = planSize(source, options.resize);
+  // With edits, resizing measures the cropped and turned size. A JPEG may store its picture turned a quarter,
+  // so its header size is only a first guess; the drawing site plans again from the decoded picture.
+  const sizeSource: SizeSource = options.edits
+    ? planEditedSize(source.width, source.height, options.edits, sniffed.kind === 'jpeg')
+    : source;
+  const sizePlan = planSize(sizeSource, options.resize);
   const warnings = [...sizePlan.warnings];
 
   if (sizePlan.width * sizePlan.height > MAX_OUTPUT_PIXELS) {
@@ -147,4 +159,81 @@ export function planConversion(bytes: Uint8Array, fileName: string, options: Con
 export function outputFileName(fileName: string, format: OutputFormatId): string {
   const base = fileName.replace(/\.[^./\\]+$/, '') || 'image';
   return `${base}.${formatInfo(format).extension}`;
+}
+
+export interface SvgConversionPlan {
+  /** The SVG's own size (width and height, else viewBox, else 300 by 150). */
+  sourceWidth: number;
+  sourceHeight: number;
+  /** The size after crop, rotate and flip (the same as the source size when there are none). */
+  editedWidth: number;
+  editedHeight: number;
+  targetWidth: number;
+  targetHeight: number;
+  format: OutputFormatId;
+  mediaType: string;
+  extension: string;
+  qualityFraction: number;
+  background: string;
+  /** Present only when there are edits that change something. */
+  edits?: EditPlan;
+  warnings: string[];
+}
+
+/**
+ * Plans the conversion of an SVG whose own size is already known (from
+ * `svgSize`, after `scanSvg` accepted it): edits, then the resize, with the
+ * same output pixel limit and the same quality and background handling as
+ * `planConversion`.
+ */
+export function planSvgConversion(
+  natural: { width: number; height: number },
+  fileName: string,
+  options: ConvertOptions,
+): SvgConversionPlan {
+  const editPlan = options.edits ? planEdits(natural.width, natural.height, options.edits) : undefined;
+  const edits = editPlan && !editPlan.identity ? editPlan : undefined;
+  const edited = edits
+    ? { width: edits.width, height: edits.height }
+    : { width: natural.width, height: natural.height };
+
+  const sizePlan = planSize(edited, options.resize);
+  const warnings = [...sizePlan.warnings];
+  if (sizePlan.width * sizePlan.height > MAX_OUTPUT_PIXELS) {
+    const largest = largestFittingSize(sizePlan.width, sizePlan.height, MAX_OUTPUT_PIXELS);
+    throw new ImageConverterError(
+      `Could not convert '${fileName}': the requested output is ${sizePlan.width} by ${sizePlan.height} pixels, ` +
+        `above this browser's own ${MAX_OUTPUT_PIXELS.toLocaleString('en-US')}-pixel limit. The largest size that ` +
+        `fits is ${largest.width} by ${largest.height}.`,
+    );
+  }
+
+  const qualityFraction = clampQuality(options.quality, warnings);
+  const background = parseBackground(options.background, warnings);
+
+  warnings.push(
+    'An SVG is drawn by this browser, so text in it uses this browser\x27s fonts, and the result can differ slightly between browsers.',
+  );
+  if (options.format === 'jpeg') {
+    warnings.push(
+      'An SVG with no background of its own is composited on the background colour for JPEG output, which has no transparency of its own.',
+    );
+  }
+
+  const info = formatInfo(options.format);
+  return {
+    sourceWidth: natural.width,
+    sourceHeight: natural.height,
+    editedWidth: edited.width,
+    editedHeight: edited.height,
+    targetWidth: sizePlan.width,
+    targetHeight: sizePlan.height,
+    format: info.id,
+    mediaType: info.mediaType,
+    extension: info.extension,
+    qualityFraction,
+    background,
+    ...(edits ? { edits } : {}),
+    warnings,
+  };
 }

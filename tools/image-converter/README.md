@@ -81,9 +81,17 @@ const plan = planConversion(bytes, 'photo.png', { format: 'jpeg', quality: 85, b
 // plan.targetWidth/targetHeight/mediaType/qualityFraction/background feed the
 // worker's own createImageBitmap/OffscreenCanvas/convertToBlob call, which
 // this package never names.
+
+// Crop, rotate and flip, planned once and drawn by whoever owns the drawing surface:
+import { planEdits, scanSvg, svgSize, looksLikeSvg } from '@fodt/image-converter';
+const edit = planEdits(bitmap.width, bitmap.height, { crop: { x: 2, y: 2, width: 8, height: 8 }, rotate: 90, flip: 'horizontal' });
+// edit.width/edit.height is the edited size; draw edit.source with the six numbers in edit.transform.
+
+// An SVG: check the text, then take its size.
+if (looksLikeSvg(bytes)) { const text = new TextDecoder().decode(bytes); scanSvg(text); const size = svgSize(text); }
 ```
 
-This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Deciding the output pixel size, checking the file header and clamping options all happen here; decoding, drawing and encoding the actual pixels happen only in the worker this package never imports.
+This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Deciding the output pixel size, checking the file header and clamping options all happen here; decoding, drawing and encoding the actual pixels happen only in the worker this package never imports. The crop, rotate and flip plan (planEdits) and the SVG checks (scanSvg, svgSize, looksLikeSvg) follow the same rule: text and numbers in, plans and refusals out, no drawing.
 
 ## Dependencies
 
@@ -95,7 +103,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every sizing, capability-interpretation and quality-clamping rule is proven in plain Node against hand-computed expectations; the header check reuses the canonical file-sniff.ts this phase's every file-reading tool copies byte for byte. The real browser encode -- and the per-engine truth about which formats this particular browser can actually write -- is proven only by the dedicated Playwright spec, which probes each of the four tested browser projects with its own OffscreenCanvas.convertToBlob call and compares the result to what the page itself reports.
+Every sizing, capability-interpretation and quality-clamping rule is proven in plain Node against hand-computed expectations; the header check reuses the canonical file-sniff.ts this phase's every file-reading tool copies byte for byte. The real browser encode -- and the per-engine truth about which formats this particular browser can actually write -- is proven only by the dedicated Playwright spec, which probes each of the four tested browser projects with its own OffscreenCanvas.convertToBlob call and compares the result to what the page itself reports. Crop, rotate and flip are checked against a pixel model written in the test (96 combinations on a 7 by 5 image); the SVG scan is checked against a list of hostile constructions by name and position, and for linear time on 1 MiB of markup; SVG sizes are worked by hand from the CSS absolute units. The exact pixels a browser draws for these edits and for an SVG are proven by the Playwright spec in four browsers.
 
 ## Licence
 
