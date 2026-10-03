@@ -8,5 +8,12 @@
       "input": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea privacy-check"
     },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "convert" },
+    "values": {
+      "input": "{\"kty\":\"OKP\",\"crv\":\"Ed25519\",\"d\":\"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A\",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}"
+    },
+    "attachesFile": false
   }
 ]
