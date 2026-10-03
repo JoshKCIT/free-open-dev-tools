@@ -243,7 +243,8 @@ for (const m of ep.split('-----BEGIN ').slice(1)) {
   const body = m.slice(m.indexOf('-----') + 5, m.indexOf('-----END')).split('\n').join('');
   blocks.push([label, body]);
 }
-out(`export const ECPARAM_OUTPUT_BLOCKS = ${lit(blocks)};`);
+out(`export const ECPARAM_PARAMETERS_DER_B64 = ${lit(blocks[0][1])};`);
+out(`export const ECPARAM_SEC1_DER_B64 = ${lit(blocks[1][1])};`);
 process.stdout.write(lines.join('\n') + '\n');
 NODE
 node assemble.cjs > keys.generated.ts

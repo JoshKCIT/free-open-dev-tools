@@ -332,7 +332,8 @@ it('an EC PKCS8 without its public key gets the point OpenSSL derives', () => {
     expect(isPrivate(fromPkcs8.key), f.name).toBe(true);
   }
   // openssl ecparam -genkey writes an EC PARAMETERS block in front of the key; both are in one paste.
-  const both = fx.ECPARAM_OUTPUT_BLOCKS.map(([label, body]) => armour(label!, body!)).join('');
+  const both =
+    armour('EC PARAMETERS', fx.ECPARAM_PARAMETERS_DER_B64) + armour('EC PRIVATE KEY', fx.ECPARAM_SEC1_DER_B64);
   const read = readKeyInput(both);
   expect(read.key.type).toBe('ec');
   expect(isPrivate(read.key)).toBe(true);
@@ -598,7 +599,8 @@ it('OpenSSH files that are cut, padded wrongly or inconsistent are refused', () 
   const longer = Buffer.concat([Buffer.from(lineData!, 'base64'), Buffer.from([0])]).toString('base64');
   expect(typeof refusal(lineType + ' ' + longer)).toBe('string');
   // Not an OpenSSH file at all.
-  expect(typeof refusal(armour('OPENSSH PRIVATE KEY', 'QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo='))).toBe('string');
+  const notAnOpensshFile = Buffer.from('this is not an OpenSSH file at all').toString('base64');
+  expect(typeof refusal(armour('OPENSSH PRIVATE KEY', notAnOpensshFile))).toBe('string');
 });
 
 it('mutated pastes are refused or read and never fail in any other way', () => {
