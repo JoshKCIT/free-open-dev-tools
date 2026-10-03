@@ -214,7 +214,7 @@ export const CSP_RULES: readonly CspRule[] = [
   {
     id: 'frame-ancestors',
     severity: 'low',
-    finding: 'frame-ancestors is missing, so other sites may embed the page.',
+    finding: 'frame-ancestors is missing or open, so other sites may embed the page.',
     why: 'frame-ancestors does not fall back to default-src, so any site may put the page in a frame (clickjacking). A meta element cannot set it.',
     fix: "Add frame-ancestors 'none' or 'self' in the HTTP header.",
     basis:
@@ -223,7 +223,7 @@ export const CSP_RULES: readonly CspRule[] = [
   {
     id: 'form-action',
     severity: 'low',
-    finding: 'form-action is missing, so a form may post to any address.',
+    finding: 'form-action is missing or open, so a form may post to any address.',
     why: 'form-action does not fall back to default-src, so an injected form can send what a visitor types to another site.',
     fix: "Add form-action 'self'.",
     basis: 'CSP Level 3 section 6.4.1 (form-action restricts the URLs that can be the target of a form submission)',
@@ -560,6 +560,29 @@ function isOpenSource(token: string): boolean {
   return t === '*' || t === 'https:' || t === 'http:';
 }
 
+const SCHEME_ONLY = /^[a-z][a-z0-9+.-]*:$/;
+
+/**
+ * True when one source of frame-ancestors or form-action lets any site in: a bare *, a whole scheme (https:, http:, data:
+ * and so on), a wildcard host with no name (https://*, *:443) or a wildcard in front of a single label (*.com), which is
+ * every host under a top level domain. A wildcard in front of a name with a dot in it (*.example.invalid) is not open. A
+ * public suffix with a dot in it (such as *.co.uk) is not recognised: the page carries no public suffix list.
+ */
+function isOpenNavigationSource(token: string): boolean {
+  const t = token.toLowerCase();
+  if (t === '*' || SCHEME_ONLY.test(t)) return true;
+  if (t.startsWith("'")) return false;
+  let rest = t;
+  const scheme = rest.indexOf('://');
+  if (scheme > 0) rest = rest.slice(scheme + 3);
+  const slash = rest.indexOf('/');
+  if (slash >= 0) rest = rest.slice(0, slash);
+  const colon = rest.lastIndexOf(':');
+  if (colon >= 0) rest = rest.slice(0, colon);
+  if (rest === '*') return true;
+  return rest.startsWith('*.') && rest.length > 2 && rest.indexOf('.', 2) < 0;
+}
+
 function finding(id: string, directive: string, text?: { whole?: string; suffix?: string }): CspFinding {
   const rule = RULE_BY_ID.get(id);
   if (!rule) throw new Error(`Unknown rule ${id}`);
@@ -649,8 +672,24 @@ function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: C
       }),
     );
   }
-  if (source === 'meta' || !index.has('frame-ancestors')) found.push(finding('frame-ancestors', 'frame-ancestors'));
-  if (!index.has('form-action')) found.push(finding('form-action', 'form-action'));
+  const ancestors = source === 'meta' ? undefined : index.get('frame-ancestors');
+  if (!ancestors) found.push(finding('frame-ancestors', 'frame-ancestors'));
+  else if (ancestors.some(isOpenNavigationSource)) {
+    found.push(
+      finding('frame-ancestors', 'frame-ancestors', {
+        whole: 'frame-ancestors allows any host or a whole scheme, so other sites may embed the page.',
+      }),
+    );
+  }
+  const formAction = index.get('form-action');
+  if (!formAction) found.push(finding('form-action', 'form-action'));
+  else if (formAction.some(isOpenNavigationSource)) {
+    found.push(
+      finding('form-action', 'form-action', {
+        whole: 'form-action allows any host or a whole scheme, so a form may post to any address.',
+      }),
+    );
+  }
 
   const defaults = index.get('default-src');
   const defaultOpen = defaults?.some(isOpenSource) ?? false;
