@@ -360,7 +360,9 @@ export function validateScheme(scheme: string, text: string): ValidateResult {
           ['Print format', printFormat(chars)],
           ['Registry release', IBAN_REGISTRY_RELEASE],
         ],
-        notes: ['A valid IBAN only has the right form and check digits; it does not show that the account exists.'],
+        notes: [
+          "A valid IBAN here only has the right length and check digits. The account part is not checked against the layout of the country's own account numbers, and a valid IBAN does not show that the account exists.",
+        ],
       };
     }
     case 'vin': {
@@ -467,7 +469,9 @@ export function computeScheme(scheme: string, text: string): ComputeResult {
           ['Print format', printFormat(full)],
           ['Registry release', IBAN_REGISTRY_RELEASE],
         ],
-        notes: ['A computed IBAN only has the right form and check digits; it does not show that the account exists.'],
+        notes: [
+          "A computed IBAN only has the right length and check digits. The account part is not checked against the layout of the country's own account numbers, and it does not show that the account exists.",
+        ],
       };
     }
     case 'vin': {

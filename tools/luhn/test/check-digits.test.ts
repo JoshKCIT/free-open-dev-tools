@@ -183,7 +183,7 @@ it('IBAN examples are valid, check digits compute with a leading zero kept, and 
   expect(detail(gb, 'Print format')).toBe('GB82 WEST 1234 5698 7654 32');
   expect(detail(gb, 'Registry release')).toBe(IBAN_REGISTRY_RELEASE);
   expect(gb.notes).toContain(
-    'A valid IBAN only has the right form and check digits; it does not show that the account exists.',
+    "A valid IBAN here only has the right length and check digits. The account part is not checked against the layout of the country's own account numbers, and a valid IBAN does not show that the account exists.",
   );
   expect(validateScheme('iban', 'de89 3704 0044 0532 0130 00').valid).toBe(true);
 
