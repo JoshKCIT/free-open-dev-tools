@@ -1391,5 +1391,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Cut an image into a grid of tiles by rows and columns or by tile size and download them as a ZIP."
+  },
+  {
+    "id": "css-shapes",
+    "name": "CSS Shape Generator (Triangles, Ribbons, Speech Bubbles)",
+    "category": "css",
+    "tier": 3,
+    "summary": "Draw triangles, ribbons, speech bubbles and tooltip arrows in pure CSS with a live preview."
   }
 ]
