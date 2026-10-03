@@ -97,7 +97,10 @@ export interface WindowOptions {
   algorithm: OtpAlgorithm;
 }
 
-/** The previous, current, next and following step for the given second; there is no previous row at step 0. */
+/**
+ * The previous, current, next and following step for the given second; there is no previous row at step 0, and no row for a
+ * step that starts after SECONDS_MAX.
+ */
 export function totpWindow(secret: Uint8Array, options: WindowOptions): WindowRow[] {
   const { seconds, period, digits, algorithm } = options;
   const current = totpStep(seconds, period);
@@ -112,12 +115,15 @@ export function totpWindow(secret: Uint8Array, options: WindowOptions): WindowRo
     const step = current + offset;
     if (step < 0n) continue;
     const startSeconds = Number(step) * period;
+    // A step that starts after the last time this package reads (9999-12-31) has no date to print, so it is left out; the last
+    // step that does start inside the range is cut at that last second.
+    if (startSeconds > SECONDS_MAX) continue;
     rows.push({
       label,
       step,
       code: hotp(secret, step, digits, algorithm),
       startSeconds,
-      endSeconds: startSeconds + period - 1,
+      endSeconds: Math.min(startSeconds + period - 1, SECONDS_MAX),
     });
   }
   return rows;
