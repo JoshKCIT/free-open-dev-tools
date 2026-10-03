@@ -101,7 +101,7 @@ test.describe('progress and cancel stay inert until a tool opts in', () => {
    * progress element in the tree unconditionally.
    */
   test('no tool page renders a Cancel button or a progress element before any run starts', async ({ page }) => {
-    // 188 sequential navigations comfortably fit the default 45s budget
+    // 192 sequential navigations comfortably fit the default 45s budget
     // against a local build, but not against a deployed site's real network
     // latency on every browser project (raised in 09-07).
     test.setTimeout(180_000);
@@ -276,7 +276,7 @@ test.describe('accessibility', () => {
   });
 
   test('every form control has an accessible name', async ({ page }) => {
-    // Same reason as the Cancel/progress sweep above: 188 navigations need
+    // Same reason as the Cancel/progress sweep above: 192 navigations need
     // more than the default 45s budget against a deployed site's real
     // network latency (raised in 09-07).
     test.setTimeout(180_000);
@@ -339,16 +339,16 @@ test.describe('public copy carries no derivation story', () => {
     expect(await page.locator('main a[href^="http"]').count()).toBe(1);
   });
 
-  test('the catalog page renders all 188 catalog entries', async ({ page }) => {
+  test('the catalog page renders all 192 catalog entries', async ({ page }) => {
     await page.goto(rel('/catalog'));
-    expect(await page.locator('.tool-card').count()).toBe(188);
+    expect(await page.locator('.tool-card').count()).toBe(192);
   });
 
   test('no catalog card reads Planned once every entry is built', async ({ page }) => {
     await page.goto(rel('/catalog'));
     await expect(page.locator('.tool-card').first()).toBeVisible();
     const plannedPills = page.locator('.tool-card .pill-neutral', { hasText: 'Planned' });
-    expect(await plannedPills.count(), 'no card may read Planned now that the catalog is complete at 188').toBe(0);
+    expect(await plannedPills.count(), 'no card may read Planned now that the catalog is complete at 192').toBe(0);
   });
 
   test('the home page statistics row holds exactly three items', async ({ page }) => {

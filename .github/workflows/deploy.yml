@@ -214,7 +214,7 @@ jobs:
       - name: Install browser engines
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: The 188 tool pages load and their JavaScript is clean
+      - name: The 192 tool pages load and their JavaScript is clean
         run: pnpm exec playwright test e2e/all-tool-chunks.spec.ts --project=chromium
         env:
           E2E_BASE_URL: https://joshkcit.github.io/free-open-dev-tools

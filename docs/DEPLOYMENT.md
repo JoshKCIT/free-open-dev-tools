@@ -197,7 +197,7 @@ The `verify` job runs against the live site after publishing and fails if:
 - The deployed HTML references any asset from a host other than the site own origin.
 - Either the served HTML (the prerendered page descriptions, which live in the HTML rather than the bundle) or the
   served JavaScript carries a forbidden reference from the `PROVENANCE_DENYLIST` repository secret.
-- Any of the complete 188-tool catalog's pages fails to load its tool cleanly, loads anything from another origin, or
+- Any of the complete 192-tool catalog's pages fails to load its tool cleanly, loads anything from another origin, or
   its JavaScript — every chunk and inline worker the page actually loads — carries a forbidden reference.
   `e2e/all-tool-chunks.spec.ts` checks this against the live site, on chromium only: it is a byte scan over static
   files rather than a cross-browser behavioural check, so running it on every engine would repeat the same fetches
