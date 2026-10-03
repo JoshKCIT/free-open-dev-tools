@@ -1,0 +1,9 @@
+{
+  "id": "css-shapes",
+  "label": "CSS Backgrounds Level 3 borders: an up triangle is a zero-size box with a coloured bottom border",
+  "steps": [
+    { "action": "radio", "field": "shape", "value": "triangle" },
+    { "action": "select", "field": "direction", "value": "up" }
+  ],
+  "expect": ["border-bottom:"]
+}

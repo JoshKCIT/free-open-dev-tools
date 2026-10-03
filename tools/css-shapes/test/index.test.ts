@@ -6,6 +6,7 @@ import {
   CssShapesError,
   SHAPES,
   TRIANGLE_DIRECTIONS,
+  colourOrDefault,
   TAIL_SIDES,
   type GenerateShapeOptions,
 } from '../src/index';
@@ -389,6 +390,14 @@ it('colours must be hexadecimal, sizes are clamped with a warning and names come
     }
   }
   expect(generateShape({ shape: 'triangle', colour: '#ABC' }).css).toContain('#aabbcc');
+
+  // For a page whose colour box takes any text, a bad value falls back to the default with a warning that does not repeat it.
+  const kept = colourOrDefault('#12ab9f', '#000000', 'Colour');
+  expect(kept).toEqual({ colour: '#12ab9f', warning: null });
+  const fallback = colourOrDefault('CANARY-' + marker, '#1d4ed8', 'Colour');
+  expect(fallback.colour).toBe('#1d4ed8');
+  expect(fallback.warning).toMatch(/^Colour was not a valid hexadecimal colour/);
+  expect(fallback.warning).not.toContain(marker);
 
   // A size outside 8 to 400, or not a number, is clamped and named in a warning.
   const small = generateShape({ shape: 'triangle', method: 'clip-path', width: -5, height: 9999 });

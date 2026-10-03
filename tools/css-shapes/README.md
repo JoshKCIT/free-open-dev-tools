@@ -24,6 +24,7 @@ Draws a triangle in one of eight directions (with borders or with clip-path), a 
 - Sizes are clamped to 8 to 400 pixels with a warning; colours are hexadecimal.
 - Bubble and tooltip text is at most 200 characters and appears only in the markup, never in the CSS.
 - Control characters and text direction characters are removed from the text with a warning, and the markup shows the rest escaped.
+- The preview area has a fixed size, so a large shape is cut off in the preview; the copied CSS is not affected.
 - A bubble tail is a fixed 16 pixels and a tooltip arrow a fixed 10 pixels; the shapes have no outline, shadow or rounded tail.
 - The clip-path method needs a browser that supports CSS Masking; the border method works in every browser.
 
@@ -70,7 +71,7 @@ const { css, markup } = generateShape({
   height: 100,
   colour: '#2563eb',
 });
-// css holds .triangle { width: 0px; height: 0px; border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 100px solid #2563eb; }
+// css holds .triangle { width: 0; height: 0; border-left: 50px solid transparent; border-right: 50px solid transparent; border-bottom: 100px solid #2563eb; }
 // markup is <div class="triangle"></div>
 ```
 

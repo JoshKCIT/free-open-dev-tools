@@ -1,0 +1,49 @@
+{
+  "id": "css-shapes",
+  "scenarios": [
+    {
+      "label": "triangle by borders",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "triangle" },
+        { "action": "select", "field": "direction", "value": "up-left" },
+        { "action": "radio", "field": "method", "value": "border" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "triangle by clip-path",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "triangle" },
+        { "action": "select", "field": "direction", "value": "down-right" },
+        { "action": "radio", "field": "method", "value": "clip-path" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "speech bubble",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "bubble" },
+        { "action": "select", "field": "tail", "value": "bottom-right" },
+        { "action": "fill", "field": "text", "value": "Hi there" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "tooltip",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "tooltip" },
+        { "action": "select", "field": "tail", "value": "top" },
+        { "action": "fill", "field": "text", "value": "Copied" }
+      ],
+      "pixels": true
+    },
+    {
+      "label": "ribbon",
+      "steps": [
+        { "action": "radio", "field": "shape", "value": "ribbon" },
+        { "action": "fill", "field": "text", "value": "New" }
+      ],
+      "pixels": true
+    }
+  ]
+}
