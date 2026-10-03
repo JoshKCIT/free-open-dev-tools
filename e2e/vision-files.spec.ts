@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { buildFixtureFile } from './fixture-files';
+import { buildFixtureFile, writePng } from './fixture-files';
 
 /**
  * The real-file proofs of phase 15 (D-168, D-169, D-199, D-201): pages that read or rewrite a picked file are driven with
@@ -489,5 +489,152 @@ test('pdf-text-metadata: an extraction that makes no progress stops with a plain
   await runButtonOf(page).click();
   await expect(outputArea(page)).toContainText('--- Page 150 ---', { timeout: 30_000 });
   await expect.poll(() => workerCounts(page)).toEqual({ built: 2, ended: 2 });
+  expect(offending(requests)).toEqual([]);
+});
+
+/**
+ * Image Diff & Compare (plan 15-05). Pictures are made here, pixel by pixel, with the PNG writer of ./fixture-files, and
+ * what the page says is checked against what was drawn: the count of pixels made to differ, the share worked out by hand
+ * from it, and the decoded difference picture read pixel by pixel in the page. Encoders differ between browsers, so only
+ * decoded pixels and numbers are compared, never the bytes or sizes of a PNG.
+ */
+function drawnPng(name: string, width: number, height: number, black: Set<string> = new Set()): PickedFile {
+  const rgba = new Uint8Array(width * height * 4).fill(255);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (black.has(`${x},${y}`)) rgba.set([0, 0, 0, 255], (y * width + x) * 4);
+    }
+  }
+  return { name, mimeType: 'image/png', buffer: Buffer.from(writePng(width, height, rgba)) };
+}
+
+/** Attaches a file to the named file field, repeating until the page shows the file's name under it. */
+async function attachImage(page: Page, field: string, file: PickedFile): Promise<void> {
+  await expect(async () => {
+    await page.locator(`#f-${field}`).setInputFiles({ name: file.name, mimeType: file.mimeType, buffer: file.buffer });
+    await expect(page.locator('.field-help', { hasText: file.name })).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+}
+
+/** Decodes a PNG in the page and lists the places where a pixel is exactly red (255, 0, 0, 255), as x,y, and one gray sample. */
+async function decodeDiff(
+  page: Page,
+  base64: string,
+): Promise<{ width: number; height: number; red: string[]; topLeft: number[] }> {
+  return page.evaluate(async (data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    const red: string[] = [];
+    for (let i = 0; i < bitmap.width * bitmap.height; i++) {
+      if (pixels[i * 4] === 255 && pixels[i * 4 + 1] === 0 && pixels[i * 4 + 2] === 0 && pixels[i * 4 + 3] === 255) {
+        red.push(`${i % bitmap.width},${Math.floor(i / bitmap.width)}`);
+      }
+    }
+    return { width: bitmap.width, height: bitmap.height, red, topLeft: Array.from(pixels.slice(0, 4)) };
+  }, base64);
+}
+
+/** The difference picture the page shows, decoded the way a visitor's own browser draws it. */
+async function shownDiff(page: Page) {
+  const src = await outputArea(page).locator('img').first().getAttribute('src');
+  expect(src?.startsWith('data:image/png;base64,')).toBe(true);
+  return decodeDiff(page, src!.slice('data:image/png;base64,'.length));
+}
+
+test('image-compare: two images made in the test give the exact differing count, the share and red pixels exactly where they differ', async ({
+  page,
+}) => {
+  await openTool(page, 'image-compare');
+  // Recorded only after the page and its own chunk have loaded, so this asserts nothing is requested while comparing.
+  const requests = recordRequests(page);
+
+  // Two 20 by 10 pictures, both white, the second with a black pixel at seven places that are not next to each other.
+  const black = ['1,1', '5,1', '9,1', '13,1', '17,1', '3,6', '11,6'];
+  await attachImage(page, 'imageA', drawnPng('first.png', 20, 10));
+  await attachImage(page, 'imageB', drawnPng('second.png', 20, 10, new Set(black)));
+  await fillField(page, 'threshold', '0.1');
+  await runButtonOf(page).click();
+
+  // Seven of 200 pixels differ, and 7 / 200 is 3.5 %, shown to two decimals.
+  const result = outputArea(page).locator('dl.kv');
+  await expect(result).toContainText('7 of 200', { timeout: 30_000 });
+  await expect(result).toContainText('3.50 %');
+  await expect(result).toContainText('20 by 10 pixels');
+
+  // The difference picture is red at exactly those seven places and nowhere else; a matching pixel is gray (white blended
+  // with white is white).
+  const shown = await shownDiff(page);
+  expect([shown.width, shown.height]).toEqual([20, 10]);
+  expect([...shown.red].sort()).toEqual([...black].sort());
+  expect(shown.topLeft).toEqual([255, 255, 255, 255]);
+
+  // The downloaded file is the same picture.
+  const file = await downloadCopy(page);
+  expect(file.name).toBe('diff.png');
+  const downloaded = await decodeDiff(page, file.bytes.toString('base64'));
+  expect([downloaded.width, downloaded.height]).toEqual([20, 10]);
+  expect([...downloaded.red].sort()).toEqual([...black].sort());
+
+  // At the largest threshold a black pixel against a white one is not a difference (its colour distance is 32857, below
+  // the 35215 that threshold 1 allows), so nothing is counted and the share is 0.00 %.
+  await fillField(page, 'threshold', '1');
+  await runButtonOf(page).click();
+  await expect(result).toContainText('0 of 200', { timeout: 15_000 });
+  await expect(result).toContainText('0.00 %');
+  expect((await shownDiff(page)).red).toEqual([]);
+
+  // A threshold outside 0 to 1 is refused, naming the field.
+  await fillField(page, 'threshold', '-5');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Threshold', { timeout: 15_000 });
+
+  expect(offending(requests)).toEqual([]);
+});
+
+test('image-compare: images of different sizes are refused by default and padded when asked', async ({ page }) => {
+  await openTool(page, 'image-compare');
+  const requests = recordRequests(page);
+
+  // A white 20 by 10 picture against a white 20 by 12 one.
+  await attachImage(page, 'imageA', drawnPng('short.png', 20, 10));
+  await attachImage(page, 'imageB', drawnPng('tall.png', 20, 12));
+  await fillField(page, 'threshold', '0.1');
+  await runButtonOf(page).click();
+
+  // Refused by default, with both sizes named, and nothing is compared.
+  const issues = outputArea(page).locator('.issue-list');
+  await expect(issues).toContainText('first is 20 by 10 pixels', { timeout: 30_000 });
+  await expect(issues).toContainText('second is 20 by 12 pixels');
+  expect(await outputArea(page).locator('dl.kv').count()).toBe(0);
+
+  // Padded: the short picture grows to 20 by 12 with transparent pixels in its two new rows, so exactly those 2 rows of
+  // 20 pixels (40 of 240) differ from the white ones, and 40 / 240 is 16.67 %.
+  await page.locator('#f-onSizeMismatch').selectOption('pad');
+  await runButtonOf(page).click();
+  const result = outputArea(page).locator('dl.kv');
+  await expect(result).toContainText('40 of 240', { timeout: 30_000 });
+  await expect(result).toContainText('16.67 %');
+  await expect(result).toContainText('20 by 12 pixels');
+  await expect(outputArea(page)).toContainText('padded with transparent pixels');
+
+  const shown = await shownDiff(page);
+  expect([shown.width, shown.height]).toEqual([20, 12]);
+  const padded: string[] = [];
+  for (const y of [10, 11]) for (let x = 0; x < 20; x++) padded.push(`${x},${y}`);
+  expect([...shown.red].sort()).toEqual([...padded].sort());
+  expect(shown.topLeft).toEqual([255, 255, 255, 255]);
+
+  // Choosing Refuse again refuses again: the choice is read each run.
+  await page.locator('#f-onSizeMismatch').selectOption('refuse');
+  await runButtonOf(page).click();
+  await expect(issues).toContainText('first is 20 by 10 pixels', { timeout: 15_000 });
+  expect(await outputArea(page).locator('dl.kv').count()).toBe(0);
+
   expect(offending(requests)).toEqual([]);
 });

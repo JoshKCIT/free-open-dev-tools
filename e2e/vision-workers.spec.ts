@@ -390,6 +390,25 @@ function taggedPdf(): { name: string; mimeType: string; buffer: Buffer } {
   return { name: file.name, mimeType: file.mimeType, buffer: Buffer.from(file.buffer) };
 }
 
+/**
+ * Two 20 by 10 PNGs made here: both are white, and the second has a black pixel at each of seven places that are not next
+ * to each other (so none of them can be taken for an anti-aliased edge). Compared at the default threshold they differ in
+ * exactly 7 of 200 pixels, which is what the page must say.
+ */
+const COMPARE_BLACK_PIXELS = new Set(['1,1', '5,1', '9,1', '13,1', '17,1', '3,6', '11,6']);
+
+function comparePng(name: string, black: Set<string>): { name: string; mimeType: string; buffer: Buffer } {
+  const width = 20;
+  const height = 10;
+  const rgba = new Uint8Array(width * height * 4).fill(255);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (black.has(`${x},${y}`)) rgba.set([0, 0, 0, 255], (y * width + x) * 4);
+    }
+  }
+  return { name, mimeType: 'image/png', buffer: Buffer.from(writePng(width, height, rgba)) };
+}
+
 const ENGINE_CASES: EngineCase[] = [
   {
     id: 'qr-barcode-reader',
@@ -421,6 +440,18 @@ const ENGINE_CASES: EngineCase[] = [
     limitSeconds: 20,
     limitMessage: 'Stopped after 20 seconds',
     protocolWorkers: 1,
+  },
+  {
+    id: 'image-compare',
+    attach: [
+      { field: 'imageA', make: () => comparePng('compare-first.png', new Set()) },
+      { field: 'imageB', make: () => comparePng('compare-second.png', COMPARE_BLACK_PIXELS) },
+    ],
+    valid: { threshold: '0.1' },
+    pressRun: true,
+    expectOutput: '7 of 200',
+    limitSeconds: 20,
+    limitMessage: 'Stopped after 20 seconds',
   },
 ];
 
