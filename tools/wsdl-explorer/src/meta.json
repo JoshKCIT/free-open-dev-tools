@@ -16,7 +16,7 @@
     "WSDL 1.1 only; a WSDL 2.0 description is refused.",
     "Nothing the document names is loaded: wsdl:import and xsd:import locations are listed as not loaded, and the service address is shown as text.",
     "Sample values are placeholders chosen by type and are not validated against the schema; complex types expand four levels.",
-    "Elements may nest at most 200 levels deep, and a sample request has at most 2,000 elements; a larger sample is cut with a comment and a warning.",
+    "Elements may nest at most 200 levels deep, and a sample request has at most 2,000 elements and at most 50,000 elements and attributes together; a larger sample is cut with a comment and a warning. An attribute declared twice for one element (in a type and the type it extends) is written once, the first declaration kept.",
     "A reason under Not found lists at most 50 of the declared names and counts the rest.",
     "Only the schema types written inside the document are known. Types from an import that is not loaded are listed as not found, and the sample writes them as an empty element or the text string."
   ],

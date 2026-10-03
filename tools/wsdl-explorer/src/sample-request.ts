@@ -39,6 +39,12 @@ export interface SampleResult {
 const MAX_DEPTH = 4;
 /** A request has at most this many elements: a type with many children of a type with many children is cut. */
 const MAX_ELEMENTS = 2000;
+/**
+ * A request has at most this many elements and attributes together. Elements alone are limited to 2,000, but a type with
+ * thousands of attributes used by thousands of elements would write millions of attributes (a 526 KB document wrote 297
+ * million characters), so every attribute counts too.
+ */
+const MAX_NODES = 50000;
 /** A type that extends a type that extends a type is followed this many levels, so a long chain cannot exhaust the stack. */
 const MAX_BASE_CHAIN = 50;
 
@@ -50,6 +56,8 @@ interface XmlNode {
   children: XmlNode[];
   text?: string;
   comment?: string;
+  /** The local names of the attributes written so far, so an attribute declared twice is written once. */
+  attributeNames?: Set<string>;
 }
 
 interface Context {
@@ -58,10 +66,19 @@ interface Context {
   warnings: string[];
   /** How many elements have been made from declarations so far. */
   count: number;
+  /** How many attributes have been written so far; with the elements they share `MAX_NODES`. */
+  attributes: number;
 }
 
 function warn(context: Context, message: string): void {
   if (!context.warnings.includes(message)) context.warnings.push(message);
+}
+
+const NODE_LIMIT_WARNING = `The sample request is cut at ${MAX_NODES.toLocaleString('en-US')} elements and attributes.`;
+
+/** Whether the elements and attributes written so far have reached the limit. */
+function nodesExhausted(context: Context): boolean {
+  return context.count + context.attributes >= MAX_NODES;
 }
 
 /** The five characters that XML text and attribute values write as entities. */
@@ -202,9 +219,22 @@ function complexContent(context: Context, def: ComplexDef, target: XmlNode, dept
     }
   }
   for (const attribute of def.attributes) {
+    const local = safeName(context, attribute.name);
+    const written = (target.attributeNames ??= new Set<string>());
+    // An attribute name is written once on an element: the first declaration (the base type's) is kept.
+    if (written.has(local)) continue;
+    if (nodesExhausted(context)) {
+      const left = node('', '');
+      left.comment = '...';
+      target.children.push(left);
+      warn(context, NODE_LIMIT_WARNING);
+      break;
+    }
+    written.add(local);
+    context.attributes++;
     target.attributes.push({
       namespace: '',
-      local: safeName(context, attribute.name),
+      local,
       value: context.fill ? (attribute.type ? typeValue(context, attribute.type) : 'string') : '',
     });
   }
@@ -218,11 +248,14 @@ function complexContent(context: Context, def: ComplexDef, target: XmlNode, dept
     return;
   }
   for (const child of def.elements) {
-    if (context.count >= MAX_ELEMENTS) {
+    if (context.count >= MAX_ELEMENTS || nodesExhausted(context)) {
       const left = node('', '');
       left.comment = '...';
       target.children.push(left);
-      warn(context, 'The sample request is cut at 2,000 elements.');
+      warn(
+        context,
+        context.count >= MAX_ELEMENTS ? 'The sample request is cut at 2,000 elements.' : NODE_LIMIT_WARNING,
+      );
       break;
     }
     target.children.push(elementNode(context, child, depth + 1, seen));
@@ -423,7 +456,7 @@ export function sampleRequest(model: WsdlModel, operation: string, options: Samp
       `The document has no operation named ${wanted}. Its operations are ${names.join(', ')}.`,
     );
   }
-  const context: Context = { model, fill: options.fill, warnings: [], count: 0 };
+  const context: Context = { model, fill: options.fill, warnings: [], count: 0, attributes: 0 };
   const soap12 = options.soap === '1.2';
   const envelopeNamespace = soap12 ? NS_SOAP12_ENVELOPE : NS_SOAP11_ENVELOPE;
   const envelopePrefix = soap12 ? 'env' : 'soapenv';

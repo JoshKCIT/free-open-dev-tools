@@ -200,7 +200,7 @@ function parseComplexType(
 ): ComplexDef {
   const def: ComplexDef = { name, elements: [], attributes: [], line: lineOf(node) };
   parseParticles(node, schema, qualified, targetNamespace, def.elements);
-  def.attributes.push(...parseAttributes(node));
+  for (const attribute of parseAttributes(node)) def.attributes.push(attribute);
   for (const kind of ['complexContent', 'simpleContent'] as const) {
     const content = childrenOf(node, XSD_NAMESPACES, kind)[0];
     if (!content) continue;
@@ -217,7 +217,7 @@ function parseComplexType(
         def.restricts = base;
       }
       parseParticles(step, schema, qualified, targetNamespace, def.elements);
-      def.attributes.push(...parseAttributes(step));
+      for (const attribute of parseAttributes(step)) def.attributes.push(attribute);
     }
   }
   return def;
