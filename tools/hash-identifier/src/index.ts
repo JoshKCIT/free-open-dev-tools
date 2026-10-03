@@ -1,6 +1,7 @@
 import meta from './meta.json';
 import type { HashRule, Tier } from './rule';
 import { DIGEST_RULES } from './rules-digests';
+import { FRAMEWORK_RULES } from './rules-frameworks';
 import { MODULAR_RULES } from './rules-modular';
 
 export { meta };
@@ -21,6 +22,10 @@ export const PREVIEW_CHARS = 12;
 export const NO_LABEL_SENTENCE =
   'A bare hex string carries no label; these are the algorithms that produce exactly this length, in the order they are most often met. Several are always possible.';
 
+/** The same for Base64 digests. */
+export const NO_LABEL_BASE64_SENTENCE =
+  'A bare Base64 string carries no label either; these are the digests whose size gives exactly this length, in the order they are most often met. Several are always possible.';
+
 /** A paste the page refuses to read. The message is a plain sentence that never echoes the paste. */
 export class HashIdentifierError extends Error {
   constructor(message: string) {
@@ -33,7 +38,7 @@ export class HashIdentifierError extends Error {
  * The rule table. The order here is the order candidates of the same tier are listed in: the modular and PHC formats, then
  * the framework and database formats, then the raw digests by length.
  */
-export const RULES: readonly HashRule[] = [...MODULAR_RULES, ...DIGEST_RULES];
+export const RULES: readonly HashRule[] = [...MODULAR_RULES, ...FRAMEWORK_RULES, ...DIGEST_RULES];
 
 export interface Candidate {
   ruleId: string;
@@ -181,6 +186,7 @@ export function identifyText(text: string): IdentifyResult {
   let omitted = 0;
   let full = false;
   let hexLength = false;
+  let base64Length = false;
 
   const pieces = splitLines(text);
   for (let i = 0; i < pieces.length; i++) {
@@ -218,7 +224,12 @@ export function identifyText(text: string): IdentifyResult {
       continue;
     }
     rows += cost;
-    if (candidates.some((c) => c.tier === 3)) hexLength = true;
+    for (const c of candidates) {
+      if (c.tier === 3) {
+        if (c.ruleId.startsWith('b64-')) base64Length = true;
+        else hexLength = true;
+      }
+    }
     lines.push({ number: i + 1, length: line.length, preview: previewOf(line), status, message, candidates });
   }
 
@@ -230,5 +241,6 @@ export function identifyText(text: string): IdentifyResult {
   }
   const notes: string[] = [];
   if (hexLength) notes.push(NO_LABEL_SENTENCE);
+  if (base64Length) notes.push(NO_LABEL_BASE64_SENTENCE);
   return { lines, blank, read, recognised, notRecognised: read - recognised, warnings, notes };
 }

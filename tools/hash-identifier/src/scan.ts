@@ -39,6 +39,13 @@ export function countTrailing(s: string, ch: string): number {
   return count;
 }
 
+/** The sentence added to a hexadecimal candidate when the digits are upper case (case does not change a digest's value). */
+export function upperNote(line: string): string {
+  return !only(line, HEX_LOWER) && only(line, HEX_UPPER)
+    ? ' The digits are upper case, which does not change the value.'
+    : '';
+}
+
 /** The crypt(3) alphabet that libxcrypt writes salts and hashes in: ./0-9A-Za-z (not the RFC 4648 Base64 alphabet). */
 export const ITOA = classTable('./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz');
 export const DIGITS = classTable('0123456789');

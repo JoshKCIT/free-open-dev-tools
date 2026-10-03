@@ -28,6 +28,27 @@ export default defineTool({
         input: '$2b$12$/vy7ZxGf2E2ffCTmkTnBvuDt80597OVIwFjbo1fXcIr3u/A2b22tC\n5f4dcc3b5aa765d61d8327deb882cf99',
       },
     },
+    {
+      label: 'Strings from a password file: MD5 crypt, Apache MD5 and SHA-512 crypt',
+      values: {
+        input:
+          '$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/\n$apr1$saltsalt$yAAkm4libquA.ZWLHbSBq/\n$6$saltsalt$qFmFH.bQmmtXzyBY0s9v7Oicd2z4XSIecDzlB5KiA2/jctKu9YterLp8wwnSq.qc.eoxqOmSuNp2xS0ktL3nh/',
+      },
+    },
+    {
+      label: 'Framework and database values: Django, an LDAP salted SHA-1 and a MySQL hash',
+      values: {
+        input:
+          'pbkdf2_sha256$29000$NjMHqT1Z9NwH$Fy3ol4BFoLpsPCp+qQzs8eQm1zTO/VgnkBqe1YHrl9w=\n{SSHA}K4nrjGOzs/jxU8vZpb0omHPcDvRlDIFw\n*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19',
+      },
+    },
+    {
+      label: 'Bare hexadecimal digests of 32, 40 and 64 characters',
+      values: {
+        input:
+          '5f4dcc3b5aa765d61d8327deb882cf99\n5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8\n5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+      },
+    },
   ],
   run(values, ctx): ToolResult {
     const input = str(values, 'input');

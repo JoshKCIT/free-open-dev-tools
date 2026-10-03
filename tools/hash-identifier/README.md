@@ -11,8 +11,13 @@ Reads one hash or password hash string per line and lists the formats each one f
 
 ## Supported
 
-- Modular crypt strings that start with a marker, checked field by field against the libxcrypt crypt(5) layouts: bcrypt ($2a$, $2b$, $2x$, $2y$) and MD5 crypt ($1$) in this first slice
-- Raw hexadecimal digests recognised by length alone, in a stated order: 32 hexadecimal characters lists MD5, NTLM, MD4, LM, MD2 and RIPEMD-128
+- Modular crypt strings checked field by field against the libxcrypt crypt(5) layouts: yescrypt, gost-yescrypt, sm3-yescrypt, scrypt ($7$), bcrypt ($2a$, $2b$, $2x$, $2y$), SHA-512, SHA-256 and SM3 crypt (with or without rounds=), SHA-1 crypt, Sun MD5, MD5 crypt, Apache MD5 ($apr1$), the NT hash in crypt form, BSDi extended DES, and the unmarked traditional DES crypt and bigcrypt shapes
+- phpass ($P$ and $H$) and the PHC string format: Argon2i, Argon2d and Argon2id with their m, t and p parameters, scrypt with ln, r and p, and any other well-formed $id$ string listed as an identifier the page does not know
+- Passlib formats: PBKDF2 with SHA-1, SHA-256 and SHA-512, bcrypt-sha256, SCRAM and the $p5k2$ PBKDF2 strings
+- Django password hashes (PBKDF2 with SHA-256 or SHA-1, Argon2, bcrypt, bcrypt over SHA-256, scrypt, and the older three-field salted MD5, SHA-1 and DES crypt forms) and Werkzeug scrypt and PBKDF2 strings
+- LDAP password schemes with their Base64 body checked by its decoded length: {SHA}, {SSHA}, {MD5}, {SMD5}, {CRYPT} (the crypt string inside is identified too), Atlassian {PKCS5S2} and {PBKDF2}, {PBKDF2-SHA256} and {PBKDF2-SHA512}; and the Spring Security identifiers {bcrypt}, {scrypt}, {argon2}, {pbkdf2}, {sha256} and {noop} by their tag alone
+- Database formats: PostgreSQL md5 and SCRAM-SHA-256, MySQL 4.1 and later and the older 16 digit form, Oracle 10g and 11g, and the SQL Server 2005 and 2012 to 2022 shapes
+- Raw digests by length: 8 hexadecimal characters (CRC-32, Adler-32), 32 (MD5, NTLM, MD4, LM, MD2, RIPEMD-128), 40 (SHA-1, RIPEMD-160), 56, 64 (SHA-256, SHA3-256, Keccak-256, BLAKE2s, BLAKE3, SHA-512/256), 96 and 128, and Base64 or Base64url digests of 16, 20, 32 and 64 bytes with or without padding
 - One string per line (line feed or carriage return plus line feed); only spaces and tabs around a line are trimmed; blank lines are skipped and counted
 
 ## Limits
@@ -22,12 +27,18 @@ Reads one hash or password hash string per line and lists the formats each one f
 - A bare hex or Base64 string carries no label; those candidates come from its length alone, in the order they are most often met, and several are always possible.
 - Salted or keyed digests cannot be told from plain ones by the string alone.
 - A line that holds any character other than printable ASCII (a space up to a tilde) is reported as not a hash string.
-- Only bcrypt and MD5 crypt strings are matched by their marker so far; other formats are listed as not recognised.
+- The table lists at most 2,000 rows; lines after that are read and counted but not listed, and a note says so.
+- Cisco type 7 and PIX strings, FSHP, GRUB PBKDF2, the Microsoft cached-credential hashes (bare 32 hexadecimal digits), SQL Server 2025 hashes and any format not listed above are reported as not recognised or as a length only.
+- The yescrypt, gost-yescrypt, sm3-yescrypt and SQL Server rules check the layout only, because no generator output was available to confirm them; the MySQL and Oracle rules rest on Passlib's documentation and its output rather than the vendors' own documents.
+- A 13 character string is listed as both a traditional DES crypt string and the first block of a bigcrypt string, because the two are the same text.
 
 ## Ambiguous cases, and what this does about them
 
-- Candidates of one kind keep the order of the rule table, which ranks by how often each algorithm is met; the order is an editorial ranking and not a probability
-- A 32 character hexadecimal string is equally an MD5, NTLM, MD4, LM, MD2 or RIPEMD-128 digest as far as the string can tell
+- Candidates of one kind keep the order of the rule table (marker formats first, then framework and database formats, then digests by length); the order of the length rules is an editorial ranking of how often each algorithm is met, not a probability
+- A 32 character hexadecimal string is equally an MD5, NTLM, MD4, LM, MD2 or RIPEMD-128 digest as far as the string can tell, and a Base64 string of 44 characters could be a SHA-256 digest or any other 32 byte value
+- A string inside {CRYPT} is listed twice on purpose: once as the LDAP wrapper and once as the crypt format inside it
+- The SHA-1 crypt rule accepts a checksum of 28 to 96 characters: libxcrypt crypt(5) shows 40 or more, but real Passlib output and its documentation write 28
+- A bcrypt string whose cost is outside 4 to 31 still has the bcrypt layout; the reason says the cost is outside the range
 
 ## Defined by
 
@@ -35,6 +46,15 @@ Reads one hash or password hash string per line and lists the formats each one f
 - [PHC string format (C2SP)](https://github.com/C2SP/C2SP/blob/main/phc-strings.md)
 - [RFC 2307: An Approach for Using LDAP as a Network Information Service](https://www.rfc-editor.org/rfc/rfc2307)
 - [RFC 9106: Argon2, the memory-hard function for password hashing and other applications](https://www.rfc-editor.org/rfc/rfc9106)
+- [OpenLDAP slappasswd(8): the {CRYPT}, {MD5}, {SMD5}, {SSHA} and {SHA} schemes](https://www.openldap.org/software/man.cgi?query=slappasswd&sektion=8)
+- [Django documentation: how Django stores passwords](https://docs.djangoproject.com/en/stable/topics/auth/passwords/)
+- [Apache HTTP Server: password formats](https://httpd.apache.org/docs/2.4/misc/password_encryptions.html)
+- [Werkzeug: generate_password_hash](https://werkzeug.palletsprojects.com/en/stable/utils/)
+- [PostgreSQL: the pg_authid catalog (md5 and SCRAM-SHA-256 password formats)](https://www.postgresql.org/docs/current/catalog-pg-authid.html)
+- [Passlib: password hashing schemes and their formats](https://passlib.readthedocs.io/en/stable/lib/passlib.hash.html)
+- [Spring Security: password storage identifiers](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)
+- [Microsoft Learn: sys.sql_logins and the password hash version byte](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-sql-logins-transact-sql)
+- [FIPS 180-4: Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
 
 ## Use it on its own
 
@@ -61,10 +81,11 @@ import { identifyText } from '@fodt/hash-identifier';
 
 const result = identifyText('$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/\n5f4dcc3b5aa765d61d8327deb882cf99');
 result.lines[0].candidates[0].name;   // 'MD5 crypt ($1$)'
-result.lines[1].candidates.map((c) => c.name);   // ['MD5', 'NTLM (NT hash)', 'MD4', ...]
+result.lines[1].candidates.map((c) => c.name);   // ['MD5', 'NTLM (NT hash)', 'MD4', 'LM hash', 'MD2', 'RIPEMD-128']
+result.notes;   // the sentence that a bare hex string carries no label
 ```
 
-`identifyText(text)` splits a paste into lines and returns `{ lines, blank, read, recognised, notRecognised, warnings, notes }`; each line has its number, its length, the first 12 characters, a status (`ok`, `too-long`, `not-ascii` or `not-recognised`), a message and its candidates. `identifyLine(line)` ranks the candidates of one line. A candidate is `{ ruleId, name, tier, reason, source }` with tier 1 for a marker, 2 for a shape and 3 for a length only, sorted by tier and then by the position of its rule in `RULES`. A paste over `MAX_INPUT_CHARS` characters or `MAX_LINES` lines is refused with a `HashIdentifierError`. Every rule is a bounded scan or a limited split, so a line costs time in proportion to its length.
+`identifyText(text)` splits a paste into lines and returns `{ lines, blank, read, recognised, notRecognised, warnings, notes }`; each line has its number, its length, the first 12 characters (anything outside printable ASCII shown as a question mark), a status (`ok`, `too-long`, `not-ascii` or `not-recognised`), a message and its candidates, and the lines after `MAX_ROWS` table rows are counted but not listed. `identifyLine(line)` ranks the candidates of one line. A candidate is `{ ruleId, name, tier, reason, source }` with tier 1 for a marker, 2 for a shape and 3 for a length only, sorted by tier and then by the position of its rule in `RULES`, so the same input always gives the same list. `RULES` is the whole table: each rule has an `id`, a `name`, a `tier`, a `source` and a `test(line)` that returns its reason or null. A paste over `MAX_INPUT_CHARS` characters or `MAX_LINES` lines is refused with a `HashIdentifierError` before any line is looked at. Every rule is a fixed-length comparison, a limited split or a bounded character-class scan (see src/scan.ts), so a line costs time in proportion to its length, and no identifier typed by a visitor is ever looked up in a plain object.
 
 ## Dependencies
 
@@ -76,7 +97,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-The expected values are the layouts of the libxcrypt crypt(5) manual and strings made by independent generators (OpenSSL passwd, passlib with the pyca bcrypt library) whose versions are recorded next to them.
+The 91 strings of test/fixtures/corpus.ts are recorded output of independent generators: the OpenSSL 3.5.5 command line (passwd -1, -5, -6 and -apr1, and the RIPEMD-160 digest), passlib 1.7.4 with the pyca bcrypt 4.0.1 backend (about fifty formats), argon2-cffi 25.1.0, Werkzeug 3.1.9 and Python 3.14.3 hashlib and zlib; six more come from Django 6.1.1. Each carries the generator and the format its documentation gives, and make-fixtures.py with its README records how to make them again. Seven formats the table does not cover are listed by name and checked never to be claimed by a marker. The rules that no generator here could exercise (yescrypt and its two variants, scrypt and SM3 in the crypt format, the NT hash in crypt form, the PostgreSQL SCRAM verifier, the Spring Security tags and SQL Server) are tested with strings built by hand from the field widths in their documents. Boundary tests cover each hexadecimal length and its neighbours, one character short and long for every fixed-width marker, the LDAP decoded lengths and the limits. A timing test identifies 1,000 hostile lines of about 4,096 characters, half of them chosen to make several rules scan the whole line, within a generous bound, and was shown to fail for two deliberately quadratic versions of the scans.
 
 ## Licence
 
