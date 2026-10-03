@@ -1,0 +1,6 @@
+{
+  "id": "qr-barcode-reader",
+  "label": "ISO/IEC 18004 and the GS1 symbology rules define what a code looks like; the sample PNG holds none, so the page says no code was found",
+  "steps": [{ "action": "attach", "field": "file", "value": "png" }, { "action": "run" }],
+  "expect": ["No code was found in this image."]
+}

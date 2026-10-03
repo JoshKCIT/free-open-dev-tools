@@ -41,7 +41,7 @@ Reads QR codes and common barcodes from a picture you choose, or from your camer
 This folder ships a data file that is not an npm dependency, so it travels with the folder when it is
 copied out on its own:
 
-- **zxing-cpp compiled into zxing-wasm 3.1.3** (Apache-2.0) — [source](https://github.com/zxing-cpp/zxing-cpp/tree/ZXING_CPP_COMMIT_PLACEHOLDER). zxing-cpp is the C++ port of the ZXing barcode library, licensed under the Apache License 2.0. zxing-wasm 3.1.3 compiles it to WebAssembly and ships the result as dist/reader/zxing_reader.wasm; the package's own source is MIT. The notice file holds the Apache-2.0 text.
+- **zxing-cpp compiled into zxing-wasm 3.1.3** (Apache-2.0) — [source](https://github.com/zxing-cpp/zxing-cpp/tree/a17fd9dc65d6aa0dd2f660fdfca7a6a6613d938f). zxing-cpp is the C++ port of the ZXing barcode library, licensed under the Apache License 2.0. zxing-wasm 3.1.3 compiles it to WebAssembly and ships the result as dist/reader/zxing_reader.wasm; the package's own source is MIT. The notice file holds the Apache-2.0 text.
 
 ## Use it on its own
 
