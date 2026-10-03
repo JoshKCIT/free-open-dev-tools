@@ -99,7 +99,7 @@ export function decodeBase32(text: string): Uint8Array {
   }
   if (pad > 0 && pad !== required) {
     throw new Base32Error(
-      `The padding at the end of this secret, from ${at(padStart)}, is not the length RFC 4648 writes for it. Padding fills the last group to 8 characters, and it may also be left off.`,
+      `The padding at the end of this secret starts ${at(padStart)} and is not the length RFC 4648 writes for it. Padding fills the last group to 8 characters, and it may also be left off.`,
       padStart,
     );
   }
