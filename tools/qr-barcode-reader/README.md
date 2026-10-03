@@ -12,6 +12,7 @@ Reads QR codes and common barcodes from a picture you choose, or from your camer
 ## Supported
 
 - PNG, JPEG, GIF, WebP and BMP image files
+- The camera, through the browser's media capture interface where the browser has one, when you pick Camera and press Run
 - QR Code, Micro QR, Data Matrix, Aztec, PDF417, Code 128, Code 39, Code 93, Codabar, ITF, EAN-13, EAN-8, UPC-A and UPC-E, as zxing-wasm 3.1.3 reads them
 - Several codes in one image, up to 16, each with its symbology and exact text
 - Rotated, inverted (light on dark) and reduced-size copies of a code, which the engine tries by itself
@@ -20,6 +21,9 @@ Reads QR codes and common barcodes from a picture you choose, or from your camer
 
 - Files up to 50 MB and up to 50,000,000 declared pixels are accepted; larger ones are refused before decoding.
 - Reading stops after 20 seconds with a message; Cancel stops it at once.
+- The camera starts only when you press Run with Camera chosen; it stops when a code is read, when you press Cancel, when you leave the page, or after 30 seconds.
+- If the camera does not start within 15 seconds the page stops waiting; allow camera access when the browser asks.
+- Camera frames are read in the page and never recorded, stored or sent.
 - A UPC-A code is reported as the EAN-13 code the engine returns, with a leading zero; the 12 digit UPC-A form is shown in a note.
 - Rotated Data Matrix codes and strongly blurred photos are often not read.
 - At most 16 codes are reported for one image, and the text shown for each code is cut at 4096 characters with a note; control and direction-changing characters are shown escaped.

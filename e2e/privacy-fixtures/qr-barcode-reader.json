@@ -1,1 +1,1 @@
-[{ "attachesFile": true, "file": "png" }]
+[{ "mode": { "field": "source", "value": "file" }, "attachesFile": true, "file": "png" }]

@@ -7,19 +7,19 @@ import {
   MAX_INPUT_BYTES,
   type CodeResult,
 } from '@fodt/qr-barcode-reader';
+import { scanWithCamera, CameraScanError } from '../lib/camera-scan';
 import {
   imagePixelsFromFile,
+  openReaderSession,
   readCodesInWorker,
   QrBarcodeReaderRunError,
 } from '../lib/run-qr-barcode-reader-in-worker';
 import { defineTool, files, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** The blocks shown for a read: a table of every code, the first code's text on its own, or a plain no-code note. */
-function resultOf(results: CodeResult[], width: number, height: number): ToolResult {
-  const stats: [string, string][] = [
-    ['Codes found', String(results.length)],
-    ['Image size', `${width} by ${height} pixels`],
-  ];
+function resultOf(results: CodeResult[], size?: { width: number; height: number }): ToolResult {
+  const stats: [string, string][] = [['Codes found', String(results.length)]];
+  if (size) stats.push(['Image size', `${size.width} by ${size.height} pixels`]);
   const outputs: OutputBlock[] = [];
   if (results.length === 0) {
     outputs.push({ kind: 'note', tone: 'info', value: 'No code was found in this image.' });
@@ -62,9 +62,21 @@ export default defineTool({
     },
   ],
   async run(values, ctx): Promise<ToolResult> {
-    // Intermediate state of the tracer: the camera path is added by the next task of this plan.
+    // Only the fields of the chosen source are read: a file picked earlier never changes a camera read.
     if (str(values, 'source', 'file') === 'camera') {
-      return { outputs: [], errors: [{ message: 'Reading from the camera is not available yet.' }] };
+      try {
+        return resultOf(await scanWithCamera(ctx, openReaderSession));
+      } catch (err) {
+        if (ctx.signal.aborted) throw err;
+        if (
+          err instanceof CameraScanError ||
+          err instanceof CodeReaderError ||
+          err instanceof QrBarcodeReaderRunError
+        ) {
+          return { outputs: [], errors: [{ message: err.message }] };
+        }
+        return { outputs: [], errors: [{ message: 'Could not read from the camera.' }] };
+      }
     }
     const picked = files(values, 'file');
     if (picked.length === 0) return { outputs: [] };
@@ -79,7 +91,7 @@ export default defineTool({
       checkImageFile(header, file.size);
       const pixels = await imagePixelsFromFile(file);
       const results = await readCodesInWorker(pixels, ctx);
-      return resultOf(results, pixels.width, pixels.height);
+      return resultOf(results, { width: pixels.width, height: pixels.height });
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       if (err instanceof CodeReaderError || err instanceof QrBarcodeReaderRunError) {

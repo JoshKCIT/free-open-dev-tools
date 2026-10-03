@@ -100,10 +100,10 @@ export interface ReaderSession {
  * Starts a new worker and resolves with a session once the worker has said it is ready. Settlement is the point of
  * this function -- see run-jsonpath-in-worker.ts's own comment on the guarded `finish` closure this copies in shape,
  * covering a result, an application error, a native worker failure, an undeliverable message, an abort, an
- * already-aborted signal, the start limit and the run limit. Whichever of those comes first decides the outcome;
- * `finish` runs once, clears both timers and terminates the worker once.
+ * already-aborted signal, the start limit and the run limit (only when `limitEachRead` is set). Whichever of those comes
+ * first decides the outcome; `finish` runs once, clears both timers and terminates the worker once.
  */
-export function openReaderSession(ctx: RunContext): Promise<ReaderSession> {
+function startSession(ctx: RunContext, limitEachRead: boolean): Promise<ReaderSession> {
   if (ctx.signal.aborted) {
     return Promise.reject(new QrBarcodeReaderRunError('The run was cancelled before it started.'));
   }
@@ -175,9 +175,11 @@ export function openReaderSession(ctx: RunContext): Promise<ReaderSession> {
         if (pending) return Promise.reject(new QrBarcodeReaderRunError('A read is already running.'));
         return new Promise<CodeResult[]>((resolveRead, rejectRead) => {
           pending = { resolve: resolveRead, reject: rejectRead };
-          runTimer = setTimeout(() => {
-            finish(new QrBarcodeReaderRunError(QR_BARCODE_READER_TIME_LIMIT_MESSAGE));
-          }, QR_BARCODE_READER_TIME_LIMIT_MS);
+          if (limitEachRead) {
+            runTimer = setTimeout(() => {
+              finish(new QrBarcodeReaderRunError(QR_BARCODE_READER_TIME_LIMIT_MESSAGE));
+            }, QR_BARCODE_READER_TIME_LIMIT_MS);
+          }
           try {
             const buffer = pixels.data.buffer as ArrayBuffer;
             worker.postMessage(
@@ -207,11 +209,20 @@ export function openReaderSession(ctx: RunContext): Promise<ReaderSession> {
 }
 
 /**
+ * Starts a reader session for camera frames: one new worker for the whole session, the same 10 second start limit and the
+ * same abort handling, but no limit on a single read -- the camera session owns its own 30 second limit and ends the
+ * worker when it is reached, which a per-frame limit would only duplicate. `close` ends the worker.
+ */
+export function openReaderSession(ctx: RunContext): Promise<ReaderSession> {
+  return startSession(ctx, false);
+}
+
+/**
  * Reads the codes in one picture in a new background worker, resolving with every code found (none is an empty list).
  * The worker is ended whether the read succeeds, fails or is stopped.
  */
 export async function readCodesInWorker(pixels: ImagePixels, ctx: RunContext): Promise<CodeResult[]> {
-  const session = await openReaderSession(ctx);
+  const session = await startSession(ctx, true);
   try {
     return await session.read(pixels);
   } finally {
