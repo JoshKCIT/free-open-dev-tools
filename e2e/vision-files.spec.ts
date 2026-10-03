@@ -334,3 +334,160 @@ test('pdf-text-metadata: a file that is not a PDF is refused before it is read',
   await expect(outputArea(page).locator('.issue-list')).not.toContainText('FODT-MARKER');
   expect(offending(requests)).toEqual([]);
 });
+
+/** What the slowing wrapper of slowPdfWorker counts, kept on the page. */
+declare global {
+  interface Window {
+    __FODT_PDF_DELAY_MS__?: number;
+    __FODT_WORKERS_BUILT__?: number;
+    __FODT_WORKERS_ENDED__?: number;
+    __FODT_PROGRESS_SEEN__?: number[];
+    __FODT_PDF_TEXT_METADATA_TEST_STALL_MS__?: number;
+  }
+}
+
+/**
+ * Before any page script runs: makes every message a worker sends to the page arrive `delayMs` later (in order, because
+ * the delay is the same for every message), so a read of a long file takes long enough to watch and to cancel on every
+ * engine; counts every worker the page builds and every one it ends; and, when `stallMs` is given, sets the page's
+ * test-only stall limit. `window.__FODT_PDF_DELAY_MS__` can be set to 0 afterwards to let the next run go at full speed.
+ */
+async function slowPdfWorker(page: Page, delayMs: number, stallMs?: number): Promise<void> {
+  await page.addInitScript(
+    ([delay, stall]: [number, number | null]) => {
+      window.__FODT_PDF_DELAY_MS__ = delay;
+      window.__FODT_WORKERS_BUILT__ = 0;
+      window.__FODT_WORKERS_ENDED__ = 0;
+      if (stall !== null) window.__FODT_PDF_TEXT_METADATA_TEST_STALL_MS__ = stall;
+      const originalAdd = Worker.prototype.addEventListener;
+      Worker.prototype.addEventListener = function (
+        this: Worker,
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions,
+      ) {
+        if (type === 'message' && typeof listener === 'function') {
+          const wrapped = (event: Event) => {
+            const wait = window.__FODT_PDF_DELAY_MS__ ?? 0;
+            if (wait > 0) setTimeout(() => listener.call(this, event), wait);
+            else listener.call(this, event);
+          };
+          return originalAdd.call(this, type, wrapped, options);
+        }
+        return originalAdd.call(this, type, listener, options);
+      } as typeof Worker.prototype.addEventListener;
+      const originalTerminate = Worker.prototype.terminate;
+      Worker.prototype.terminate = function (this: Worker) {
+        window.__FODT_WORKERS_ENDED__ = (window.__FODT_WORKERS_ENDED__ ?? 0) + 1;
+        return originalTerminate.call(this);
+      };
+      window.Worker = new Proxy(window.Worker, {
+        construct(target, args: ConstructorParameters<typeof Worker>) {
+          window.__FODT_WORKERS_BUILT__ = (window.__FODT_WORKERS_BUILT__ ?? 0) + 1;
+          return Reflect.construct(target, args) as Worker;
+        },
+      });
+    },
+    [delayMs, stallMs ?? null] as [number, number | null],
+  );
+}
+
+/** How many workers the page has built and how many it has ended so far. */
+async function workerCounts(page: Page): Promise<{ built: number; ended: number }> {
+  return page.evaluate(() => ({
+    built: window.__FODT_WORKERS_BUILT__ ?? 0,
+    ended: window.__FODT_WORKERS_ENDED__ ?? 0,
+  }));
+}
+
+function cancelButtonOf(page: Page) {
+  return page.getByRole('button', { name: 'Cancel', exact: true });
+}
+
+test('pdf-text-metadata: text of a long file shows progress and Cancel stops it at once', async ({ page }) => {
+  // Every message from PDF.js's worker is delayed, so the 150 page file takes seconds on every engine and can be watched.
+  await slowPdfWorker(page, 40);
+  await openTool(page, 'pdf-text-metadata');
+  const requests = recordRequests(page);
+  const long = buildFixtureFile('pdf-long', 'FODT-VISION-LONG');
+  await attachFile(page, { name: long.name, mimeType: long.mimeType, buffer: Buffer.from(long.buffer) });
+
+  // Record every value the progress bar takes from here on.
+  await page.evaluate(() => {
+    const seen: number[] = [];
+    window.__FODT_PROGRESS_SEEN__ = seen;
+    const record = () => {
+      const bar = document.querySelector<HTMLProgressElement>('progress.tool-progress');
+      if (bar && seen.at(-1) !== bar.value) seen.push(bar.value);
+    };
+    new MutationObserver(record).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['value'],
+    });
+  });
+  await runButtonOf(page).click();
+  await expect(cancelButtonOf(page)).toBeVisible();
+
+  // Progress is reported page by page: the bar takes at least four different values, each larger than the one before, and
+  // the run is still going (no text yet) when the fourth arrives.
+  await expect
+    .poll(() => page.evaluate(() => window.__FODT_PROGRESS_SEEN__?.length ?? 0), { timeout: 30_000 })
+    .toBeGreaterThanOrEqual(4);
+  const seen = (await page.evaluate(() => window.__FODT_PROGRESS_SEEN__)) as number[];
+  for (let i = 1; i < seen.length; i++) expect(seen[i]!).toBeGreaterThan(seen[i - 1]!);
+  expect(seen.at(-1)!).toBeLessThan(1);
+  await expect(page.locator('progress.tool-progress')).toBeVisible();
+  await expect(page.locator('.field-help', { hasText: /Page \d+ of 150/ })).toBeVisible();
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+
+  // Cancel: the run ends with the plain note and no text, and every worker the page built has been ended.
+  await cancelButtonOf(page).click();
+  const note = outputArea(page).locator('.note-warn');
+  await expect(note).toHaveText('Cancelled before finishing. No result was produced.', { timeout: 3_000 });
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  await expect(page.locator('progress.tool-progress')).toHaveCount(0);
+  await expect.poll(() => workerCounts(page)).toEqual({ built: 1, ended: 1 });
+  // Nothing arrives afterwards: a result that was already on its way is not shown.
+  await page.waitForTimeout(800);
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+
+  // The next run builds a new worker and finishes with every page.
+  await page.evaluate(() => {
+    window.__FODT_PDF_DELAY_MS__ = 0;
+  });
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('--- Page 150 ---', { timeout: 30_000 });
+  await expect(outputArea(page).locator('.stats')).toContainText('Pages read 150');
+  await expect.poll(() => workerCounts(page)).toEqual({ built: 2, ended: 2 });
+  expect(offending(requests)).toEqual([]);
+});
+
+test('pdf-text-metadata: an extraction that makes no progress stops with a plain message', async ({ page }) => {
+  // The page's test-only stall limit is 50 ms and every message from the worker is delayed 300 ms, so the run makes no
+  // progress for longer than the limit before its first page. The message a visitor would see is the fixed one.
+  await slowPdfWorker(page, 300, 50);
+  await openTool(page, 'pdf-text-metadata');
+  const requests = recordRequests(page);
+  const long = buildFixtureFile('pdf-long', 'FODT-VISION-STALL');
+  await attachFile(page, { name: long.name, mimeType: long.mimeType, buffer: Buffer.from(long.buffer) });
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'Stopped after 20 seconds without progress. The file may be unusually large or complex for this browser.',
+    { timeout: 15_000 },
+  );
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  await expect.poll(() => workerCounts(page)).toEqual({ built: 1, ended: 1 });
+
+  // The page stays usable: with the limit and the delay lifted, the same file reads in full on a new worker.
+  await page.evaluate(() => {
+    window.__FODT_PDF_DELAY_MS__ = 0;
+    window.__FODT_PDF_TEXT_METADATA_TEST_STALL_MS__ = 0;
+  });
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('--- Page 150 ---', { timeout: 30_000 });
+  await expect.poll(() => workerCounts(page)).toEqual({ built: 2, ended: 2 });
+  expect(offending(requests)).toEqual([]);
+});

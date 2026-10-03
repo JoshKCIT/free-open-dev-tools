@@ -24,6 +24,7 @@ Reads a PDF's text one page at a time, shows its document information and XMP me
 - A PDF that needs a password to open is refused; an encrypted PDF is not rewritten, so Remove mode refuses it.
 - The file identifier (/ID) stays in the copy; annotations, form data, attachments, bookmarks and page content are not changed.
 - Reading stops after 20 seconds without progress, and removal after 20 seconds; Cancel stops either at once.
+- Reading a long file takes longer in some browsers, Safari most of all (on one test machine 150 short pages took about 5 seconds there and about 0.3 seconds or less in Chrome and Firefox); the progress bar and Cancel stay available, and a read stops only after 20 seconds without progress.
 - Text that relies on a built-in Chinese, Japanese or Korean character map may be missing, because this page loads no extra data files.
 - The copy is a rewritten file: a digital signature in it no longer validates, and it is saved without object streams, so it can be larger.
 - Only the metadata fields ISO 32000-1 names are removed; text in page content, annotations, bookmarks, form fields or attached files can still identify an author.
