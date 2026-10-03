@@ -24,6 +24,9 @@ Compares two pictures pixel by pixel in a background worker inside your browser,
 - Images of different sizes are refused unless you choose to pad the smaller one with transparent pixels at its right and bottom.
 - Comparing stops after 20 seconds with a message; Cancel stops it at once.
 - Pixels are compared as this browser decodes them, with photo orientation applied.
+- Padding may not make a picture of more than 16,000,000 pixels either: a very wide thin picture against a very tall thin one is refused, with the size padding would need named.
+- The difference image is previewed on the page up to 2 MB; a larger one is offered only as the diff.png download.
+- An animated GIF or WebP is compared as the browser draws it, normally its first frame; nothing is compared across frames.
 
 ## Ambiguous cases, and what this does about them
 
