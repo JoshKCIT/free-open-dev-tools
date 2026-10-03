@@ -295,6 +295,27 @@
       "naming"
     ]
   },
+  "certificate-decoder": {
+    "id": "certificate-decoder",
+    "name": "X.509 Certificate & CSR Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "2.4.0"
+    },
+    "keywords": [
+      "x509",
+      "certificate",
+      "pem",
+      "der",
+      "asn1",
+      "fingerprint",
+      "san",
+      "extensions",
+      "rfc5280",
+      "openssl"
+    ]
+  },
   "chmod-calculator": {
     "id": "chmod-calculator",
     "name": "Chmod Calculator",
@@ -1284,6 +1305,29 @@
       "blake3"
     ]
   },
+  "hash-identifier": {
+    "id": "hash-identifier",
+    "name": "Hash Type Identifier",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "hash",
+      "identifier",
+      "hash type",
+      "password hash",
+      "bcrypt",
+      "md5 crypt",
+      "crypt",
+      "argon2",
+      "scrypt",
+      "pbkdf2",
+      "ldap",
+      "django",
+      "digest",
+      "hex"
+    ]
+  },
   "hash-text": {
     "id": "hash-text",
     "name": "Text Hash Generator",
@@ -1306,7 +1350,15 @@
       "blake2",
       "blake2b",
       "blake2s",
-      "blake3"
+      "blake3",
+      "crc16",
+      "crc32c",
+      "adler32",
+      "shake",
+      "shake128",
+      "shake256",
+      "md4",
+      "ntlm"
     ]
   },
   "hex-viewer": {
@@ -1872,6 +1924,39 @@
       "pod"
     ]
   },
+  "key-converter": {
+    "id": "key-converter",
+    "name": "Key Pair Generator & Converter (PEM, JWK, OpenSSH)",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/curves": "2.4.0",
+      "@noble/hashes": "2.4.0"
+    },
+    "keywords": [
+      "rsa",
+      "key",
+      "keypair",
+      "pem",
+      "pkcs8",
+      "pkcs1",
+      "sec1",
+      "spki",
+      "jwk",
+      "openssh",
+      "ssh",
+      "rfc4716",
+      "fingerprint",
+      "thumbprint",
+      "convert",
+      "webcrypto",
+      "ed25519",
+      "ecdsa",
+      "p256",
+      "p384",
+      "p521"
+    ]
+  },
   "link-builder": {
     "id": "link-builder",
     "name": "HTML Link Builder (mailto, tel, sms)",
@@ -1949,16 +2034,31 @@
   },
   "luhn": {
     "id": "luhn",
-    "name": "Luhn & Card Number Validator",
+    "name": "Check Digit Validator (Luhn, ISBN, EAN, UPC, IBAN, VIN, ISIN)",
     "version": "1.0.0",
     "license": "MIT",
     "dependencies": {},
     "keywords": [
+      "luhn",
       "luhn algorithm",
+      "card",
+      "credit card",
       "check digit",
       "card number validator",
       "mod 10",
-      "issuer identification number"
+      "mod 97",
+      "issuer identification number",
+      "isbn",
+      "isbn-10",
+      "isbn-13",
+      "ean-8",
+      "ean-13",
+      "upc-a",
+      "gtin",
+      "barcode",
+      "iban",
+      "vin",
+      "isin"
     ]
   },
   "markdown-formatter": {
@@ -2693,7 +2793,10 @@
       "permissions-policy",
       "coop",
       "coep",
-      "corp"
+      "corp",
+      "csp grader",
+      "csp grade",
+      "content security policy grade"
     ]
   },
   "semantic-html-builder": {
@@ -3054,6 +3157,29 @@
       "utc offset",
       "iana",
       "convert"
+    ]
+  },
+  "totp-generator": {
+    "id": "totp-generator",
+    "name": "TOTP & HOTP Code Generator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "@noble/hashes": "2.4.0",
+      "qrcode": "1.5.4"
+    },
+    "keywords": [
+      "totp",
+      "hotp",
+      "2fa",
+      "otp",
+      "base32",
+      "authenticator",
+      "otpauth",
+      "qr code",
+      "rfc6238",
+      "rfc4226",
+      "one-time password"
     ]
   },
   "ts-to-js": {

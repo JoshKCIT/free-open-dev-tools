@@ -177,7 +177,7 @@
       "category": "hashing",
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 1,
-      "summary": "Compute MD5, SHA-1, SHA-256, SHA-384, SHA-512 and CRC32 over text.",
+      "summary": "Compute MD5, SHA-1, SHA-2, SHA-3, BLAKE and CRC32 digests, CRC-16, CRC-32C and Adler-32 checksums, SHAKE, MD4 and NTLM over text.",
       "implemented": true
     },
     {
@@ -272,11 +272,11 @@
     },
     {
       "id": "luhn",
-      "name": "Luhn & Card Number Validator",
+      "name": "Check Digit Validator (Luhn, ISBN, EAN, UPC, IBAN, VIN, ISIN)",
       "category": "hashing",
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 1,
-      "summary": "Check a number against the Luhn algorithm and identify the issuer pattern.",
+      "summary": "Validate or compute check digits for card numbers (Luhn), ISBN, EAN, UPC, IBAN, VIN and ISIN, and name a card number's issuer.",
       "implemented": true
     },
     {
@@ -1005,7 +1005,7 @@
       "category": "network",
       "categoryLabel": "Network and web",
       "tier": 2,
-      "summary": "Compose Content-Security-Policy and the other security headers for common servers.",
+      "summary": "Compose Content-Security-Policy and the other security headers for common servers, and grade a pasted policy with the fix for each weakness.",
       "implemented": true
     },
     {
@@ -1690,6 +1690,42 @@
       "categoryLabel": "Network and web",
       "tier": 3,
       "summary": "List a WSDL document's services, ports, operations and messages, and build a sample SOAP request for one.",
+      "implemented": true
+    },
+    {
+      "id": "key-converter",
+      "name": "Key Pair Generator & Converter (PEM, JWK, OpenSSH)",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 3,
+      "summary": "Generate RSA, ECDSA and Ed25519 key pairs or convert keys between PEM, JWK and OpenSSH formats, with SSH fingerprints.",
+      "implemented": true
+    },
+    {
+      "id": "certificate-decoder",
+      "name": "X.509 Certificate & CSR Decoder",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 3,
+      "summary": "Paste an X.509 certificate, chain or signing request and read its names, dates, key, extensions and fingerprints.",
+      "implemented": true
+    },
+    {
+      "id": "totp-generator",
+      "name": "TOTP & HOTP Code Generator",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 2,
+      "summary": "Make the current and next one-time 2FA codes from a Base32 secret, with the otpauth link and QR code for an app.",
+      "implemented": true
+    },
+    {
+      "id": "hash-identifier",
+      "name": "Hash Type Identifier",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 2,
+      "summary": "Paste a hash or password hash string and see the algorithms it could come from, ranked, with the reason for each.",
       "implemented": true
     }
   ]

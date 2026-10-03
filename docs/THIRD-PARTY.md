@@ -23,7 +23,8 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@jridgewell/sourcemap-codec](https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec) | 1.6.0 | MIT | transitive (via @jridgewell/gen-mapping, @jridgewell/trace-mapping) | tools/html-formatter, tools/js-formatter |
 | [@jridgewell/trace-mapping](https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping) | 0.3.31 | MIT | transitive (via @jridgewell/gen-mapping, @jridgewell/source-map) | tools/html-formatter, tools/js-formatter |
 | [@mixmark-io/domino](https://github.com/mixmark-io/domino) | 2.2.0 | BSD-2-Clause | transitive (via turndown) | tools/markdown-html |
-| [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/aes-encryption, tools/base58, tools/db-password-hash, tools/hash-file, tools/hash-text, tools/hmac, tools/uuid |
+| [@noble/curves](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/key-converter |
+| [@noble/hashes](https://paulmillr.com/noble/) | 2.4.0 | MIT | direct | tools/aes-encryption, tools/base58, tools/certificate-decoder, tools/db-password-hash, tools/hash-file, tools/hash-text, tools/hmac, tools/key-converter, tools/totp-generator, tools/uuid |
 | [@nodable/entities](https://github.com/nodable/val-parsers) | 3.0.0 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [@prettier/plugin-php]() | 0.25.0 | MIT | direct | tools/php-formatter |
 | [@types/debug](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/debug) | 4.1.13 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
@@ -44,8 +45,8 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [ajv](https://ajv.js.org) | 8.20.0 | MIT | direct | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [ajv-draft-04](https://github.com/ajv-validator/ajv-draft-04#readme) | 1.0.0 | MIT | direct | tools/openapi-validator |
 | [ajv-formats](https://github.com/ajv-validator/ajv-formats#readme) | 3.0.1 | MIT | direct | tools/json-schema-validator, tools/openapi-validator |
-| [ansi-regex]() | 5.0.1 | MIT | transitive (via strip-ansi) | tools/qr-generator |
-| [ansi-styles]() | 4.3.0 | MIT | transitive (via wrap-ansi) | tools/qr-generator |
+| [ansi-regex]() | 5.0.1 | MIT | transitive (via strip-ansi) | tools/qr-generator, tools/totp-generator |
+| [ansi-styles]() | 4.3.0 | MIT | transitive (via wrap-ansi) | tools/qr-generator, tools/totp-generator |
 | [anynum](https://github.com/NaturalIntelligence/anynum) | 1.0.1 | MIT | transitive (via strnum) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [argparse]() | 2.0.1 | Python-2.0 | transitive (via sql-formatter) | tools/sql-formatter |
 | [bcrypt-ts](git://github.com/Mister-Hope/bcrypt-ts) | 9.0.2 | MIT | direct | tools/bcrypt, tools/htaccess-generator |
@@ -53,13 +54,13 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [bowser](https://github.com/bowser-js/bowser) | 2.14.1 | MIT | direct | tools/user-agent |
 | [buffer-from]() | 1.1.2 | MIT | transitive (via source-map-support) | tools/html-formatter, tools/js-formatter |
 | [camel-case](https://github.com/blakeembrey/change-case/tree/master/packages/camel-case#readme) | 4.1.2 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
-| [camelcase]() | 5.3.1 | MIT | transitive (via yargs-parser) | tools/qr-generator |
+| [camelcase]() | 5.3.1 | MIT | transitive (via yargs-parser) | tools/qr-generator, tools/totp-generator |
 | [ccount]() | 2.0.1 | MIT | transitive (via mdast-util-gfm-autolink-literal) | tools/bbcode |
 | [character-entities]() | 2.0.2 | MIT | transitive (via decode-named-character-reference) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [clean-css](https://github.com/clean-css/clean-css) | 5.3.3 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
-| [cliui](http://github.com/yargs/cliui) | 6.0.0 | ISC | transitive (via yargs) | tools/qr-generator |
-| [color-convert]() | 2.0.1 | MIT | transitive (via ansi-styles) | tools/qr-generator |
-| [color-name](https://github.com/colorjs/color-name) | 1.1.4 | MIT | transitive (via color-convert) | tools/qr-generator |
+| [cliui](http://github.com/yargs/cliui) | 6.0.0 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
+| [color-convert]() | 2.0.1 | MIT | transitive (via ansi-styles) | tools/qr-generator, tools/totp-generator |
+| [color-name](https://github.com/colorjs/color-name) | 1.1.4 | MIT | transitive (via color-convert) | tools/qr-generator, tools/totp-generator |
 | [commander](https://github.com/tj/commander.js) | 10.0.1 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
 | [commander](https://github.com/tj/commander.js) | 11.1.0 | MIT | transitive (via svgo) | tools/svg-optimizer |
 | [commander](https://github.com/tj/commander.js) | 2.20.3 | MIT | transitive (via nearley, terser) | tools/html-formatter, tools/js-formatter, tools/sql-formatter |
@@ -71,12 +72,12 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [csso]() | 5.0.5 | MIT | direct | tools/css-formatter, tools/html-formatter, tools/svg-optimizer |
 | [culori]() | 4.0.2 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [debug](git://github.com/debug-js/debug) | 4.4.3 | MIT | transitive (via micromark) | tools/bbcode, tools/markdown-html, tools/readme-generator |
-| [decamelize]() | 1.2.0 | MIT | transitive (via yargs, yargs-parser) | tools/qr-generator |
+| [decamelize]() | 1.2.0 | MIT | transitive (via yargs, yargs-parser) | tools/qr-generator, tools/totp-generator |
 | [decimal.js](https://github.com/MikeMcl/decimal.js) | 10.6.0 | MIT | direct | tools/ad-metrics, tools/compound-interest, tools/credit-card-payoff, tools/currency-markup, tools/depreciation, tools/freelance-rate, tools/investment-return, tools/invoice-maker, tools/loan-calculator, tools/npv-irr, tools/payment-fees, tools/percentage-calculator, tools/profit-margin, tools/salary-converter, tools/sales-tax, tools/stock-metrics, tools/unit-converter |
 | [decode-named-character-reference]() | 1.3.0 | MIT | transitive (via mdast-util-from-markdown, micromark, micromark-core-commonmark, micromark-util-decode-string) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [dequal]() | 2.0.3 | MIT | transitive (via devlop) | tools/bbcode, tools/markdown-html, tools/readme-generator |
 | [devlop]() | 1.1.0 | MIT | transitive (via mdast-util-from-markdown, mdast-util-gfm-autolink-literal, mdast-util-gfm-footnote, mdast-util-gfm-table, mdast-util-gfm-task-list-item, micromark, micromark-core-commonmark, micromark-extension-gfm-footnote, micromark-extension-gfm-strikethrough, micromark-extension-gfm-table, micromark-extension-gfm-task-list-item, micromark-factory-label, micromark-util-subtokenize) | tools/bbcode, tools/markdown-html, tools/readme-generator |
-| [dijkstrajs](https://github.com/tcort/dijkstrajs) | 1.0.3 | MIT | transitive (via qrcode) | tools/qr-generator |
+| [dijkstrajs](https://github.com/tcort/dijkstrajs) | 1.0.3 | MIT | transitive (via qrcode) | tools/qr-generator, tools/totp-generator |
 | [discontinuous-range](https://github.com/dtudury/discontinuous-range) | 1.0.0 | MIT | transitive (via randexp) | tools/sql-formatter |
 | [dom-serializer](git://github.com/cheeriojs/dom-serializer) | 2.0.0 | MIT | transitive (via domutils) | tools/svg-optimizer |
 | [dom-serializer](git://github.com/cheeriojs/dom-serializer) | 3.1.1 | MIT | transitive (via domutils) | tools/bbcode, tools/jsx-converter |
@@ -88,7 +89,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [domutils](git://github.com/fb55/domutils) | 3.2.2 | BSD-2-Clause | transitive (via css-select) | tools/svg-optimizer |
 | [domutils](git://github.com/fb55/domutils) | 4.0.2 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [dot-case](https://github.com/blakeembrey/change-case/tree/master/packages/dot-case#readme) | 3.0.4 | MIT | transitive (via param-case) | tools/html-formatter |
-| [emoji-regex](https://mths.be/emoji-regex) | 8.0.0 | MIT | transitive (via string-width) | tools/qr-generator |
+| [emoji-regex](https://mths.be/emoji-regex) | 8.0.0 | MIT | transitive (via string-width) | tools/qr-generator, tools/totp-generator |
 | [entities](git://github.com/fb55/entities) | 4.5.0 | BSD-2-Clause | transitive (via dom-serializer, html-minifier-terser) | tools/html-formatter, tools/svg-optimizer |
 | [entities](https://github.com/fb55/entities) | 8.1.0 | BSD-2-Clause | direct | tools/bbcode, tools/html-entities, tools/jsx-converter, tools/table-builder |
 | [escape-string-regexp]() | 5.0.0 | MIT | transitive (via mdast-util-find-and-replace) | tools/bbcode |
@@ -99,20 +100,20 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
 | [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/spreadsheet-converter |
-| [find-up]() | 4.1.0 | MIT | transitive (via yargs) | tools/qr-generator |
-| [get-caller-file](https://github.com/stefanpenner/get-caller-file#readme) | 2.0.5 | ISC | transitive (via yargs) | tools/qr-generator |
+| [find-up]() | 4.1.0 | MIT | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
+| [get-caller-file](https://github.com/stefanpenner/get-caller-file#readme) | 2.0.5 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-formatter, tools/graphql-to-typescript |
 | [html-entities](https://github.com/mdevils/html-entities) | 2.6.0 | MIT | transitive (via @cantoo/pdf-lib, node-html-better-parser) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
-| [is-fullwidth-code-point]() | 3.0.0 | MIT | transitive (via string-width) | tools/qr-generator |
+| [is-fullwidth-code-point]() | 3.0.0 | MIT | transitive (via string-width) | tools/qr-generator, tools/totp-generator |
 | [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [jq-wasm](https://github.com/owenthereal/jq-wasm#readme) | 3.0.0-jq-1.8.2 | MIT | direct | tools/jq-playground |
 | [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 1.0.0 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [jsonpath-rfc9535](https://github.com/P0lip/jsonpath-rfc9535) | 1.3.0 | Apache-2.0 | direct | tools/jsonpath |
 | [libxml2-wasm](https://jameslan.github.io/libxml2-wasm/) | 0.7.2 | MIT | direct | tools/xml-formatter, tools/xsd-validator |
 | [linguist-languages](https://github.com/ikatyang-collab/linguist-languages#readme) | 8.2.0 | MIT | transitive (via @prettier/plugin-php) | tools/php-formatter |
-| [locate-path]() | 5.0.0 | MIT | transitive (via find-up) | tools/qr-generator |
+| [locate-path]() | 5.0.0 | MIT | transitive (via find-up) | tools/qr-generator, tools/totp-generator |
 | [longest-streak]() | 3.1.0 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
 | [lower-case](https://github.com/blakeembrey/change-case/tree/master/packages/lower-case#readme) | 2.0.2 | MIT | transitive (via no-case) | tools/html-formatter |
 | [markdown-table]() | 3.0.4 | MIT | transitive (via mdast-util-gfm-table) | tools/bbcode |
@@ -164,20 +165,20 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [no-case](https://github.com/blakeembrey/change-case/tree/master/packages/no-case#readme) | 3.0.4 | MIT | transitive (via dot-case, pascal-case) | tools/html-formatter |
 | [node-html-better-parser](https://github.com/Sharcoux/node-html-parser) | 1.5.9 | MIT | transitive (via @cantoo/pdf-lib) | tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split |
 | [nth-check](https://github.com/fb55/nth-check) | 2.1.1 | BSD-2-Clause | transitive (via css-select) | tools/svg-optimizer |
-| [p-limit]() | 2.3.0 | MIT | transitive (via p-locate) | tools/qr-generator |
-| [p-locate]() | 4.1.0 | MIT | transitive (via locate-path) | tools/qr-generator |
-| [p-try]() | 2.2.0 | MIT | transitive (via p-limit) | tools/qr-generator |
+| [p-limit]() | 2.3.0 | MIT | transitive (via p-locate) | tools/qr-generator, tools/totp-generator |
+| [p-locate]() | 4.1.0 | MIT | transitive (via locate-path) | tools/qr-generator, tools/totp-generator |
+| [p-try]() | 2.2.0 | MIT | transitive (via p-limit) | tools/qr-generator, tools/totp-generator |
 | [param-case](https://github.com/blakeembrey/change-case/tree/master/packages/param-case#readme) | 3.0.4 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
 | [parse5](https://parse5.js.org) | 8.0.1 | MIT | direct | tools/table-builder |
 | [pascal-case](https://github.com/blakeembrey/change-case/tree/master/packages/pascal-case#readme) | 3.1.2 | MIT | transitive (via camel-case) | tools/html-formatter |
-| [path-exists]() | 4.0.0 | MIT | transitive (via find-up) | tools/qr-generator |
+| [path-exists]() | 4.0.0 | MIT | transitive (via find-up) | tools/qr-generator, tools/totp-generator |
 | [path-expression-matcher](https://github.com/NaturalIntelligence/path-expression-matcher#readme) | 1.6.2 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [pdfjs-dist](https://mozilla.github.io/pdf.js/) | 6.3.289 | Apache-2.0 | direct | tools/pdf-to-image |
 | [php-parser](https://glayzzle.com/) | 3.7.0 | BSD-3-Clause | transitive (via @prettier/plugin-php) | tools/php-formatter |
 | [picocolors]() | 1.1.1 | ISC | transitive (via svgo) | tools/svg-optimizer |
-| [pngjs](https://github.com/lukeapage/pngjs) | 5.0.0 | MIT | transitive (via qrcode) | tools/qr-generator |
+| [pngjs](https://github.com/lukeapage/pngjs) | 5.0.0 | MIT | transitive (via qrcode) | tools/qr-generator, tools/totp-generator |
 | [prettier](https://prettier.io) | 3.9.9 | MIT | direct | tools/css-formatter, tools/graphql-formatter, tools/html-formatter, tools/js-formatter, tools/markdown-formatter, tools/php-formatter |
-| [qrcode](http://github.com/soldair/node-qrcode) | 1.5.4 | MIT | direct | tools/qr-generator |
+| [qrcode](http://github.com/soldair/node-qrcode) | 1.5.4 | MIT | direct | tools/qr-generator, tools/totp-generator |
 | [railroad-diagrams](https://github.com/tabatkins/railroad-diagrams) | 1.0.0 | CC0-1.0 | transitive (via nearley) | tools/sql-formatter |
 | [randexp](http://fent.github.io/randexp.js/) | 0.4.6 | MIT | transitive (via nearley) | tools/sql-formatter |
 | [react](https://react.dev/) | 19.3.0 | MIT | direct | apps/web |
@@ -185,13 +186,13 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [react-router](https://github.com/remix-run/react-router) | 7.18.4 | MIT | transitive (via react-router-dom) | apps/web |
 | [react-router-dom](https://github.com/remix-run/react-router) | 7.18.4 | MIT | direct | apps/web |
 | [relateurl](https://github.com/stevenvachon/relateurl) | 0.2.7 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
-| [require-directory](https://github.com/troygoode/node-require-directory/) | 2.1.1 | MIT | transitive (via yargs) | tools/qr-generator |
+| [require-directory](https://github.com/troygoode/node-require-directory/) | 2.1.1 | MIT | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [require-from-string]() | 2.0.2 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
-| [require-main-filename](https://github.com/yargs/require-main-filename#readme) | 2.0.0 | ISC | transitive (via yargs) | tools/qr-generator |
+| [require-main-filename](https://github.com/yargs/require-main-filename#readme) | 2.0.0 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [ret](git://github.com/fent/ret.js) | 0.1.15 | MIT | transitive (via randexp) | tools/sql-formatter |
 | [sax](ssh://git@github.com/isaacs/sax-js) | 1.6.1 | BlueOak-1.0.0 | transitive (via svgo) | tools/svg-optimizer |
 | [scheduler](https://react.dev/) | 0.28.0 | MIT | transitive (via react-dom) | apps/web |
-| [set-blocking](https://github.com/yargs/set-blocking#readme) | 2.0.0 | ISC | transitive (via yargs) | tools/qr-generator |
+| [set-blocking](https://github.com/yargs/set-blocking#readme) | 2.0.0 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [set-cookie-parser](https://github.com/nfriedly/set-cookie-parser) | 2.7.2 | MIT | transitive (via react-router) | apps/web |
 | [smol-toml](github:squirrelchat/smol-toml) | 1.9.0 | BSD-3-Clause | direct | tools/data-convert |
 | [source-map](https://github.com/mozilla/source-map) | 0.6.1 | BSD-3-Clause | transitive (via clean-css, source-map-support) | tools/html-formatter, tools/js-formatter |
@@ -199,8 +200,8 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [source-map-support](https://github.com/evanw/node-source-map-support) | 0.5.21 | MIT | transitive (via terser) | tools/html-formatter, tools/js-formatter |
 | [sql-formatter](https://github.com/sql-formatter-org/sql-formatter) | 15.9.0 | MIT | direct | tools/sql-formatter |
 | [sql.js](http://github.com/sql-js/sql.js) | 1.14.2 | MIT | direct | tools/sqlite-viewer |
-| [string-width]() | 4.2.3 | MIT | transitive (via cliui, wrap-ansi, yargs) | tools/qr-generator |
-| [strip-ansi]() | 6.0.1 | MIT | transitive (via cliui, string-width, wrap-ansi) | tools/qr-generator |
+| [string-width]() | 4.2.3 | MIT | transitive (via cliui, wrap-ansi, yargs) | tools/qr-generator, tools/totp-generator |
+| [strip-ansi]() | 6.0.1 | MIT | transitive (via cliui, string-width, wrap-ansi) | tools/qr-generator, tools/totp-generator |
 | [strnum](https://github.com/NaturalIntelligence/strnum) | 2.4.2 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [svgo](https://svgo.dev) | 4.1.0 | MIT | direct | tools/svg-optimizer |
 | [terser](https://terser.org) | 5.51.2 | BSD-2-Clause | direct | tools/html-formatter, tools/js-formatter |
@@ -211,14 +212,14 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [unist-util-stringify-position]() | 4.0.0 | MIT | transitive (via mdast-util-from-markdown) | tools/bbcode |
 | [unist-util-visit]() | 5.1.0 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
 | [unist-util-visit-parents]() | 6.0.2 | MIT | transitive (via mdast-util-find-and-replace, unist-util-visit) | tools/bbcode |
-| [which-module](https://github.com/nexdrew/which-module#readme) | 2.0.1 | ISC | transitive (via yargs) | tools/qr-generator |
-| [wrap-ansi]() | 6.2.0 | MIT | transitive (via cliui) | tools/qr-generator |
+| [which-module](https://github.com/nexdrew/which-module#readme) | 2.0.1 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
+| [wrap-ansi]() | 6.2.0 | MIT | transitive (via cliui) | tools/qr-generator, tools/totp-generator |
 | [xml-naming](https://github.com/NaturalIntelligence/xml-naming) | 0.3.0 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [xpath](https://github.com/goto100/xpath) | 0.0.34 | MIT | direct | tools/xpath-tester |
-| [y18n](https://github.com/yargs/y18n) | 4.0.3 | ISC | transitive (via yargs) | tools/qr-generator |
+| [y18n](https://github.com/yargs/y18n) | 4.0.3 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/docker-compose-validator, tools/dotenv-toolkit, tools/eslint-to-biome, tools/github-actions-validator, tools/json-schema-generator, tools/json-to-code, tools/k8s-validator, tools/mock-data, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
-| [yargs](https://yargs.js.org/) | 15.4.1 | MIT | transitive (via qrcode) | tools/qr-generator |
-| [yargs-parser](https://github.com/yargs/yargs-parser) | 18.1.3 | ISC | transitive (via yargs) | tools/qr-generator |
+| [yargs](https://yargs.js.org/) | 15.4.1 | MIT | transitive (via qrcode) | tools/qr-generator, tools/totp-generator |
+| [yargs-parser](https://github.com/yargs/yargs-parser) | 18.1.3 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [zwitch]() | 2.0.4 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
 
 ## Full notices
@@ -636,6 +637,34 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+### @noble/curves 2.4.0
+
+Licence: MIT
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2022 Paul Miller (https://paulmillr.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ### @noble/hashes 2.4.0
