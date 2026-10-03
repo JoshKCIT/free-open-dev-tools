@@ -1398,5 +1398,12 @@
     "category": "css",
     "tier": 3,
     "summary": "Draw triangles, ribbons, speech bubbles and tooltip arrows in pure CSS with a live preview."
+  },
+  {
+    "id": "css-spinner",
+    "name": "CSS Loading Spinner Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Make pure-CSS loading spinners in a chosen size, colour and speed that stop for reduced motion."
   }
 ]
