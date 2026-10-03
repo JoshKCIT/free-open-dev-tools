@@ -7,7 +7,7 @@
     "MD5, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256, SHA3-224, SHA3-256, SHA3-384, SHA3-512, Keccak-256, BLAKE2b-512, BLAKE2s-256, BLAKE3, RIPEMD-160 and CRC-32",
     "Input read as UTF-8 text, as hexadecimal bytes, or as Base64",
     "Output as lowercase hex, uppercase hex, Base64 or Base64url",
-    "Comparing a computed digest against one you paste in, ignoring case and separators",
+    "Comparing a computed digest against one you paste in: a hex digest is compared ignoring case and separators; a Base64 or Base64url digest is compared exactly, letter case and the hyphen and underscore included",
     "Keccak-256 as distinct from SHA3-256, which matters if you work with Ethereum",
     "BLAKE2b-512 and BLAKE2s-256 unkeyed at their full default output length; BLAKE3 in its plain hashing mode at its default 256-bit output",
     "Checksums: all 31 CRC-16 and 12 CRC-32 algorithms of the CRC catalogue with their other names (for example CRC-16/IBM-3740 is also called CRC-16/CCITT-FALSE, and CRC-32/ISCSI is CRC-32C), and Adler-32",

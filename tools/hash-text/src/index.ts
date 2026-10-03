@@ -303,15 +303,46 @@ export function hashAll(bytes: Uint8Array, output: OutputFormat = 'hex'): HashRe
   }));
 }
 
-/** Constant-time-ish comparison of two hex digests, ignoring case and separators. */
+/** True for any character that a regular expression \s matches (white space of any kind, as the earlier comparison stripped). */
+function isWhite(ch: string): boolean {
+  return ch.trim() === '';
+}
+
+/** The text with white space taken out, and, when `separators` is set, colons, underscores and hyphens too. */
+function stripped(text: string, separators: boolean): string {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charAt(i);
+    if (isWhite(ch) || (separators && (ch === ':' || ch === '_' || ch === '-'))) continue;
+    out += ch;
+  }
+  return out;
+}
+
+/** True when the text, without its separators, is made of hexadecimal digits only. */
+function isHexLike(text: string): boolean {
+  const bare = stripped(text, true);
+  if (bare.length === 0) return false;
+  for (let i = 0; i < bare.length; i++) {
+    const code = bare.charCodeAt(i);
+    const digit = code >= 48 && code <= 57;
+    const lower = code >= 97 && code <= 102;
+    const upper = code >= 65 && code <= 70;
+    if (!digit && !lower && !upper) return false;
+  }
+  return true;
+}
+
+/**
+ * Constant-time-ish comparison of two digests. Two hex digests are compared ignoring case and the separators people put
+ * between bytes (white space, colon, hyphen, underscore). Anything else is a Base64 or Base64url digest, whose letters
+ * are case sensitive and whose alphabets use the hyphen and the underscore, so it is compared character by character with
+ * only white space (a wrapped line) left out.
+ */
 export function digestsMatch(a: string, b: string): boolean {
-  const norm = (s: string) =>
-    s
-      .trim()
-      .toLowerCase()
-      .replace(/[\s:_-]/g, '');
-  const x = norm(a);
-  const y = norm(b);
+  const hex = isHexLike(a) && isHexLike(b);
+  const x = hex ? stripped(a, true).toLowerCase() : stripped(a, false);
+  const y = hex ? stripped(b, true).toLowerCase() : stripped(b, false);
   if (x.length !== y.length) return false;
   let diff = 0;
   for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
