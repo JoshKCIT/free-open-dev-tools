@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi, type MockInstance } from 'vitest';
 import {
   IMPORT_REFUSED_MESSAGE,
+  LESS_VERSION,
   MAX_OUTPUT_BYTES,
   MAX_SOURCE_BYTES,
   MAX_WARNING_CHARS,
@@ -95,14 +96,17 @@ it('Sass use, forward, import and load-css of another file or address are refuse
   });
   expect(math.css).toBe('.a {\n  b: 5;\n}');
 
-  // A long target is cut to 40 characters, and a direction mark in it is shown escaped.
+  // A long target is cut to 40 characters, and a direction mark in it never reaches the message raw (Sass hands the
+  // address over percent-encoded, Less hands the file name over as written and the message shows it escaped).
   const long = await failureOf(`@use "${'a'.repeat(100)}";`, 'scss');
   expect(long.message).toContain('a'.repeat(40));
   expect(long.message).not.toContain('a'.repeat(41));
   const rlo = String.fromCodePoint(0x202e);
   const marked = await failureOf(`@use "foo${rlo}bar";`, 'scss');
-  expect(marked.message).toContain(`foo${BS}u{202E}bar`);
   expect(marked.message).not.toContain(rlo);
+  const markedLess = await failureOf(`@import "foo${rlo}bar";`, 'less');
+  expect(markedLess.message).toContain(`foo${BS}u{202E}bar`);
+  expect(markedLess.message).not.toContain(rlo);
 });
 
 it('Less imports, plugins, data-uri with a file, optional imports and an address are refused with line and column', async () => {
@@ -402,9 +406,18 @@ it('meta pins sass 1.103.1 and less 4.9.1 exactly', async () => {
     dependencies: Record<string, string>;
   };
   expect(pkg.dependencies).toEqual({ sass: '1.103.1', less: '4.9.1' });
-  // The engines report the versions themselves.
+  // The installed packages are the pinned versions, and the engines report them.
+  for (const name of ['sass', 'less']) {
+    const installed = JSON.parse(
+      readFileSync(new URL(`../node_modules/${name}/package.json`, import.meta.url), 'utf8'),
+    ) as {
+      version: string;
+    };
+    expect(installed.version).toBe(toolMeta.dependencies[name as 'sass' | 'less']);
+  }
+  expect(LESS_VERSION).toBe('4.9.1');
   expect((await compileStylesheet('a { b: c }', { language: 'scss', style: 'expanded' })).engine).toBe('Sass 1.103.1');
-  expect((await compileStylesheet('a { b: c }', { language: 'sass', style: 'expanded' })).engine).toBe('Sass 1.103.1');
+  expect((await compileStylesheet('a\n  b: c\n', { language: 'sass', style: 'expanded' })).engine).toBe('Sass 1.103.1');
   expect((await compileStylesheet('a { b: c }', { language: 'less', style: 'expanded' })).engine).toBe('Less 4.9.1');
 });
 
