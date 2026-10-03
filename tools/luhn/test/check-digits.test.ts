@@ -295,7 +295,7 @@ it('VIN vectors from 49 CFR 565.15 are valid and I, O and Q are refused with the
   ] as const) {
     const vin = '1M8GDM9AXKP042788'.slice(0, at) + letter + '1M8GDM9AXKP042788'.slice(at + 1);
     expect(refusal(() => validateScheme('vin', vin)).position, vin).toBe(at);
-    if (at !== 8) expect(refusal(() => computeScheme('vin', vin)).position, vin).toBe(at);
+    expect(refusal(() => computeScheme('vin', vin)).position, vin).toBe(at);
   }
   // Table III values, typed here once more from the regulation: with one letter in position 1 (weight 8) and zeros
   // elsewhere, the check value is the letter's value times 8 modulo 11.

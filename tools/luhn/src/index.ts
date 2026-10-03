@@ -13,6 +13,7 @@ export {
   type ValidateResult,
   type ComputeResult,
 } from './check-digits';
+export { IBAN_LENGTHS, IBAN_REGISTRY_RELEASE } from './iban-registry';
 
 export class LuhnError extends Error {
   readonly position?: number;
