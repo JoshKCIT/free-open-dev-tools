@@ -11,9 +11,10 @@
  * of a key, a secret, or a token. Describe the shape of the problem, never the content.
  */
 import { ed25519 } from '@noble/curves/ed25519.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { CURVE_SENTENCE, DOES_NOT_BELONG, curveInfo, ecNormalizePoint, ecPublicFromPrivate, padTo } from './formats';
-import { CURVES, KeyConverterError, bytesEqual, type Curve, type KeyModel } from './model';
-import { PemError, base64ToBytes } from './pem';
+import { CURVES, KeyConverterError, bytesEqual, isPrivate, type Curve, type KeyModel } from './model';
+import { PemError, base64ToBytes, bytesToBase64 } from './pem';
 import { checkRsaModulus, completeRsa, trimZeros } from './rsa-math';
 
 type Json = Record<string, unknown>;
@@ -172,4 +173,76 @@ export function readJwk(text: string): { key: KeyModel; note?: string } {
   }
   const key = reader(jwk);
   return note === undefined ? { key } : { key, note };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Writing
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Base64url without padding (RFC 7515 section 2). */
+function b64u(bytes: Uint8Array): string {
+  return bytesToBase64(bytes, true, false);
+}
+
+/** The members of the public JWK, in the lexicographic order RFC 7638 section 3.3 gives for the thumbprint. */
+function publicMembers(key: KeyModel): Record<string, string> {
+  switch (key.type) {
+    case 'rsa':
+      return { e: b64u(trimZeros(key.e)), kty: 'RSA', n: b64u(trimZeros(key.n)) };
+    case 'ec': {
+      const size = curveInfo(key.curve).size;
+      // The coordinates are the full size of the curve (RFC 7518 section 6.2.1.2), whatever their leading bytes are.
+      return {
+        crv: key.curve,
+        kty: 'EC',
+        x: b64u(key.point.subarray(1, 1 + size)),
+        y: b64u(key.point.subarray(1 + size)),
+      };
+    }
+    case 'ed25519':
+      return { crv: 'Ed25519', kty: 'OKP', x: b64u(key.pub) };
+  }
+}
+
+/** The private members, after the public ones. */
+function privateMembers(key: KeyModel): Record<string, string> {
+  const missing = new KeyConverterError('This key has no private part, so it cannot be written as a private key.');
+  switch (key.type) {
+    case 'rsa': {
+      if (!isPrivate(key)) throw missing;
+      return {
+        d: b64u(trimZeros(key.d!)),
+        p: b64u(trimZeros(key.p!)),
+        q: b64u(trimZeros(key.q!)),
+        dp: b64u(trimZeros(key.dp!)),
+        dq: b64u(trimZeros(key.dq!)),
+        qi: b64u(trimZeros(key.qi!)),
+      };
+    }
+    case 'ec':
+      if (key.d === undefined) throw missing;
+      return { d: b64u(padTo(key.d, curveInfo(key.curve).size)) };
+    case 'ed25519':
+      if (key.seed === undefined) throw missing;
+      return { d: b64u(key.seed) };
+  }
+}
+
+/**
+ * The JWK of a key as JSON text with two-space indentation. The public members come first in the order of RFC 7638
+ * (which is also the order the thumbprint is computed from), then the private members when `private` is true. EC
+ * coordinates and private numbers are the full size of the curve (32, 48 or 66 bytes), and RSA numbers are Base64urlUInt
+ * (no leading zero byte, RFC 7518 section 6.3.1.1).
+ */
+export function writeJwk(key: KeyModel, options: { private: boolean }): string {
+  const members = options.private ? { ...publicMembers(key), ...privateMembers(key) } : publicMembers(key);
+  return JSON.stringify(members, null, 2);
+}
+
+/**
+ * The JWK SHA-256 thumbprint of RFC 7638, as Base64url: the digest of the compact JSON of the required public members in
+ * lexicographic order (for an Ed25519 key those of RFC 8037 section 2).
+ */
+export function jwkThumbprint(key: KeyModel): string {
+  return b64u(sha256(new TextEncoder().encode(JSON.stringify(publicMembers(key)))));
 }

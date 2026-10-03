@@ -4,7 +4,7 @@ import { MAX_PASTE_CHARS, readKeyInput } from '../src/detect';
 import { DerError } from '../src/der';
 import { readPkcs1Private, readPkcs1Public, readPkcs8, readSec1, readSpki } from '../src/formats';
 import { readJwk } from '../src/jwk';
-import { KeyConverterError, bytesEqual, isPrivate, keyBits, type KeyModel } from '../src/model';
+import { KeyConverterError, bytesEqual, isPrivate, keyBits } from '../src/model';
 import { readRfc4716, readSshPrivate, readSshPublicLine, sshPublicLine } from '../src/openssh';
 import { PemError } from '../src/pem';
 import { bitLength, completeRsa, modInverse } from '../src/rsa-math';

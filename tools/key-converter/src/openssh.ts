@@ -10,9 +10,10 @@
  */
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { concat } from './der-write';
+import { browserRandom } from './generate';
 import { CURVE_SENTENCE, DOES_NOT_BELONG, curveInfo, ecNormalizePoint, ecPublicFromPrivate, padTo } from './formats';
-import { CURVES, KeyConverterError, bytesEqual, type Curve, type KeyModel } from './model';
-import { PemError, base64ToBytes, bytesToBase64, pemBlocks } from './pem';
+import { CURVES, KeyConverterError, bytesEqual, checkComment, isPrivate, type Curve, type KeyModel } from './model';
+import { PemError, base64ToBytes, bytesToBase64, bytesToPem, pemBlocks } from './pem';
 import { checkRsaModulus, completeRsa, trimZeros } from './rsa-math';
 
 const PASSPHRASE_SENTENCE =
@@ -79,6 +80,96 @@ export function sshPublicBlob(key: KeyModel): Uint8Array {
 export function sshPublicLine(key: KeyModel, comment: string): string {
   const line = `${sshKeyType(key)} ${bytesToBase64(sshPublicBlob(key))}`;
   return comment === '' ? line : `${line} ${comment}`;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Writing
+// ---------------------------------------------------------------------------------------------------------------------
+
+const MAGIC_BYTES = Uint8Array.from(Array.from('openssh-key-v1\0', (character) => character.charCodeAt(0)));
+
+/** The key type and the key numbers of a private key, in the order of draft-miller-ssh-agent section 3.2. */
+function sshPrivateFields(key: KeyModel): Uint8Array {
+  switch (key.type) {
+    case 'rsa':
+      if (!isPrivate(key)) break;
+      // string "ssh-rsa", mpint n, mpint e, mpint d, mpint iqmp, mpint p, mpint q
+      return concat(
+        sshString(ascii('ssh-rsa')),
+        sshMpint(key.n),
+        sshMpint(key.e),
+        sshMpint(key.d!),
+        sshMpint(key.qi!),
+        sshMpint(key.p!),
+        sshMpint(key.q!),
+      );
+    case 'ec':
+      if (key.d === undefined) break;
+      // string key type, string curve identifier, string Q, mpint d
+      return concat(
+        sshString(ascii(sshKeyType(key))),
+        sshString(ascii(sshCurveName(key.curve))),
+        sshString(key.point),
+        sshMpint(key.d),
+      );
+    case 'ed25519':
+      if (key.seed === undefined) break;
+      // string "ssh-ed25519", string public key, string (seed followed by the public key)
+      return concat(sshString(ascii('ssh-ed25519')), sshString(key.pub), sshString(concat(key.seed, key.pub)));
+  }
+  throw new KeyConverterError('This key has no private part, so it cannot be written as a private key.');
+}
+
+/**
+ * The OpenSSH private key file (PROTOCOL.key) of a private key, with cipher and KDF none and one key: the magic, the
+ * public key, and a private part of the check value twice, the key, the comment and the padding 1, 2, 3 and so on up to a
+ * multiple of 8. The body is wrapped at 70 columns as ssh-keygen wraps it. The check value is four bytes from `rand` (the
+ * browser's generator by default) unless it is given.
+ */
+export function sshPrivate(
+  key: KeyModel,
+  comment: string,
+  rand: (count: number) => Uint8Array = browserRandom,
+  check?: Uint8Array,
+): string {
+  const fields = sshPrivateFields(key);
+  checkComment(comment);
+  const value = check ?? rand(4);
+  if (value.length !== 4) throw new KeyConverterError('The check value of an OpenSSH private key is four bytes.');
+  const unpadded = concat(value, value, fields, sshString(new TextEncoder().encode(comment)));
+  const padding = Uint8Array.from({ length: (8 - (unpadded.length % 8)) % 8 }, (_, i) => i + 1);
+  const section = concat(unpadded, padding);
+  const blob = concat(
+    MAGIC_BYTES,
+    sshString(ascii('none')),
+    sshString(ascii('none')),
+    sshString(new Uint8Array(0)),
+    uint32(1),
+    sshString(sshPublicBlob(key)),
+    sshString(section),
+  );
+  return bytesToPem('OPENSSH PRIVATE KEY', blob, 70);
+}
+
+/** A comment as the inside of an RFC 4716 quoted string: a backslash is put in front of a backslash and a quote. */
+function escapeComment(comment: string): string {
+  let out = '';
+  for (const character of comment) out += character === '\\' || character === '"' ? '\\' + character : character;
+  return out;
+}
+
+/**
+ * The RFC 4716 public key file: the BEGIN line, a Comment header when there is a comment (quoted, with backslash and
+ * quote escaped), the Base64 of the public key blob in 70 column lines, and the END line.
+ */
+export function rfc4716(key: KeyModel, comment: string): string {
+  checkComment(comment);
+  const body = bytesToBase64(sshPublicBlob(key));
+  const lines: string[] = [RFC4716_BEGIN];
+  if (comment !== '') lines.push(`Comment: "${escapeComment(comment)}"`);
+  for (let i = 0; i < body.length; i += 70) lines.push(body.slice(i, i + 70));
+  lines.push(RFC4716_END);
+  return lines.join('\n') + '\n';
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

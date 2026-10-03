@@ -91,7 +91,7 @@ it('PKCS1 and SEC1 written for the OpenSSL fixture keys equal the OpenSSL bytes'
         `${f.name}: PKCS8 from a key without its public part`,
       ).toBe(true);
       expect(
-        sameBytes(writeSec1(noPublic), bytesOf(f.sec1)),
+        sameBytes(writeSec1(noPublic as typeof key), bytesOf(f.sec1)),
         `${f.name}: SEC1 from a key without its public part`,
       ).toBe(true);
     }

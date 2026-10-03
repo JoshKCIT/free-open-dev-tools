@@ -10,7 +10,7 @@ import meta from './meta.json';
 import { DerError, derHex } from './der';
 import { MAX_PASTE_CHARS, readKeyInput } from './detect';
 import { sshFingerprints } from './fingerprint';
-import { readPkcs8, readSpki, writePkcs8, writeSpki } from './formats';
+import { readPkcs8, readSpki, writePkcs1Private, writePkcs1Public, writePkcs8, writeSec1, writeSpki } from './formats';
 import { generateEc, generateEd25519, generateRsa } from './generate';
 import {
   COMMENT_LIMIT,
@@ -27,7 +27,8 @@ import {
   type KeyModel,
   type RsaKey,
 } from './model';
-import { sshPublicBlob, sshPublicLine } from './openssh';
+import { jwkThumbprint, writeJwk } from './jwk';
+import { rfc4716, sshPrivate, sshPublicBlob, sshPublicLine } from './openssh';
 import { PemError, bytesToPem } from './pem';
 
 export {
@@ -122,33 +123,41 @@ function keyFacts(key: KeyModel): [string, string][] {
 /** Every output of a key: the PEM blocks, the OpenSSH line, the fingerprints and the facts, all written from the model. */
 export function keyOutputs(key: KeyModel, options: { comment: string }): KeyOutputs {
   checkComment(options.comment);
+  const priv = isPrivate(key);
   const blocks: KeyOutputBlock[] = [];
-  if (isPrivate(key)) {
-    blocks.push({
-      id: 'pkcs8',
-      label: 'Private key, PKCS#8 (PEM)',
-      text: bytesToPem('PRIVATE KEY', writePkcs8(key)),
-      private: true,
-    });
+  const add = (id: string, label: string, text: string, secret: boolean, language?: string): void => {
+    blocks.push(
+      language === undefined ? { id, label, text, private: secret } : { id, label, text, private: secret, language },
+    );
+  };
+  // The order is the order of the page: the PKCS#8 and SubjectPublicKeyInfo pair first, then the type-specific PEM forms,
+  // then JWK, then the OpenSSH forms and RFC 4716.
+  if (priv) add('pkcs8', 'Private key, PKCS#8 (PEM)', bytesToPem('PRIVATE KEY', writePkcs8(key)), true);
+  add('spki', 'Public key, SubjectPublicKeyInfo (PEM)', bytesToPem('PUBLIC KEY', writeSpki(key)), false);
+  if (key.type === 'rsa') {
+    if (priv)
+      add(
+        'pkcs1-private',
+        'RSA private key, PKCS#1 (PEM)',
+        bytesToPem('RSA PRIVATE KEY', writePkcs1Private(key)),
+        true,
+      );
+    add('pkcs1-public', 'RSA public key, PKCS#1 (PEM)', bytesToPem('RSA PUBLIC KEY', writePkcs1Public(key)), false);
   }
-  blocks.push({
-    id: 'spki',
-    label: 'Public key, SubjectPublicKeyInfo (PEM)',
-    text: bytesToPem('PUBLIC KEY', writeSpki(key)),
-    private: false,
-  });
-  blocks.push({
-    id: 'ssh-public',
-    label: 'OpenSSH public key',
-    text: sshPublicLine(key, options.comment),
-    private: false,
-  });
+  if (key.type === 'ec' && priv)
+    add('sec1', 'EC private key, SEC1 (PEM)', bytesToPem('EC PRIVATE KEY', writeSec1(key)), true);
+  if (priv) add('jwk-private', 'Private key, JWK', writeJwk(key, { private: true }), true, 'json');
+  add('jwk-public', 'Public key, JWK', writeJwk(key, { private: false }), false, 'json');
+  if (priv) add('ssh-private', 'OpenSSH private key (no passphrase)', sshPrivate(key, options.comment), true);
+  add('ssh-public', 'OpenSSH public key', sshPublicLine(key, options.comment), false);
+  add('rfc4716', 'Public key, RFC 4716', rfc4716(key, options.comment), false);
   const prints = sshFingerprints(sshPublicBlob(key));
   return {
     blocks,
     fingerprints: [
       ['SHA256', prints.sha256],
       ['MD5', prints.md5],
+      ['JWK thumbprint', jwkThumbprint(key)],
     ],
     facts: keyFacts(key),
     warnings: keyWarnings(key),

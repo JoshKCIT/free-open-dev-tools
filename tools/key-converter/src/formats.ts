@@ -332,17 +332,34 @@ function requirePrivateRsa(key: RsaKey): Required<RsaKey> {
   return { ...key, d, p, q, dp, dq, qi };
 }
 
-/** The PKCS#1 RSAPrivateKey (RFC 8017 A.1.2) of a private key. */
-function rsaPkcs1Private(key: RsaKey): Uint8Array {
+/** The PKCS#1 RSAPrivateKey (RFC 8017 A.1.2) of a private key: the bytes inside a RSA PRIVATE KEY block. */
+export function writePkcs1Private(key: RsaKey): Uint8Array {
   const k = requirePrivateRsa(key);
   return seq(smallInt(0), uint(k.n), uint(k.e), uint(k.d), uint(k.p), uint(k.q), uint(k.dp), uint(k.dq), uint(k.qi));
+}
+
+/** The PKCS#1 RSAPublicKey (RFC 8017 A.1.1): the bytes inside a RSA PUBLIC KEY block. */
+export function writePkcs1Public(key: RsaKey): Uint8Array {
+  return seq(uint(key.n), uint(key.e));
+}
+
+/**
+ * The SEC1 ECPrivateKey of RFC 5915 as a file of its own: the bytes inside an EC PRIVATE KEY block. The private number is
+ * as wide as the curve, the curve is named by the [0] parameters, and the public point is the [1] value.
+ */
+export function writeSec1(key: EcKey): Uint8Array {
+  if (key.d === undefined) {
+    throw new KeyConverterError('This key has no private part, so it cannot be written as a private key.');
+  }
+  const info = curveInfo(key.curve);
+  return seq(smallInt(1), octet(padTo(key.d, info.size)), ctx(0, oid(info.oid)), ctx(1, bitString(key.point)));
 }
 
 /** The PKCS#8 PrivateKeyInfo bytes of a private key. */
 export function writePkcs8(key: KeyModel): Uint8Array {
   switch (key.type) {
     case 'rsa':
-      return seq(smallInt(0), seq(oid(RSA_ENCRYPTION), NULL_DER), octet(rsaPkcs1Private(key)));
+      return seq(smallInt(0), seq(oid(RSA_ENCRYPTION), NULL_DER), octet(writePkcs1Private(key)));
     case 'ec': {
       if (key.d === undefined) {
         throw new KeyConverterError('This key has no private part, so it cannot be written as a private key.');

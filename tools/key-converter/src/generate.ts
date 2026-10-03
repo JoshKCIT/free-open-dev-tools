@@ -23,6 +23,11 @@ import {
   type RsaBits,
 } from './model';
 
+/** `count` bytes from the browser's cryptographic generator, which is the only source of randomness in this package. */
+export function browserRandom(count: number): Uint8Array {
+  return globalThis.crypto.getRandomValues(new Uint8Array(count));
+}
+
 /** Throws a plain message when the browser cryptography interface is not available. */
 export function requireSecureContext(): void {
   const g = globalThis as { crypto?: Crypto };
