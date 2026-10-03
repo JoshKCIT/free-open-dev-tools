@@ -17,7 +17,7 @@ import {
   rsaSpki,
   ALGORITHMS,
 } from './fixtures/der-build';
-import { NOW_MS, certificateDer, certificatePem, pemText, requestDer } from './fixtures/helpers';
+import { NOW_MS, certificateDer, certificateOf, certificatePem, pemText, requestDer } from './fixtures/helpers';
 
 /**
  * Certification requests (RFC 2986) and files. Every expected value is something OpenSSL 3.5.5 printed, recorded in
@@ -202,6 +202,13 @@ it('DER and PEM inputs of one certificate give the same result and repeated deco
   first.items.length = 0;
   first.chains.length = 0;
   expect(decodeInput(certificatePem('leaf') + certificatePem('int'), { nowMs: NOW_MS }).chains).toHaveLength(1);
+  // The empty result is new on every call too, and the clock reading is never remembered from an earlier call.
+  const blank = decodeInput('', { nowMs: NOW_MS });
+  blank.items.push(readCertificate(certificateDer('ec256'), NOW_MS));
+  expect(decodeInput('', { nowMs: NOW_MS }).items).toEqual([]);
+  const pem = certificatePem('leaf');
+  const daysAt = (nowMs: number): number => certificateOf(decodeInput(pem, { nowMs })).status.days;
+  expect(daysAt(NOW_MS) - daysAt(NOW_MS + 30 * 86_400_000)).toBe(30);
   // The certificate model does not change with the bytes' owner: reading twice from one array gives equal values.
   const der = certificateDer('ec256');
   expect(readCertificate(der, NOW_MS)).toEqual(readCertificate(der, NOW_MS));
@@ -223,7 +230,7 @@ it('a file over 1048576 bytes is refused by its size', () => {
   expect(() => decodeInput(new Uint8Array(1048577), { nowMs: NOW_MS })).toThrow(message);
   let atLimit = '';
   try {
-    decodeInput(new Uint8Array(1048576).fill(0x20), { nowMs: NOW_MS });
+    decodeInput(new Uint8Array(1048576).fill(0x41), { nowMs: NOW_MS });
   } catch (err) {
     atLimit = (err as Error).message;
   }
@@ -244,6 +251,9 @@ it('a file is read as DER or as text by its first bytes, and an empty file gives
   // A byte order mark, CRLF line ends and text before the block do not matter for a text file.
   const bom = new Uint8Array([0xef, 0xbb, 0xbf, ...pem]);
   expect(sha256Of(bom)).toBe(sha);
+  // Raw Base64 text saved with a byte order mark is read too (the mark is not a Base64 character).
+  const rawBase64 = new TextEncoder().encode(CERTIFICATES['ec256']!.derB64);
+  expect(sha256Of(new Uint8Array([0xef, 0xbb, 0xbf, ...rawBase64]))).toBe(sha);
   const crlf = new TextEncoder().encode(certificatePem('ec256', 64, '\r\n'));
   expect(sha256Of(crlf)).toBe(sha);
   const labelled = new TextEncoder().encode('Bag Attributes\n    friendlyName: test\n' + certificatePem('ec256'));

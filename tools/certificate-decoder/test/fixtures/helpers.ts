@@ -2,6 +2,7 @@
  * Small helpers for the tests: the fixtures as bytes and as PEM text, and OpenSSL's printed dates as epoch milliseconds.
  * The PEM armour is built from pieces so that no file of this repository reads as a PEM block to a scanner.
  */
+import type { CertificateInfo, DecodeResult } from '../../src/index';
 import { CERTIFICATES, CHAIN_CERTIFICATES, REQUESTS } from './certs';
 
 /** The clock reading every test passes to the decoder: 2026-10-03 12:00 UTC, inside every fixture's validity. */
@@ -34,6 +35,13 @@ export function certificatePem(name: string, width = 64, eol = '\n'): string {
   const entry = CERTIFICATES[name];
   if (entry === undefined) throw new Error(`no fixture certificate named ${name}`);
   return pemText('CERTIFICATE', entry.derB64, width, eol);
+}
+
+/** The certificate at `index` of a decoded paste; fails the test when that item is a request. */
+export function certificateOf(result: DecodeResult, index = 0): CertificateInfo {
+  const item = result.items[index];
+  if (item === undefined || item.kind !== 'certificate') throw new Error(`item ${index} is not a certificate`);
+  return item;
 }
 
 /** The DER of a certificate of either fixture set, by name (the chain fixtures are CHAIN_CERTIFICATES in certs.ts). */

@@ -38,6 +38,7 @@ import {
   NOW_MS,
   base64Bytes,
   certificateDer,
+  certificateOf,
   certificatePem,
   opensslDate,
   pemText,
@@ -680,7 +681,7 @@ it('every root certificate Node ships decodes with fingerprint, serial and valid
 
 it('Base64 and hex DER pastes give the same fingerprints as the PEM and a private key block is ignored without echo', () => {
   const printed = CERTIFICATES['leaf']!;
-  const sha = (text: string): string => decodeInput(text, { nowMs: NOW_MS }).items[0]!.fingerprints.sha256;
+  const sha = (text: string): string => certificateOf(decodeInput(text, { nowMs: NOW_MS })).fingerprints.sha256;
   const der = certificateDer('leaf');
   expect(sha(certificatePem('leaf'))).toBe(printed.sha256);
   expect(sha(printed.derB64)).toBe(printed.sha256);
@@ -765,7 +766,7 @@ it('fingerprints do not change with line width, CRLF or Base64 wrapping of the p
   ];
   // The long-line and bare-CR variants hold the Base64 on lines the scanner has to accept, so only the line ends change.
   for (const variant of variants) {
-    const cert = decodeInput(variant, { nowMs: NOW_MS }).items[0]!;
+    const cert = certificateOf(decodeInput(variant, { nowMs: NOW_MS }));
     expect(cert.fingerprints.sha256).toBe(printed.sha256);
     expect(cert.fingerprints.sha1).toBe(printed.sha1);
     expect(cert.fingerprints.md5).toBe(printed.md5);

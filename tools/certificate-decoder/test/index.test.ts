@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CertificateError, decodeInput } from '../src/index';
 import { CERTIFICATES } from './fixtures/certs';
-import { NOW_MS, certificatePem } from './fixtures/helpers';
+import { NOW_MS, certificateOf, certificatePem } from './fixtures/helpers';
 
 /**
  * The package entry: what a paste turns into. The expected fingerprints are OpenSSL's, recorded in test/fixtures.
@@ -75,7 +75,7 @@ it('an empty paste returns nothing and text without a certificate gets one plain
 it('a pasted PEM block decodes to the certificate OpenSSL printed', () => {
   const result = decodeInput(certificatePem('ec256'), { nowMs: NOW_MS });
   expect(result.items).toHaveLength(1);
-  const cert = result.items[0]!;
+  const cert = certificateOf(result);
   expect(cert.fingerprints.sha256).toBe(CERTIFICATES['ec256']!.sha256);
   expect(cert.fingerprints.sha1).toBe(CERTIFICATES['ec256']!.sha1);
   expect(cert.serialHex).toBe(CERTIFICATES['ec256']!.serial);
@@ -111,7 +111,7 @@ it('a single certificate shows as one entry and two certificates as two', () => 
   expect(decodeInput(certificatePem('leaf'), { nowMs: NOW_MS }).items).toHaveLength(1);
   const two = certificatePem('leaf') + '\nsome text between\n' + certificatePem('int', 76, '\r\n');
   const result = decodeInput(two, { nowMs: NOW_MS });
-  expect(result.items.map((item) => item.fingerprints.sha256)).toEqual([
+  expect(result.items.map((_, at) => certificateOf(result, at).fingerprints.sha256)).toEqual([
     CERTIFICATES['leaf']!.sha256,
     CERTIFICATES['int']!.sha256,
   ]);

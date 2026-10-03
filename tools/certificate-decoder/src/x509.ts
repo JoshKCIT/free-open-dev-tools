@@ -93,12 +93,12 @@ function bitLength(magnitude: Uint8Array): number {
   return (magnitude.length - 1) * 8 + (32 - Math.clz32(first));
 }
 
-interface Algorithm {
+export interface Algorithm {
   oid: string;
   node: DerNode;
 }
 
-function readAlgorithm(bytes: Uint8Array, node: DerNode): Algorithm {
+export function readAlgorithm(bytes: Uint8Array, node: DerNode): Algorithm {
   derExpect(node, 16, 'universal', true);
   return { oid: derOid(bytes, derChild(node, 0)), node };
 }
@@ -124,7 +124,7 @@ function hashName(bytes: Uint8Array, node: DerNode): string {
  * The parameters of RSASSA-PSS (RFC 4055 section 3.1) as one line: the hash, the mask generation function with its own
  * hash, and the salt length. A field left out takes the default RFC 4055 gives it: SHA-1, MGF1 with SHA-1 and 20 bytes.
  */
-function pssParameters(bytes: Uint8Array, algorithm: Algorithm): string {
+export function pssParameters(bytes: Uint8Array, algorithm: Algorithm): string {
   const params = algorithm.node.children[1];
   let hash = 'SHA-1';
   let mask = 'MGF1 with SHA-1';
@@ -149,7 +149,7 @@ function pssParameters(bytes: Uint8Array, algorithm: Algorithm): string {
 }
 
 /** The type, size and curve of a SubjectPublicKeyInfo. A key that cannot be read in detail still gets its type. */
-function readPublicKey(bytes: Uint8Array, node: DerNode, warnings: string[]): PublicKeyInfo {
+export function readPublicKey(bytes: Uint8Array, node: DerNode, warnings: string[]): PublicKeyInfo {
   derExpect(node, 16, 'universal', true);
   const algorithm = readAlgorithm(bytes, derChild(node, 0));
   const keyBits = derBitString(bytes, derChild(node, 1));
@@ -193,6 +193,42 @@ function readPublicKey(bytes: Uint8Array, node: DerNode, warnings: string[]): Pu
 
 function mentionsReplacement(text: string): boolean {
   return text.includes(REPLACEMENT);
+}
+
+/**
+ * The signature algorithm as the page shows it, with the warnings that belong with it: a hash no longer considered safe for
+ * signatures, and a public key that is too small. Shared by certificates and requests.
+ */
+export function describeSignature(
+  bytes: Uint8Array,
+  algorithm: Algorithm,
+  publicKey: PublicKeyInfo,
+  warnings: string[],
+): { name: string; oid: string; params?: string } {
+  const info: { name: string; oid: string; params?: string } = { name: oidLabel(algorithm.oid), oid: algorithm.oid };
+  if (algorithm.oid === RSA_PSS) {
+    try {
+      info.params = pssParameters(bytes, algorithm);
+    } catch (err) {
+      if (!(err instanceof DerError)) throw err;
+      warnings.push('The parameters of the signature algorithm could not be read.');
+    }
+  }
+  const weakHash = WEAK_SIGNATURE_HASHES.get(algorithm.oid);
+  if (weakHash !== undefined) {
+    warnings.push(`The signature uses ${weakHash}, which is no longer considered safe for signatures.`);
+  }
+  if (
+    (publicKey.type === 'RSA' || publicKey.type === 'RSA-PSS' || publicKey.type === 'DSA') &&
+    publicKey.bits !== undefined
+  ) {
+    if (publicKey.bits < 2048) {
+      warnings.push(
+        `The ${publicKey.type} public key is ${publicKey.bits} bits. Keys under 2048 bits are considered weak.`,
+      );
+    }
+  }
+  return info;
 }
 
 /** Reads one certificate. Throws a DerError when the bytes are not a DER certificate. */
@@ -239,33 +275,7 @@ export function readCertificate(der: Uint8Array, nowMs: number): CertificateInfo
     );
   if (!sameAlgorithm) warnings.push('The signature algorithm inside the certificate differs from the one beside it.');
 
-  const signatureAlgorithm: CertificateInfo['signatureAlgorithm'] = {
-    name: oidLabel(outerAlgorithm.oid),
-    oid: outerAlgorithm.oid,
-  };
-  if (outerAlgorithm.oid === RSA_PSS) {
-    try {
-      signatureAlgorithm.params = pssParameters(der, outerAlgorithm);
-    } catch (err) {
-      if (!(err instanceof DerError)) throw err;
-      warnings.push('The parameters of the signature algorithm could not be read.');
-    }
-  }
-
-  const weakHash = WEAK_SIGNATURE_HASHES.get(outerAlgorithm.oid);
-  if (weakHash !== undefined) {
-    warnings.push(`The signature uses ${weakHash}, which is no longer considered safe for signatures.`);
-  }
-  if (
-    (publicKey.type === 'RSA' || publicKey.type === 'RSA-PSS' || publicKey.type === 'DSA') &&
-    publicKey.bits !== undefined
-  ) {
-    if (publicKey.bits < 2048) {
-      warnings.push(
-        `The ${publicKey.type} public key is ${publicKey.bits} bits. Keys under 2048 bits are considered weak.`,
-      );
-    }
-  }
+  const signatureAlgorithm = describeSignature(der, outerAlgorithm, publicKey, warnings);
   if (notAfter.epochMs < notBefore.epochMs) warnings.push('The certificate ends before it starts.');
 
   const sans = extensions.find((extension) => extension.oid === SUBJECT_ALT_NAME)?.names ?? [];
