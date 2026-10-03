@@ -349,6 +349,7 @@ function computePlan(base, head) {
             everything(`the dependencies of ${importer} changed`);
           }
         }
+        if (impact.optionalPeers) record(optionalPeersNote(impact.optionalPeers));
         if (counts.length === 0) record('nothing to recheck: no package resolution changed');
         break;
       }
@@ -362,6 +363,20 @@ function computePlan(base, head) {
   }
 
   return { plan, allIds, toolDirs, changedCount: changed.length };
+}
+
+/** Why a lockfile change made of optional peers becoming available is not a dependency change. */
+function optionalPeersNote({ added, removed, declaredBy, reresolved }) {
+  const moves = [];
+  if (added.length > 0) moves.push(`${list(added)} becoming available`);
+  if (removed.length > 0) moves.push(`${list(removed)} going away`);
+  const shown = reresolved.slice(0, 8);
+  const more = reresolved.length - shown.length;
+  return (
+    `nothing to recheck for ${reresolved.length} re-resolved package entries (${list(shown)}${more > 0 ? ` and ${more} more` : ''}): ` +
+    `pnpm-lock.yaml changed in them only by optional peers ${moves.join(' and ')} to ${list(declaredBy)}, ` +
+    'which declares them optional, and no version moved'
+  );
 }
 
 function outputsFor({ plan, allIds, toolDirs }) {

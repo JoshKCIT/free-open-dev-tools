@@ -262,6 +262,119 @@ describe('lockfileImpact', () => {
     ).toBeTruthy();
     expect(lockfileImpact(base, 'importers:\n    stray: line\n').everything).toMatch(/could not be read/);
   });
+
+  describe('optional peers becoming available', () => {
+    // A small copy of what happens when one tool adds `sass`: pnpm re-resolves
+    // every `vite` (and everything that depends on it) with `sass` in its
+    // peer suffix, and the other importers change only by that suffix.
+    const importerWith = (path, deps) =>
+      `  ${path}:\n    dependencies:\n` +
+      Object.entries(deps)
+        .map(([n, [spec, version]]) => `      ${n}:\n        specifier: ${spec}\n        version: ${version}\n`)
+        .join('') +
+      '\n';
+
+    const sassMeta = 'optional: true';
+    const viteEntry = (meta = sassMeta, integrity = 'v') =>
+      `  vite@6.0.0:\n    resolution: {integrity: sha512-${integrity}}\n    peerDependencies:\n      sass: '*'\n    peerDependenciesMeta:\n      sass:\n        ${meta}\n\n`;
+    const packages = (viteText) =>
+      `${viteText}  plugin-react@4.0.0:\n    resolution: {integrity: sha512-p}\n    peerDependencies:\n      vite: ^6\n\n  runner@1.0.0:\n    resolution: {integrity: sha512-r}\n\n  leaf@1.0.0:\n    resolution: {integrity: sha512-l}\n\n  sass@1.103.1:\n    resolution: {integrity: sha512-s}\n\n  sass@1.104.0:\n    resolution: {integrity: sha512-s2}\n`;
+
+    const viteSass = 'vite@6.0.0(sass@1.103.1)';
+    const beforeSnapshots =
+      '  vite@6.0.0:\n    dependencies:\n      leaf: 1.0.0\n\n' +
+      '  plugin-react@4.0.0(vite@6.0.0):\n    dependencies:\n      vite: 6.0.0\n\n' +
+      '  runner@1.0.0:\n    dependencies:\n      vite: 6.0.0\n\n' +
+      '  leaf@1.0.0: {}\n';
+    const afterSnapshots = (sass = '1.103.1') =>
+      `  vite@6.0.0(sass@${sass}):\n    dependencies:\n      leaf: 1.0.0\n    optionalDependencies:\n      sass: ${sass}\n\n` +
+      `  plugin-react@4.0.0(vite@6.0.0(sass@${sass})):\n    dependencies:\n      vite: 6.0.0(sass@${sass})\n\n` +
+      `  runner@1.0.0(sass@${sass}):\n    dependencies:\n      vite: 6.0.0(sass@${sass})\n\n` +
+      `  leaf@1.0.0: {}\n\n  sass@${sass}: {}\n`;
+
+    const web = (suffix) => ({
+      'plugin-react': ['^4.0.0', `4.0.0(vite@${suffix})`],
+      runner: ['^1.0.0', suffix === '6.0.0' ? '1.0.0' : `1.0.0(sass@${suffix.match(/sass@([^)]+)/)[1]})`],
+      vite: ['^6.0.0', suffix],
+    });
+    const beforeLock = (viteText = viteEntry()) =>
+      lock({
+        importers: importerWith('apps/web', web('6.0.0')) + importerWith('tools/other', { leaf: ['^1.0.0', '1.0.0'] }),
+        packages: packages(viteText),
+        snapshots: beforeSnapshots,
+      });
+    const afterLock = ({ viteText = viteEntry(), sass = '1.103.1' } = {}) =>
+      lock({
+        importers:
+          importerWith('apps/web', web(`6.0.0(sass@${sass})`)) +
+          importerWith('tools/other', { leaf: ['^1.0.0', '1.0.0'] }) +
+          importerWith('tools/styles', { sass: [`^${sass}`, sass] }),
+        packages: packages(viteText),
+        snapshots: afterSnapshots(sass),
+      });
+
+    it('does not reach a package whose only change is an optional peer becoming available', () => {
+      const impact = lockfileImpact(beforeLock(), afterLock());
+      expect(impact.everything).toBeUndefined();
+      expect([...impact.importers.keys()]).toEqual(['tools/styles']);
+      expect(impact.importers.get('tools/styles')).toEqual({ runtime: ['sass'], dev: [] });
+    });
+
+    it('says which optional peers became available, and to what', () => {
+      const { optionalPeers } = lockfileImpact(beforeLock(), afterLock());
+      expect(optionalPeers.added).toEqual(['sass@1.103.1']);
+      expect(optionalPeers.removed).toEqual([]);
+      expect(optionalPeers.declaredBy).toEqual(['vite@6.0.0']);
+      expect(optionalPeers.reresolved).toEqual(['plugin-react@4.0.0', 'runner@1.0.0', 'vite@6.0.0']);
+    });
+
+    it('treats the same change the other way round (a peer going away) as no change either', () => {
+      const impact = lockfileImpact(afterLock(), beforeLock());
+      expect(impact.everything).toBeUndefined();
+      expect(impact.importers.has('apps/web')).toBe(false);
+      expect(impact.optionalPeers.removed).toEqual(['sass@1.103.1']);
+    });
+
+    it('still reaches the package when the peer is not optional', () => {
+      const required = viteEntry('optional: false');
+      const impact = lockfileImpact(beforeLock(required), afterLock({ viteText: required }));
+      expect(impact.importers.get('apps/web')).toEqual({ runtime: ['plugin-react', 'runner', 'vite'], dev: [] });
+      expect(impact.optionalPeers).toBeUndefined();
+    });
+
+    it('still reaches the package when the peer was already there and changes version', () => {
+      const withSass = afterLock();
+      const newer = afterLock({ sass: '1.104.0' });
+      const impact = lockfileImpact(withSass, newer);
+      expect(impact.importers.get('apps/web')).toEqual({ runtime: ['plugin-react', 'runner', 'vite'], dev: [] });
+    });
+
+    it('still reaches the package when the package entry itself changed', () => {
+      const impact = lockfileImpact(beforeLock(), afterLock({ viteText: viteEntry(sassMeta, 'v2') }));
+      expect(impact.importers.get('apps/web')).toEqual({ runtime: ['plugin-react', 'runner', 'vite'], dev: [] });
+    });
+
+    it('still reaches the package on a real version change of vite', () => {
+      const after = afterLock().replace(/6\.0\.0/g, '6.0.1');
+      const impact = lockfileImpact(beforeLock(), after);
+      expect(impact.importers.get('apps/web')).toEqual({ runtime: ['plugin-react', 'runner', 'vite'], dev: [] });
+    });
+
+    it('still reaches the package when something it depends on really changed', () => {
+      const after = afterLock().replace('sha512-l', 'sha512-l2');
+      const impact = lockfileImpact(beforeLock(), after);
+      expect(impact.importers.get('apps/web')?.runtime).toEqual(['plugin-react', 'runner', 'vite']);
+    });
+
+    it('still reaches the package when the importer changed in some other way too', () => {
+      const after = afterLock().replace('specifier: ^6.0.0', 'specifier: ^6.0.1');
+      const impact = lockfileImpact(beforeLock(), after);
+      expect(impact.importers.get('apps/web')).toEqual({
+        runtime: ['(the entry itself)'],
+        dev: ['(the entry itself)'],
+      });
+    });
+  });
 });
 
 describe('grepInvertPattern', () => {

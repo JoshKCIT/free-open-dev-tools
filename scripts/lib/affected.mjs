@@ -342,6 +342,9 @@ export function parseLockfile(text) {
       if (section === 'importers') {
         importers.set(key, {
           raw: '',
+          // The same text with each resolved version hidden, to tell a change
+          // to those versions from any other change to the entry.
+          masked: '',
           dependencies: new Map(),
           devDependencies: new Map(),
           optionalDependencies: new Map(),
@@ -360,7 +363,10 @@ export function parseLockfile(text) {
       else if (indent === 6) dep = splitKey(line)[0];
       else if (indent === 8 && DEP_GROUPS.includes(group) && line.startsWith('version:')) {
         importer[group].set(dep, unquote(line.slice('version:'.length).trim()));
+        importer.masked += `${' '.repeat(indent)}version: (resolved)\n`;
+        continue;
       }
+      importer.masked += `${raw}\n`;
       continue;
     }
     entries.set(`${section}:${key}`, `${entries.get(`${section}:${key}`)}\n${raw}`);
@@ -376,12 +382,211 @@ export function parseLockfile(text) {
   return { importers, entries, children, other: other.join('\n') };
 }
 
+// ---------------------------------------------------------------------------
+// Optional peers becoming available
+//
+// A package can declare a peer as optional (`peerDependenciesMeta`: `optional: true`),
+// as vite does for sass and less. When some tool then adds sass, pnpm re-resolves
+// every vite snapshot, and everything that depends on vite, with sass in its key:
+// `vite@6.4.3(terser@5.51.2)` becomes `vite@6.4.3(sass@1.103.1)(terser@5.51.2)`.
+// Nothing about vite changed, and a page that never imports a stylesheet builds
+// the same. The functions below recognise exactly that and nothing wider.
+
+const SNAPSHOT_DEP_GROUPS = new Set(['dependencies', 'optionalDependencies']);
+const withoutSuffix = (ref) => ref.replace(/\(.*$/, '');
+const refName = (ref) => ref.slice(0, ref.indexOf('@', 1));
+const pairId = (x, y) => `${x}\n${y}`;
+const indentOf = (raw) => raw.length - raw.trimStart().length;
+
+/** The peer names a package entry marks `optional: true`. Empty when it says nothing. */
+function optionalPeerNames(entry) {
+  const names = new Set();
+  let inMeta = false;
+  let name = null;
+  for (const raw of entry.split('\n').slice(1)) {
+    const indent = indentOf(raw);
+    const line = raw.trimStart();
+    if (indent === 4) {
+      inMeta = line === 'peerDependenciesMeta:';
+      name = null;
+    } else if (inMeta && indent === 6) {
+      name = splitKey(line)[0];
+    } else if (inMeta && indent === 8 && name !== null && line === 'optional: true') {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
+/** A snapshot's dependency lines (`group\0name` -> version) apart from the rest of its text. */
+function snapshotBody(entry) {
+  const deps = new Map();
+  const rest = [];
+  let group = null;
+  for (const raw of entry.split('\n').slice(1)) {
+    const indent = indentOf(raw);
+    const line = raw.trimStart();
+    if (indent === 4) {
+      group = splitKey(line)[0];
+      if (!SNAPSHOT_DEP_GROUPS.has(group)) rest.push(raw);
+    } else if (indent === 6 && SNAPSHOT_DEP_GROUPS.has(group)) {
+      const [name, version] = splitKey(line);
+      deps.set(`${group}\0${name}`, unquote(version));
+    } else {
+      rest.push(raw);
+    }
+  }
+  return { deps, rest: rest.join('\n') };
+}
+
+/** The peers in a snapshot key's suffix: name -> `name@version(...)`. Null when the key is malformed. */
+function suffixPeers(key) {
+  const peers = new Map();
+  let depth = 0;
+  let start = -1;
+  for (let i = key.indexOf('('); i !== -1 && i < key.length; i++) {
+    if (key[i] === '(') {
+      if (depth === 0) start = i + 1;
+      depth++;
+    } else if (key[i] === ')') {
+      depth--;
+      if (depth < 0) return null;
+      if (depth === 0) {
+        const ref = key.slice(start, i);
+        if (ref.indexOf('@', 1) === -1) return null;
+        peers.set(refName(ref), ref);
+      }
+    }
+  }
+  return depth === 0 ? peers : null;
+}
+
+/**
+ * Which pairs of snapshot keys (a key before, the key it became after) differ
+ * only by optional peers becoming available or going away. A pair counts only
+ * when all of these hold:
+ *  - both keys are the same package at the same version, and the package's own
+ *    entry is byte for byte the same before and after;
+ *  - every peer added or removed is marked optional by that package, or by a
+ *    package below it that passes the same test (vite's optional sass shows up
+ *    in the key of vite-node, which depends on vite but has no peers itself);
+ *  - no peer, and no other dependency, changed version;
+ *  - the rest of the snapshot's text is the same, and each dependency or peer
+ *    whose key differs is itself such a pair.
+ * Whether the unchanged dependencies below really are unchanged is checked by
+ * the caller, which has the full picture of what changed.
+ *
+ * Returns Map(pair id -> { x, y, names, own, added, removed, edges }).
+ */
+function optionalPeerPairs(a, b, roots, banned) {
+  const memo = new Map();
+  const examine = (x, y) => {
+    const base = withoutSuffix(x);
+    if (base !== withoutSuffix(y)) return null;
+    const entry = a.entries.get(`packages:${base}`);
+    if (entry === undefined || entry !== b.entries.get(`packages:${base}`)) return null;
+    const optional = optionalPeerNames(entry);
+    const was = a.entries.get(`snapshots:${x}`);
+    const now = b.entries.get(`snapshots:${y}`);
+    if (was === undefined || now === undefined) return null;
+    const bodyA = snapshotBody(was);
+    const bodyB = snapshotBody(now);
+    if (bodyA.rest !== bodyB.rest) return null;
+    const peersA = suffixPeers(x);
+    const peersB = suffixPeers(y);
+    if (peersA === null || peersB === null) return null;
+
+    const added = new Map();
+    const removed = new Map();
+    const own = new Set();
+    const edges = [];
+    const needCarrying = [];
+    const nested = new Map();
+    for (const name of new Set([...peersA.keys(), ...peersB.keys()])) {
+      const ra = peersA.get(name);
+      const rb = peersB.get(name);
+      if (ra === undefined || rb === undefined) {
+        (ra === undefined ? added : removed).set(name, withoutSuffix(ra ?? rb));
+        if (optional.has(name)) own.add(name);
+        else needCarrying.push(name);
+      } else if (withoutSuffix(ra) !== withoutSuffix(rb)) {
+        return null;
+      } else if (ra !== rb) {
+        nested.set(pairId(ra, rb), [ra, rb]);
+      }
+    }
+    for (const slot of new Set([...bodyA.deps.keys(), ...bodyB.deps.keys()])) {
+      const name = slot.slice(slot.indexOf('\0') + 1);
+      const va = bodyA.deps.get(slot);
+      const vb = bodyB.deps.get(slot);
+      if (va === undefined || vb === undefined) {
+        if (!optional.has(name)) return null;
+        own.add(name);
+        (va === undefined ? added : removed).set(name, `${name}@${withoutSuffix(va ?? vb)}`);
+        edges.push(va === undefined ? `${y}\0${name}@${vb}` : `${x}\0${name}@${va}`);
+      } else if (va !== vb) {
+        nested.set(pairId(`${name}@${va}`, `${name}@${vb}`), [`${name}@${va}`, `${name}@${vb}`]);
+      }
+    }
+    const carried = new Set();
+    for (const [cx, cy] of nested.values()) {
+      const child = check(cx, cy);
+      if (child === null) return null;
+      for (const name of child.names) carried.add(name);
+    }
+    if (needCarrying.some((name) => !carried.has(name))) return null;
+    return {
+      x,
+      y,
+      names: new Set([...added.keys(), ...removed.keys(), ...carried]),
+      own,
+      added,
+      removed,
+      edges,
+      nested: [...nested.keys()],
+    };
+  };
+  const check = (x, y) => {
+    const id = pairId(x, y);
+    if (banned.has(id)) return null;
+    if (memo.has(id)) return memo.get(id);
+    // While its own dependencies are examined, a pair that leads back to itself is taken as fine.
+    memo.set(id, { names: new Set(), pending: true });
+    let result = null;
+    try {
+      result = examine(x, y);
+    } catch {
+      result = null;
+    }
+    memo.set(id, result);
+    return result;
+  };
+  for (const [x, y] of roots) check(x, y);
+
+  const found = new Map([...memo].filter(([, result]) => result !== null && !result.pending));
+  for (let dropped = true; dropped;) {
+    dropped = false;
+    for (const [id, result] of found) {
+      if (result.nested.some((child) => !found.has(child))) {
+        found.delete(id);
+        dropped = true;
+      }
+    }
+  }
+  return found;
+}
+
 /**
  * Which workspace packages a lockfile change reaches, and through which kind of
  * dependency. A package whose own entry changed affects everything that depends
  * on it, however indirectly, so the walk goes up the dependency tree.
  *
- * Returns { everything: reason } or { importers: Map(path -> { runtime: [names], dev: [names] }) }.
+ * A dependency whose resolution changed only by optional peers becoming
+ * available or going away (see optionalPeerPairs) is not reached; what those
+ * were is returned as `optionalPeers`, for the report.
+ *
+ * Returns { everything: reason } or
+ * { importers: Map(path -> { runtime: [names], dev: [names] }), optionalPeers?: { added, removed, declaredBy, reresolved } }.
  */
 export function lockfileImpact(before, after) {
   let a;
@@ -394,30 +599,68 @@ export function lockfileImpact(before, after) {
   }
   if (a.other !== b.other) return { everything: 'a lockfile setting outside the dependency lists changed' };
 
-  const changed = new Set();
-  for (const key of new Set([...a.entries.keys(), ...b.entries.keys()])) {
-    if (a.entries.get(key) !== b.entries.get(key)) changed.add(key.replace(/^(packages|snapshots):/, ''));
+  const pairs = [];
+  for (const key of a.children.keys()) {
+    if (b.entries.has(`snapshots:${key}`) && a.entries.get(`snapshots:${key}`) !== b.entries.get(`snapshots:${key}`)) {
+      pairs.push([key, key]);
+    }
   }
-  // A changed package entry (`name@1.0.0`) changes each of its snapshots (`name@1.0.0(peer@2.0.0)`).
-  for (const snapshot of new Set([...a.children.keys(), ...b.children.keys()])) {
-    if (changed.has(snapshot.replace(/\(.*$/, ''))) changed.add(snapshot);
-  }
-  const parents = new Map();
-  for (const graph of [a.children, b.children]) {
-    for (const [parent, kids] of graph) {
-      for (const kid of kids) {
-        if (!parents.has(kid)) parents.set(kid, new Set());
-        parents.get(kid).add(parent);
+  for (const path of new Set([...a.importers.keys(), ...b.importers.keys()])) {
+    for (const group of DEP_GROUPS) {
+      const was = a.importers.get(path)?.[group] ?? new Map();
+      const now = b.importers.get(path)?.[group] ?? new Map();
+      for (const [name, version] of was) {
+        if (now.has(name) && now.get(name) !== version) pairs.push([`${name}@${version}`, `${name}@${now.get(name)}`]);
       }
     }
   }
-  const queue = [...changed];
-  while (queue.length > 0) {
-    for (const parent of parents.get(queue.pop()) ?? []) {
-      if (changed.has(parent)) continue;
-      changed.add(parent);
-      queue.push(parent);
+
+  // What changed, given which pairs are taken as only optional peers coming or
+  // going: those keys are not changes in themselves, and nothing is passed up
+  // from a peer that became available. A pair whose unchanged dependencies did
+  // change is no longer such a pair; it is dropped and the walk done again.
+  const banned = new Set();
+  let excused;
+  let changed;
+  for (;;) {
+    excused = optionalPeerPairs(a, b, pairs, banned);
+    const keys = new Set();
+    const edges = new Set();
+    for (const pair of excused.values()) {
+      keys.add(pair.x).add(pair.y);
+      for (const edge of pair.edges) edges.add(edge);
     }
+    changed = new Set();
+    for (const key of new Set([...a.entries.keys(), ...b.entries.keys()])) {
+      if (a.entries.get(key) === b.entries.get(key)) continue;
+      if (key.startsWith('snapshots:') && keys.has(key.slice('snapshots:'.length))) continue;
+      changed.add(key.replace(/^(packages|snapshots):/, ''));
+    }
+    // A changed package entry (`name@1.0.0`) changes each of its snapshots (`name@1.0.0(peer@2.0.0)`).
+    for (const snapshot of new Set([...a.children.keys(), ...b.children.keys()])) {
+      if (changed.has(snapshot.replace(/\(.*$/, ''))) changed.add(snapshot);
+    }
+    const parents = new Map();
+    for (const graph of [a.children, b.children]) {
+      for (const [parent, kids] of graph) {
+        for (const kid of kids) {
+          if (edges.has(`${parent}\0${kid}`)) continue;
+          if (!parents.has(kid)) parents.set(kid, new Set());
+          parents.get(kid).add(parent);
+        }
+      }
+    }
+    const queue = [...changed];
+    while (queue.length > 0) {
+      for (const parent of parents.get(queue.pop()) ?? []) {
+        if (changed.has(parent)) continue;
+        changed.add(parent);
+        queue.push(parent);
+      }
+    }
+    const broken = [...excused].filter(([, pair]) => changed.has(pair.x) || changed.has(pair.y));
+    if (broken.length === 0) break;
+    for (const [id] of broken) banned.add(id);
   }
 
   const importers = new Map();
@@ -430,8 +673,13 @@ export function lockfileImpact(before, after) {
         const was = x?.[group] ?? new Map();
         const now = y?.[group] ?? new Map();
         for (const name of new Set([...was.keys(), ...now.keys()])) {
-          if (was.get(name) !== now.get(name)) names.add(name);
-          else if (changed.has(`${name}@${now.get(name)}`)) names.add(name);
+          if (was.get(name) !== now.get(name)) {
+            const same =
+              was.has(name) &&
+              now.has(name) &&
+              excused.has(pairId(`${name}@${was.get(name)}`, `${name}@${now.get(name)}`));
+            if (!same) names.add(name);
+          } else if (changed.has(`${name}@${now.get(name)}`)) names.add(name);
         }
       }
       return [...names].sort();
@@ -439,8 +687,10 @@ export function lockfileImpact(before, after) {
     const runtime = reached(['dependencies', 'optionalDependencies']);
     const dev = reached(['devDependencies']);
     // Something else in the entry changed (a specifier, dependency metadata):
-    // not clear what it reaches, so it counts as both.
-    const unexplained = runtime.length === 0 && dev.length === 0 && x?.raw !== y?.raw;
+    // not clear what it reaches, so it counts as both. A change to nothing but
+    // resolved versions, all of them optional peers coming or going, is explained.
+    const onlyVersions = x !== undefined && y !== undefined && x.masked === y.masked;
+    const unexplained = runtime.length === 0 && dev.length === 0 && x?.raw !== y?.raw && !onlyVersions;
     if (runtime.length > 0 || dev.length > 0 || unexplained) {
       importers.set(path, {
         runtime: unexplained ? ['(the entry itself)'] : runtime,
@@ -448,7 +698,25 @@ export function lockfileImpact(before, after) {
       });
     }
   }
-  return { importers };
+
+  const named = { added: new Set(), removed: new Set(), declaredBy: new Set(), reresolved: new Set() };
+  for (const pair of excused.values()) {
+    for (const peer of pair.added.values()) named.added.add(peer);
+    for (const peer of pair.removed.values()) named.removed.add(peer);
+    if (pair.own.size > 0) named.declaredBy.add(withoutSuffix(pair.x));
+    named.reresolved.add(withoutSuffix(pair.x));
+  }
+  if (named.added.size === 0 && named.removed.size === 0) return { importers };
+  const sorted = (set) => [...set].sort();
+  return {
+    importers,
+    optionalPeers: {
+      added: sorted(named.added),
+      removed: sorted(named.removed),
+      declaredBy: sorted(named.declaredBy),
+      reresolved: sorted(named.reresolved),
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
