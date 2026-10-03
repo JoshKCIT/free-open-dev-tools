@@ -46,7 +46,14 @@ const PHASE_6_TOOL_IDS = [
 /** The one network-category tool added on 2026-09-29, outside phase 6. */
 const ADDED_2026_09_29_NETWORK_TOOL_IDS = ['data-size'];
 
-/** The network-category tools Phase 13 adds (DATA-07, DATA-11). */
+/**
+ * The network-category tools Phase 13 adds (DATA-07, DATA-11).
+ *
+ * Note: this spec types VISITOR_URL, which is neither a HAR recording nor a WSDL document, so for these two tools it
+ * only proves that the page makes no request of its own. The proof that an address written inside a recording or a
+ * document is shown as text and never requested is in e2e/data-files.spec.ts (a local server named in the recording and
+ * in the document receives nothing, and the page's own request list holds no foreign address).
+ */
 const PHASE_13_NETWORK_TOOL_IDS = ['har-viewer', 'wsdl-explorer'];
 
 /**
