@@ -133,3 +133,43 @@ it('a missing frame-ancestors or form-action is still reported as before', () =>
   const missing = gradeCsp("default-src 'none'").findings.find((f) => f.rule === 'frame-ancestors');
   expect(missing?.finding).toMatch(/missing/);
 });
+
+// B-WR-01: valid policies got false "invalid or ignored" findings.
+function syntaxFindings(text: string): string[] {
+  return gradeCsp(text)
+    .findings.filter((f) => f.rule === 'syntax')
+    .map((f) => f.finding);
+}
+
+it('the Trusted Types directives are known and cost nothing', () => {
+  const base = "default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  const withTypes = `${base}; require-trusted-types-for 'script'; trusted-types foo bar 'allow-duplicates'`;
+  expect(syntaxFindings(withTypes)).toEqual([]);
+  expect(gradeCsp(withTypes).score).toBe(gradeCsp(base).score);
+  // The names are matched without regard to case, as every directive name is.
+  expect(syntaxFindings(`${base}; Require-Trusted-Types-For 'script'; TRUSTED-TYPES default`)).toEqual([]);
+  // A name that only looks like one is still an unknown directive.
+  expect(syntaxFindings(`${base}; trusted-type foo`)).toHaveLength(1);
+  expect(syntaxFindings(`${base}; require-trusted-types-for-script x`)).toHaveLength(1);
+});
+
+it('keywords and the prefixes of nonces and hashes are read without regard to case', () => {
+  expect(syntaxFindings("DEFAULT-SRC 'SELF'")).toEqual([]);
+  expect(syntaxFindings("default-src 'Self' 'None'")).toEqual([]);
+  expect(syntaxFindings("script-src 'STRICT-DYNAMIC' 'Unsafe-Eval' 'WASM-UNSAFE-EVAL'")).toEqual([]);
+  expect(syntaxFindings("frame-ancestors 'SELF'")).toEqual([]);
+  expect(syntaxFindings("script-src 'NONCE-DhcnhD3khTMePgXwdayK9BsMqXjhguVV'")).toEqual([]);
+  expect(syntaxFindings("script-src 'SHA256-jzgBGA4UWFFmpOBq0JpdsySukE1FrEN5bUpoK8Z29fY='")).toEqual([]);
+  // The grader already read 'UNSAFE-INLINE' in upper case as the keyword, so the same policy has no syntax finding too.
+  expect(ruleIds("script-src 'UNSAFE-INLINE'")).toContain('script-unsafe-inline');
+  expect(syntaxFindings("script-src 'UNSAFE-INLINE'")).toEqual([]);
+  // What is not a keyword in any case is still reported, with the token as pasted.
+  const bad = syntaxFindings("default-src 'SELFF'");
+  expect(bad).toHaveLength(1);
+  expect(bad[0]).toContain("'SELFF'");
+  expect(syntaxFindings("script-src 'NONCE-'")).toHaveLength(1);
+  expect(syntaxFindings("script-src 'SHA999-abc'")).toHaveLength(1);
+  // A keyword without its quotes is still reported, and so is a repeated directive.
+  expect(syntaxFindings('default-src SELF')).toHaveLength(1);
+  expect(syntaxFindings("default-src 'self'; DEFAULT-SRC 'none'")).toHaveLength(1);
+});

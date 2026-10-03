@@ -14,6 +14,7 @@
     "Grading a pasted policy (the Grade this policy box, off by default): 25 rules in four severities (high, medium, low and info), each reading the source list that governs it through the CSP Level 3 section 6.8.3 fallback order, so the most specific of script-src-elem, script-src and default-src alone decides",
     "A pasted header line, a Report-Only header line or a meta element, read as its policy and graded with a note of what was taken off; the headers built above use the same text, so the header name is not reported as an unknown directive",
     "A policy pasted as a meta element is graded as a browser reads it: frame-ancestors, report-uri and sandbox are ignored there (CSP Level 3 section 3.3), so frame-ancestors counts as missing and each ignored directive is named in a medium finding",
+    "When grading, keywords and the nonce and hash prefixes are read without regard to case, and require-trusted-types-for and trusted-types are read as valid (their values are not graded); the builder's own grammar check is not changed by this",
     "Policies that use 'strict-dynamic': the host, scheme and wildcard rules stay quiet and the ignored sources are reported instead, as CSP Level 3 section 8.2 describes",
     "Findings listed by severity and then by rule order, each with the directive, what is wrong, why it matters, the fix and the section it rests on"
   ],

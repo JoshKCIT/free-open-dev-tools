@@ -607,6 +607,40 @@ function withCommas(n: number): string {
   return out;
 }
 
+// The builder's parser (csp.ts, not edited here) does not know the Trusted Types directives and reads keywords in lower case
+// only. CSP Level 3 matches keywords without regard to case, and the Trusted Types directives are valid, so the grader drops
+// those two kinds of false report before it lists the syntax findings.
+const TRUSTED_TYPES_DIRECTIVES: ReadonlySet<string> = new Set(['require-trusted-types-for', 'trusted-types']);
+const UNKNOWN_DIRECTIVE_TAIL = '" is not a directive CSP Level 3 defines.';
+const SOURCE_PROBLEM_TAILS = [' does not match a keyword,', " is not 'self', a scheme source"];
+const CASE_SENSITIVE_PREFIXES = ["'nonce-", "'sha256-", "'sha384-", "'sha512-"];
+
+/** The token with its keyword or nonce and hash prefix in lower case (the Base64 value after a prefix keeps its case). */
+function lowerKeywordCase(token: string): string {
+  const lower = token.toLowerCase();
+  for (const prefix of CASE_SENSITIVE_PREFIXES) {
+    if (lower.startsWith(prefix)) return prefix + token.slice(prefix.length);
+  }
+  return lower;
+}
+
+function isFalseProblem(message: string): boolean {
+  if (!message.startsWith('"')) return false;
+  const unknown = message.indexOf(UNKNOWN_DIRECTIVE_TAIL);
+  if (unknown > 0) return TRUSTED_TYPES_DIRECTIVES.has(message.slice(1, unknown).toLowerCase());
+  const inAt = message.indexOf('" in "');
+  if (inAt < 0) return false;
+  const token = message.slice(1, inAt);
+  const afterIn = message.slice(inAt + 6);
+  const nameEnd = afterIn.indexOf('"');
+  if (nameEnd < 0) return false;
+  const tail = afterIn.slice(nameEnd + 1);
+  if (!SOURCE_PROBLEM_TAILS.some((t) => tail.startsWith(t))) return false;
+  const fixed = lowerKeywordCase(token);
+  if (fixed === token) return false;
+  return parseCspDirectives(`${afterIn.slice(0, nameEnd)} ${fixed}`).problems.length === 0;
+}
+
 function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: CspSource): CspFinding[] {
   const found: CspFinding[] = [];
 
@@ -714,11 +748,12 @@ function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: C
   if (!index.has('upgrade-insecure-requests'))
     found.push(finding('upgrade-insecure-requests', 'upgrade-insecure-requests'));
 
-  for (const problem of problems.slice(0, SYNTAX_FINDING_CAP)) {
+  const real = problems.filter((p) => !isFalseProblem(p.message));
+  for (const problem of real.slice(0, SYNTAX_FINDING_CAP)) {
     found.push(finding('syntax', '(policy)', { whole: `Line ${problem.line}: ${problem.message}` }));
   }
-  if (problems.length > SYNTAX_FINDING_CAP) {
-    const left = problems.length - SYNTAX_FINDING_CAP;
+  if (real.length > SYNTAX_FINDING_CAP) {
+    const left = real.length - SYNTAX_FINDING_CAP;
     found.push(
       finding('syntax', '(policy, more)', {
         whole: `${withCommas(left)} more problems are not listed here. Fix the ones above and grade again.`,
