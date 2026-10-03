@@ -1363,5 +1363,12 @@
     "category": "code",
     "tier": 3,
     "summary": "Render a Mermaid diagram description to SVG or PNG with syntax errors shown and nothing fetched."
+  },
+  {
+    "id": "pdf-text-metadata",
+    "name": "PDF Text Extractor & Metadata Remover",
+    "category": "media",
+    "tier": 3,
+    "summary": "Extract a PDF's text page by page, view its metadata and download a copy with the metadata removed."
   }
 ]
