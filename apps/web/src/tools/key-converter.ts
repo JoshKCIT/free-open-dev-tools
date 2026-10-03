@@ -9,13 +9,14 @@ import {
   keyFromGeneratedRsa,
   keyOutputs,
   meta,
+  readKeyInput,
   type Curve,
   type KeyModel,
   type KeyOutputBlock,
   type KeyOutputs,
 } from '@fodt/key-converter';
 import { keyConverterInWorker } from '../lib/run-key-converter-in-worker';
-import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import { defineTool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 const PRIVATE_NOTE =
   'The private key below is shown in plain text so you can copy it. Treat every private output as a secret, and close this page when you are done. Nothing here is sent, stored or logged.';
@@ -56,15 +57,46 @@ function codeBlock(block: KeyOutputBlock, family: KeyModel['type']): OutputBlock
   }
 }
 
-function outputBlocks(result: KeyOutputs, family: KeyModel['type']): OutputBlock[] {
+function outputBlocks(result: KeyOutputs, family: KeyModel['type'], source?: string): OutputBlock[] {
   const outputs: OutputBlock[] = [];
   if (result.blocks.some((block) => block.private)) {
     outputs.push({ kind: 'note', tone: 'warn', value: PRIVATE_NOTE });
+  } else if (source !== undefined) {
+    outputs.push({ kind: 'note', tone: 'info', value: 'This is a public key; there is no private key to show.' });
   }
   for (const block of result.blocks) outputs.push(codeBlock(block, family));
   outputs.push({ kind: 'keyvalue', label: 'Fingerprints', pairs: result.fingerprints });
-  outputs.push({ kind: 'keyvalue', label: 'Key', pairs: result.facts });
+  outputs.push({
+    kind: 'keyvalue',
+    label: 'Key',
+    pairs: source === undefined ? result.facts : [['Read as', source], ...result.facts],
+  });
   return outputs;
+}
+
+/** The line and column of a character position in the pasted text, for an error that has one. */
+function lineAndColumn(text: string, position: number): { line: number; column: number } {
+  const end = Math.max(0, Math.min(position, text.length));
+  let line = 1;
+  let lineStart = 0;
+  for (let i = 0; i < end; i++) {
+    if (text.charCodeAt(i) === 10) {
+      line++;
+      lineStart = i + 1;
+    }
+  }
+  return { line, column: end - lineStart + 1 };
+}
+
+/** Maps what the package throws to a message for the visitor. Nothing else is ever shown, so no key text can leak. */
+function failure(err: unknown, pasted?: string): ToolResult {
+  if (err instanceof KeyConverterError || err instanceof PemError) {
+    const issue: ToolIssue = { message: err.message };
+    if (pasted !== undefined && err.position !== undefined) Object.assign(issue, lineAndColumn(pasted, err.position));
+    return { outputs: [], errors: [issue] };
+  }
+  if (err instanceof DerError) return { outputs: [], errors: [{ message: err.message }] };
+  return { outputs: [], errors: [{ message: 'The key could not be made or read.' }] };
 }
 
 export default defineTool({
@@ -76,11 +108,32 @@ export default defineTool({
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {
+      name: 'mode',
+      label: 'Mode',
+      type: 'radio',
+      default: 'generate',
+      options: [
+        { value: 'generate', label: 'Generate a new key pair' },
+        { value: 'convert', label: 'Convert a key I paste' },
+      ],
+    },
+    {
       name: 'keyType',
       label: 'Key type',
       type: 'select',
       default: 'ed25519',
       options: KEY_TYPES.map((type) => ({ value: type.id, label: type.label })),
+      visible: (values) => values.mode !== 'convert',
+    },
+    {
+      name: 'input',
+      label: 'Key',
+      type: 'textarea',
+      rows: 10,
+      mono: true,
+      placeholder: 'Type or paste here. Nothing leaves your browser.',
+      help: 'A PKCS#8, SubjectPublicKeyInfo, PKCS#1, SEC1, OpenSSH or RFC 4716 key in PEM or OpenSSH form, or a JWK. A key protected by a passphrase is not read.',
+      visible: (values) => values.mode === 'convert',
     },
     {
       name: 'comment',
@@ -91,12 +144,46 @@ export default defineTool({
     },
   ],
   examples: [
-    { label: 'Generate an RSA 2048-bit key pair', values: { keyType: 'rsa-2048', comment: 'example' } },
-    { label: 'Generate an Ed25519 key pair', values: { keyType: 'ed25519', comment: 'example' } },
+    {
+      label: 'Convert the RFC 8037 example Ed25519 key (JWK)',
+      values: {
+        mode: 'convert',
+        input:
+          '{"kty":"OKP","crv":"Ed25519","d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A","x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}',
+        comment: 'example',
+      },
+    },
+    { label: 'Generate an Ed25519 key pair', values: { mode: 'generate', keyType: 'ed25519', comment: 'example' } },
+    {
+      label: 'Generate an RSA 2048-bit key pair',
+      values: { mode: 'generate', keyType: 'rsa-2048', comment: 'example' },
+    },
   ],
   async run(values, ctx): Promise<ToolResult> {
-    const keyType = str(values, 'keyType', 'ed25519');
+    const mode = str(values, 'mode', 'generate');
     const comment = str(values, 'comment').trim();
+
+    if (mode === 'convert') {
+      // Only the pasted key is read in this mode; the key type menu keeps its value but is not looked at.
+      const pasted = str(values, 'input');
+      if (pasted.trim() === '') return { outputs: [] };
+      try {
+        // The comment is checked first, so a comment that will be refused never costs a parse.
+        checkComment(comment);
+        const read = readKeyInput(pasted);
+        const result = keyOutputs(read.key, { comment: comment !== '' ? comment : (read.comment ?? '') });
+        const warnings = Array.from(new Set([...read.warnings, ...result.warnings]));
+        const stats: [string, string][] = [['Read as', read.source]];
+        for (const [name, value] of result.facts)
+          if (name === 'Key type' || name === 'Size in bits') stats.push([name, value]);
+        return { outputs: outputBlocks(result, read.key.type, read.source), warnings, stats };
+      } catch (err) {
+        if (ctx.signal.aborted) throw err;
+        return failure(err, pasted);
+      }
+    }
+
+    const keyType = str(values, 'keyType', 'ed25519');
     const rsaBits = RSA_BITS.get(keyType);
     const curve = EC_CURVES.get(keyType);
     if (rsaBits === undefined && curve === undefined && keyType !== 'ed25519') {
@@ -122,9 +209,7 @@ export default defineTool({
       return { outputs: outputBlocks(result, key.type), warnings: result.warnings, stats };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
-      if (err instanceof KeyConverterError || err instanceof DerError || err instanceof PemError) {
-        return { outputs: [], errors: [{ message: err.message }] };
-      }
+      if (err instanceof KeyConverterError || err instanceof DerError || err instanceof PemError) return failure(err);
       return {
         outputs: [],
         errors: [{ message: err instanceof Error && err.message ? err.message : 'The key could not be made.' }],

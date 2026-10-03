@@ -1,5 +1,12 @@
 [
   { "values": { "keyType": "rsa-2048", "comment": "privacy-check" }, "attachesFile": false },
   { "values": { "keyType": "ed25519" }, "attachesFile": false },
-  { "values": { "keyType": "ecdsa-p256" }, "attachesFile": false }
+  { "values": { "keyType": "ecdsa-p256" }, "attachesFile": false },
+  {
+    "mode": { "field": "mode", "value": "convert" },
+    "values": {
+      "input": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea privacy-check"
+    },
+    "attachesFile": false
+  }
 ]
