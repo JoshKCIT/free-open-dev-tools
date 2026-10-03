@@ -137,7 +137,7 @@
     "name": "Text Hash Generator",
     "category": "hashing",
     "tier": 1,
-    "summary": "Compute MD5, SHA-1, SHA-256, SHA-384, SHA-512 and CRC32 over text."
+    "summary": "Compute MD5, SHA-1, SHA-2, SHA-3, BLAKE and CRC32 digests, CRC-16, CRC-32C and Adler-32 checksums, SHAKE, MD4 and NTLM over text."
   },
   {
     "id": "hash-file",

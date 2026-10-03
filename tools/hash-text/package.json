@@ -1,7 +1,7 @@
 {
   "name": "@fodt/hash-text",
   "version": "1.0.0",
-  "description": "Compute MD5, SHA-1, SHA-256, SHA-384, SHA-512 and CRC32 over text.",
+  "description": "Compute MD5, SHA-1, SHA-2, SHA-3, BLAKE and CRC32 digests, CRC-16, CRC-32C and Adler-32 checksums, SHAKE, MD4 and NTLM over text.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -34,7 +34,15 @@
     "blake2",
     "blake2b",
     "blake2s",
-    "blake3"
+    "blake3",
+    "crc16",
+    "crc32c",
+    "adler32",
+    "shake",
+    "shake128",
+    "shake256",
+    "md4",
+    "ntlm"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

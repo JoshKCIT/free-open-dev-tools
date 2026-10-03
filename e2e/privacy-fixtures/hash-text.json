@@ -1,0 +1,17 @@
+[
+  {
+    "mode": { "field": "family", "value": "checksums" },
+    "values": { "input": "123456789" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "family", "value": "shake" },
+    "values": { "input": "abc", "shakeBytes": "64" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "family", "value": "legacy" },
+    "values": { "input": "password" },
+    "attachesFile": false
+  }
+]
