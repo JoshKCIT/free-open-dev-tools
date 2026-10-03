@@ -1,5 +1,18 @@
 import { it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { crc32, CRC_CATALOGUE, crcValue, makeCrc, checksumRows } from '../src/index';
+import {
+  crc32,
+  CRC_CATALOGUE,
+  crcValue,
+  makeCrc,
+  checksumRows,
+  checksumBytes,
+  adler32,
+  md4,
+  ntlm,
+  shake,
+  hashBytes,
+  hashText,
+} from '../src/index';
 
 /**
  * The CRC catalogue (https://reveng.sourceforge.io/crc-catalogue/, the 16 bit and 17 to 64 bit pages, "Last updated
@@ -199,4 +212,68 @@ it('each checksum row carries its catalogue name and aliases', () => {
   // An alias is never a row of its own.
   const names = new Set(rows.map((r) => r.name));
   expect(names.has('CRC-32C')).toBe(false);
+});
+
+it('Adler-32 equals the zlib values recorded with Python', () => {
+  // zlib.adler32 on Python 3.14.3 (zlib-ng 1.3.1 as its zlib), scratch virtual environment venv-14, 2026-10-03:
+  //   for s in ['', 'a', 'abc', '123456789', 'Wikipedia', 'x' * 100000]: print('%08x' % zlib.adler32(s.encode()))
+  // RFC 1950 section 8.2 defines the value as s2 * 65536 + s1 (s1 starts at 1, s2 at 0, both modulo 65521) but prints no
+  // number, so zlib is the second opinion.
+  const recorded: [string, string][] = [
+    ['', '00000001'],
+    ['a', '00620062'],
+    ['abc', '024d0127'],
+    ['123456789', '091e01de'],
+    ['Wikipedia', '11e60398'],
+    ['x'.repeat(100000), '7e2a25ba'],
+  ];
+  const hex8 = (n: number) => n.toString(16).padStart(8, '0');
+  for (const [text, expected] of recorded) {
+    expect(hex8(adler32(new TextEncoder().encode(text))), JSON.stringify(text.slice(0, 12))).toBe(expected);
+  }
+  // The code adds up in blocks of 5552 bytes before taking the remainder; the plain version takes it at every byte.
+  const plain = (bytes: Uint8Array) => {
+    let a = 1;
+    let b = 0;
+    for (const byte of bytes) {
+      a = (a + byte) % 65521;
+      b = (b + a) % 65521;
+    }
+    return ((b << 16) | a) >>> 0;
+  };
+  const next = seeded(14072);
+  for (const size of [5551, 5552, 5553, 11104, 11105, 50000]) {
+    const high = new Uint8Array(size).fill(0xff);
+    expect(adler32(high), `${size} bytes of 0xff`).toBe(plain(high));
+    const mixed = new Uint8Array(size);
+    for (let i = 0; i < size; i++) mixed[i] = Math.floor(next() * 256);
+    expect(adler32(mixed), `${size} random bytes`).toBe(plain(mixed));
+  }
+  // The checksums view lists it after the catalogue rows, four bytes wide.
+  const rows = checksumRows(new TextEncoder().encode('Wikipedia'));
+  expect(rows).toHaveLength(44);
+  const row = rows[43]!;
+  expect(row).toEqual({ name: 'Adler-32', aliases: [], width: 32, value: 0x11e60398 });
+  expect(Buffer.from(checksumBytes(row.value, row.width)).toString('hex')).toBe('11e60398');
+});
+
+it('every family gives its defined value for empty input', () => {
+  const empty = new Uint8Array(0);
+  const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex');
+  // Checksums: the CRC-32 that ZIP uses and CRC-16/ARC are 0, Adler-32 starts at 1.
+  const rows = checksumRows(empty);
+  const byName = (name: string) => rows.find((r) => r.name === name)!;
+  expect(hex(checksumBytes(byName('CRC-32/ISO-HDLC').value, 32))).toBe('00000000');
+  expect(hex(checksumBytes(byName('CRC-16/ARC').value, 16))).toBe('0000');
+  expect(hex(checksumBytes(byName('Adler-32').value, 32))).toBe('00000001');
+  expect(hex(checksumBytes(byName('CRC-32/ISCSI').value, 32))).toBe('00000000');
+  // MD4 and NTLM of nothing are the same value, the MD4 of the empty message (RFC 1320).
+  expect(hex(md4(empty))).toBe('31d6cfe0d16ae931b73c59d7e0c089c0');
+  expect(hex(ntlm(''))).toBe('31d6cfe0d16ae931b73c59d7e0c089c0');
+  // SHAKE at the length the page starts with (FIPS 202 example for the empty message).
+  expect(hex(shake(empty, 'shake128', 32))).toBe('7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26');
+  expect(hex(shake(empty, 'shake256', 32))).toBe('46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762f');
+  // The digests family already behaves this way for an empty input (the SHA-256 of nothing, FIPS 180-4).
+  expect(hex(hashBytes(empty, 'sha256'))).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+  expect(hashText('', 'crc32')).toBe('00000000');
 });
