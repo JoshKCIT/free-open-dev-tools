@@ -248,3 +248,82 @@ it('script-src, style-src and child-src fall back to default-src in effectiveSou
   );
   expect(effectiveSources(onlyDefault, 'base-uri')).toBeNull();
 });
+
+// B-WR-07: inline event handlers and workers were not graded, so some open policies scored 100.
+const STRICT_REST =
+  "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+
+it('an open script-src-attr is a high finding, so the policy is no longer A 100', () => {
+  const policy = `script-src 'self'; script-src-attr 'unsafe-inline'; ${STRICT_REST}`;
+  const result = gradeCsp(policy);
+  const found = result.findings.find((f) => f.rule === 'script-attr-unsafe-inline');
+  expect(found?.severity).toBe('high');
+  expect(found?.directive).toBe('script-src-attr');
+  expect(found?.fix).toMatch(/addEventListener|nonce|hash/);
+  expect(result.grade).toBe('D');
+  expect(result.score).toBe(70);
+  // With nothing but script-src, the policy reads exactly as before: one finding for 'unsafe-inline', not two.
+  expect(ruleIds("script-src 'unsafe-inline'")).not.toContain('script-attr-unsafe-inline');
+  expect(ruleIds(`default-src 'unsafe-inline'; ${STRICT_REST}`)).not.toContain('script-attr-unsafe-inline');
+});
+
+it('script-src-attr is read through its own fallback: script-src-attr, then script-src, then default-src', () => {
+  // The review's example: script elements are restricted by script-src-elem, but handlers fall back to script-src.
+  const viaScript = gradeCsp(`script-src 'unsafe-inline'; script-src-elem 'self'; ${STRICT_REST}`);
+  const found = viaScript.findings.find((f) => f.rule === 'script-attr-unsafe-inline');
+  expect(found?.directive).toBe('script-src');
+  expect(viaScript.findings.map((f) => f.rule)).not.toContain('script-unsafe-inline');
+  const viaDefault = gradeCsp(`default-src 'unsafe-inline'; script-src-elem 'self'; ${STRICT_REST}`);
+  expect(viaDefault.findings.find((f) => f.rule === 'script-attr-unsafe-inline')?.directive).toBe('default-src');
+  // A closed list of its own overrides an open script-src.
+  expect(
+    ruleIds(`script-src 'unsafe-inline'; script-src-attr 'none'; script-src-elem 'self'; ${STRICT_REST}`),
+  ).not.toContain('script-attr-unsafe-inline');
+  // A nonce, a hash or 'strict-dynamic' beside 'unsafe-inline' means browsers ignore it (section 6.7.3.2).
+  expect(
+    ruleIds(`script-src 'self'; script-src-attr 'unsafe-inline' 'nonce-DhcnhD3khTMePgXwdayK9BsMqXjhguVV'`),
+  ).not.toContain('script-attr-unsafe-inline');
+  expect(ruleIds("script-src 'self'; script-src-attr 'unsafe-inline' 'strict-dynamic'")).not.toContain(
+    'script-attr-unsafe-inline',
+  );
+  // Only a script-src-attr in the policy, with no other script control: the handlers rule still fires.
+  expect(ruleIds("script-src-attr 'unsafe-inline'")).toContain('script-attr-unsafe-inline');
+});
+
+it('worker-src * and child-src * are read like a script wildcard, and a worker list that falls back is not counted twice', () => {
+  const worker = gradeCsp(`script-src 'self'; worker-src *; ${STRICT_REST}`);
+  const found = worker.findings.find((f) => f.rule === 'script-wildcard');
+  expect(found?.severity).toBe('high');
+  expect(found?.directive).toBe('worker-src');
+  expect(worker.grade).toBe('D');
+  expect(worker.score).toBe(70);
+  const child = gradeCsp(`script-src 'self'; child-src *; ${STRICT_REST}`);
+  expect(child.findings.find((f) => f.rule === 'script-wildcard')?.directive).toBe('child-src');
+  // A closed worker-src overrides an open child-src; the script list falling back is graded where it is written.
+  expect(ruleIds(`script-src 'self'; child-src *; worker-src 'self'; ${STRICT_REST}`)).not.toContain('script-wildcard');
+  expect(ruleIds(`script-src 'self'; worker-src 'self'; ${STRICT_REST}`)).not.toContain('script-wildcard');
+  const open = gradeCsp(`script-src *; worker-src *; ${STRICT_REST}`).findings.filter(
+    (f) => f.rule === 'script-wildcard',
+  );
+  expect(open.map((f) => f.directive)).toEqual(['script-src', 'worker-src']);
+  // worker-src falling back to a script-src star is reported once, on script-src.
+  expect(gradeCsp(`script-src *; ${STRICT_REST}`).findings.filter((f) => f.rule === 'script-wildcard')).toHaveLength(1);
+});
+
+it('the grade lists the directives of the policy that it does not grade', () => {
+  expect(gradeCsp(`script-src 'self'; ${STRICT_REST}`).notGraded).toEqual([]);
+  const result = gradeCsp(
+    `script-src 'self'; ${STRICT_REST}; sandbox allow-scripts; trusted-types foo; require-trusted-types-for 'script'; report-to main; style-src-attr 'unsafe-inline'; worker-src 'self'`,
+  );
+  expect(result.notGraded).toEqual([
+    'report-to',
+    'require-trusted-types-for',
+    'sandbox',
+    'style-src-attr',
+    'trusted-types',
+    'worker-src (only a bare * is graded)',
+  ]);
+  // A bare * in worker-src is graded, so it is not listed.
+  expect(gradeCsp(`script-src 'self'; worker-src *; ${STRICT_REST}`).notGraded).toEqual([]);
+  expect(gradeCsp('').notGraded).toEqual([]);
+});

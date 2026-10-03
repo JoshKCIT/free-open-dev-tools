@@ -43,6 +43,8 @@ export interface CspFinding {
 }
 
 export interface CspGrade {
+  /** Directives that are in the policy and that no rule reads, so the grade says nothing about them. */
+  notGraded: string[];
   grade: CspGradeLetter;
   score: number;
   findings: CspFinding[];
@@ -111,6 +113,15 @@ export const CSP_RULES: readonly CspRule[] = [
     fix: "Remove 'unsafe-inline' and allow scripts by nonce or hash.",
     basis:
       "CSP Level 3 section 6: developers SHOULD NOT include 'unsafe-inline' or data: as valid sources; section 6.7.3.2 (does a source list allow all inline behavior)",
+  },
+  {
+    id: 'script-attr-unsafe-inline',
+    severity: 'high',
+    finding: "'unsafe-inline' allows inline event handlers (onclick and the like), and nothing overrides it.",
+    why: 'Inline event handler attributes run, so injected markup such as an element with an onerror handler runs script.',
+    fix: "Move the handlers into scripts that use addEventListener, and remove 'unsafe-inline' from the list that governs script-src-attr.",
+    basis:
+      "CSP Level 3 section 6: developers SHOULD NOT include 'unsafe-inline' as a valid source; section 6.7.3.2 (does a source list allow all inline behavior), which covers script attributes; section 6.8.3 (script-src-attr falls back to script-src, then default-src)",
   },
   {
     id: 'unsafe-inline-ignored',
@@ -635,10 +646,18 @@ function lowerKeywordCase(token: string): string {
   return lower;
 }
 
+/** The Trusted Types directive a problem message is about (in lower case), or null for any other problem. */
+function trustedTypesName(message: string): string | null {
+  if (!message.startsWith('"')) return null;
+  const unknown = message.indexOf(UNKNOWN_DIRECTIVE_TAIL);
+  if (unknown <= 0) return null;
+  const name = message.slice(1, unknown).toLowerCase();
+  return TRUSTED_TYPES_DIRECTIVES.has(name) ? name : null;
+}
+
 function isFalseProblem(message: string): boolean {
   if (!message.startsWith('"')) return false;
-  const unknown = message.indexOf(UNKNOWN_DIRECTIVE_TAIL);
-  if (unknown > 0) return TRUSTED_TYPES_DIRECTIVES.has(message.slice(1, unknown).toLowerCase());
+  if (message.indexOf(UNKNOWN_DIRECTIVE_TAIL) > 0) return trustedTypesName(message) !== null;
   const inAt = message.indexOf('" in "');
   if (inAt < 0) return false;
   const token = message.slice(1, inAt);
@@ -709,6 +728,33 @@ function evaluate(
     if (lower.includes("'unsafe-eval'")) found.push(finding('script-unsafe-eval', script.directive));
     if (strict && !modern) found.push(finding('strict-dynamic-no-nonce', script.directive));
     if (!strict && !modern && list.some(isHostSource)) found.push(finding('script-host-allowlist', script.directive));
+  }
+
+  // Inline event handlers: the list that governs script-src-attr (script-src-attr, then script-src, then default-src). When
+  // that is the very list the script rules above already reported for 'unsafe-inline', it is not counted a second time.
+  const attr = effectiveIn(index, 'script-src-attr');
+  if (attr) {
+    const attrLower = attr.sources.map((t) => t.toLowerCase());
+    const attrInline =
+      attrLower.includes("'unsafe-inline'") &&
+      !attr.sources.some(isNonceOrHash) &&
+      !attrLower.includes("'strict-dynamic'");
+    const reportedAlready =
+      attr.directive === script?.directive && found.some((f) => f.rule === 'script-unsafe-inline');
+    if (attrInline && !reportedAlready) found.push(finding('script-attr-unsafe-inline', attr.directive));
+  }
+
+  // Workers run script: a worker list of its own that allows any host is a script wildcard. A worker list that falls back to
+  // script-src or default-src is graded where it is written.
+  const worker = effectiveIn(index, 'worker-src');
+  if (
+    worker &&
+    (worker.directive === 'worker-src' || worker.directive === 'child-src') &&
+    worker.sources.includes('*')
+  ) {
+    found.push(
+      finding('script-wildcard', worker.directive, { suffix: 'This directive governs workers, which run script.' }),
+    );
   }
 
   // Nonces in any directive (section 7.1): 22 Base64 characters are 132 bits, 21 are 126.
@@ -825,6 +871,25 @@ function letterFor(score: number, anyHigh: boolean): CspGradeLetter {
   return anyHigh && (letter === 'A' || letter === 'B' || letter === 'C') ? 'D' : letter;
 }
 
+// Directives that no rule reads. The grade says nothing about them, and the page says so beside the grade.
+const NOT_GRADED_DIRECTIVES: readonly string[] = [
+  'report-to',
+  'report-uri',
+  'require-trusted-types-for',
+  'sandbox',
+  'style-src-attr',
+  'trusted-types',
+];
+
+function notGradedIn(index: SourceIndex, trustedTypes: readonly (string | null)[]): string[] {
+  // The parser does not keep the Trusted Types directives (it does not know them), so they are found from its problems.
+  const names = NOT_GRADED_DIRECTIVES.filter((name) => index.has(name) || trustedTypes.includes(name));
+  // worker-src is read for a bare * only (see the script-wildcard rule); its other sources are not graded.
+  const worker = index.get('worker-src');
+  if (worker && !worker.includes('*')) names.push('worker-src (only a bare * is graded)');
+  return names;
+}
+
 /** True when the text holds nothing but white space and semicolons: an empty policy. */
 function isBlank(text: string): boolean {
   for (let i = 0; i < text.length; i++) {
@@ -847,6 +912,7 @@ export function gradeCsp(text: string, options: CspGradeOptions = {}): CspGrade 
   const { policy, source, notes } = normaliseForGrading(text);
   const empty = isBlank(policy);
   let findings: CspFinding[] = [];
+  let notGraded: string[] = [];
   if (!empty) {
     const parsed = parseCspDirectives(policy);
     const index = indexDirectives(parsed.directives);
@@ -857,6 +923,10 @@ export function gradeCsp(text: string, options: CspGradeOptions = {}): CspGrade 
       );
     }
     findings.sort(compareFindings);
+    notGraded = notGradedIn(
+      index,
+      parsed.problems.map((p) => trustedTypesName(p.message)),
+    );
   }
 
   // Each rule that fires counts once, however many findings it lists.
@@ -879,5 +949,6 @@ export function gradeCsp(text: string, options: CspGradeOptions = {}): CspGrade 
     policy,
     empty,
     notes,
+    notGraded,
   };
 }

@@ -473,6 +473,7 @@ it('every rule states its severity, finding, why, fix and basis', () => {
   const ids = [
     'script-unrestricted',
     'script-unsafe-inline',
+    'script-attr-unsafe-inline',
     'unsafe-inline-ignored',
     'script-wildcard',
     'script-data',
@@ -515,10 +516,11 @@ it('every rule states its severity, finding, why, fix and basis', () => {
   expect(CSP_SEVERITY_WEIGHTS.get('info')).toBe(0);
 });
 
-it('each of the 25 rules fires on a policy built for it', () => {
+it('each of the 26 rules fires on a policy built for it', () => {
   const cases: [string, string, string][] = [
     ['script-unrestricted', 'high', "img-src 'self'"],
     ['script-unsafe-inline', 'high', "script-src 'unsafe-inline'"],
+    ['script-attr-unsafe-inline', 'high', "script-src 'self'; script-src-attr 'unsafe-inline'"],
     ['unsafe-inline-ignored', 'info', `script-src 'unsafe-inline' 'nonce-${NONCE}'`],
     ['script-wildcard', 'high', 'script-src *'],
     ['script-data', 'high', 'script-src data:'],
@@ -543,7 +545,7 @@ it('each of the 25 rules fires on a policy built for it', () => {
     ['upgrade-insecure-requests', 'info', "script-src 'self'"],
     ['syntax', 'low', "script-src 'self'; frobnicate x"],
   ];
-  expect(cases).toHaveLength(25);
+  expect(cases).toHaveLength(26);
   for (const [id, severity, text] of cases) {
     const found = rule(text, id);
     expect(found, id).toBeDefined();

@@ -54,6 +54,13 @@ function gradeBlocks(grade: CspGrade): OutputBlock[] {
       value: `${grade.notes.join(' ')} The headers above are built from that policy text.`,
     });
   }
+  if (grade.notGraded.length > 0) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `Not graded: ${grade.notGraded.join(', ')}. These are in the policy, but no rule reads them, so the grade says nothing about them.`,
+    });
+  }
   if (grade.findings.length === 0) {
     blocks.push({ kind: 'note', tone: 'info', value: 'None of the rules found a weakness in this policy.' });
   } else {

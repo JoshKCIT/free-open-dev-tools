@@ -345,3 +345,24 @@ test('security-headers: the grade reads the page boxes Add upgrade-insecure-requ
     'The Report only box is ticked, so the policy is sent as a Report-Only header',
   );
 });
+
+test('security-headers: inline event handlers and a meta element framing directive are graded, and what is not graded is listed', async ({
+  page,
+}) => {
+  await openTool(page, 'security-headers');
+  await page.locator('#f-gradeCsp').check();
+  const rest = "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  await fillAndHold(page, 'csp', `script-src 'self'; script-src-attr 'unsafe-inline'; ${rest}; sandbox allow-scripts`);
+  // An open script-src-attr is a high finding (30 points), so the grade is D, and sandbox is named as not graded.
+  await expect(outputArea(page)).toContainText('Grade D (70 of 100)');
+  await expect(rowNamed(page, 'high').filter({ hasText: 'inline event handlers' })).toHaveCount(1);
+  await expect(outputArea(page)).toContainText('Not graded: sandbox.');
+  // The same policy as a meta element: the browser ignores frame-ancestors there, and the grade says so.
+  await fillAndHold(
+    page,
+    'csp',
+    `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; ${rest}; upgrade-insecure-requests">`,
+  );
+  await expect(rowNamed(page, 'medium').filter({ hasText: 'cannot set it, so the browser ignores it' })).toHaveCount(1);
+  await expect(outputArea(page)).not.toContainText('Grade A (100 of 100)');
+});
