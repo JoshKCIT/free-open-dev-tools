@@ -1,0 +1,10 @@
+{
+  "id": "totp-generator",
+  "label": "RFC 6238 Appendix B: SHA-1 seed at time 59 with 8 digits gives 94287082",
+  "steps": [
+    { "action": "fill", "field": "secret", "value": "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ" },
+    { "action": "select", "field": "digits", "value": "8" },
+    { "action": "fill", "field": "at", "value": "59" }
+  ],
+  "expect": ["94287082"]
+}
