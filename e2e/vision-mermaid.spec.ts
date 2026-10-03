@@ -1,4 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 /**
  * Behavioural proof of the Mermaid Diagram Renderer (phase 15, VIS-11; D-196, D-202 a, research C1 and C2). Mermaid
@@ -465,4 +468,285 @@ test('mermaid-renderer: each Run uses a fresh frame that is gone afterwards', as
   expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.added.length)).toBe(5);
   expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.removed)).toBe(5);
   expect(await frameCount(page)).toBe(0);
+});
+
+/**
+ * Runs `body` with the address of a local HTTP server that records every request it receives, then waits a moment for a
+ * stray request to land, and returns what the server saw. A diagram that names this server in an image, a link, a
+ * style or a font would show up here if the engine, the frame or the page requested it. Written here, the shape copied
+ * from e2e/security-secrets.spec.ts.
+ */
+async function withRecordingServer(body: (address: string) => Promise<void>): Promise<string[]> {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(`${request.method} ${request.url}`);
+    response.end('x');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await body(`http://127.0.0.1:${port}`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+  return seen;
+}
+
+/**
+ * 19 hostile diagrams. `{ADDRESS}` stands for the local recording server. Each is refused before drawing, fails to
+ * parse, or is drawn and checked, and none may make a single request. `outcome` is what the page does with it today:
+ * a refusal by the check made before any frame exists, a parse error the engine reports, or a drawing.
+ */
+const ATTACKS: { name: string; text: string; outcome: 'refused' | 'parse-error' | 'drawn' }[] = [
+  {
+    name: 'an image in a label',
+    text: `flowchart LR\n  A["<img src='{ADDRESS}/img-label.png'>"]`,
+    outcome: 'drawn',
+  },
+  {
+    name: 'a fill that names an address',
+    text: `flowchart LR\n  A --> B\n  style A fill:url({ADDRESS}/x.svg#a),background:url({ADDRESS}/bg.png)`,
+    outcome: 'parse-error',
+  },
+  {
+    name: 'a class definition that names an address',
+    text: `flowchart LR\n  A --> B\n  classDef x fill:url({ADDRESS}/cd.png),stroke:red\n  class A x`,
+    outcome: 'parse-error',
+  },
+  {
+    name: 'a theme style with an import and an address',
+    text: `%%{init: {"themeCSS": "@import url({ADDRESS}/css-import.css); .node{background:url({ADDRESS}/css-bg.png)}"}}%%\nflowchart LR\n  A-->B`,
+    outcome: 'refused',
+  },
+  {
+    name: 'a font family that names an address',
+    text: `%%{init: {"fontFamily": "x; background:url({ADDRESS}/ff.png)"}}%%\nflowchart LR\n  A-->B`,
+    outcome: 'refused',
+  },
+  {
+    name: 'a theme style in the frontmatter',
+    text: `---\nconfig:\n  themeCSS: "@import url({ADDRESS}/fm.css);"\n---\nflowchart LR\n  A-->B`,
+    outcome: 'refused',
+  },
+  {
+    name: 'a click line with an address',
+    text: `flowchart LR\n  A-->B\n  click A href "{ADDRESS}/click" _blank`,
+    outcome: 'refused',
+  },
+  {
+    name: 'an image shape',
+    text: `flowchart LR\n  A@{ img: "{ADDRESS}/node-img.png", label: "x", pos: "t", w: 60, h: 60, constraint: "on" }`,
+    outcome: 'refused',
+  },
+  {
+    name: 'an icon from an unregistered pack',
+    text: `flowchart LR\n  A@{ icon: "logos:aws", form: "square", label: "x" }`,
+    outcome: 'drawn',
+  },
+  {
+    name: 'a markdown image in a label',
+    text: 'flowchart LR\n  A["`![img]({ADDRESS}/md.png)`"]',
+    outcome: 'drawn',
+  },
+  {
+    name: 'an image in a sequence participant',
+    text: `sequenceDiagram\n  participant A as <img src="{ADDRESS}/seq.png">\n  A->>A: x`,
+    outcome: 'drawn',
+  },
+  {
+    name: 'a link line in a sequence diagram',
+    text: `sequenceDiagram\n  participant A\n  link A: Dash @ {ADDRESS}/link\n  A->>A: x`,
+    outcome: 'refused',
+  },
+  { name: 'math in a label', text: 'flowchart LR\n  A["$$x^2 + a/b$$"]', outcome: 'refused' },
+  {
+    name: 'an icon in an architecture diagram',
+    text: `architecture-beta\n  service s(logos:aws)[S]\n  service t(server)[T]\n  s:R -- L:t`,
+    outcome: 'drawn',
+  },
+  {
+    name: 'font icons in labels',
+    text: 'flowchart LR\n  A["fa:fa-car Car"] --> B["fab:fa-github G"]',
+    outcome: 'drawn',
+  },
+  {
+    name: 'a link in a label',
+    text: `flowchart LR\n  A["<a href='{ADDRESS}/a'>x</a>"]`,
+    outcome: 'drawn',
+  },
+  { name: 'a script in a label', text: 'flowchart LR\n  A["<script>window.top.x=1</script>x"]', outcome: 'drawn' },
+  { name: 'an error handler in a label', text: 'flowchart LR\n  A["<img src=x onerror=alert(1)>"]', outcome: 'drawn' },
+  {
+    name: 'an svg image in a label',
+    text: `flowchart LR\n  A["<svg><image href='{ADDRESS}/svgimg.png'></svg>"]`,
+    outcome: 'drawn',
+  },
+];
+
+test('mermaid-renderer: hostile diagrams are refused or drawn without a single request reaching a local server', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  expect(ATTACKS).toHaveLength(19);
+  await observeFrames(page);
+  const seen = await withRecordingServer(async (address) => {
+    await openTool(page);
+    // Recorded only after the page and its own chunk have loaded.
+    const requests = recordRequests(page);
+    const issues = outputArea(page).locator('.issue-list');
+    const results: string[] = [];
+    for (const attack of ATTACKS) {
+      await fillAndHold(page, attack.text.split('{ADDRESS}').join(address));
+      await runAndWait(page);
+      if (attack.outcome === 'drawn') {
+        const image = outputArea(page).locator('img').first();
+        await expect(image, attack.name).toHaveAttribute('alt', /^Mermaid /, { timeout: 30_000 });
+        // What was drawn holds no element that loads or runs anything, and no address in an attribute.
+        const svg = await outputArea(page).locator('pre').first().innerText();
+        expect(svg, attack.name).not.toMatch(/<(script|image|img|a|iframe|link|use)[\s>/]/i);
+        // Tag-scoped: a label may show the words of an attack as text, which is not an attribute.
+        expect(svg, attack.name).not.toMatch(/<[^<>]*\son[a-z]+\s*=/i);
+        expect(svg, attack.name).not.toMatch(/<[^<>]*\s(xlink:)?href\s*=\s*["'](?!#)/i);
+        expect(svg, attack.name).not.toMatch(/url\(\s*["']?(?!#)/i);
+        expect(svg, attack.name).not.toContain('@import');
+        results.push(`${attack.name}: drawn`);
+      } else {
+        await expect(issues, attack.name).toBeVisible({ timeout: 30_000 });
+        const message = (await issues.innerText()).trim();
+        if (attack.outcome === 'refused') {
+          expect(message, attack.name).toMatch(
+            /^Line \d+: (settings directives|only a title|click and link lines|image shapes|math) /,
+          );
+        } else {
+          expect(message, attack.name).toMatch(/^Line \d+: the diagram could not be read\./);
+        }
+        expect(await outputArea(page).locator('img').count(), attack.name).toBe(0);
+        results.push(`${attack.name}: ${attack.outcome}`);
+      }
+      expect(await frameCount(page), attack.name).toBe(0);
+    }
+    expect(results).toHaveLength(19);
+    // The page itself requested nothing but data and blob addresses.
+    expect(requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'))).toEqual([]);
+  });
+  // The server every one of the 19 diagrams names saw no request at all.
+  expect(seen).toEqual([]);
+  // One frame was made for each diagram that got past the check made before drawing.
+  const frames = await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!);
+  expect(frames.added).toHaveLength(ATTACKS.filter((attack) => attack.outcome !== 'refused').length);
+  expect(frames.removed).toBe(frames.added.length);
+});
+
+test('mermaid-renderer: the recording server sees a request a plain page makes, so its silence means something', async ({
+  page,
+}) => {
+  const control = await withRecordingServer(async (address) => {
+    await openTool(page);
+    await page.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+  });
+  expect(control).toEqual(['GET /control']);
+  // And an image the page's own document asks for is seen too, as the engine's images would be without the frame's policy.
+  const image = await withRecordingServer(async (address) => {
+    await openTool(page);
+    await page.evaluate(
+      (target) =>
+        new Promise<void>((resolve) => {
+          const probe = new Image();
+          probe.onload = () => resolve();
+          probe.onerror = () => resolve();
+          probe.src = target;
+        }),
+      `${address}/control-image.png`,
+    );
+  });
+  expect(image.length).toBeGreaterThan(0);
+  expect(new Set(image)).toEqual(new Set(['GET /control-image.png']));
+});
+
+/** The width and height written in a PNG's header, and the signature that says it is a PNG. */
+function pngHeader(bytes: Buffer): { signature: boolean; width: number; height: number } {
+  const signature = bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  return { signature, width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
+test('mermaid-renderer: PNG export draws the diagram at the chosen scale and offers diagram.png', async ({ page }) => {
+  test.setTimeout(180_000);
+  await countFrameRequests(page);
+  await openTool(page);
+  // The scale field belongs to PNG: it is not there for SVG.
+  await expect(page.locator('#f-scale')).toHaveCount(0);
+  await page.locator('input[name="format"][value="png"]').click();
+  await expect(page.locator('#f-scale')).toBeVisible();
+
+  const cases = [
+    { scale: 2, name: 'flowchart', text: SAMPLES[0]!.text },
+    { scale: 1, name: 'sequence diagram', text: SAMPLES[1]!.text },
+    { scale: 3, name: 'pie chart', text: SAMPLES[6]!.text },
+    // A journey diagram holds foreign objects, which some browsers refuse to read back from a canvas when they come
+    // from a blob address; from a data address they must work.
+    { scale: 1, name: 'journey', text: SAMPLES[7]!.text },
+    { scale: 4, name: 'flowchart at scale 4', text: SAMPLES[0]!.text },
+  ];
+  for (const c of cases) {
+    await fillAndHold(page, c.text);
+    await page.locator('#f-scale').fill(String(c.scale));
+    await runAndWait(page);
+    await expect(outputArea(page).locator('li').filter({ hasText: 'diagram.png' }), c.name).toBeVisible({
+      timeout: 30_000,
+    });
+    // The size the SVG states for itself, times the scale, rounded up, is the size of the PNG.
+    const svgText = await outputArea(page).locator('pre').first().innerText();
+    const box = /viewBox="([^"]*)"/
+      .exec(svgText)?.[1]
+      ?.split(/[\s,]+/)
+      .map(Number);
+    expect(box, c.name).toHaveLength(4);
+    const width = Math.ceil(box![2]! * c.scale);
+    const height = Math.ceil(box![3]! * c.scale);
+    await expect(outputArea(page), c.name).toContainText(`PNG size ${width} × ${height} px`);
+
+    const downloading = page.waitForEvent('download');
+    await outputArea(page)
+      .locator('li')
+      .filter({ hasText: 'diagram.png' })
+      .getByRole('button', { name: 'Download' })
+      .click();
+    const download = await downloading;
+    expect(download.suggestedFilename(), c.name).toBe('diagram.png');
+    const bytes = readFileSync((await download.path())!);
+    expect(pngHeader(bytes), c.name).toEqual({ signature: true, width, height });
+
+    // Decoded again by the browser, the picture has the stated size and is not one flat colour.
+    const decoded = await page.evaluate(async (base64) => {
+      const raw = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([raw], { type: 'image/png' }));
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(bitmap, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const colours = new Set<number>();
+      for (let i = 0; i < pixels.length && colours.size < 8; i += 4) {
+        colours.add((pixels[i]! << 16) | (pixels[i + 1]! << 8) | pixels[i + 2]!);
+      }
+      return { width: bitmap.width, height: bitmap.height, colours: colours.size };
+    }, bytes.toString('base64'));
+    expect(decoded.width, c.name).toBe(width);
+    expect(decoded.height, c.name).toBe(height);
+    expect(decoded.colours, c.name).toBeGreaterThan(2);
+    expect(await frameCount(page), c.name).toBe(0);
+  }
+
+  // A scale outside 1 to 4 is refused with the field's name and range before any frame is made.
+  const before = await page.evaluate(() => window.__FODT_MERMAID_CREATED__);
+  for (const bad of ['5', '0', '2.5', '-1000000']) {
+    await page.locator('#f-scale').fill(bad);
+    await runAndWait(page);
+    await expect(outputArea(page).locator('.issue-list'), bad).toContainText(
+      'PNG scale must be a whole number from 1 to 4.',
+    );
+  }
+  expect(await page.evaluate(() => window.__FODT_MERMAID_CREATED__)).toBe(before);
 });
