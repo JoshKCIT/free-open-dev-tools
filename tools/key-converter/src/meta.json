@@ -19,6 +19,7 @@
     "An RSA key is refused when its modulus is even or zero, or its public exponent is below 3, even or not smaller than the modulus; a public exponent other than 3 or 65537 is accepted with a warning, and one longer than 64 bits is shown by its size.",
     "A private RSA key is refused when p or q is even or more than 16 bits shorter than half the modulus. For a modulus of 4,096 bits or less, p and q each get one probable-prime test (base 2), which catches nearly every composite but is not a proof; above 4,096 bits they are not tested for primality, and the page says so.",
     "Passphrase-protected PEM and OpenSSH keys are refused, and outputs are never encrypted.",
+    "The comment is at most 256 characters of plain text on one line: a line break or any other control character in it is refused. In an RFC 4716 file a long comment is continued over several lines of at most 72 bytes.",
     "Private keys are shown in plain text so you can copy or download them; treat every private output as a secret and close the page when you are done.",
     "Keys are made only by the browser's Web Crypto generator and crypto.getRandomValues; nothing else supplies randomness.",
     "Only RSA, ECDSA P-256, P-384 and P-521, and Ed25519 keys are supported; RSA-PSS keys restricted to one hash are refused.",

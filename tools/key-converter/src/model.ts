@@ -131,7 +131,11 @@ export function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
   return true;
 }
 
-/** Refuses a comment that is too long or holds a line break, before any work is done for it. */
+/**
+ * Refuses a comment that is too long, holds a line break or holds any other control character (C0, DEL or C1: NUL and ESC
+ * among them), before any work is done for it. The comment is written into an OpenSSH line and an RFC 4716 header, which
+ * are text files that other software reads, and a control character in them is never wanted.
+ */
 export function checkComment(comment: string): void {
   if (comment.length > COMMENT_LIMIT) {
     throw new KeyConverterError(
@@ -151,6 +155,12 @@ export function checkComment(comment: string): void {
 
 /**
  * A public exponent as text: a decimal number up to 8 bytes (20 digits), and a longer one by its size in bits, because an
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) {
+      throw new KeyConverterError(
+        `The comment has a control character at character ${i + 1}. A comment is written as plain text on one line, so remove it.`,
+        i,
+      );
+    }
  * exponent of thousands of digits is not a number anyone reads and would fill the page.
  */
 export function exponentText(e: Uint8Array): string {

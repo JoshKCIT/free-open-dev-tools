@@ -78,6 +78,7 @@ export function sshPublicBlob(key: KeyModel): Uint8Array {
 
 /** The OpenSSH public key line: the name, the Base64 of the blob and, when given, the comment after one space. */
 export function sshPublicLine(key: KeyModel, comment: string): string {
+  checkComment(comment);
   const line = `${sshKeyType(key)} ${bytesToBase64(sshPublicBlob(key))}`;
   return comment === '' ? line : `${line} ${comment}`;
 }
@@ -151,22 +152,59 @@ export function sshPrivate(
   return bytesToPem('OPENSSH PRIVATE KEY', blob, 70);
 }
 
-/** A comment as the inside of an RFC 4716 quoted string: a backslash is put in front of a backslash and a quote. */
-function escapeComment(comment: string): string {
-  let out = '';
-  for (const character of comment) out += character === '\\' || character === '"' ? '\\' + character : character;
-  return out;
+/** The longest line of an RFC 4716 file, in bytes, not counting the line end (RFC 4716 section 3.3). */
+const RFC4716_LINE_BYTES = 72;
+
+/**
+ * A comment as the pieces of an RFC 4716 quoted string: one piece per character, and a backslash and the character it
+ * protects (a backslash or a quote) kept together as one piece, so a line break is never put between them.
+ */
+function commentPieces(comment: string): string[] {
+  const pieces: string[] = [];
+  for (const character of comment) pieces.push(character === '\\' || character === '"' ? '\\' + character : character);
+  return pieces;
+}
+
+/**
+ * The Comment header as physical lines of at most 72 bytes. A header that does not fit ends its line with a backslash and
+ * continues on the next (RFC 4716 section 3.3), so every line but the last has room for 71 bytes and the backslash. A
+ * piece is never split, so a multi-byte character or an escape pair stays whole.
+ */
+function commentHeaderLines(comment: string): string[] {
+  const encoder = new TextEncoder();
+  const pieces = ['Comment: "', ...commentPieces(comment), '"'];
+  const sizes = pieces.map((piece) => encoder.encode(piece).length);
+  const lines: string[] = [];
+  let start = 0;
+  while (start < pieces.length) {
+    let rest = 0;
+    for (let i = start; i < pieces.length; i++) rest += sizes[i]!;
+    let end = start;
+    let used = 0;
+    if (rest <= RFC4716_LINE_BYTES) {
+      end = pieces.length;
+    } else {
+      while (end < pieces.length && used + sizes[end]! <= RFC4716_LINE_BYTES - 1) {
+        used += sizes[end]!;
+        end++;
+      }
+    }
+    lines.push(pieces.slice(start, end).join('') + (end < pieces.length ? '\\' : ''));
+    start = end;
+  }
+  return lines;
 }
 
 /**
  * The RFC 4716 public key file: the BEGIN line, a Comment header when there is a comment (quoted, with backslash and
- * quote escaped), the Base64 of the public key blob in 70 column lines, and the END line.
+ * quote escaped, and continued over several lines when it is longer than 72 bytes), the Base64 of the public key blob in
+ * 70 column lines, and the END line.
  */
 export function rfc4716(key: KeyModel, comment: string): string {
   checkComment(comment);
   const body = bytesToBase64(sshPublicBlob(key));
   const lines: string[] = [RFC4716_BEGIN];
-  if (comment !== '') lines.push(`Comment: "${escapeComment(comment)}"`);
+  if (comment !== '') lines.push(...commentHeaderLines(comment));
   for (let i = 0; i < body.length; i += 70) lines.push(body.slice(i, i + 70));
   lines.push(RFC4716_END);
   return lines.join('\n') + '\n';
@@ -426,6 +464,8 @@ function unescapeComment(value: string): string {
  */
 export function readRfc4716(text: string): { key: KeyModel; comment: string } {
   const lines = text.split('\n').map((line) => line.trim());
+  // A continuation line is joined as it is written, so a space at its start belongs to the comment.
+  const ends = text.split('\n').map((line) => line.trimEnd());
   let at = 0;
   while (at < lines.length && lines[at] === '') at++;
   if (lines[at] !== RFC4716_BEGIN) {
@@ -437,7 +477,7 @@ export function readRfc4716(text: string): { key: KeyModel; comment: string } {
     let header = lines[at]!;
     at++;
     while (header.endsWith('\\') && at < lines.length) {
-      header = header.slice(0, -1) + lines[at]!;
+      header = header.slice(0, -1) + ends[at]!;
       at++;
     }
     const colon = header.indexOf(':');
