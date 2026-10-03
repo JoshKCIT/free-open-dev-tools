@@ -142,6 +142,8 @@ it('time input accepts Unix seconds and ISO 8601 dates exactly and refuses anyth
   expect(parseTimeInput('  1234567890  ')).toBe(1234567890);
   expect(parseTimeInput('20000000000')).toBe(20000000000);
   expect(parseTimeInput('253402300799')).toBe(253402300799);
+  // Digits only are always Unix seconds, so a date written without hyphens is a number of seconds, not a date.
+  expect(parseTimeInput('20090213')).toBe(20090213);
   // The UTC times RFC 6238 Appendix B prints beside the Unix times, in every form this page reads.
   for (const row of RFC6238_TABLE) {
     expect(parseTimeInput(row.utc), row.utc).toBe(row.time);
@@ -189,7 +191,6 @@ it('time input accepts Unix seconds and ISO 8601 dates exactly and refuses anyth
     '2009-2-3',
     '09-02-13',
     '2009/02/13',
-    '20090213',
     '2009-02-13T',
     '2009-02-13T24:00:00Z',
     '2009-02-13T23:60:00Z',
