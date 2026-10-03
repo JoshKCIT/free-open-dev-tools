@@ -7,7 +7,7 @@
  */
 import { DerError, derChild, derContent, derExpect, derOid, derString, type DerNode } from './der';
 import { cappedHex } from './hex';
-import { readName } from './names';
+import { readName, visible } from './names';
 import { oidLabel } from './oids';
 
 export interface GeneralNameInfo {
@@ -71,7 +71,7 @@ function otherName(bytes: Uint8Array, node: DerNode): string {
   const label = oidLabel(typeId);
   if (typeId === USER_PRINCIPAL_NAME) {
     try {
-      return `${label}: ${derString(bytes, value).text}`;
+      return `${label}: ${visible(derString(bytes, value).text)}`;
     } catch (err) {
       if (!(err instanceof DerError)) throw err;
     }
@@ -89,9 +89,9 @@ export function readGeneralName(bytes: Uint8Array, node: DerNode, inConstraint =
     case 0:
       return { type: 'otherName', value: otherName(bytes, node) };
     case 1:
-      return { type: 'rfc822Name', value: asciiText(content) };
+      return { type: 'rfc822Name', value: visible(asciiText(content)) };
     case 2:
-      return { type: 'dNSName', value: asciiText(content) };
+      return { type: 'dNSName', value: visible(asciiText(content)) };
     case 3:
       return { type: 'x400Address', value: cappedHex(content) };
     case 4:
@@ -99,7 +99,7 @@ export function readGeneralName(bytes: Uint8Array, node: DerNode, inConstraint =
     case 5:
       return { type: 'ediPartyName', value: cappedHex(content) };
     case 6:
-      return { type: 'uniformResourceIdentifier', value: asciiText(content) };
+      return { type: 'uniformResourceIdentifier', value: visible(asciiText(content)) };
     case 7:
       return { type: 'iPAddress', value: ipText(content, inConstraint) };
     case 8:

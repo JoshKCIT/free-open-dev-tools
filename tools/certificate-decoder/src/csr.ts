@@ -23,7 +23,7 @@ import {
 } from './der';
 import { readExtensions, type ExtensionInfo } from './extensions';
 import { cappedHex } from './hex';
-import { readName, type NameInfo } from './names';
+import { hiddenWarning, mentionsEscape, readName, type NameInfo } from './names';
 import { oidLabel } from './oids';
 import { describeSignature, readAlgorithm, readPublicKey, type PublicKeyInfo } from './x509';
 
@@ -165,6 +165,14 @@ export function readCsr(der: Uint8Array): CsrInfo {
     warnings.push(
       'Some text in this request holds bytes that do not belong to its string type; they are shown as U+FFFD.',
     );
+  }
+
+  if (
+    [subject.display, ...sans.map((san) => san.value), ...extensions.flatMap((extension) => extension.value)].some(
+      mentionsEscape,
+    )
+  ) {
+    warnings.push(hiddenWarning('request'));
   }
 
   return {

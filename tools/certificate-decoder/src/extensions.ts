@@ -21,6 +21,7 @@ import {
   type DerNode,
 } from './der';
 import { generalNamesOf, readGeneralName, readGeneralNames, type GeneralNameInfo } from './general-names';
+import { visible } from './names';
 import { cappedHex, colonHex, decimalOf, integerHex } from './hex';
 import { OID_NAMES, oidLabel } from './oids';
 
@@ -114,7 +115,7 @@ function authorityKeyIdentifierOf(bytes: Uint8Array, node: DerNode): string | un
 }
 
 function displayText(bytes: Uint8Array, node: DerNode): string {
-  return derString(bytes, node).text;
+  return visible(derString(bytes, node).text);
 }
 
 /** One qualifier of a certificate policy: a CPS address, a user notice, or something else shown in hex. */
@@ -191,8 +192,7 @@ export const EXTENSION_DECODERS: ReadonlyMap<string, ExtensionDecoder> = new Map
       let pathLength: string | undefined;
       for (const child of node.children) {
         if (child.cls === 'universal' && child.tag === 1) ca = lenientBoolean(bytes, child);
-        else if (child.cls === 'universal' && child.tag === 2)
-          pathLength = decimalOf(derUnsigned(bytes, child));
+        else if (child.cls === 'universal' && child.tag === 2) pathLength = decimalOf(derUnsigned(bytes, child));
         else
           throw new DerError(
             `The basic constraints at offset ${node.start} hold an element of the wrong kind.`,

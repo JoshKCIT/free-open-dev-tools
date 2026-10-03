@@ -22,7 +22,7 @@ import {
 } from './der';
 import { readExtensions, type ExtensionInfo } from './extensions';
 import { colonHex, decimalOf, integerHex } from './hex';
-import { readName, type NameInfo } from './names';
+import { hiddenWarning, mentionsEscape, readName, type NameInfo } from './names';
 import { CURVE_BITS, FIXED_KEY_BITS, KEY_TYPE_NAMES, oidLabel } from './oids';
 import { bytesToBase64, bytesToPem } from './pem';
 
@@ -292,6 +292,14 @@ export function readCertificate(der: Uint8Array, nowMs: number): CertificateInfo
       'Some text in this certificate holds bytes that do not belong to its string type; they are shown as U+FFFD.',
     );
   }
+
+  const escaped = [
+    issuer.display,
+    subject.display,
+    ...sans.map((san) => san.value),
+    ...extensions.flatMap((extension) => extension.value),
+  ].some(mentionsEscape);
+  if (escaped) warnings.push(hiddenWarning('certificate'));
 
   const info: CertificateInfo = {
     kind: 'certificate',

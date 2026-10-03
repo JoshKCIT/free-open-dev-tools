@@ -38,6 +38,52 @@ interface Attribute {
   der: string;
 }
 
+const BACKSLASH = String.fromCharCode(0x5c);
+
+/** The start of every escape `visible` writes. */
+const ESCAPE_START = `${BACKSLASH}u{`;
+
+/**
+ * Whether a character must never be shown as it is: a C0 control (U+0000 to U+001F), DEL, a C1 control (U+0080 to U+009F),
+ * and the bidirectional formatting characters U+061C, U+200E, U+200F, U+202A to U+202E and U+2066 to U+2069, which reorder
+ * the text around them.
+ */
+function isHidden(code: number): boolean {
+  return (
+    code < 0x20 ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0x061c ||
+    code === 0x200e ||
+    code === 0x200f ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069)
+  );
+}
+
+/**
+ * Text from a certificate, safe to show and copy: every control and bidirectional formatting character is written as a
+ * backslash, `u` and its code point in braces (for example the right-to-left override as `\u{202e}`), so none of them can
+ * hide text, reorder it, start a line or move the cursor. Every other character is left as it is.
+ */
+export function visible(text: string): string {
+  let out = '';
+  for (const char of text) {
+    const code = char.codePointAt(0)!;
+    out += isHidden(code) ? `${ESCAPE_START}${code.toString(16).padStart(4, '0')}}` : char;
+  }
+  return out;
+}
+
+/** Whether text holds an escape that `visible` wrote, so the page can say that something was made visible. */
+export function mentionsEscape(text: string): boolean {
+  return text.includes(ESCAPE_START);
+}
+
+/** The one warning shown when `visible` made anything visible in a certificate or a request. */
+export function hiddenWarning(what: 'certificate' | 'request'): string {
+  return `Some text in this ${what} holds control characters or characters that change the direction of text. They are shown as escapes such as ${ESCAPE_START}202e}.`;
+}
+
 /** RFC 4514 section 2.4: escapes the characters that need it; a control character is written as a backslash and two hex digits. */
 function escape4514(text: string): string {
   let out = '';
@@ -90,9 +136,9 @@ export function readName(bytes: Uint8Array, node: DerNode): NameInfo {
     }
     rdns.push(attributes);
   }
-  const written = (rdn: Attribute[]): string => rdn.map((a) => `${a.type}=${a.text}`).join(' + ');
+  const written = (rdn: Attribute[]): string => rdn.map((a) => `${a.type}=${visible(a.text)}`).join(' + ');
   const rfc = (rdn: Attribute[]): string =>
-    rdn.map((a) => `${a.type}=${a.named && !a.raw ? escape4514(a.text) : a.der}`).join('+');
+    rdn.map((a) => `${a.type}=${a.named && !a.raw ? visible(escape4514(a.text)) : a.der}`).join('+');
   const info: NameInfo = {
     display: rdns.map(written).join(', '),
     rfc4514: [...rdns].reverse().map(rfc).join(','),
@@ -100,6 +146,6 @@ export function readName(bytes: Uint8Array, node: DerNode): NameInfo {
     replaced,
   };
   const common = rdns.flat().find((a) => a.named && !a.raw && a.type === 'CN');
-  if (common !== undefined) info.commonName = common.text;
+  if (common !== undefined) info.commonName = visible(common.text);
   return info;
 }
