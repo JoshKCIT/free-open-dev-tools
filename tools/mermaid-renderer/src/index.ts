@@ -22,7 +22,7 @@ export {
   type PreparedDiagram,
 } from './prescan';
 export { ALLOWED_ELEMENTS, scrubSvg, svgSize, withPixelSize, type ScrubResult } from './scrub';
-export { FRAME_CSP, buildFrameDocument, mermaidConfig } from './frame-doc';
+export { FRAME_CSP, FRAME_HEIGHT_PX, FRAME_WIDTH_PX, buildFrameDocument, mermaidConfig } from './frame-doc';
 export { cutWithEllipsis, visible } from './text';
 
 /**

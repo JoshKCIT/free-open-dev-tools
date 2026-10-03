@@ -7,7 +7,7 @@ recording server; the unit tests only read the text, and the browser spec carrie
 `recorded-outputs.ts` holds what Mermaid drew, so the unit tests can check the scrub in Node without a browser:
 
 - `RECORDED_OUTPUTS`: the SVG of each of the 22 samples, drawn with this folder's own frame document (`src/frame-doc.ts`:
-  security level strict, labels as SVG text, theme default), one fresh frame per sample. All 22 are kept (the file is
+  security level strict, labels as SVG text, theme default), one fresh frame per sample, sized as the page sizes its frame (1024 by 768 pixels, `FRAME_WIDTH_PX` and `FRAME_HEIGHT_PX`, because a Gantt chart takes its width from the document it is drawn in). All 22 are kept (the file is
   about 300 KB).
 - `RECORDED_ATTACK_OUTPUTS`: four hostile outputs drawn with the frame's policy removed, which the scrub must refuse: a
   `themeCSS` setting with a `url()`, a `fontFamily` setting with a `url()`, a link element with an outside address, and

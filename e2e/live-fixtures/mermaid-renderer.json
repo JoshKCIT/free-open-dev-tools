@@ -1,0 +1,13 @@
+{
+  "id": "mermaid-renderer",
+  "label": "Mermaid syntax reference, accessibility: accTitle becomes the diagram title",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "source",
+      "value": "flowchart LR\n  accTitle: Order flow\n  A[Start] --> B[Finish]\n"
+    },
+    { "action": "run" }
+  ],
+  "expect": ["Order flow"]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "format", "value": "svg" },
+    "values": { "source": "flowchart LR\n  A[FODT-PRIVACY-MERMAID] --> B" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "format", "value": "png" },
+    "values": { "source": "pie title FODT-PRIVACY-PIE\n  \"A\" : 3\n  \"B\" : 1", "scale": "2" },
+    "attachesFile": false
+  }
+]

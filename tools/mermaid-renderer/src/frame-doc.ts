@@ -5,6 +5,14 @@ import { MAX_DIAGRAM_CHARS, MAX_DIAGRAM_LINES } from './limits';
  * text of the document itself, and images only as `data:` addresses. The document that holds it is given no origin by
  * the page (a sandbox without `allow-same-origin`), so it cannot reach the page's storage either.
  */
+/**
+ * The size of the frame the diagram is drawn in, in pixels. The engine sizes some diagrams (a Gantt chart, for one) to
+ * the width of the document it draws in, and a document with no width gives a drawing with no size, so the frame is
+ * given a fixed one that does not depend on the visitor's window: the same diagram is the same size on every device.
+ */
+export const FRAME_WIDTH_PX = 1024;
+export const FRAME_HEIGHT_PX = 768;
+
 export const FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:";
 
 /** The Mermaid themes the page offers, compared exactly. */

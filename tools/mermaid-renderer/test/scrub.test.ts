@@ -58,6 +58,10 @@ it('the scrub accepts every recorded Mermaid output and keeps its title and desc
   for (const [name, svg] of Object.entries(RECORDED_OUTPUTS)) {
     const result = scrubSvg(svg);
     expect(result.svg, name).toBe(svg);
+    // Every drawing states a size, which the PNG needs (a Gantt chart takes its width from the frame it is drawn in).
+    const size = svgSize(svg);
+    expect(size.width, name).toBeGreaterThan(0);
+    expect(size.height, name).toBeGreaterThan(0);
     for (const match of svg.matchAll(/<([A-Za-z][A-Za-z0-9:_.-]*)/g)) seen.add(match[1] ?? '');
   }
   // Every element the 22 drawings use is on the list.

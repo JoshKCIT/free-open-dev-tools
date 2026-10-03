@@ -68,10 +68,12 @@ async function draw(doc, text) {
   try {
     await page.setContent('<!doctype html><body></body>');
     return await page.evaluate(
-      ({ doc, text }) =>
+      ({ doc, text, size }) =>
         new Promise((resolve, reject) => {
           const frame = document.createElement('iframe');
           frame.setAttribute('sandbox', 'allow-scripts');
+          frame.style.width = `${size.width}px`;
+          frame.style.height = `${size.height}px`;
           frame.srcdoc = doc;
           addEventListener('message', (event) => {
             if (event.source !== frame.contentWindow) return;
@@ -82,7 +84,7 @@ async function draw(doc, text) {
           });
           document.body.appendChild(frame);
         }),
-      { doc, text },
+      { doc, text, size: { width: frameDoc.FRAME_WIDTH_PX, height: frameDoc.FRAME_HEIGHT_PX } },
     );
   } finally {
     await page.context().close();
