@@ -12,18 +12,21 @@ import {
 } from '@fodt/luhn';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
-/** What the check character of each scheme is called in a sentence. */
-const CHECK_WORD: Record<string, string> = { iban: 'check digits', vin: 'check character' };
+/** What the check part of a scheme is called in a sentence; every scheme not listed has a check digit. */
+const CHECK_NAME: ReadonlyMap<string, string> = new Map([
+  ['iban', 'check digits'],
+  ['vin', 'check character'],
+]);
 
 /** The check digit pages for every scheme except Luhn. The Luhn path stays in run() exactly as it was. */
 function runScheme(scheme: string, mode: string, input: string): ToolResult {
   try {
     const label = SCHEMES.get(scheme as Scheme)?.label ?? scheme;
-    const word = CHECK_WORD[scheme] ?? 'check digit';
+    const word = CHECK_NAME.get(scheme) ?? 'check digit';
     if (mode === 'checkDigit') {
       const computed = computeScheme(scheme, input);
       const outputs: OutputBlock[] = [
-        { kind: 'code', label: word === 'check digits' ? 'Check digits' : 'Check digit', value: computed.checkDigit },
+        { kind: 'code', label: word[0]!.toUpperCase() + word.slice(1), value: computed.checkDigit },
         { kind: 'code', label: 'Full number', value: computed.full },
         { kind: 'keyvalue', label: 'Detail', pairs: computed.details },
       ];
@@ -73,10 +76,17 @@ export default defineTool({
       label: 'Scheme',
       type: 'select',
       default: 'luhn',
-      help: 'Luhn is the original check. To compute a check digit for another scheme, type the number without its check digit: 12 digits for ISBN-13.',
+      help: 'Luhn is the original check. To compute a check digit, leave it off: 9 digits for ISBN-10, 12 for ISBN-13 or EAN-13, 7 for EAN-8, 11 for UPC-A, 11 characters for ISIN, 16 or 17 for VIN, and for IBAN the country code and the account part.',
       options: [
         { value: 'luhn', label: 'Luhn (card numbers and other identifiers)' },
+        { value: 'isbn10', label: 'ISBN-10' },
         { value: 'isbn13', label: 'ISBN-13' },
+        { value: 'ean8', label: 'EAN-8' },
+        { value: 'ean13', label: 'EAN-13' },
+        { value: 'upca', label: 'UPC-A' },
+        { value: 'iban', label: 'IBAN (bank account number)' },
+        { value: 'vin', label: 'VIN (vehicle identification number)' },
+        { value: 'isin', label: 'ISIN (security identifier)' },
       ],
     },
     {
@@ -104,6 +114,10 @@ export default defineTool({
     { label: 'Compute a check digit', values: { mode: 'checkDigit', input: '789372997' } },
     { label: 'A Visa test number', values: { mode: 'check', input: '4242424242424242' } },
     { label: 'An ISBN-13', values: { scheme: 'isbn13', mode: 'check', input: '978-0-11-000222-4' } },
+    { label: 'An IBAN', values: { scheme: 'iban', mode: 'check', input: 'GB82 WEST 1234 5698 7654 32' } },
+    { label: 'A VIN', values: { scheme: 'vin', mode: 'check', input: '1M8GDM9AXKP042788' } },
+    { label: 'An ISIN', values: { scheme: 'isin', mode: 'check', input: 'US0378331005' } },
+    { label: 'IBAN check digits', values: { scheme: 'iban', mode: 'checkDigit', input: 'GB WEST 1234 5698 7654 32' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');

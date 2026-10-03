@@ -180,3 +180,59 @@ test('luhn: ISBN-13 978-0-11-000222-4 is valid and its check digit computes to 4
   await expect(outputArea(page)).toContainText('9780110002224');
   await expect(outputArea(page)).not.toContainText('Not valid');
 });
+
+test('luhn: IBAN GB82 WEST 1234 5698 7654 32 is valid and GB with WEST12345698765432 computes check digits 82', async ({
+  page,
+}) => {
+  await openTool(page, 'luhn');
+  await setControls(page, { selects: { scheme: 'iban' } });
+  await fillAndHold(page, 'input', 'GB82 WEST 1234 5698 7654 32');
+  // The widely published UK example of ISO 13616; python-stdnum 2.2 reads it too. 22 characters is the registry length for GB.
+  await expect(outputArea(page)).toContainText('Valid IBAN.');
+  await expect(outputArea(page)).toContainText('GB82 WEST 1234 5698 7654 32');
+  await expect(outputArea(page)).toContainText('it does not show that the account exists');
+  // One character short is refused by length before the check digits are read, and the sentence names the registry length.
+  await fillAndHold(page, 'input', 'GB82 WEST 1234 5698 7654 3');
+  await expect(outputArea(page)).toContainText('An IBAN from this country has 22 characters. This has 21.');
+  await setControls(page, { radios: { mode: 'checkDigit' } });
+  await fillAndHold(page, 'input', 'GB WEST12345698765432');
+  await expect(outputArea(page)).toContainText('GB82WEST12345698765432');
+  await expect(outputArea(page).locator('pre, code').first()).toContainText('82');
+});
+
+test('luhn: VIN 1M8GDM9AXKP042788 is valid with check character X and the letter O is refused at its position', async ({
+  page,
+}) => {
+  await openTool(page, 'luhn');
+  await setControls(page, { selects: { scheme: 'vin' } });
+  await fillAndHold(page, 'input', '1M8GDM9AXKP042788');
+  // 49 CFR 565.15: the products add to 351, which leaves 10 modulo 11, written X.
+  await expect(outputArea(page)).toContainText('Valid VIN.');
+  await expect(outputArea(page)).toContainText('Check character (position 9)');
+  await expect(outputArea(page)).toContainText('Position 9 is a check digit only for vehicles made for North America');
+  await fillAndHold(page, 'input', '1M8GDM9AXKP04278O');
+  // A VIN never uses I, O or Q: the 17th character is refused by its place, and the sentence does not repeat it.
+  await expect(outputArea(page)).toContainText('Line 1, column 17');
+  await expect(outputArea(page)).toContainText('Character 17 is one of the letters I, O and Q');
+  await fillAndHold(page, 'input', '1M8GDM9A1KP042788');
+  await expect(outputArea(page)).toContainText('Not valid: the check character should be X, not 1.');
+});
+
+test('luhn: ISIN US0378331005, EAN-8 73513537 and UPC-A 036000291452 are valid', async ({ page }) => {
+  await openTool(page, 'luhn');
+  await setControls(page, { selects: { scheme: 'isin' } });
+  await fillAndHold(page, 'input', 'US0378331005');
+  await expect(outputArea(page)).toContainText('Valid ISIN.');
+  await setControls(page, { selects: { scheme: 'ean8' } });
+  await fillAndHold(page, 'input', '73513537');
+  await expect(outputArea(page)).toContainText('Valid EAN-8.');
+  await setControls(page, { selects: { scheme: 'upca' } });
+  await fillAndHold(page, 'input', '036000291452');
+  await expect(outputArea(page)).toContainText('Valid UPC-A.');
+  // A UPC-A is an EAN-13 with a leading zero.
+  await expect(outputArea(page)).toContainText('0036000291452');
+  await setControls(page, { selects: { scheme: 'isbn10' } });
+  await fillAndHold(page, 'input', '0-306-40615-2');
+  await expect(outputArea(page)).toContainText('Valid ISBN-10.');
+  await expect(outputArea(page)).toContainText('9780306406157');
+});
