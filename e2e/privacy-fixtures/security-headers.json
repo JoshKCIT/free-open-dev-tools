@@ -6,5 +6,13 @@
       "netlifyPath": "/*"
     },
     "attachesFile": false
+  },
+  {
+    "values": {
+      "csp": "script-src 'unsafe-inline' 'unsafe-eval' * data: http://cdn.example.invalid",
+      "permissions": "geolocation=()",
+      "netlifyPath": "/*"
+    },
+    "attachesFile": false
   }
 ]

@@ -781,7 +781,7 @@
     "name": "Security Headers & CSP Builder",
     "category": "network",
     "tier": 2,
-    "summary": "Compose Content-Security-Policy and the other security headers for common servers."
+    "summary": "Compose Content-Security-Policy and the other security headers for common servers, and grade a pasted policy with the fix for each weakness."
   },
   {
     "id": "url-parser",

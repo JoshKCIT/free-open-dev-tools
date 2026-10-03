@@ -1,7 +1,7 @@
 {
   "name": "@fodt/security-headers",
   "version": "1.0.0",
-  "description": "Compose Content-Security-Policy and the other security headers for common servers.",
+  "description": "Compose Content-Security-Policy and the other security headers for common servers, and grade a pasted policy with the fix for each weakness.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +28,10 @@
     "permissions-policy",
     "coop",
     "coep",
-    "corp"
+    "corp",
+    "csp grader",
+    "csp grade",
+    "content security policy grade"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
