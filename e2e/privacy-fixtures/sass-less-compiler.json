@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "language", "value": "scss" },
+    "values": { "source": "$fodt-privacy: FODT-PRIVACY-SCSS;\n.a { content: $fodt-privacy; }" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "language", "value": "less" },
+    "values": { "source": "@fodt-privacy: FODT-PRIVACY-LESS;\n.a { content: @fodt-privacy; }" },
+    "attachesFile": false
+  }
+]

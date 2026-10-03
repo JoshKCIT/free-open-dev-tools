@@ -1,0 +1,10 @@
+{
+  "id": "sass-less-compiler",
+  "label": "sass-spec directives/for inclusive_forward: a @for from 1 through 5 writes b: 1 to b: 5",
+  "steps": [
+    { "action": "radio", "field": "language", "value": "scss" },
+    { "action": "fill", "field": "source", "value": "a {\n  @for $i from 1 through 5 {b: $i;}\n}\n" },
+    { "action": "run" }
+  ],
+  "expect": ["b: 5;"]
+}
