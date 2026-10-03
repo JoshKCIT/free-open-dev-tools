@@ -1,6 +1,7 @@
 import meta from './meta.json';
 import { DerError } from './der';
 import { CertificateError, NO_CERTIFICATE_MESSAGE, splitInput } from './input';
+import { orderChains, type ChainResult } from './chain';
 import { PemError } from './pem';
 import { readCertificate, type CertificateInfo } from './x509';
 
@@ -8,6 +9,7 @@ export { meta };
 export { CertificateError, NO_CERTIFICATE_MESSAGE };
 export { DerError, PemError };
 export type { CertificateInfo };
+export type { ChainResult, ChainRole, StopReason } from './chain';
 export type { ExtensionInfo } from './extensions';
 export type { NameInfo } from './names';
 
@@ -22,6 +24,10 @@ export const UNREADABLE_MESSAGE = 'This does not look like a certificate or requ
 
 export interface DecodeResult {
   items: CertificateInfo[];
+  /** The certificates in issuing order, by position in `items`; found by comparing names, not verified. */
+  chains: ChainResult[];
+  /** Positions in `items` of exact repeats of an earlier certificate. */
+  duplicates: number[];
   ignored: { label: string; count: number }[];
   warnings: string[];
 }
@@ -70,7 +76,7 @@ export function decodeInput(input: string, options: { nowMs: number }): DecodeRe
         `This paste is ${withCommas(input.length)} characters. The limit is ${withCommas(MAX_PASTE_CHARS)} because larger pastes are not certificates.`,
       );
     }
-    if (input.trim() === '') return { items: [], ignored: [], warnings: [] };
+    if (input.trim() === '') return { items: [], chains: [], duplicates: [], ignored: [], warnings: [] };
     const split = splitInput(input);
     if (split.items.length > MAX_ITEMS) {
       throw new CertificateError(
@@ -96,7 +102,8 @@ export function decodeInput(input: string, options: { nowMs: number }): DecodeRe
       }
     });
     capRows(items);
-    return { items, ignored: split.ignored, warnings: [] };
+    const { chains, duplicates } = orderChains(items);
+    return { items, chains, duplicates, ignored: split.ignored, warnings: [] };
   } catch (err) {
     if (err instanceof CertificateError) throw err;
     if (err instanceof DerError || err instanceof PemError) throw err;

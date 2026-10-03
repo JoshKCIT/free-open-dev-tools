@@ -38,7 +38,13 @@ it.skipIf(!canonicalHere)('der.ts and pem.ts are byte-for-byte copies of the key
 
 it('an empty paste returns nothing and text without a certificate gets one plain sentence', () => {
   for (const blank of ['', '   ', '\n\r\n\t ']) {
-    expect(decodeInput(blank, { nowMs: NOW_MS })).toEqual({ items: [], ignored: [], warnings: [] });
+    expect(decodeInput(blank, { nowMs: NOW_MS })).toEqual({
+      items: [],
+      chains: [],
+      duplicates: [],
+      ignored: [],
+      warnings: [],
+    });
   }
   // The last two are valid Base64 and valid hex, and are not DER, so they get the same sentence.
   for (const text of [

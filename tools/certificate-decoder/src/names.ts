@@ -19,6 +19,8 @@ export interface NameInfo {
   rfc4514: string;
   /** The exact DER bytes of the Name, for comparing one name with another. */
   der: Uint8Array;
+  /** The first common name (CN) in the name, when it is a character string; used to label a certificate in a list. */
+  commonName?: string;
   /** True when a byte of a string did not belong to its string type and was shown as U+FFFD. */
   replaced: boolean;
 }
@@ -91,10 +93,13 @@ export function readName(bytes: Uint8Array, node: DerNode): NameInfo {
   const written = (rdn: Attribute[]): string => rdn.map((a) => `${a.type}=${a.text}`).join(' + ');
   const rfc = (rdn: Attribute[]): string =>
     rdn.map((a) => `${a.type}=${a.named && !a.raw ? escape4514(a.text) : a.der}`).join('+');
-  return {
+  const info: NameInfo = {
     display: rdns.map(written).join(', '),
     rfc4514: [...rdns].reverse().map(rfc).join(','),
     der: bytes.subarray(node.start, node.end),
     replaced,
   };
+  const common = rdns.flat().find((a) => a.named && !a.raw && a.type === 'CN');
+  if (common !== undefined) info.commonName = common.text;
+  return info;
 }

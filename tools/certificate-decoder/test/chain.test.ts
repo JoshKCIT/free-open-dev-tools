@@ -3,7 +3,7 @@ import { decodeInput } from '../src/index';
 import { orderChains } from '../src/chain';
 import { readCertificate } from '../src/x509';
 import { CHAIN_CERTIFICATES } from './fixtures/certs';
-import { base64, buildCertificate, name, rdn, utf8 } from './fixtures/der-build';
+import { base64, buildCertificate, name, printable, rdn, utf8 } from './fixtures/der-build';
 import { NOW_MS, anyCertificateDer, anyCertificatePem, pemText } from './fixtures/helpers';
 
 /**
@@ -144,7 +144,7 @@ function links(count: number, selfIssuedEnd: boolean): string[] {
   for (let i = 0; i < count; i++) {
     const last = i === count - 1;
     const issuer = last && selfIssuedEnd ? cn(i) : cn(i + 1);
-    out.push(base64(buildCertificate({ serialHex: (i + 1).toString(16), subject: cn(i), issuer })));
+    out.push(base64(buildCertificate({ serialHex: (i + 1).toString(16).padStart(4, '0'), subject: cn(i), issuer })));
   }
   return out;
 }
@@ -160,7 +160,8 @@ it('a cycle and a chain longer than 50 stop with a note', () => {
   // 51 links: the order stops at 50 with the cap as its reason, however the paste is ordered.
   const long = links(51, true);
   const forward = decodeInput(long.map((b64) => pemText('CERTIFICATE', b64)).join(''), { nowMs: NOW_MS });
-  expect(forward.chains).toHaveLength(1);
+  // The 51st certificate is not lost: no order reached it, so it starts one of its own.
+  expect(forward.chains).toHaveLength(2);
   expect(forward.chains[0]!.order).toHaveLength(50);
   expect(forward.chains[0]!.order).toEqual(Array.from({ length: 50 }, (_, i) => i));
   expect(forward.chains[0]!.stopReason).toBe('cap');
@@ -174,8 +175,11 @@ it('a cycle and a chain longer than 50 stop with a note', () => {
   );
   expect(reversed.chains[0]!.order).toHaveLength(50);
   expect(reversed.chains[0]!.stopReason).toBe('cap');
-  // The certificates after the 50th are in no chain, but the paste is not silently dropped: the one left over starts a chain.
-  expect(forward.chains.flatMap((chain) => chain.order)).toContain(50);
+  expect(forward.chains[1]).toMatchObject({ order: [50], stopReason: 'self-issued', complete: true });
+  expect(reversed.chains).toHaveLength(2);
+  expect(reversed.chains.flatMap((chain) => chain.order).sort((a, b) => a - b)).toEqual(
+    Array.from({ length: 51 }, (_, i) => i),
+  );
 
   // Exactly 50 links ending at a self-issued certificate is complete, not capped.
   const fifty = decodeInput(
@@ -200,4 +204,26 @@ it('subject common names are read for the issuing order list', () => {
   expect(readCertificate(anyCertificateDer('leaf'), NOW_MS).subject.commonName).toBe('example.com');
   const noName = buildCertificate({ subject: name(rdn('2.5.4.10', utf8('Only An Organisation'))) });
   expect(readCertificate(noName, NOW_MS).subject.commonName).toBeUndefined();
+});
+
+it('names are compared as bytes, so equal looking names written as different string types are not linked', () => {
+  const subjectName = (make: (text: string) => Uint8Array) => name(rdn('2.5.4.3', make('Same Name')));
+  const child = buildCertificate({
+    subject: name(rdn('2.5.4.3', utf8('child'))),
+    issuer: subjectName(printable),
+    serialHex: '0001',
+  });
+  const sameBytes = buildCertificate({
+    subject: subjectName(printable),
+    issuer: subjectName(printable),
+    serialHex: '0002',
+  });
+  const otherBytes = buildCertificate({ subject: subjectName(utf8), issuer: subjectName(utf8), serialHex: '0003' });
+  const pasted = (...ders: Uint8Array[]) =>
+    decodeInput(ders.map((der) => pemText('CERTIFICATE', base64(der))).join(''), { nowMs: NOW_MS }).chains.map(
+      (chain) => chain.order,
+    );
+  // Written the same way, the child is followed by its issuer; written as a UTF8String, the same text is another name.
+  expect(pasted(child, sameBytes)).toEqual([[0, 1]]);
+  expect(pasted(child, otherBytes)).toEqual([[0], [1]]);
 });
