@@ -15,7 +15,7 @@ Reads QR codes and common barcodes from a picture you choose, or from your camer
 - The camera, through the browser's media capture interface where the browser has one, when you pick Camera and press Run
 - QR Code, Micro QR, Data Matrix, Aztec, PDF417, Code 128, Code 39, Code 93, Codabar, ITF, EAN-13, EAN-8, UPC-A and UPC-E, as zxing-wasm 3.1.3 reads them
 - Several codes in one image, up to 16, each with its symbology and exact text
-- Rotated, inverted (light on dark) and reduced-size copies of a code, which the engine tries by itself
+- Turned and reduced-size copies of a code, and light-on-dark copies of QR, Micro QR, Data Matrix and Aztec codes, which the engine tries by itself
 
 ## Limits
 
@@ -25,8 +25,9 @@ Reads QR codes and common barcodes from a picture you choose, or from your camer
 - If the camera does not start within 15 seconds the page stops waiting; allow camera access when the browser asks.
 - Camera frames are read in the page and never recorded, stored or sent.
 - A UPC-A code is reported as the EAN-13 code the engine returns, with a leading zero; the 12 digit UPC-A form is shown in a note.
-- Rotated Data Matrix codes and strongly blurred photos are often not read.
+- Rotated Data Matrix codes, strongly blurred photos and light-on-dark one-dimensional barcodes or PDF417 codes are not read.
 - At most 16 codes are reported for one image, and the text shown for each code is cut at 4096 characters with a note; control and direction-changing characters are shown escaped.
+- A one-dimensional barcode needs each bar at least about two pixels wide: an EAN-13 shrunk to half size, with 1.5 pixel bars, was not read.
 
 ## Ambiguous cases, and what this does about them
 
@@ -93,7 +94,7 @@ const codes = await readCodes(pixels);
 npm test
 ```
 
-The qrcode 1.5.4 library makes the QR fixtures at test time, and jsQR and @zxing/library 0.21.3 are the independent second opinions that must read the same text. Barcode images from an independent writer (BWIPP through treepoem and Ghostscript) and symbols written by this repository are committed as literals; test/fixtures/make-fixtures.py and test/fixtures/README.md record the commands and versions. Two documented exceptions are listed by name in the tests.
+The qrcode 1.5.4 library makes the QR fixtures at test time, and jsQR and @zxing/library 0.21.3 are the independent second opinions that must read the same text (56 QR codes: seven payloads, four error correction levels, two scales). Fifteen barcode and QR images from an independent writer (BWIPP through treepoem 3.29.0 and Ghostscript 10.07.1) and fourteen symbols written by this repository (Code 128, EAN-13, EAN-8 and UPC-A at two module widths, checked against @zxing/library) are committed as literals; test/fixtures/make-fixtures.py and test/fixtures/README.md record the commands, versions and dates. Documented exceptions are listed by name in the tests: a Code 93 symbol made without its check characters is not read, a UPC-E symbol is read as its 13 digit expansion, rotated Data Matrix codes, light-on-dark one-dimensional barcodes and PDF417 codes, and a half-size EAN-13 are not read (the same engine built for Python gives the same results).
 
 ## Licence
 
