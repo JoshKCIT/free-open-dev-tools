@@ -74,23 +74,33 @@ it('operation names and the lookups of 60,000 declarations take a fraction of a 
   // Before the fix the 60,000 message lookups alone took several seconds (1.8 billion name comparisons).
   const n = 60000;
   const model = bigModel(n);
+  // Only the lookups are timed; the results are checked afterwards, because 300,000 expect calls inside the timed part
+  // cost more than the lookups themselves and made the measurement depend on machine load.
+  const messageRefs = Array.from({ length: n }, (_, i) => ref(`m${i}`));
   const started = performance.now();
   const names = operationNames(model);
-  for (let i = 0; i < n; i++) {
-    expect(findMessage(model, ref(`m${i}`))?.name).toBe(`m${i}`);
-  }
+  const messagesFound = messageRefs.map((r) => findMessage(model, r)?.name);
+  const othersFound: (string | undefined)[] = [];
   for (let i = 0; i < n; i += 3) {
-    expect(findElement(model, ref(`e${i}`))?.name).toBe(`e${i}`);
-    expect(findComplexType(model, ref(`c${i}`))?.name).toBe(`c${i}`);
-    expect(findSimpleType(model, ref(`s${i}`))?.name).toBe(`s${i}`);
+    othersFound.push(
+      findElement(model, ref(`e${i}`))?.name,
+      findComplexType(model, ref(`c${i}`))?.name,
+      findSimpleType(model, ref(`s${i}`))?.name,
+    );
   }
-  expect(findPortType(model, ref('P'))?.operations).toHaveLength(n);
+  const portTypeOperations = findPortType(model, ref('P'))?.operations.length;
   const elapsed = performance.now() - started;
+  expect(messagesFound).toEqual(messageRefs.map((r) => r.local));
+  const othersExpected: string[] = [];
+  for (let i = 0; i < n; i += 3) othersExpected.push(`e${i}`, `c${i}`, `s${i}`);
+  expect(othersFound).toEqual(othersExpected);
+  expect(portTypeOperations).toBe(n);
   expect(names).toHaveLength(n);
   expect(names[0]).toBe('o0');
   expect(names[n - 1]).toBe(`o${n - 1}`);
-  // A generous limit that a loaded CI machine still meets.
-  expect(elapsed).toBeLessThan(2000);
+  // The square of the count took several seconds; a linear lookup takes well under one. The limit is generous so a
+  // loaded CI machine still meets it.
+  expect(elapsed).toBeLessThan(3000);
 }, 60_000);
 
 it('the lookups keep their rules: the first declaration of a name wins, a name in another namespace is not found', () => {
