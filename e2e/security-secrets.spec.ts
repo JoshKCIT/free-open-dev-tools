@@ -458,3 +458,63 @@ test('certificate-decoder: a DER certificate opened through the file picker is r
   // The subject, the first line of the certificate's Base64 and the file's own name are looked for everywhere.
   await assertNothingLeft(page, recording, [CANARY_SUBJECT, CANARY_DER_B64.slice(0, 60), 'canary.der']);
 });
+
+// The RFC 4226 and RFC 6238 test secret (the ASCII text 12345678901234567890) as the Base32 text an app is given, written in
+// groups of four so the typed text also shows that spaces are skipped.
+const TOTP_SEED_GROUPED = 'GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ';
+
+test('totp-generator: the secret, the otpauth link and the QR code never reach a request, storage, the console, the title or the address', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/totp-generator'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  // Recorded only after the page and its own chunk have loaded, so this asserts nothing leaves while the secret is typed,
+  // the codes are made and the link and its QR code are drawn.
+  const recording = recordEverything(page);
+
+  await setControls(page, { selects: { digits: '8' } });
+  await fillAndHold(page, 'secret', TOTP_SEED_GROUPED);
+  await fillAndHold(page, 'issuer', 'Example Corp');
+  await fillAndHold(page, 'account', 'alice@example.com');
+  await expect(outputArea(page)).toContainText('otpauth://totp/', { timeout: 20_000 });
+
+  // The secret as typed, as one run of characters, the whole link the page shows and the value after secret=.
+  const link = (await blockText(page, 'otpauth link')).trim();
+  const secretParam = /[?&]secret=([A-Z2-7]+)/.exec(link)?.[1] ?? '';
+  expect(secretParam.length, 'the link shows no secret parameter').toBeGreaterThanOrEqual(32);
+  const markers = [TOTP_SEED_GROUPED, TOTP_SEED_GROUPED.replace(/ /g, ''), link, secretParam];
+
+  // The QR code is an image whose source is a data address, so drawing it asks for nothing, and nothing in the output
+  // offers to save, open or load anything: no download attribute, no link, no other image, one frame that allows nothing.
+  const images = outputArea(page).locator('img');
+  expect(await images.count(), 'one picture, the QR code').toBe(1);
+  expect(await images.first().getAttribute('src')).toMatch(/^data:image\/svg\+xml;base64,/);
+  expect(await outputArea(page).locator('[download], a[href]').count(), 'something offers a download or a link').toBe(
+    0,
+  );
+  const frames = outputArea(page).locator('iframe');
+  expect(await frames.count(), 'one frame, the countdown bar').toBe(1);
+  expect(await frames.first().getAttribute('sandbox'), 'the frame allows something').toBe('');
+  expect(await outputArea(page).locator('script, link, form, object, embed').count()).toBe(0);
+
+  await page.waitForTimeout(500);
+  await assertNothingLeft(page, recording, markers);
+});
+
+test('totp-generator: with no time typed the codes come from this device clock', async ({ page }) => {
+  // The page clock reads 59 seconds after 1970 and stays there, before the page loads, so the answer does not depend on
+  // when the test runs.
+  await page.clock.install({ time: 59_000 });
+  await page.clock.setFixedTime(59_000);
+  await page.goto(rel('/tools/totp-generator'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+  await setControls(page, { selects: { digits: '8' } });
+  await fillAndHold(page, 'secret', TOTP_SEED_GROUPED);
+  // Nothing was typed in At this time, so the only time source is the page clock: RFC 6238 Appendix B gives 94287082
+  // for this secret, SHA-1 and 8 digits at 59 seconds.
+  await expect(page.locator('#f-at')).toHaveValue('');
+  await expect(outputArea(page)).toContainText("1970-01-01 00:00:59 UTC (this device's clock)", { timeout: 20_000 });
+  await expect(outputArea(page).locator('tr', { hasText: 'current (step 1)' })).toContainText('94287082');
+});
