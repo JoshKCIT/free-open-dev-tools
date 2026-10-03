@@ -1405,5 +1405,12 @@
     "category": "css",
     "tier": 3,
     "summary": "Make pure-CSS loading spinners in a chosen size, colour and speed that stop for reduced motion."
+  },
+  {
+    "id": "css-pattern",
+    "name": "CSS Background Pattern Generator",
+    "category": "css",
+    "tier": 3,
+    "summary": "Build repeating stripes, checks, dots and grids as CSS gradients or an inline SVG, with a live preview."
   }
 ]
