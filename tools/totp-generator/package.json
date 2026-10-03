@@ -27,6 +27,8 @@
     "otp",
     "base32",
     "authenticator",
+    "otpauth",
+    "qr code",
     "rfc6238",
     "rfc4226",
     "one-time password"
@@ -37,11 +39,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@noble/hashes": "2.4.0"
+    "@noble/hashes": "2.4.0",
+    "qrcode": "1.5.4"
   },
   "devDependencies": {
     "typescript": "^5.7.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "jsqr": "^1.4.0",
+    "@types/qrcode": "^1.5.6"
   },
   "repository": {
     "type": "git",

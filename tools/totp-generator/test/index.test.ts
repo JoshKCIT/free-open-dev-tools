@@ -526,7 +526,8 @@ it('short secrets, 7 digits and non-default settings give their notes', () => {
   expect(longSecret(1024)).not.toThrow();
   // An empty secret, digits and an algorithm out of range are refused plainly.
   expect(() => totpOf(new Uint8Array(0))).toThrowError(TotpError);
-  expect(() => totpOf(bytes(20), { secret: '- = -' })).toThrowError(TotpError);
+  expect(() => totpOf(bytes(20), { secret: '- -' })).toThrowError(TotpError);
+  expect(() => totpOf(bytes(20), { secret: '- = -' })).toThrowError(Base32Error);
   expect(() => totpOf(bytes(20), { digits: 9 })).toThrowError('Digits must be a whole number from 6 to 8.');
   expect(() => totpOf(bytes(20), { digits: 5 })).toThrowError('Digits must be a whole number from 6 to 8.');
   for (const algorithm of ['MD5', '__proto__', 'toString', 'constructor', 'sha1']) {
