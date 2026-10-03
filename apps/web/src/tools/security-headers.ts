@@ -47,6 +47,13 @@ function gradeBlocks(grade: CspGrade): OutputBlock[] {
   const blocks: OutputBlock[] = [];
   const tone = grade.grade === 'A' || grade.grade === 'B' ? 'success' : grade.grade === 'F' ? 'error' : 'warn';
   blocks.push({ kind: 'note', label: 'Grade', tone, value: `Grade ${grade.grade} (${grade.score} of 100)` });
+  if (grade.notes.length > 0) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `${grade.notes.join(' ')} The headers above are built from that policy text.`,
+    });
+  }
   if (grade.findings.length === 0) {
     blocks.push({ kind: 'note', tone: 'info', value: 'None of the rules found a weakness in this policy.' });
   } else {
@@ -86,7 +93,7 @@ export default defineTool({
       label: 'Grade this policy',
       type: 'checkbox',
       default: false,
-      help: 'Grades the policy above against listed rules from W3C Content Security Policy Level 3 and shows the fix for each weakness. It does not change the headers below.',
+      help: 'Grades the policy above against listed rules from W3C Content Security Policy Level 3 and shows the fix for each weakness. A header line or a meta element can be pasted whole.',
     },
     {
       name: 'reportOnly',
@@ -147,7 +154,10 @@ export default defineTool({
   ],
   run(values): ToolResult {
     try {
+      // Grading is off by default. When it is on and the paste carried a header name or a meta element, the builder is
+      // given the policy text without it, so it does not report the header name as an unknown directive.
       const grading = bool(values, 'gradeCsp', false) ? gradePolicy(str(values, 'csp')) : null;
+      const policyText = grading && grading.source !== 'policy' ? grading.policy : str(values, 'csp');
       const rawMaxAge = num(values, 'hstsMaxAge', 31536000);
       let maxAge = Math.trunc(rawMaxAge);
       const clampWarnings: string[] = [];
@@ -157,7 +167,7 @@ export default defineTool({
       }
 
       const result = buildSecurityHeaders({
-        csp: str(values, 'csp'),
+        csp: policyText,
         reportOnly: bool(values, 'reportOnly', false),
         upgradeInsecure: bool(values, 'upgradeInsecure', false),
         hsts: bool(values, 'hsts', true)

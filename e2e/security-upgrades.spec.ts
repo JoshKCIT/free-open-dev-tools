@@ -270,3 +270,51 @@ test('security-headers: a policy with unsafe-inline is graded and the finding sh
     "Content-Security-Policy: script-src 'unsafe-inline'; object-src 'none'",
   );
 });
+
+test('security-headers: the CSP Level 3 strict policy grades B and adding object-src none raises it to A', async ({
+  page,
+}) => {
+  await openTool(page, 'security-headers');
+  await page.locator('#f-gradeCsp').check();
+  // CSP Level 3 section 8.5, nonce-based Strict CSP, written with a real 32 character nonce (the one of section 8.2).
+  const strict = "script-src 'strict-dynamic' 'nonce-DhcnhD3khTMePgXwdayK9BsMqXjhguVV'; base-uri 'self';";
+  await fillAndHold(page, 'csp', strict);
+  // object-src (15), frame-ancestors (5) and form-action (5) are missing, so 100 - 25 = 75, which is a B.
+  await expect(outputArea(page)).toContainText('Grade B (75 of 100)');
+  await expect(rowNamed(page, 'high')).toHaveCount(0);
+  await expect(outputArea(page)).toContainText("Add object-src 'none'.");
+  await fillAndHold(page, 'csp', `${strict} object-src 'none'`);
+  await expect(outputArea(page)).toContainText('Grade A (90 of 100)');
+  await expect(outputArea(page)).not.toContainText("Add object-src 'none'.");
+});
+
+test('security-headers: a pasted header line is graded as its policy and the builder does not report the header name', async ({
+  page,
+}) => {
+  await openTool(page, 'security-headers');
+  const policy = "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
+  await fillAndHold(page, 'csp', `Content-Security-Policy: ${policy}`);
+  // With the box unticked the builder is as it always was and reports the header name as an unknown directive.
+  await expect(outputArea(page)).toContainText('is not a directive CSP Level 3 defines');
+  await page.locator('#f-gradeCsp').check();
+  // Ticked: the header name is taken off, the policy grades A (95: form-action is missing) and the builder uses the same text.
+  await expect(outputArea(page)).toContainText('Grade A (95 of 100)');
+  await expect(outputArea(page)).toContainText('Took off the header name Content-Security-Policy:');
+  await expect(outputArea(page)).not.toContainText('is not a directive CSP Level 3 defines');
+  await expect(outputArea(page)).toContainText(`Content-Security-Policy: ${policy}`);
+  // A meta element is read the same way, and its limits are listed.
+  await fillAndHold(page, 'csp', `<meta http-equiv="Content-Security-Policy" content="${policy}">`);
+  await expect(outputArea(page)).toContainText('Read the content attribute of the meta element');
+  await expect(rowNamed(page, 'info').filter({ hasText: 'meta element' }).first()).toBeVisible();
+});
+
+test('security-headers: with Grade this policy ticked an empty policy shows Paste a policy to grade. and no grade', async ({
+  page,
+}) => {
+  await openTool(page, 'security-headers');
+  await page.locator('#f-gradeCsp').check();
+  await fillAndHold(page, 'csp', '   ');
+  await expect(outputArea(page)).toContainText('Paste a policy to grade.');
+  await expect(outputArea(page)).not.toContainText('Policy weaknesses');
+  await expect(outputArea(page)).not.toContainText(/Grade [A-F] \(/);
+});
