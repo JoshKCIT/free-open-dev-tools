@@ -7,7 +7,7 @@
  *
  * RULE (as in der.ts): no message from this file may hold a fragment of a pasted value.
  */
-import { PemError, base64ToBytes, hexToBytes, pemBlocks } from './pem';
+import { PemError, base64ToBytes, hexToBytes, pemBlocks, shortened } from './pem';
 
 export class CertificateError extends Error {
   /** The line of the pasted text where the problem was found, when there is one. */
@@ -130,7 +130,7 @@ export function splitInput(text: string, source: Source = 'paste'): SplitResult 
       counts.set(block.label, (counts.get(block.label) ?? 0) + 1);
     } else {
       throw new CertificateError(
-        `This paste holds a block labelled ${block.label}, which this page does not read.`,
+        `This paste holds a block labelled ${shortened(block.label)}, which this page does not read.`,
         lineOf(text, block.start),
       );
     }

@@ -31,6 +31,7 @@ import {
   type KeyModel,
   type RsaKey,
 } from './model';
+import { shortened } from './pem';
 import { checkRsaModulus, checkRsaPublic, completeRsa } from './rsa-math';
 
 const RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
@@ -272,7 +273,7 @@ export function readPkcs8(der: Uint8Array): KeyModel {
     }
     return ed25519FromCurvePrivateKey(content, publicBits);
   }
-  throw new KeyConverterError(`This key uses the algorithm ${algorithmOid}, which this page does not read.`);
+  throw new KeyConverterError(`This key uses the algorithm ${shortened(algorithmOid)}, which this page does not read.`);
 }
 
 /** Reads a SubjectPublicKeyInfo public key (the DER bytes inside a PUBLIC KEY block). */
@@ -314,7 +315,7 @@ export function readSpki(der: Uint8Array): KeyModel {
     }
     return { type: 'ed25519', pub: Uint8Array.from(bits.bytes) };
   }
-  throw new KeyConverterError(`This key uses the algorithm ${algorithmOid}, which this page does not read.`);
+  throw new KeyConverterError(`This key uses the algorithm ${shortened(algorithmOid)}, which this page does not read.`);
 }
 
 function requirePrivateRsa(key: RsaKey): Required<RsaKey> {

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CertificateError, decodeInput } from '../src/index';
 import { CERTIFICATES } from './fixtures/certs';
-import { NOW_MS, certificateOf, certificatePem } from './fixtures/helpers';
+import { NOW_MS, certificateOf, certificatePem, pemText } from './fixtures/helpers';
 
 /**
  * The package entry: what a paste turns into. The expected fingerprints are OpenSSL's, recorded in test/fixtures.
@@ -115,4 +115,20 @@ it('a single certificate shows as one entry and two certificates as two', () => 
     CERTIFICATES['leaf']!.sha256,
     CERTIFICATES['int']!.sha256,
   ]);
+});
+
+it('a block label in the sentence about an unread block is shown whole when short and cut at 40 characters when long', () => {
+  const body = 'AAAA';
+  const refusal = (label: string): string => {
+    try {
+      decodeInput(pemText(label, body), { nowMs: NOW_MS });
+    } catch (err) {
+      expect(err).toBeInstanceOf(CertificateError);
+      return (err as Error).message;
+    }
+    throw new Error('expected a refusal');
+  };
+  expect(refusal('X509 CRL')).toBe('This paste holds a block labelled X509 CRL, which this page does not read.');
+  const message = refusal('B'.repeat(60));
+  expect(message).toBe(`This paste holds a block labelled ${'B'.repeat(40)}..., which this page does not read.`);
 });

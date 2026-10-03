@@ -20,6 +20,17 @@ export class PemError extends Error {
   }
 }
 
+/** The most characters of a pasted block label or algorithm identifier that a message repeats. */
+export const MAX_ECHO_CHARS = 40;
+
+/**
+ * A name taken from the paste (a block label, an algorithm identifier) as a message may repeat it: whole up to 40
+ * characters, then cut with three dots. A message names what it could not read, and never copies a long pasted value.
+ */
+export function shortened(text: string): string {
+  return text.length <= MAX_ECHO_CHARS ? text : text.slice(0, MAX_ECHO_CHARS) + '...';
+}
+
 export interface PemBlock {
   /** The label between BEGIN and the dashes, for example PRIVATE KEY. */
   label: string;
@@ -262,9 +273,12 @@ export function pemBlocks(text: string, maxBlocks: number): PemBlock[] {
     } catch (err) {
       if (err instanceof PemError && err.position !== undefined) {
         const absolute = labelRead.after + Math.min(bodyFrom, inside.length) + err.position;
-        throw new PemError(`The ${labelRead.label} block holds invalid Base64 at position ${absolute}.`, absolute);
+        throw new PemError(
+          `The ${shortened(labelRead.label)} block holds invalid Base64 at position ${absolute}.`,
+          absolute,
+        );
       }
-      throw new PemError(`The ${labelRead.label} block holds invalid Base64.`, start);
+      throw new PemError(`The ${shortened(labelRead.label)} block holds invalid Base64.`, start);
     }
     blocks.push({ label: labelRead.label, headers, body, start, end: closing.after });
     position = closing.after;
