@@ -35,11 +35,11 @@ const EC_CURVES = new Map<string, Curve>([
   ['ecdsa-p521', 'P-521'],
 ]);
 
-/** One output block as a code block, with the name of its download written below as a plain string. */
-function codeValue(block: KeyOutputBlock, download: string): OutputBlock {
+/** The part of a code block that does not depend on the download: its label, its text and, for JWK, its language. */
+function codeBase(block: KeyOutputBlock): { kind: 'code'; label: string; value: string; language?: string } {
   return block.language === undefined
-    ? { kind: 'code', label: block.label, value: block.text, download }
-    : { kind: 'code', label: block.label, value: block.text, language: block.language, download };
+    ? { kind: 'code', label: block.label, value: block.text }
+    : { kind: 'code', label: block.label, value: block.text, language: block.language };
 }
 
 /**
@@ -47,41 +47,42 @@ function codeValue(block: KeyOutputBlock, download: string): OutputBlock {
  * the kind of key, and never built from the key, the comment or any pasted text.
  */
 function codeBlock(block: KeyOutputBlock, family: KeyModel['type']): OutputBlock {
+  const base = codeBase(block);
   switch (block.id) {
     case 'pkcs8':
-      return codeValue(block, 'private-key.pem');
+      return { ...base, download: 'private-key.pem' };
     case 'spki':
-      return codeValue(block, 'public-key.pem');
+      return { ...base, download: 'public-key.pem' };
     case 'pkcs1-private':
-      return codeValue(block, 'rsa-private-key.pem');
+      return { ...base, download: 'rsa-private-key.pem' };
     case 'pkcs1-public':
-      return codeValue(block, 'rsa-public-key.pem');
+      return { ...base, download: 'rsa-public-key.pem' };
     case 'sec1':
-      return codeValue(block, 'ec-private-key.pem');
+      return { ...base, download: 'ec-private-key.pem' };
     case 'jwk-private':
-      return codeValue(block, 'private-key.jwk');
+      return { ...base, download: 'private-key.jwk' };
     case 'jwk-public':
-      return codeValue(block, 'public-key.jwk');
+      return { ...base, download: 'public-key.jwk' };
     case 'ssh-private':
       switch (family) {
         case 'ec':
-          return codeValue(block, 'id_ecdsa');
+          return { ...base, download: 'id_ecdsa' };
         case 'ed25519':
-          return codeValue(block, 'id_ed25519');
+          return { ...base, download: 'id_ed25519' };
         default:
-          return codeValue(block, 'id_rsa');
+          return { ...base, download: 'id_rsa' };
       }
     case 'ssh-public':
       switch (family) {
         case 'ec':
-          return codeValue(block, 'id_ecdsa.pub');
+          return { ...base, download: 'id_ecdsa.pub' };
         case 'ed25519':
-          return codeValue(block, 'id_ed25519.pub');
+          return { ...base, download: 'id_ed25519.pub' };
         default:
-          return codeValue(block, 'id_rsa.pub');
+          return { ...base, download: 'id_rsa.pub' };
       }
     default:
-      return codeValue(block, 'public-key-rfc4716.pub');
+      return { ...base, download: 'public-key-rfc4716.pub' };
   }
 }
 
