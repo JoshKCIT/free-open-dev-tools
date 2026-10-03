@@ -21,10 +21,12 @@ import {
   type MessageBinding,
   type NotFound,
   type NotLoaded,
+  type PortTypeOperation,
   type QNameRef,
   type SchemaInfo,
   type SimpleDef,
   type WsdlBinding,
+  type WsdlMessage,
   type WsdlModel,
   type WsdlPortType,
   type WsdlService,
@@ -368,30 +370,66 @@ function parseService(node: XNode): WsdlService {
 // ---------------------------------------------------------------------------------------------------------------------
 // References
 
+/** The most declared names a "not found" reason lists; a document with more says how many it left out. */
+const MAX_DECLARED_LISTED = 50;
+
 /** Why a name is not found: an undeclared prefix, a namespace the document imports and does not load, or a plain miss. */
 function missReason(ref: QNameRef, model: WsdlModel, noun: string, declared: string[]): string {
   if (!ref.declared) return `its prefix is not declared in the document, so the name cannot be resolved`;
   const imported = model.notLoaded.find((item) => item.namespace !== '' && item.namespace === ref.namespace);
   if (imported) return `its namespace is imported from ${imported.location}, which is not loaded`;
-  const listed = declared.length === 0 ? `the document declares no ${noun}` : `declared: ${declared.join(', ')}`;
+  const shown = declared.length > MAX_DECLARED_LISTED ? declared.slice(0, MAX_DECLARED_LISTED) : declared;
+  const more = declared.length - shown.length;
+  const listed =
+    declared.length === 0
+      ? `the document declares no ${noun}`
+      : `declared: ${shown.join(', ')}${more > 0 ? `, and ${more.toLocaleString('en-US')} more` : ''}`;
   return `no ${noun} with this name is declared in this document (${listed})`;
 }
 
 function checkReferences(model: WsdlModel): void {
   const miss = (entry: NotFound) => model.notFound.push(entry);
   const declared = (names: string[]) => names.filter((name) => name !== '');
+  // Every lookup below is by name in a table built once, and the lists of declared names are built once, on first use:
+  // a scan per reference made the check take the square of the size of the document.
+  const once = <T>(make: () => T): (() => T) => {
+    let value: T | undefined;
+    return () => (value ??= make());
+  };
+  const declaredBindings = once(() => declared(model.bindings.map((b) => b.name)));
+  const declaredPortTypes = once(() => declared(model.portTypes.map((p) => p.name)));
+  const declaredMessages = once(() => declared(model.messages.map((m) => m.name)));
+  const declaredElements = once(() => declared(model.types.flatMap((s) => s.elements.map((e) => e.name))));
+  const bindingNames = new Set(model.bindings.map((binding) => binding.name));
+  const operationTables = new Map<WsdlPortType, Map<string, PortTypeOperation>>();
+  const portOperation = (portType: WsdlPortType, name: string): PortTypeOperation | undefined => {
+    let table = operationTables.get(portType);
+    if (table === undefined) {
+      table = new Map();
+      for (const item of portType.operations) if (!table.has(item.name)) table.set(item.name, item);
+      operationTables.set(portType, table);
+    }
+    return table.get(name);
+  };
+  const partTables = new Map<WsdlMessage, Set<string>>();
+  const hasPart = (message: WsdlMessage, name: string): boolean => {
+    let table = partTables.get(message);
+    if (table === undefined) {
+      table = new Set(message.parts.map((part) => part.name));
+      partTables.set(message, table);
+    }
+    return table.has(name);
+  };
 
   for (const service of model.services) {
     for (const port of service.ports) {
-      const found = model.bindings.some(
-        (binding) => port.binding.namespace === model.targetNamespace && binding.name === port.binding.local,
-      );
+      const found = port.binding.namespace === model.targetNamespace && bindingNames.has(port.binding.local);
       if (!found) {
         miss({
           kind: 'binding',
           reference: port.binding.text,
           where: `port ${port.name} of service ${service.name}`,
-          reason: missReason(port.binding, model, 'binding', declared(model.bindings.map((b) => b.name))),
+          reason: missReason(port.binding, model, 'binding', declaredBindings()),
           line: port.line,
         });
       }
@@ -404,12 +442,12 @@ function checkReferences(model: WsdlModel): void {
         kind: 'portType',
         reference: binding.type.text,
         where: `binding ${binding.name}`,
-        reason: missReason(binding.type, model, 'port type', declared(model.portTypes.map((p) => p.name))),
+        reason: missReason(binding.type, model, 'port type', declaredPortTypes()),
         line: binding.line,
       });
     }
     for (const operation of binding.operations) {
-      if (portType && !portType.operations.some((item) => item.name === operation.name)) {
+      if (portType && portOperation(portType, operation.name) === undefined) {
         miss({
           kind: 'operation',
           reference: operation.name,
@@ -421,7 +459,7 @@ function checkReferences(model: WsdlModel): void {
       for (const direction of ['input', 'output'] as const) {
         const side = operation[direction];
         if (!side) continue;
-        const message = portType?.operations.find((item) => item.name === operation.name)?.[direction];
+        const message = portType ? portOperation(portType, operation.name)?.[direction] : undefined;
         const known = message ? findMessage(model, message) : undefined;
         for (const header of side.headers) {
           const target = findMessage(model, header.message);
@@ -430,10 +468,10 @@ function checkReferences(model: WsdlModel): void {
               kind: 'message',
               reference: header.message.text,
               where: `a ${direction} header of operation ${operation.name} in binding ${binding.name}`,
-              reason: missReason(header.message, model, 'message', declared(model.messages.map((m) => m.name))),
+              reason: missReason(header.message, model, 'message', declaredMessages()),
               line: operation.line,
             });
-          } else if (!target.parts.some((part) => part.name === header.part)) {
+          } else if (!hasPart(target, header.part)) {
             miss({
               kind: 'part',
               reference: header.part,
@@ -444,7 +482,7 @@ function checkReferences(model: WsdlModel): void {
           }
         }
         for (const name of side.body?.parts ?? []) {
-          if (known && !known.parts.some((part) => part.name === name)) {
+          if (known && !hasPart(known, name)) {
             miss({
               kind: 'part',
               reference: name,
@@ -470,7 +508,7 @@ function checkReferences(model: WsdlModel): void {
             kind: 'message',
             reference: ref.text,
             where: `the ${role} of operation ${operation.name} in port type ${portType.name}`,
-            reason: missReason(ref, model, 'message', declared(model.messages.map((m) => m.name))),
+            reason: missReason(ref, model, 'message', declaredMessages()),
             line: operation.line,
           });
         }
@@ -487,12 +525,7 @@ function checkReferences(model: WsdlModel): void {
           where: `part ${part.name} of message ${message.name}`,
           reason: builtIn
             ? 'it names a type of XML Schema where an element is expected'
-            : missReason(
-                part.element,
-                model,
-                'element',
-                declared(model.types.flatMap((s) => s.elements.map((e) => e.name))),
-              ),
+            : missReason(part.element, model, 'element', declaredElements()),
           line: message.line,
         });
       }

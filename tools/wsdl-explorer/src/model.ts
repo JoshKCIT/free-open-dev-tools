@@ -210,42 +210,85 @@ export interface WsdlModel {
 // ---------------------------------------------------------------------------------------------------------------------
 // Lookups, by namespace URI and local name
 
+/**
+ * Name tables over a model, built once and used for every lookup, so a lookup costs the same in a document of 24,000
+ * messages as in a document of two. A name is looked up in a Map (never an object: a name such as constructor must not
+ * find a member of Object.prototype), and the first declaration of a name wins, as the plain scan did. The tables are
+ * rebuilt when a list of the model changes length, so a model built by hand and changed later is looked up from its
+ * current content; the content of a schema is fixed once the document has been read.
+ */
+interface NameTables {
+  signature: string;
+  messages: Map<string, WsdlMessage>;
+  portTypes: Map<string, WsdlPortType>;
+  elements: Map<string, Map<string, ElementDecl>>;
+  complexTypes: Map<string, Map<string, ComplexDef>>;
+  simpleTypes: Map<string, Map<string, SimpleDef>>;
+}
+
+const TABLES = new WeakMap<WsdlModel, NameTables>();
+
+function firstByName<T extends { name: string }>(items: readonly T[]): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const item of items) if (!map.has(item.name)) map.set(item.name, item);
+  return map;
+}
+
+/** Adds the declarations of a schema to the table of its namespace, keeping the first of a name. */
+function addByNamespace<T extends { name: string }>(
+  table: Map<string, Map<string, T>>,
+  namespace: string,
+  items: readonly T[],
+): void {
+  let names = table.get(namespace);
+  if (names === undefined) {
+    names = new Map<string, T>();
+    table.set(namespace, names);
+  }
+  for (const item of items) if (!names.has(item.name)) names.set(item.name, item);
+}
+
+function tablesOf(model: WsdlModel): NameTables {
+  const signature = `${model.messages.length}/${model.portTypes.length}/${model.types.length}`;
+  const known = TABLES.get(model);
+  if (known !== undefined && known.signature === signature) return known;
+  const tables: NameTables = {
+    signature,
+    messages: firstByName(model.messages),
+    portTypes: firstByName(model.portTypes),
+    elements: new Map(),
+    complexTypes: new Map(),
+    simpleTypes: new Map(),
+  };
+  for (const schema of model.types) {
+    addByNamespace(tables.elements, schema.targetNamespace, schema.elements);
+    addByNamespace(tables.complexTypes, schema.targetNamespace, schema.complexTypes);
+    addByNamespace(tables.simpleTypes, schema.targetNamespace, schema.simpleTypes);
+  }
+  TABLES.set(model, tables);
+  return tables;
+}
+
 export function findMessage(model: WsdlModel, ref: QNameRef): WsdlMessage | undefined {
   if (ref.namespace !== model.targetNamespace) return undefined;
-  return model.messages.find((message) => message.name === ref.local);
+  return tablesOf(model).messages.get(ref.local);
 }
 
 export function findPortType(model: WsdlModel, ref: QNameRef): WsdlPortType | undefined {
   if (ref.namespace !== model.targetNamespace) return undefined;
-  return model.portTypes.find((portType) => portType.name === ref.local);
-}
-
-function schemasOf(model: WsdlModel, namespace: string): SchemaInfo[] {
-  return model.types.filter((schema) => schema.targetNamespace === namespace);
+  return tablesOf(model).portTypes.get(ref.local);
 }
 
 export function findElement(model: WsdlModel, ref: QNameRef): ElementDecl | undefined {
-  for (const schema of schemasOf(model, ref.namespace)) {
-    const found = schema.elements.find((decl) => decl.name === ref.local);
-    if (found) return found;
-  }
-  return undefined;
+  return tablesOf(model).elements.get(ref.namespace)?.get(ref.local);
 }
 
 export function findComplexType(model: WsdlModel, ref: QNameRef): ComplexDef | undefined {
-  for (const schema of schemasOf(model, ref.namespace)) {
-    const found = schema.complexTypes.find((def) => def.name === ref.local);
-    if (found) return found;
-  }
-  return undefined;
+  return tablesOf(model).complexTypes.get(ref.namespace)?.get(ref.local);
 }
 
 export function findSimpleType(model: WsdlModel, ref: QNameRef): SimpleDef | undefined {
-  for (const schema of schemasOf(model, ref.namespace)) {
-    const found = schema.simpleTypes.find((def) => def.name === ref.local);
-    if (found) return found;
-  }
-  return undefined;
+  return tablesOf(model).simpleTypes.get(ref.namespace)?.get(ref.local);
 }
 
 /** Whether a type name is in a namespace this page does not define types for (XML Schema, the SOAP encoding). */
@@ -259,8 +302,12 @@ export function isBuiltInType(ref: QNameRef): boolean {
  */
 export function operationNames(model: WsdlModel): string[] {
   const names: string[] = [];
+  const seen = new Set<string>();
   const add = (name: string) => {
-    if (name !== '' && !names.includes(name)) names.push(name);
+    if (name !== '' && !seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
   };
   for (const binding of model.bindings) for (const operation of binding.operations) add(operation.name);
   if (names.length === 0)

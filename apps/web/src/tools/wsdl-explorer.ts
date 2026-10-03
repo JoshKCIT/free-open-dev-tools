@@ -285,7 +285,9 @@ export default defineTool({
       }
 
       const errors: ToolIssue[] = [];
-      if (operationNames(model).length > 0) {
+      // The names are listed once per run: the check and the count below share them.
+      const operations = operationNames(model);
+      if (operations.length > 0) {
         try {
           const version = str(values, 'soap', '1.1') === '1.2' ? '1.2' : '1.1';
           const request = sampleRequest(model, str(values, 'operation'), {
@@ -322,7 +324,7 @@ export default defineTool({
         stats: [
           ['Services', count(model.services.length)],
           ['Bindings', count(model.bindings.length)],
-          ['Operations', count(operationNames(model).length)],
+          ['Operations', count(operations.length)],
           ['Messages', count(model.messages.length)],
           ['Not found', count(model.notFound.length)],
           ['Not loaded', count(model.notLoaded.length)],
