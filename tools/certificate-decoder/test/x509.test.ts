@@ -487,7 +487,7 @@ it('smaller extensions decode: the key usage bits, issuer alternative names, TLS
   expect(only('2.5.29.18', seq(context(2, [0x61, 0x2e, 0x62], false))).value).toEqual(['dNSName: a.b']);
   // Name constraints with an IPv6 range hold 32 octets: the address, then the mask.
   const range = [...ipv6Bytes('2001:db8::'), ...ipv6Bytes('ffff:ffff::')];
-  const constraints = only('2.5.29.30', seq(context(1, seq(seq(context(7, range, false))))));
+  const constraints = only('2.5.29.30', seq(context(1, seq(context(7, range, false)))));
   expect(constraints.value).toEqual(['Excluded: iPAddress: 2001:db8::/ffff:ffff::']);
   // Policy qualifiers: a CPS address and a user notice with its text.
   const policy = seq(
@@ -508,7 +508,7 @@ it('smaller extensions decode: the key usage bits, issuer alternative names, TLS
   ]);
   // Basic constraints with a path length that does not fit a small number stays exact.
   expect(only('2.5.29.19', seq(boolean(true), integer('0100000000000000000000'))).value).toEqual([
-    'CA:TRUE, pathlen:4722366482869645213696',
+    'CA:TRUE, pathlen:1208925819614629174706176',
   ]);
   // A critical flag written as 01 instead of ff is accepted as true, as real certificates have it.
   const lenient = buildCertificate({
@@ -547,6 +547,18 @@ it('key types, sizes, curves, RSA-PSS parameters and weak signature warnings are
   expect(textValue(pssText, 'Mask Algorithm:')).toBe('mgf1 with sha1 (default)');
   expect(textValue(pssText, 'Salt Length:')).toBe('0x20');
   expect(readCertificate(certificateDer('leaf'), NOW_MS).signatureAlgorithm.params).toBeUndefined();
+  // RFC 4055 section 3.1: a field left out takes its default (SHA-1, MGF1 with SHA-1, salt length 20); one written wins.
+  const pssWith = (params?: Bytes): string | undefined =>
+    readBuilt({ signature: seq(oid('1.2.840.113549.1.1.10'), ...(params === undefined ? [] : [params])) })
+      .signatureAlgorithm.params;
+  expect(pssWith()).toBe('hash SHA-1, mask MGF1 with SHA-1, salt length 20');
+  expect(pssWith(nul())).toBe('hash SHA-1, mask MGF1 with SHA-1, salt length 20');
+  expect(pssWith(seq(context(2, integer('10'))))).toBe('hash SHA-1, mask MGF1 with SHA-1, salt length 16');
+  const sha512 = seq(oid('2.16.840.1.101.3.4.2.3'), nul());
+  const mgf1 = seq(oid('1.2.840.113549.1.1.8'), sha512);
+  expect(pssWith(seq(context(0, sha512), context(1, mgf1), context(2, integer('40'))))).toBe(
+    'hash SHA-512, mask MGF1 with SHA-512, salt length 64',
+  );
 
   // Warnings: a short RSA key and a SHA-1 signature are named; a strong certificate has none.
   const weak = readCertificate(certificateDer('weak'), NOW_MS);
@@ -623,6 +635,12 @@ it('every root certificate Node ships decodes with fingerprint, serial and valid
     ['secp384r1', 'P-384'],
     ['secp521r1', 'P-521'],
   ]);
+  // Node writes a name one attribute per line and escapes a comma or a plus sign with a backslash, as RFC 2253 does.
+  const unescaped = (multiline: string): string =>
+    multiline
+      .split('\n')
+      .join(', ')
+      .replace(/\\([,+\\<>;"# =])/g, '$1');
   const problems: string[] = [];
   let decoded = 0;
   for (const pem of rootCertificates) {
@@ -637,11 +655,12 @@ it('every root certificate Node ships decodes with fingerprint, serial and valid
       };
       check('SHA-256', cert.fingerprints.sha256, node.fingerprint256);
       check('SHA-1', cert.fingerprints.sha1, node.fingerprint);
-      check('serial', cert.serialHex, node.serialNumber);
+      // Node prints the serial 0 as 0 where OpenSSL prints 00: Node's hex is padded to whole bytes here.
+      check('serial', cert.serialHex, node.serialNumber.length % 2 === 1 ? '0' + node.serialNumber : node.serialNumber);
       check('valid to', cert.notAfter.epochMs, opensslDate(node.validTo));
       check('valid from', cert.notBefore.epochMs, opensslDate(node.validFrom));
-      check('subject', cert.subject.display.replace(/ \+ /g, ', '), node.subject.split('\n').join(', '));
-      check('issuer', cert.issuer.display.replace(/ \+ /g, ', '), node.issuer.split('\n').join(', '));
+      check('subject', cert.subject.display.replace(/ \+ /g, ', '), unescaped(node.subject));
+      check('issuer', cert.issuer.display.replace(/ \+ /g, ', '), unescaped(node.issuer));
       const details = node.publicKey.asymmetricKeyDetails;
       if (node.publicKey.asymmetricKeyType === 'rsa') {
         check('key type', cert.publicKey.type, 'RSA');

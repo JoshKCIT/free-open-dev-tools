@@ -10,7 +10,19 @@ import {
 } from '../src/index';
 import { PemError } from '../src/pem';
 import { readCertificate } from '../src/x509';
-import { base64, buildCertificate, concat, context, extension, nul, oid, seq, type Bytes } from './fixtures/der-build';
+import {
+  base64,
+  buildCertificate,
+  concat,
+  context,
+  extension,
+  nul,
+  oid,
+  seq,
+  seqOf,
+  tlv,
+  type Bytes,
+} from './fixtures/der-build';
 import { NOW_MS, certificateDer, certificatePem, pemText } from './fixtures/helpers';
 
 /**
@@ -48,7 +60,7 @@ const SEED = 14003;
 const MUTATIONS = 20000;
 
 function mutate(source: Bytes, random: () => number): Bytes {
-  let bytes = Uint8Array.from(source);
+  let bytes: Bytes = Uint8Array.from(source);
   const pick = (limit: number): number => Math.floor(random() * limit);
   const rounds = random() < 0.7 ? 1 : 2 + pick(4);
   for (let round = 0; round < rounds; round++) {
@@ -98,6 +110,116 @@ function mutate(source: Bytes, random: () => number): Bytes {
   return bytes;
 }
 
+/** A DER element read into a tree, so a mutation can change its shape and still write correct lengths. */
+interface Tree {
+  tag: number;
+  children?: Tree[];
+  content?: Bytes;
+}
+
+/** Reads the elements of `bytes` with one-byte tags, down to a few levels. Returns undefined for anything it cannot read. */
+function readTree(bytes: Bytes, depth = 0): Tree[] | undefined {
+  const out: Tree[] = [];
+  let at = 0;
+  while (at < bytes.length) {
+    const tag = bytes[at++]!;
+    let length = bytes[at++];
+    if (length === undefined) return undefined;
+    if (length >= 0x80) {
+      const count = length & 0x7f;
+      length = 0;
+      for (let i = 0; i < count; i++) length = length * 256 + (bytes[at++] ?? 0);
+    }
+    if (at + length > bytes.length) return undefined;
+    const content = bytes.subarray(at, at + length);
+    at += length;
+    if ((tag & 0x20) !== 0 && depth < 8) {
+      const children = readTree(content, depth + 1);
+      out.push(children === undefined ? { tag, content } : { tag, children });
+    } else {
+      out.push({ tag, content });
+    }
+  }
+  return out;
+}
+
+function writeTree(nodes: Tree[]): Bytes {
+  return concat(
+    ...nodes.map((node) => tlv(node.tag, node.children === undefined ? node.content! : writeTree(node.children))),
+  );
+}
+
+function allNodes(nodes: Tree[], into: Tree[] = []): Tree[] {
+  for (const node of nodes) {
+    into.push(node);
+    if (node.children !== undefined) allNodes(node.children, into);
+  }
+  return into;
+}
+
+const TAGS = [0x02, 0x04, 0x05, 0x06, 0x0c, 0x13, 0x17, 0x30, 0x31, 0xa0, 0xa3, 0x80, 0x82, 0x86, 0x87];
+
+/** Changes the shape of a certificate and writes it again with correct lengths: the input is valid DER with a wrong shape. */
+function mutateTree(source: Bytes, random: () => number): Bytes {
+  const roots = readTree(source)!;
+  const pick = (limit: number): number => Math.floor(random() * limit);
+  const rounds = random() < 0.7 ? 1 : 2 + pick(3);
+  for (let round = 0; round < rounds; round++) {
+    const nodes = allNodes(roots);
+    const node = nodes[pick(nodes.length)]!;
+    const kids = node.children;
+    switch (pick(8)) {
+      case 0:
+        if (kids !== undefined && kids.length > 0) kids.splice(pick(kids.length), 1);
+        break;
+      case 1:
+        if (kids !== undefined && kids.length > 0) {
+          const at = pick(kids.length);
+          kids.splice(at, 0, structuredClone(kids[at]!));
+        }
+        break;
+      case 2:
+        if (kids !== undefined && kids.length > 1) {
+          const a = pick(kids.length);
+          const b = pick(kids.length);
+          const keep = kids[a]!;
+          kids[a] = kids[b]!;
+          kids[b] = keep;
+        }
+        break;
+      case 3:
+        node.tag = TAGS[pick(TAGS.length)]!;
+        break;
+      case 4:
+        if (kids === undefined) node.content = Uint8Array.from({ length: pick(20) }, () => pick(256));
+        break;
+      case 5: {
+        const copy: Tree = { ...node };
+        for (const key of Object.keys(node)) delete (node as unknown as Record<string, unknown>)[key];
+        node.tag = 0x30;
+        node.children = [copy];
+        break;
+      }
+      case 6: {
+        const donor = nodes[pick(nodes.length)]!;
+        if (donor !== node && !allNodes([donor]).includes(node)) {
+          const copy = structuredClone(donor);
+          node.tag = copy.tag;
+          delete node.children;
+          delete node.content;
+          if (copy.children !== undefined) node.children = copy.children;
+          else node.content = copy.content!;
+        }
+        break;
+      }
+      default:
+        if (kids !== undefined)
+          kids.splice(pick(kids.length + 1), 0, { tag: TAGS[pick(TAGS.length)]!, content: new Uint8Array(pick(4)) });
+    }
+  }
+  return writeTree(roots);
+}
+
 it('20000 fixed-seed mutations of real certificates give only plain messages', () => {
   const bases = ['leaf', 'int', 'root', 'ec256', 'ed25519', 'pss', 'canary', 'weak'].map(certificateDer);
   const random = mulberry32(SEED);
@@ -105,7 +227,9 @@ it('20000 fixed-seed mutations of real certificates give only plain messages', (
   let refused = 0;
   const messages = new Set<string>();
   for (let index = 0; index < MUTATIONS; index++) {
-    const bytes = mutate(bases[index % bases.length]!, random);
+    // Half of the mutations change bytes (so lengths go wrong), half change the shape and keep every length right.
+    const base = bases[index % bases.length]!;
+    const bytes = index % 2 === 0 ? mutate(base, random) : mutateTree(base, random);
     // The reader itself may only throw its own DerError: anything else is a defect, and the net below must never catch it.
     try {
       readCertificate(bytes, NOW_MS);
@@ -230,7 +354,7 @@ it('hostile DER shapes are refused with plain sentences and bounded work', () =>
   expect(refusal(Uint8Array.from([0x30, 0x84, 0xff, 0xff, 0xff, 0xff, 0x00]))).toMatch(/runs past the end|too large/);
   expect(refusal(Uint8Array.from([0x30, 0x80, 0x00, 0x00]))).toMatch(/indefinite/);
   // More elements than the reader will count.
-  const flat = seq(...Array.from({ length: 200_001 }, () => nul()));
+  const flat = seqOf(Array.from({ length: 200_001 }, () => nul()));
   expect(flat.length).toBeLessThan(MAX_PASTE_CHARS * 0.75);
   const started = performance.now();
   expect(refusal(flat)).toMatch(/Too many elements/);
@@ -242,7 +366,7 @@ it('hostile DER shapes are refused with plain sentences and bounded work', () =>
 
 it('long extensions and many alternative names are capped with a note of what was left out', () => {
   const dns = (i: number): Bytes => context(2, Uint8Array.from(Buffer.from(`host${i}.example.test`)), false);
-  const names = (count: number): Bytes => seq(...Array.from({ length: count }, (_unused, i) => dns(i)));
+  const names = (count: number): Bytes => seqOf(Array.from({ length: count }, (_unused, i) => dns(i)));
   const withNames = (count: number): Bytes =>
     buildCertificate({ extensions: [extension('2.5.29.17', false, names(count))] });
   const pem = (der: Bytes): string => pemText('CERTIFICATE', base64(der));
@@ -256,14 +380,14 @@ it('long extensions and many alternative names are capped with a note of what wa
   expect(over.sans).toHaveLength(5000);
   expect(over.sans[4999]!.value).toBe('host4999.example.test');
   expect(over.warnings).toContain(
-    '1,000 of 6,000 subject alternative names are not shown, because a page shows at most 5,000 table rows.',
+    '1,000 of 6,000 subject alternative names are not shown, because a table shows at most 5,000 rows across the page.',
   );
   // The rows are counted across the whole paste: two certificates of 3,000 names each share the 5,000.
   const two = decodeInput(pem(withNames(3000)) + pem(withNames(3000)), { nowMs: NOW_MS });
   expect(two.items.map((item) => item.sans.length)).toEqual([3000, 2000]);
   expect(two.items[0]!.warnings.filter((warning) => warning.includes('not shown'))).toEqual([]);
   expect(two.items[1]!.warnings).toContain(
-    '1,000 of 3,000 subject alternative names are not shown, because a page shows at most 5,000 table rows.',
+    '1,000 of 3,000 subject alternative names are not shown, because a table shows at most 5,000 rows across the page.',
   );
 
   // Extensions are rows too.
@@ -273,7 +397,7 @@ it('long extensions and many alternative names are capped with a note of what wa
   const rows = decodeInput(pem(many), { nowMs: NOW_MS }).items[0]!;
   expect(rows.extensions).toHaveLength(5000);
   expect(rows.warnings).toContain(
-    '200 of 5,200 extensions are not shown, because a page shows at most 5,000 table rows.',
+    '200 of 5,200 extensions are not shown, because a table shows at most 5,000 rows across the page.',
   );
 
   // One extension whose bytes are long shows 256 bytes of hex and says how many it left out.

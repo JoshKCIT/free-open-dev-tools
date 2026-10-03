@@ -27,6 +27,8 @@
     "der",
     "asn1",
     "fingerprint",
+    "san",
+    "extensions",
     "rfc5280",
     "openssl"
   ],

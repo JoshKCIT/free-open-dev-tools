@@ -8,12 +8,14 @@ export { meta };
 export { CertificateError, NO_CERTIFICATE_MESSAGE };
 export { DerError, PemError };
 export type { CertificateInfo };
+export type { ExtensionInfo } from './extensions';
+export type { NameInfo } from './names';
 
 /** The longest paste read, in characters. */
 export const MAX_PASTE_CHARS = 1048576;
 /** The most certificates read from one paste. */
 export const MAX_ITEMS = 100;
-/** The most table rows shown across the whole page. */
+/** The most rows one table shows across the whole page, counting every certificate in the paste. */
 export const MAX_TABLE_ROWS = 5000;
 
 export const UNREADABLE_MESSAGE = 'This does not look like a certificate or request (it could not be read as DER).';
@@ -26,6 +28,34 @@ export interface DecodeResult {
 
 function withCommas(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/**
+ * Cuts the two long tables to their limit, counting the rows of every certificate in the paste together, and says in each
+ * certificate's warnings how many rows were left out.
+ */
+function capRows(items: CertificateInfo[]): void {
+  let names = MAX_TABLE_ROWS;
+  let extensions = MAX_TABLE_ROWS;
+  const limit = withCommas(MAX_TABLE_ROWS);
+  for (const item of items) {
+    if (item.sans.length > names) {
+      const total = item.sans.length;
+      item.sans = item.sans.slice(0, names);
+      item.warnings.push(
+        `${withCommas(total - names)} of ${withCommas(total)} subject alternative names are not shown, because a table shows at most ${limit} rows across the page.`,
+      );
+    }
+    names -= item.sans.length;
+    if (item.extensions.length > extensions) {
+      const total = item.extensions.length;
+      item.extensions = item.extensions.slice(0, extensions);
+      item.warnings.push(
+        `${withCommas(total - extensions)} of ${withCommas(total)} extensions are not shown, because a table shows at most ${limit} rows across the page.`,
+      );
+    }
+    extensions -= item.extensions.length;
+  }
 }
 
 /**
@@ -65,6 +95,7 @@ export function decodeInput(input: string, options: { nowMs: number }): DecodeRe
         throw err;
       }
     });
+    capRows(items);
     return { items, ignored: split.ignored, warnings: [] };
   } catch (err) {
     if (err instanceof CertificateError) throw err;

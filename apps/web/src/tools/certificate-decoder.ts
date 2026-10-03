@@ -5,6 +5,7 @@ import {
   decodeInput,
   meta,
   type CertificateInfo,
+  type ExtensionInfo,
 } from '@fodt/certificate-decoder';
 import { defineTool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
@@ -22,6 +23,9 @@ const EXAMPLE_P256 = [
   'DwHWJO89NhBQjG1HnC4=',
   '-----END CERTIFICATE-----',
 ].join('\n');
+
+const TRUST_NOTE =
+  'This page reads what a certificate says. It does not check signatures, trust, revocation or host names, so a certificate shown here may be forged, revoked or not meant for the site you have in mind.';
 
 function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -44,12 +48,32 @@ function statusText(status: CertificateInfo['status']): string {
 
 function keyText(cert: CertificateInfo): string {
   const key = cert.publicKey;
-  const kind = key.curve === undefined ? key.type : `${key.type} ${key.curve}`;
-  return key.bits === undefined ? kind : `${kind}, ${key.bits} bits`;
+  let text = key.curve === undefined ? key.type : `${key.type} ${key.curve}`;
+  if (key.bits !== undefined) text += `, ${key.bits} bits`;
+  else if (key.keyBytes !== undefined) text += `, ${key.keyBytes}-byte public key`;
+  if (key.exponent !== undefined) text += `, exponent ${key.exponent}`;
+  return text;
+}
+
+function signatureText(cert: CertificateInfo): string {
+  const { name, oid, params } = cert.signatureAlgorithm;
+  const base = name === oid ? oid : `${name} (OID ${oid})`;
+  return params === undefined ? base : `${base}: ${params}`;
+}
+
+/** One extension as a table row: the lines it decoded to, or its hex, with the note when it could not be decoded. */
+function extensionRow(extension: ExtensionInfo): string[] {
+  const value = extension.value.join('; ');
+  return [
+    extension.name ?? '(not named here)',
+    extension.oid,
+    extension.critical ? 'yes' : 'no',
+    extension.note === undefined ? value : `${value} (${extension.note})`,
+  ];
 }
 
 function certificateBlocks(cert: CertificateInfo, position: number, total: number): OutputBlock[] {
-  return [
+  const blocks: OutputBlock[] = [
     {
       kind: 'keyvalue',
       label: `Certificate ${position} of ${total}`,
@@ -62,18 +86,50 @@ function certificateBlocks(cert: CertificateInfo, position: number, total: numbe
         ['Valid until', cert.notAfter.iso],
         ['Status', `${statusText(cert.status)} (by this device's clock)`],
         ['Public key', keyText(cert)],
-        ['Signature algorithm', cert.signatureAlgorithm.name],
+        ['Signature algorithm', signatureText(cert)],
       ],
     },
+    {
+      kind: 'keyvalue',
+      label: 'Subject and issuer, RFC 4514',
+      pairs: [
+        ['Subject', cert.subject.rfc4514],
+        ['Issuer', cert.issuer.rfc4514],
+      ],
+    },
+  ];
+  if (cert.sans.length > 0) {
+    blocks.push({
+      kind: 'table',
+      label: 'Subject alternative names',
+      table: { headers: ['Type', 'Value'], rows: cert.sans.map((san) => [san.type, san.value]), mono: [1] },
+    });
+  }
+  if (cert.extensions.length > 0) {
+    blocks.push({
+      kind: 'table',
+      label: 'Extensions',
+      table: {
+        headers: ['Name', 'OID', 'Critical', 'Value'],
+        rows: cert.extensions.map(extensionRow),
+        mono: [1, 3],
+      },
+    });
+  }
+  blocks.push(
     {
       kind: 'keyvalue',
       label: 'Fingerprints',
       pairs: [
         ['SHA-256', cert.fingerprints.sha256],
         ['SHA-1', cert.fingerprints.sha1],
+        ['MD5 (legacy, not for security)', cert.fingerprints.md5],
+        ['Public key pin (SHA-256, Base64)', cert.fingerprints.spkiSha256],
       ],
     },
-  ];
+    { kind: 'code', label: 'Public key (PEM)', value: cert.publicKey.pem },
+  );
+  return blocks;
 }
 
 /** Maps what the package throws to a message for the visitor. Nothing else is ever shown, so no pasted text can leak. */
@@ -112,6 +168,7 @@ export default defineTool({
       // The clock is read here, on the page, and handed to the package, which never reads it.
       const result = decodeInput(pasted, { nowMs: Date.now() });
       const outputs: OutputBlock[] = [];
+      if (result.items.length > 0) outputs.push({ kind: 'note', tone: 'info', value: TRUST_NOTE });
       for (const skipped of result.ignored) {
         outputs.push({
           kind: 'note',
@@ -120,7 +177,12 @@ export default defineTool({
         });
       }
       result.items.forEach((cert, index) => outputs.push(...certificateBlocks(cert, index + 1, result.items.length)));
-      const warnings = result.items.flatMap((cert) => cert.warnings).concat(result.warnings);
+      const many = result.items.length > 1;
+      const warnings = result.items
+        .flatMap((cert, index) =>
+          cert.warnings.map((warning) => (many ? `Certificate ${index + 1}: ${warning}` : warning)),
+        )
+        .concat(result.warnings);
       return { outputs, warnings, stats: [['Certificates read', String(result.items.length)]] };
     } catch (err) {
       if (ctx.signal.aborted) throw err;

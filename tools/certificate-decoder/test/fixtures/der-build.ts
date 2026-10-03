@@ -6,7 +6,8 @@
 
 export type Bytes = Uint8Array;
 
-export function concat(...parts: (Bytes | number[])[]): Bytes {
+/** Joins any number of parts; the parts come as an array, so a very long list never becomes a very long argument list. */
+export function concatAll(parts: (Bytes | number[])[]): Bytes {
   let length = 0;
   for (const part of parts) length += part.length;
   const out = new Uint8Array(length);
@@ -16,6 +17,10 @@ export function concat(...parts: (Bytes | number[])[]): Bytes {
     at += part.length;
   }
   return out;
+}
+
+export function concat(...parts: (Bytes | number[])[]): Bytes {
+  return concatAll(parts);
 }
 
 function lengthBytes(length: number): number[] {
@@ -30,8 +35,9 @@ export function tlv(tag: number, content: Bytes | number[]): Bytes {
   return concat([tag], lengthBytes(content.length), content);
 }
 
-export const seq = (...children: (Bytes | number[])[]): Bytes => tlv(0x30, concat(...children));
-export const set = (...children: (Bytes | number[])[]): Bytes => tlv(0x31, concat(...children));
+export const seq = (...children: (Bytes | number[])[]): Bytes => tlv(0x30, concatAll(children));
+export const seqOf = (children: (Bytes | number[])[]): Bytes => tlv(0x30, concatAll(children));
+export const set = (...children: (Bytes | number[])[]): Bytes => tlv(0x31, concatAll(children));
 
 /** A context-specific element: constructed ([n] holding other elements) or primitive (an implicit tag). */
 export function context(number: number, content: Bytes | number[], constructed = true): Bytes {
