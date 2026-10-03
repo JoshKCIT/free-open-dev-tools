@@ -1370,5 +1370,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Extract a PDF's text page by page, view its metadata and download a copy with the metadata removed."
+  },
+  {
+    "id": "image-compare",
+    "name": "Image Diff & Compare",
+    "category": "media",
+    "tier": 3,
+    "summary": "Compare two images pixel by pixel and see the differences highlighted with the share of pixels that differ."
   }
 ]
