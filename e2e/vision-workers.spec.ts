@@ -657,3 +657,54 @@ test('sass-less-compiler: an import of another file or address is refused in the
   });
   expect(control).toEqual(['GET /control']);
 });
+
+test('sass-less-compiler: an endless loop is stopped at the run limit and the page keeps answering', async ({
+  page,
+}) => {
+  // Unlike the generated limit test, the job is NOT swallowed: the real Sass engine runs a loop that never ends, so the
+  // worker is genuinely busy when the limit is crossed. The page clock is frozen after the job is posted and moved by
+  // exact amounts, so the limit is crossed to the millisecond, not at the speed of the machine.
+  const base = ENGINE_CASES.find((c) => c.id === 'sass-less-compiler')!;
+  const endless: EngineCase = { ...base, valid: { source: '$i: 0;\n@while true { $i: $i + 1; }' } };
+  await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: false });
+  await page.clock.install();
+  await openTool(page, endless.id);
+  await setControls(page, endless);
+
+  const before = await startRun(page, endless);
+  await expect(cancelButtonOf(page)).toBeVisible();
+  // The job really reached the worker: the wrapper logged it, and the worker never answers it.
+  await waitForLog(page, 'out:0:', '-job');
+  const used = await freezeClock(page, before, await pageNow(page));
+  const limit = endless.limitSeconds * 1000;
+
+  // Short of the limit (19.5 seconds at most): still running, no stop message, the worker not yet ended and silent.
+  const early = Math.max(0, limit - 500 - used.atMost);
+  await page.clock.runFor(early);
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await expect(outputArea(page)).not.toContainText('Stopped after');
+  expect(await endedWorkers(page)).toEqual([]);
+  const log = await page.evaluate(() => window.__FODT_VISION_WORKERS__!.log);
+  expect(
+    log.filter((entry) => entry.startsWith('in:0:') && !entry.endsWith('-ready')),
+    log.join(' | '),
+  ).toEqual([]);
+
+  // Past the limit (20.1 seconds at least): stopped with the plain message, and the busy worker is ended.
+  await page.clock.runFor(Math.max(1, limit + 100 - used.atLeast - early));
+  await expect(outputArea(page).locator('.issue-list')).toContainText(endless.limitMessage, { timeout: 5_000 });
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  expect(await endedWorkers(page)).toEqual([0]);
+  await page.clock.resume();
+
+  // The page still answers a script call within a second, though a loop that never ends was running a moment ago.
+  const answerStart = Date.now();
+  await page.evaluate(() => 1 + 1);
+  expect(Date.now() - answerStart).toBeLessThan(1_000);
+
+  // A valid stylesheet now compiles, in a new worker.
+  await fillFields(page, base.valid);
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText(base.expectOutput, { timeout: 15_000 });
+  expect((await page.evaluate(() => window.__FODT_VISION_WORKERS__!.addresses)).length).toBeGreaterThanOrEqual(2);
+});
