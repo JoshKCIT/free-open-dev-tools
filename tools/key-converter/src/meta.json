@@ -9,14 +9,17 @@
     "Ed25519 key pairs made from 32 bytes of crypto.getRandomValues, with the arithmetic done by @noble/curves in every browser",
     "The private key as PKCS#8 (RFC 5958, with the ECDSA layout of RFC 5915 and the Ed25519 layout of RFC 8410) and the public key as SubjectPublicKeyInfo (RFC 5280), both as PEM",
     "The OpenSSH public key line (RFC 4253 section 6.6, RFC 5656 and RFC 8709) with an optional comment",
-    "SSH fingerprints in both forms ssh-keygen prints: SHA256 (unpadded Base64) and MD5 (colon-separated hex)"
+    "SSH fingerprints in both forms ssh-keygen prints: SHA256 (unpadded Base64) and MD5 (colon-separated hex)",
+    "Pasted keys in PKCS#8, SubjectPublicKeyInfo, PKCS#1 (RFC 8017), SEC1 (RFC 5915), JWK (RFC 7517, 7518 and 8037), OpenSSH private and public key forms and RFC 4716 files, read into one key model"
   ],
   "limits": [
     "Keys are made only by the browser's Web Crypto generator and crypto.getRandomValues; nothing else supplies randomness.",
     "Generating an RSA key runs in the background and stops after 60 seconds with a message; Cancel stops it at once.",
-    "Private keys are shown in plain text so you can copy them; treat every private output as a secret and close the page when you are done.",
-    "RSA sizes are limited to 2048, 3072 and 4096 bits with exponent 65537, ECDSA to P-256, P-384 and P-521, and no key is ever protected by a passphrase.",
-    "This page makes keys; pasting a key to convert it is not offered yet."
+    "Pastes of up to 64 KiB (65,536 characters) are read; a longer paste is refused before anything is parsed.",
+    "RSA keys of up to 16,384 bits are converted; keys under 2,048 bits are shown with a warning. Generation offers 2,048, 3,072 and 4,096 bits with exponent 65537.",
+    "Passphrase-protected PEM and OpenSSH keys are refused, and outputs are never encrypted.",
+    "Private keys are shown in plain text so you can copy or download them; treat every private output as a secret and close the page when you are done.",
+    "Only RSA, ECDSA P-256, P-384 and P-521, and Ed25519 keys are supported; RSA-PSS keys restricted to one hash are refused."
   ],
   "ambiguities": [
     "RSA keys are made as RSASSA-PKCS1-v1_5 keys, and the key file does not record what a key is used for, so the same bytes work for signing, encryption and SSH",

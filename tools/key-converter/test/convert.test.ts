@@ -37,6 +37,7 @@ const NO_PRIMES_SENTENCE =
   'This JWK has no prime factors (p and q), so it cannot be written as PKCS#1, PKCS#8 or OpenSSH.';
 const CERTIFICATE_SENTENCE = 'This is a certificate, not a key. Its public key can be read with a certificate decoder.';
 const MISMATCH_SENTENCE = 'The public key does not belong to this private key.';
+const NET_SENTENCE = 'This key could not be read. Check that it is whole and in one of the forms listed above.';
 const SHORT_RSA_WARNING = 'This RSA key is shorter than 2048 bits, which is too short for new use.';
 
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
@@ -194,13 +195,13 @@ function shape(key: KeyModel): string[] {
   );
 }
 
-function thrown(call: () => unknown): unknown {
+function thrown(call: () => unknown, what = 'the call'): unknown {
   try {
     call();
   } catch (err) {
     return err;
   }
-  throw new Error('the call did not throw');
+  throw new Error(what + ' did not throw');
 }
 
 function refusal(text: string): string {
@@ -397,7 +398,9 @@ it('passphrase-protected PKCS8, legacy PEM and OpenSSH keys are refused with the
 it('RSA-PSS restricted keys, unsupported curves, JWKs without primes, certificates and mismatched public parts are refused without key bytes', () => {
   const rsa = RFC7515_RSA_JWK;
   const noPrimes = JSON.stringify({ kty: 'RSA', n: rsa.n, e: rsa.e, d: rsa.d });
-  const flippedX = RFC8037_PRIVATE_JWK.replace('11qYAYKx', '21qYAYKx');
+  // The x of another, valid Ed25519 key: the last 32 bytes of its SubjectPublicKeyInfo.
+  const otherX = Buffer.from(fx.ED25519_SPKI_DER_B64, 'base64').subarray(12).toString('base64url');
+  const flippedX = RFC8037_PRIVATE_JWK.replace('11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo', otherX);
   const cases: [string, string, string, string[]][] = [
     [
       'an RSA-PSS private key',
@@ -508,7 +511,7 @@ function rsaPublicOfSize(size: number): Uint8Array {
   const modulus = new Uint8Array(size);
   for (let i = 0; i < size; i++) modulus[i] = (i * 131 + 7) & 255;
   modulus[0] = 0x80;
-  modulus[size - 1] |= 1;
+  modulus[size - 1] = modulus[size - 1]! | 1;
   const integer = (bytes: Uint8Array) => tlv(0x02, bytes[0]! >= 0x80 ? Uint8Array.of(0, ...bytes) : bytes);
   const publicKey = tlv(0x30, integer(modulus), integer(Uint8Array.of(1, 0, 1)));
   const algorithm = tlv(
@@ -535,7 +538,7 @@ it('pastes are read up to 65536 characters and RSA keys up to 16384 bits, smalle
   expect(refusal('{' + '['.repeat(65536))).toBe(sentence);
   const parse = vi.spyOn(JSON, 'parse');
   try {
-    expect(refusal('{' + ' '.repeat(65537))).toBe(sentence);
+    expect(refusal('{' + ' '.repeat(65536))).toBe(sentence);
     expect(parse).not.toHaveBeenCalled();
   } finally {
     parse.mockRestore();
@@ -643,8 +646,8 @@ it('dp, dq and qi computed with BigInt for an OpenSSH or JWK RSA key equal OpenS
   expect(shape(completeRsa(rest))).toEqual(shape(reference));
   const publicOnly = completeRsa({ type: 'rsa', n: reference.n, e: reference.e });
   expect(isPrivate(publicOnly)).toBe(false);
-  expect(() => completeRsa({ ...rest, p: reference.q })).not.toThrow();
-  const brokenProduct = thrown(() => completeRsa({ ...rest, q: reference.q.map((b, i) => (i === 3 ? b ^ 1 : b)) }));
+  expect(() => completeRsa({ ...rest, p: reference.q!, q: reference.p! })).not.toThrow();
+  const brokenProduct = thrown(() => completeRsa({ ...rest, q: reference.q!.map((b, i) => (i === 3 ? b ^ 1 : b)) }));
   expect(brokenProduct).toBeInstanceOf(KeyConverterError);
   expect((brokenProduct as KeyConverterError).message).toBe('The numbers of this RSA key do not agree.');
   const brokenExponent = thrown(() => completeRsa({ ...rest, d: reference.d!.map((b, i) => (i === 5 ? b ^ 1 : b)) }));
@@ -686,7 +689,7 @@ it('no refusal message holds a fragment of the pasted key', () => {
     armour('OPENSSH PRIVATE KEY', markerBase64, 70),
     armour('PUBLIC KEY', markerBase64),
     '{"kty":"EC","crv":"P-256","x":"' + marker + '","y":"AA"}',
-    '{"kty":"RSA","n":"' + marker + '","e":"AQAB"}',
+    '{"kty":"RSA","n":"' + marker + '$","e":"AQAB"}',
     '{"kty":"' + marker + '"}',
     '{"kty":"EC","crv":"' + marker + '"}',
     '{' + marker,
@@ -698,7 +701,7 @@ it('no refusal message holds a fragment of the pasted key', () => {
   const windows = (text: string, size: number): string[] =>
     Array.from({ length: Math.max(0, text.length - size + 1) }, (_, i) => text.slice(i, i + size));
   for (const text of texts) {
-    const err = thrown(() => readKeyInput(text));
+    const err = thrown(() => readKeyInput(text), text.slice(0, 40));
     expect(err).toBeInstanceOf(KeyConverterError);
     const message = (err as KeyConverterError).message;
     for (const piece of [...windows(marker, 8), ...windows(markerBase64, 12)]) {
@@ -743,6 +746,11 @@ it('OpenSSH files that are cut, padded wrongly or inconsistent are refused', () 
   const two = Uint8Array.from(good);
   two[15 + 4 + 4 + 4 + 4 + 4 + 4 + 3] = 2;
   expect(typeof refusal(asText(two))).toBe('string');
+  // Extra data after the file, and after the key on a public line, is refused.
+  expect(typeof refusal(asText(Buffer.concat([good, Buffer.from([0])])))).toBe('string');
+  const [lineType, lineData] = fx.ED25519_SSH_PUBLIC_LINE.split(' ');
+  const longer = Buffer.concat([Buffer.from(lineData!, 'base64'), Buffer.from([0])]).toString('base64');
+  expect(typeof refusal(lineType + ' ' + longer)).toBe('string');
   // Not an OpenSSH file at all.
   expect(typeof refusal(armour('OPENSSH PRIVATE KEY', 'QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo='))).toBe('string');
 });
@@ -789,6 +797,8 @@ it('mutated pastes are refused or read and never fail in any other way', () => {
       expect(err, `round ${round}`).toBeInstanceOf(KeyConverterError);
       expect(err).not.toBeInstanceOf(DerError);
       expect(err).not.toBeInstanceOf(PemError);
+      // The catch-all sentence is only a net: a reader that needs it has thrown an error of its own kind.
+      expect((err as KeyConverterError).message, `round ${round}`).not.toBe(NET_SENTENCE);
       refused++;
     }
   }
@@ -811,4 +821,47 @@ it('two private keys in one paste, and a public key read next to a matching priv
       (reversed.key as { n: Uint8Array }).n,
     ),
   ).toBe(true);
+});
+
+it('an EC private scalar of zero or not below the curve order is refused, and one is accepted', () => {
+  // The group orders of FIPS 186-4 appendix D.1.2 (the same numbers as SEC 2 section 2.4), as hex.
+  const orders: [string, string, string][] = [
+    ['P-256', fx.P256_SEC1_NO_PUBLIC_DER_B64, 'ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551'],
+    [
+      'P-384',
+      fx.P384_SEC1_NO_PUBLIC_DER_B64,
+      'ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973',
+    ],
+    [
+      'P-521',
+      fx.P521_SEC1_NO_PUBLIC_DER_B64,
+      '1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa51868783bf2f966b7fcc0148f709a5d03bb5c9b8899c47aebb6fb71e91386409',
+    ],
+  ];
+  for (const [name, sec1, order] of orders) {
+    const der = Buffer.from(sec1, 'base64');
+    // ECPrivateKey: SEQUENCE { INTEGER 1, OCTET STRING d, [0] curve }; the private number starts at byte 7 for these sizes.
+    expect(der[5], name).toBe(4);
+    const size = der[6]!;
+    const withNumber = (value: bigint): string => {
+      const copy = Buffer.from(der);
+      Buffer.from(value.toString(16).padStart(size * 2, '0'), 'hex').copy(copy, 7);
+      return copy.toString('base64');
+    };
+    const n = BigInt('0x' + order);
+    for (const [what, value] of [
+      ['zero', 0n],
+      ['the order', n],
+      ['the order plus one', n + 1n],
+      ['the largest value that fits', (1n << BigInt(size * 8)) - 1n],
+    ] as const) {
+      const message = refusal(armour('EC PRIVATE KEY', withNumber(value)));
+      expect(message, `${name}: ${what}`).toBe('The private number is not a valid private key for this curve.');
+    }
+    // One below the order and one are keys.
+    for (const value of [1n, n - 1n]) {
+      const read = readKeyInput(armour('EC PRIVATE KEY', withNumber(value)));
+      expect(isPrivate(read.key), `${name}: ${value === 1n ? 'one' : 'order minus one'}`).toBe(true);
+    }
+  }
 });

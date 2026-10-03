@@ -23,9 +23,7 @@ import { NULL_DER, bitString, ctx, octet, oid, seq, smallInt, uint } from './der
 import {
   CURVES,
   KeyConverterError,
-  RSA_MAX_BITS,
   bytesEqual,
-  keyBits,
   type Curve,
   type CurveInfo,
   type EcKey,
@@ -33,12 +31,16 @@ import {
   type KeyModel,
   type RsaKey,
 } from './model';
+import { checkRsaModulus, completeRsa } from './rsa-math';
 
 const RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
 const EC_PUBLIC_KEY = '1.2.840.10045.2.1';
 const ED25519 = '1.3.101.112';
+const RSASSA_PSS = '1.2.840.113549.1.1.10';
 
-const DOES_NOT_BELONG = 'The public key does not belong to this private key.';
+export const DOES_NOT_BELONG = 'The public key does not belong to this private key.';
+export const CURVE_SENTENCE = 'Only P-256, P-384, P-521 and Ed25519 elliptic curve keys are supported.';
+const PSS_SENTENCE = 'This is an RSA-PSS key restricted to one hash. Only unrestricted RSA keys are converted.';
 
 /** The curve library for each curve, looked up by name. */
 const CURVE_LIBS = new Map<Curve, typeof p256>([
@@ -50,26 +52,20 @@ const CURVE_LIBS = new Map<Curve, typeof p256>([
 /** The curve a curve object identifier names, looked up with a Map so no typed text can reach Object.prototype. */
 const CURVE_BY_OID = new Map<string, Curve>(Array.from(CURVES, ([name, info]) => [info.oid, name]));
 
-function curveInfo(curve: Curve): CurveInfo {
+export function curveInfo(curve: Curve): CurveInfo {
   const info = CURVES.get(curve);
   if (info === undefined) throw new KeyConverterError('This elliptic curve is not supported.');
   return info;
 }
 
-function curveLib(curve: Curve): typeof p256 {
+export function curveLib(curve: Curve): typeof p256 {
   const lib = CURVE_LIBS.get(curve);
   if (lib === undefined) throw new KeyConverterError('This elliptic curve is not supported.');
   return lib;
 }
 
-function magnitudeToBigInt(bytes: Uint8Array): bigint {
-  let value = 0n;
-  for (const octetValue of bytes) value = (value << 8n) | BigInt(octetValue);
-  return value;
-}
-
 /** A magnitude as exactly `size` bytes: leading zeros removed and the value padded on the left, or refused if larger. */
-function padTo(bytes: Uint8Array, size: number): Uint8Array {
+export function padTo(bytes: Uint8Array, size: number): Uint8Array {
   let skip = 0;
   while (skip < bytes.length && bytes[skip] === 0) skip++;
   const trimmed = bytes.subarray(skip);
@@ -77,13 +73,6 @@ function padTo(bytes: Uint8Array, size: number): Uint8Array {
   const out = new Uint8Array(size);
   out.set(trimmed, size - trimmed.length);
   return out;
-}
-
-function checkRsaSize(n: Uint8Array): void {
-  const key: RsaKey = { type: 'rsa', n, e: Uint8Array.of(1) };
-  if (keyBits(key) > RSA_MAX_BITS) {
-    throw new KeyConverterError(`This RSA key is larger than ${RSA_MAX_BITS} bits, which is the most this page reads.`);
-  }
 }
 
 /** An algorithm identifier whose parameters must be NULL or absent (RSA). */
@@ -110,13 +99,13 @@ function curveOfAlgorithm(der: Uint8Array, algorithm: DerNode): Curve {
   const curveOid = derOid(der, derChild(algorithm, 1));
   const curve = CURVE_BY_OID.get(curveOid);
   if (curve === undefined) {
-    throw new KeyConverterError(`This key uses the curve ${curveOid}, which this page does not read.`);
+    throw new KeyConverterError(CURVE_SENTENCE);
   }
   return curve;
 }
 
 /** The public point of a private number, or a plain refusal when the number is not a valid private key for the curve. */
-function ecPublicFromPrivate(curve: Curve, d: Uint8Array): Uint8Array {
+export function ecPublicFromPrivate(curve: Curve, d: Uint8Array): Uint8Array {
   try {
     return Uint8Array.from(curveLib(curve).getPublicKey(d, false));
   } catch (err) {
@@ -126,7 +115,7 @@ function ecPublicFromPrivate(curve: Curve, d: Uint8Array): Uint8Array {
 }
 
 /** A public point as the uncompressed encoding, after checking that it is a point on the curve. */
-function ecNormalizePoint(curve: Curve, point: Uint8Array): Uint8Array {
+export function ecNormalizePoint(curve: Curve, point: Uint8Array): Uint8Array {
   try {
     return Uint8Array.from(curveLib(curve).Point.fromBytes(point).toBytes(false));
   } catch {
@@ -134,11 +123,15 @@ function ecNormalizePoint(curve: Curve, point: Uint8Array): Uint8Array {
   }
 }
 
-function rsaFromPkcs1Private(bytes: Uint8Array): RsaKey {
+/** Reads the RSAPrivateKey of RFC 8017 appendix A.1.2 (the DER bytes inside a RSA PRIVATE KEY block). */
+export function readPkcs1Private(bytes: Uint8Array): RsaKey {
   const root = readDer(bytes);
   derExpect(root, 16, 'universal', true);
   if (root.children.length < 9) {
     throw new KeyConverterError('The RSA private key does not hold the nine numbers RFC 8017 requires.');
+  }
+  if (root.children.length > 9) {
+    throw new KeyConverterError('Only two-prime RSA private keys (version 0) are supported.');
   }
   const version = derUnsigned(bytes, derChild(root, 0));
   if (version.length !== 1 || version[0] !== 0) {
@@ -147,13 +140,40 @@ function rsaFromPkcs1Private(bytes: Uint8Array): RsaKey {
   const [n, e, d, p, q, dp, dq, qi] = [1, 2, 3, 4, 5, 6, 7, 8].map((index) =>
     derUnsigned(bytes, derChild(root, index)),
   );
-  checkRsaSize(n!);
-  if (magnitudeToBigInt(p!) * magnitudeToBigInt(q!) !== magnitudeToBigInt(n!)) {
-    throw new KeyConverterError(
-      'The numbers of this RSA key do not agree: the modulus is not the product of the two primes.',
-    );
+  // The modulus is bounded first, then every number is checked against it and against the others (completeRsa).
+  checkRsaModulus(n!);
+  return completeRsa({ type: 'rsa', n: n!, e: e!, d: d!, p: p!, q: q!, dp: dp!, dq: dq!, qi: qi! });
+}
+
+/** Reads the RSAPublicKey of RFC 8017 appendix A.1.1 (the DER bytes inside a RSA PUBLIC KEY block). */
+export function readPkcs1Public(bytes: Uint8Array): RsaKey {
+  const root = readDer(bytes);
+  derExpect(root, 16, 'universal', true);
+  if (root.children.length !== 2) {
+    throw new KeyConverterError('The RSA public key does not hold a modulus and an exponent.');
   }
-  return { type: 'rsa', n: n!, e: e!, d: d!, p: p!, q: q!, dp: dp!, dq: dq!, qi: qi! };
+  const n = derUnsigned(bytes, derChild(root, 0));
+  const e = derUnsigned(bytes, derChild(root, 1));
+  checkRsaModulus(n);
+  return { type: 'rsa', n, e };
+}
+
+/**
+ * Reads the ECPrivateKey of RFC 5915 as a file of its own (the DER bytes inside an EC PRIVATE KEY block). The curve is
+ * named by the [0] parameters, which a stand-alone key must carry.
+ */
+export function readSec1(bytes: Uint8Array): EcKey {
+  const root = readDer(bytes);
+  derExpect(root, 16, 'universal', true);
+  let curve: Curve | undefined;
+  for (const extra of root.children.slice(2)) {
+    if (extra.cls === 'context' && extra.tag === 0) {
+      curve = CURVE_BY_OID.get(derOid(bytes, derChild(extra, 0)));
+      if (curve === undefined) throw new KeyConverterError(CURVE_SENTENCE);
+    }
+  }
+  if (curve === undefined) throw new KeyConverterError('This elliptic curve private key does not name its curve.');
+  return ecFromEcPrivateKey(bytes, curve);
 }
 
 function ecFromEcPrivateKey(bytes: Uint8Array, curve: Curve): EcKey {
@@ -232,7 +252,13 @@ export function readPkcs8(der: Uint8Array): KeyModel {
   const content = derContent(der, privateKey);
   if (algorithmOid === RSA_ENCRYPTION) {
     expectNullOrAbsent(algorithm);
-    return rsaFromPkcs1Private(content);
+    return readPkcs1Private(content);
+  }
+  if (algorithmOid === RSASSA_PSS) {
+    // A key restricted to one hash and salt length (parameters present) is not converted; one with no restriction is the
+    // same RSA key and is read as such.
+    if (algorithm.children.length > 1) throw new KeyConverterError(PSS_SENTENCE);
+    return readPkcs1Private(content);
   }
   if (algorithmOid === EC_PUBLIC_KEY) {
     return ecFromEcPrivateKey(content, curveOfAlgorithm(der, algorithm));
@@ -261,8 +287,9 @@ export function readSpki(der: Uint8Array): KeyModel {
   const algorithmOid = derOid(der, derChild(algorithm, 0));
   const bits = derBitString(der, derChild(root, 1));
   if (bits.unusedBits !== 0) throw new KeyConverterError('The public key bits do not end on a byte boundary.');
-  if (algorithmOid === RSA_ENCRYPTION) {
-    expectNullOrAbsent(algorithm);
+  if (algorithmOid === RSA_ENCRYPTION || algorithmOid === RSASSA_PSS) {
+    if (algorithmOid === RSA_ENCRYPTION) expectNullOrAbsent(algorithm);
+    else if (algorithm.children.length > 1) throw new KeyConverterError(PSS_SENTENCE);
     const inner = readDer(bits.bytes);
     derExpect(inner, 16, 'universal', true);
     if (inner.children.length !== 2) {
@@ -270,7 +297,7 @@ export function readSpki(der: Uint8Array): KeyModel {
     }
     const n = derUnsigned(bits.bytes, derChild(inner, 0));
     const e = derUnsigned(bits.bytes, derChild(inner, 1));
-    checkRsaSize(n);
+    checkRsaModulus(n);
     return { type: 'rsa', n, e };
   }
   if (algorithmOid === EC_PUBLIC_KEY) {

@@ -8,15 +8,19 @@
  */
 import meta from './meta.json';
 import { DerError, derHex } from './der';
+import { MAX_PASTE_CHARS, readKeyInput } from './detect';
 import { sshFingerprints } from './fingerprint';
 import { readPkcs8, readSpki, writePkcs8, writeSpki } from './formats';
 import { generateEc, generateEd25519, generateRsa } from './generate';
 import {
+  COMMENT_LIMIT,
   KeyConverterError,
   RSA_GENERATE_BITS,
   bytesEqual,
+  checkComment,
   isPrivate,
   keyBits,
+  keyWarnings,
   type Curve,
   type EcKey,
   type Ed25519Key,
@@ -26,7 +30,20 @@ import {
 import { sshPublicBlob, sshPublicLine } from './openssh';
 import { PemError, bytesToPem } from './pem';
 
-export { meta, KeyConverterError, DerError, PemError, RSA_GENERATE_BITS, generateEc, generateEd25519, generateRsa };
+export {
+  meta,
+  KeyConverterError,
+  DerError,
+  PemError,
+  RSA_GENERATE_BITS,
+  COMMENT_LIMIT,
+  checkComment,
+  generateEc,
+  generateEd25519,
+  generateRsa,
+  readKeyInput,
+  MAX_PASTE_CHARS,
+};
 export type { Curve, EcKey, Ed25519Key, KeyModel, RsaKey };
 
 /** The kinds of key the page offers, in the order of its menu. */
@@ -41,9 +58,6 @@ export const KEY_TYPES = [
 ] as const;
 
 export type KeyTypeId = (typeof KEY_TYPES)[number]['id'];
-
-/** The longest comment the OpenSSH line carries. */
-export const COMMENT_LIMIT = 256;
 
 /**
  * Reads the PKCS#8 and SubjectPublicKeyInfo bytes of a generated RSA key into the key model and checks that they belong
@@ -76,24 +90,6 @@ export interface KeyOutputs {
   fingerprints: [string, string][];
   facts: [string, string][];
   warnings: string[];
-}
-
-/** Refuses a comment that is too long or holds a line break, before any work is done for it. */
-export function checkComment(comment: string): void {
-  if (comment.length > COMMENT_LIMIT) {
-    throw new KeyConverterError(
-      `The comment is ${comment.length} characters. The limit is ${COMMENT_LIMIT} because the public key is written as a single line.`,
-    );
-  }
-  for (let i = 0; i < comment.length; i++) {
-    const code = comment.charCodeAt(i);
-    if (code === 10 || code === 13) {
-      throw new KeyConverterError(
-        `The comment has a line break at character ${i + 1}. A comment is written on a single line, so remove the break.`,
-        i,
-      );
-    }
-  }
 }
 
 function exponentText(key: RsaKey): string {
@@ -155,6 +151,6 @@ export function keyOutputs(key: KeyModel, options: { comment: string }): KeyOutp
       ['MD5', prints.md5],
     ],
     facts: keyFacts(key),
-    warnings: [],
+    warnings: keyWarnings(key),
   };
 }

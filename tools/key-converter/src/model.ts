@@ -28,6 +28,12 @@ export type RsaBits = (typeof RSA_GENERATE_BITS)[number];
 /** The largest RSA modulus a key may have when it is read, so a hostile number cannot size a large calculation. */
 export const RSA_MAX_BITS = 16384;
 
+/** The longest comment the OpenSSH line carries. */
+export const COMMENT_LIMIT = 256;
+
+/** The warning shown for an RSA key under 2048 bits. */
+export const SHORT_RSA_WARNING = 'This RSA key is shorter than 2048 bits, which is too short for new use.';
+
 export type Curve = 'P-256' | 'P-384' | 'P-521';
 
 export interface RsaKey {
@@ -116,4 +122,27 @@ export function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
   if (left.length !== right.length) return false;
   for (let i = 0; i < left.length; i++) if (left[i] !== right[i]) return false;
   return true;
+}
+
+/** Refuses a comment that is too long or holds a line break, before any work is done for it. */
+export function checkComment(comment: string): void {
+  if (comment.length > COMMENT_LIMIT) {
+    throw new KeyConverterError(
+      `The comment is ${comment.length} characters. The limit is ${COMMENT_LIMIT} because the public key is written as a single line.`,
+    );
+  }
+  for (let i = 0; i < comment.length; i++) {
+    const code = comment.charCodeAt(i);
+    if (code === 10 || code === 13) {
+      throw new KeyConverterError(
+        `The comment has a line break at character ${i + 1}. A comment is written on a single line, so remove the break.`,
+        i,
+      );
+    }
+  }
+}
+
+/** What is worth saying about a key itself, apart from how it was read: today only an RSA key under 2048 bits. */
+export function keyWarnings(key: KeyModel): string[] {
+  return key.type === 'rsa' && keyBits(key) < 2048 ? [SHORT_RSA_WARNING] : [];
 }
