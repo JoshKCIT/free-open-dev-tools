@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { buildFixtureFile, writePng } from './fixture-files';
@@ -635,6 +635,436 @@ test('image-compare: images of different sizes are refused by default and padded
   await runButtonOf(page).click();
   await expect(issues).toContainText('first is 20 by 10 pixels', { timeout: 15_000 });
   expect(await outputArea(page).locator('dl.kv').count()).toBe(0);
+
+  expect(offending(requests)).toEqual([]);
+});
+
+/**
+ * Sprite Sheet Generator (plan 15-06). Pictures are made here with a different opaque colour in every pixel (the colour is
+ * a bijection of the pixel's number, so no two pixels of any picture share a colour), and what the page produces is
+ * checked three ways, never against the page's own earlier output:
+ *   1. the downloaded sheet, decoded in the page, holds each picture's exact pixels at the position the table states, and
+ *      is transparent everywhere else;
+ *   2. the downloaded CSS is the exact text the layout rules call for;
+ *   3. applied in a blank page with the sheet as a data address, each rule shows its picture as a browser renders it:
+ *      the element is compared pixel for pixel with an element that shows the picture's own file the same way, and (in
+ *      every engine whose renderer does not move colour values) with the pixels that were drawn.
+ */
+interface DistinctPicture {
+  file: PickedFile;
+  width: number;
+  height: number;
+  rgba: Uint8Array;
+}
+
+/** A colour for pixel `index` of picture `pic`: the three bytes of (a number unique to the pixel) times an odd constant, mod 2^24. */
+function distinctColour(pic: number, index: number): [number, number, number] {
+  const n = (((pic + 1) * 100_000 + index) * 40503) % 16_777_216;
+  return [n & 255, (n >> 8) & 255, (n >> 16) & 255];
+}
+
+function distinctPng(name: string, width: number, height: number, pic: number): DistinctPicture {
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i++) rgba.set([...distinctColour(pic, i), 255], i * 4);
+  return {
+    file: { name, mimeType: 'image/png', buffer: Buffer.from(writePng(width, height, rgba)) },
+    width,
+    height,
+    rgba,
+  };
+}
+
+/** Attaches several files to a multiple file field, repeating until the page shows the first name and the count. */
+async function attachMany(page: Page, field: string, list: PickedFile[]): Promise<void> {
+  await expect(async () => {
+    await page
+      .locator(`#f-${field}`)
+      .setInputFiles(list.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: f.buffer })));
+    await expect(page.locator('.field-help', { hasText: list[0]!.name })).toBeVisible({ timeout: 500 });
+    if (list.length > 1) {
+      await expect(page.locator('.field-help', { hasText: `and ${list.length - 1} more` })).toBeVisible({
+        timeout: 500,
+      });
+    }
+  }).toPass({ timeout: 10_000 });
+}
+
+/** Clicks Download beside the named file in the output's file list and returns what was saved. */
+async function downloadNamed(page: Page, name: string): Promise<Buffer> {
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    outputArea(page).locator('li', { hasText: name }).getByRole('button', { name: 'Download' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe(name);
+  return readFileSync(await download.path());
+}
+
+/** Decodes PNG bytes in the page and returns every pixel as RGBA numbers. */
+async function decodeRgba(page: Page, base64: string): Promise<{ width: number; height: number; data: number[] }> {
+  return page.evaluate(async (data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    return {
+      width: bitmap.width,
+      height: bitmap.height,
+      data: Array.from(context.getImageData(0, 0, bitmap.width, bitmap.height).data),
+    };
+  }, base64);
+}
+
+interface ExpectedSprite {
+  className: string;
+  x: number;
+  y: number;
+}
+
+/** The sprites of the table, as [class, x, y, width, height] text rows. */
+async function spriteRows(page: Page): Promise<string[][]> {
+  return outputArea(page)
+    .locator('table.output-table tbody tr')
+    .evaluateAll((rows) => rows.map((row) => Array.from(row.querySelectorAll('td'), (cell) => cell.textContent ?? '')));
+}
+
+/**
+ * Proves one run of the page: the table, the sheet's pixels, the CSS text and the rendering through the CSS. `context` is
+ * a browser context at a device scale of 1, so an element's screenshot has exactly one pixel per CSS pixel.
+ */
+async function proveSprites(
+  page: Page,
+  context: BrowserContext,
+  pictures: DistinctPicture[],
+  expected: ExpectedSprite[],
+  sheet: { width: number; height: number },
+  expectedCss: string,
+  engine: string,
+): Promise<void> {
+  // The table lists every sprite with its class, position and size.
+  expect(await spriteRows(page)).toEqual(
+    pictures.map((p, i) => [
+      expected[i]!.className,
+      String(expected[i]!.x),
+      String(expected[i]!.y),
+      String(p.width),
+      String(p.height),
+    ]),
+  );
+
+  // 1. The sheet: each picture's exact pixels at its position, transparent everywhere else.
+  const sheetBytes = await downloadNamed(page, 'sprite.png');
+  const decoded = await decodeRgba(page, sheetBytes.toString('base64'));
+  expect([decoded.width, decoded.height]).toEqual([sheet.width, sheet.height]);
+  const covered = new Set<number>();
+  pictures.forEach((p, i) => {
+    const at = expected[i]!;
+    for (let y = 0; y < p.height; y++) {
+      for (let x = 0; x < p.width; x++) {
+        const o = ((at.y + y) * decoded.width + at.x + x) * 4;
+        covered.add(o);
+        expect(decoded.data.slice(o, o + 4)).toEqual(
+          Array.from(p.rgba.subarray((y * p.width + x) * 4, (y * p.width + x) * 4 + 4)),
+        );
+      }
+    }
+  });
+  for (let o = 0; o < decoded.data.length; o += 4) {
+    if (!covered.has(o)) expect(decoded.data[o + 3]).toBe(0);
+  }
+
+  // 2. The CSS: the exact text, the same in the code block and in the download.
+  const cssFile = (await downloadNamed(page, 'sprite.css')).toString('utf8');
+  expect(cssFile).toBe(expectedCss);
+  expect(await codeText(page)).toBe(expectedCss);
+
+  // 3. Rendering: the CSS applied in a blank page with the sheet as a data address.
+  const blank = await context.newPage();
+  try {
+    await blank.goto('about:blank');
+    const sheetUrl = `data:image/png;base64,${sheetBytes.toString('base64')}`;
+    await blank.evaluate(
+      ({ css, url, sources, classes, sizes }) => {
+        document.body.style.margin = '0';
+        const style = document.createElement('style');
+        style.textContent = css.replace('url(sprite.png)', `url(${url})`);
+        document.head.append(style);
+        classes.forEach((name, i) => {
+          const spriteBox = document.createElement('div');
+          spriteBox.style.cssText = `position:absolute;line-height:0;left:${10 + i * 60}px;top:10px`;
+          const sprite = document.createElement('span');
+          sprite.className = `sprite ${name}`;
+          sprite.id = `sprite-${i}`;
+          spriteBox.append(sprite);
+          document.body.append(spriteBox);
+          // The same picture's own file, shown the same way (a background of the element's size).
+          const reference = document.createElement('div');
+          reference.id = `reference-${i}`;
+          reference.style.cssText = `position:absolute;left:${10 + i * 60}px;top:100px;width:${sizes[i]![0]}px;height:${sizes[i]![1]}px;background:url(data:image/png;base64,${sources[i]}) 0 0 no-repeat`;
+          document.body.append(reference);
+        });
+      },
+      {
+        css: cssFile,
+        url: sheetUrl,
+        sources: pictures.map((p) => p.file.buffer.toString('base64')),
+        classes: expected.map((e) => e.className),
+        sizes: pictures.map((p) => [p.width, p.height]),
+      },
+    );
+    for (let i = 0; i < pictures.length; i++) {
+      const p = pictures[i]!;
+      const shown = await decodeRgba(blank, (await blank.locator(`#sprite-${i}`).screenshot()).toString('base64'));
+      const reference = await decodeRgba(
+        blank,
+        (await blank.locator(`#reference-${i}`).screenshot()).toString('base64'),
+      );
+      expect([shown.width, shown.height]).toEqual([p.width, p.height]);
+      // Each rule shows exactly what the picture's own file shows, in the same browser.
+      expect(shown.data).toEqual(reference.data);
+      // And what was drawn. WebKit's renderer, here, moves some single channel values by one even when it shows the picture
+      // alone (the reference above), so there the bound is one step; every other engine must match exactly.
+      const drawn = Array.from(p.rgba);
+      if (engine === 'webkit') {
+        const worst = shown.data.reduce((m, v, k) => Math.max(m, Math.abs(v - drawn[k]!)), 0);
+        expect(worst).toBeLessThanOrEqual(1);
+      } else {
+        expect(shown.data).toEqual(drawn);
+      }
+    }
+  } finally {
+    await blank.close();
+  }
+}
+
+test('sprite-sheet: each generated rule shows its own image pixel for pixel in a blank page', async ({
+  page,
+  browser,
+  browserName,
+}) => {
+  await openTool(page, 'sprite-sheet');
+  // Recorded only after the page and its own chunk have loaded, so this asserts nothing is requested while packing.
+  const requests = recordRequests(page);
+  const context = await browser.newContext({ deviceScaleFactor: 1 });
+  try {
+    // Three pictures of 10 by 10, 20 by 5 and 5 by 30, every pixel a different opaque colour.
+    const pictures = [
+      distinctPng('pic-1.png', 10, 10, 0),
+      distinctPng('pic-2.png', 20, 5, 1),
+      distinctPng('pic-3.png', 5, 30, 2),
+    ];
+    await attachMany(
+      page,
+      'images',
+      pictures.map((p) => p.file),
+    );
+    await fillField(page, 'padding', '2');
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('table.output-table')).toBeVisible({ timeout: 30_000 });
+    await expect(outputArea(page).locator('.stats')).toContainText('42 by 62 pixels');
+
+    // Grid, padding 2: two columns, cells of 20 by 30, so the pictures sit at 0 0, 22 0 and 0 32 on a 42 by 62 sheet.
+    const gridCss = [
+      '.sprite {',
+      '  display: inline-block;',
+      '  background-image: url(sprite.png);',
+      '  background-repeat: no-repeat;',
+      '}',
+      '',
+      '.sprite-pic-1 {',
+      '  background-position: 0 0;',
+      '  width: 10px;',
+      '  height: 10px;',
+      '}',
+      '',
+      '.sprite-pic-2 {',
+      '  background-position: -22px 0;',
+      '  width: 20px;',
+      '  height: 5px;',
+      '}',
+      '',
+      '.sprite-pic-3 {',
+      '  background-position: 0 -32px;',
+      '  width: 5px;',
+      '  height: 30px;',
+      '}',
+      '',
+    ].join('\n');
+    await proveSprites(
+      page,
+      context,
+      pictures,
+      [
+        { className: 'sprite-pic-1', x: 0, y: 0 },
+        { className: 'sprite-pic-2', x: 22, y: 0 },
+        { className: 'sprite-pic-3', x: 0, y: 32 },
+      ],
+      { width: 42, height: 62 },
+      gridCss,
+      browserName,
+    );
+
+    // Shelf, padding 2: the 30 tall picture first, then the 10 tall, then the 5 tall, wrapping at a width of 20, so the
+    // pictures sit at 7 0, 0 32 and 0 0 on a 20 by 37 sheet.
+    await page.locator('input[name="layout"][value="shelf"]').click();
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('.stats')).toContainText('20 by 37 pixels', { timeout: 30_000 });
+    const shelfCss = [
+      '.sprite {',
+      '  display: inline-block;',
+      '  background-image: url(sprite.png);',
+      '  background-repeat: no-repeat;',
+      '}',
+      '',
+      '.sprite-pic-1 {',
+      '  background-position: -7px 0;',
+      '  width: 10px;',
+      '  height: 10px;',
+      '}',
+      '',
+      '.sprite-pic-2 {',
+      '  background-position: 0 -32px;',
+      '  width: 20px;',
+      '  height: 5px;',
+      '}',
+      '',
+      '.sprite-pic-3 {',
+      '  background-position: 0 0;',
+      '  width: 5px;',
+      '  height: 30px;',
+      '}',
+      '',
+    ].join('\n');
+    await proveSprites(
+      page,
+      context,
+      pictures,
+      [
+        { className: 'sprite-pic-1', x: 7, y: 0 },
+        { className: 'sprite-pic-2', x: 0, y: 32 },
+        { className: 'sprite-pic-3', x: 0, y: 0 },
+      ],
+      { width: 20, height: 37 },
+      shelfCss,
+      browserName,
+    );
+
+    // With padding 0 in a grid, neighbouring sprites touch: 10 by 10 pictures sit at 0 0, 10 0 and 0 10 on a 20 by 20 sheet.
+    const squares = [
+      distinctPng('sq-1.png', 10, 10, 3),
+      distinctPng('sq-2.png', 10, 10, 4),
+      distinctPng('sq-3.png', 10, 10, 5),
+    ];
+    await attachMany(
+      page,
+      'images',
+      squares.map((p) => p.file),
+    );
+    await page.locator('input[name="layout"][value="grid"]').click();
+    await fillField(page, 'padding', '0');
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('.stats')).toContainText('20 by 20 pixels', { timeout: 30_000 });
+    expect(await spriteRows(page)).toEqual([
+      ['sprite-sq-1', '0', '0', '10', '10'],
+      ['sprite-sq-2', '10', '0', '10', '10'],
+      ['sprite-sq-3', '0', '10', '10', '10'],
+    ]);
+    const touching = await decodeRgba(page, (await downloadNamed(page, 'sprite.png')).toString('base64'));
+    // The three pictures fill 300 pixels with no gap between them; the fourth cell of the 2 by 2 grid is empty (100 pixels).
+    const alphas = touching.data.filter((_, k) => k % 4 === 3);
+    expect(alphas.filter((alpha) => alpha === 255)).toHaveLength(300);
+    expect(alphas.filter((alpha) => alpha === 0)).toHaveLength(100);
+    for (const [index, [ox, oy]] of [
+      [0, [0, 0]],
+      [1, [10, 0]],
+      [2, [0, 10]],
+    ] as [number, [number, number]][]) {
+      const picture = squares[index]!;
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          const o = ((oy + y) * 20 + ox + x) * 4;
+          expect(touching.data.slice(o, o + 4)).toEqual(
+            Array.from(picture.rgba.subarray((y * 10 + x) * 4, (y * 10 + x) * 4 + 4)),
+          );
+        }
+      }
+    }
+
+    expect(offending(requests)).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test('sprite-sheet: files with the same name get distinct class names and the table lists every sprite', async ({
+  page,
+}) => {
+  await openTool(page, 'sprite-sheet');
+  const requests = recordRequests(page);
+
+  // Names that give the same class name, a name with a copy marker, a hostile name and a name with no letters at all.
+  const hostile = `"}; body{display:none} /*.png`;
+  const names = ['icon.png', 'Icon.PNG', 'icon (copy).png', hostile, '---.png'];
+  const pictures = names.map((name, i) => distinctPng(name, 4 + i, 4, i));
+  await attachMany(
+    page,
+    'images',
+    pictures.map((p) => p.file),
+  );
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('table.output-table')).toBeVisible({ timeout: 30_000 });
+
+  // Every sprite is listed, in the order picked, with distinct classes made only of a to z, 0 to 9 and hyphens.
+  const rows = await spriteRows(page);
+  expect(rows.map((r) => r[0])).toEqual([
+    'sprite-icon',
+    'sprite-icon-2',
+    'sprite-icon-copy',
+    'sprite-body-display-none',
+    'sprite-sprite',
+  ]);
+  expect(new Set(rows.map((r) => r[0])).size).toBe(5);
+  for (const row of rows) expect(row[0]).toMatch(/^sprite-[a-z0-9-]{1,40}$/);
+  // Widths are the pictures' own (4, 5, 6, 7, 8), heights 4, and no two rows share a position.
+  expect(rows.map((r) => [r[3], r[4]])).toEqual([
+    ['4', '4'],
+    ['5', '4'],
+    ['6', '4'],
+    ['7', '4'],
+    ['8', '4'],
+  ]);
+  expect(new Set(rows.map((r) => `${r[1]},${r[2]}`)).size).toBe(5);
+
+  // The CSS and the markup carry the same classes, and no picked file name appears anywhere in the output.
+  const css = await codeText(page);
+  for (const cls of ['sprite-icon', 'sprite-icon-2', 'sprite-icon-copy', 'sprite-body-display-none', 'sprite-sprite']) {
+    expect(css).toContain(`.${cls} {`);
+  }
+  expect(css.split('\n').filter((l) => l.startsWith('.sprite-')).length).toBe(5);
+  const shown = await outputArea(page).innerText();
+  expect(shown).not.toContain('Icon.PNG');
+  expect(shown).not.toContain('display:none}');
+  expect(shown).not.toContain('/*');
+  expect(shown).toContain('<span class="sprite sprite-icon-2"></span>');
+
+  // A picked file that is not a picture is refused with a plain sentence that names its place, never its name.
+  await attachMany(page, 'images', [
+    pictures[0]!.file,
+    { name: 'FODT-NOT-A-PICTURE.png', mimeType: 'image/png', buffer: Buffer.from('this is plain text, not a picture') },
+  ]);
+  await runButtonOf(page).click();
+  const issues = outputArea(page).locator('.issue-list');
+  await expect(issues).toContainText('Image 2: This is not a PNG, JPEG, GIF, WebP or BMP image.', { timeout: 15_000 });
+  await expect(issues).not.toContainText('FODT-NOT-A-PICTURE');
+  expect(await outputArea(page).locator('table.output-table').count()).toBe(0);
+
+  // Padding outside 0 to 64 is refused naming the field and its range.
+  await attachMany(page, 'images', [pictures[0]!.file]);
+  await fillField(page, 'padding', '65');
+  await runButtonOf(page).click();
+  await expect(issues).toContainText('Padding must be a whole number from 0 to 64.', { timeout: 15_000 });
 
   expect(offending(requests)).toEqual([]);
 });
