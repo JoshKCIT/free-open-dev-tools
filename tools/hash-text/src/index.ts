@@ -317,3 +317,8 @@ export function digestsMatch(a: string, b: string): boolean {
   for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
   return diff === 0;
 }
+
+// Checksums that are not hashes. They live in their own files and are not part of `Algorithm`, `ALGORITHMS`,
+// `hashBytes` or `hashAll`, whose tests assert whole lists and every digest's length.
+export { CRC_CATALOGUE, type CrcParams } from './crc-catalogue';
+export { makeCrc, crcValue, checksumBytes, checksumRows, type ChecksumRow } from './checksums';

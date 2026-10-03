@@ -123,13 +123,19 @@ it('CRC-32 ISO-HDLC equals the existing crc32 export and empty input gives each 
     for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(next() * 256);
     expect(crcValue(bytes, iso)).toBe(crc32(bytes));
   }
-  // With nothing to read, the value is the initial value with the final exclusive-or applied, and every catalogue entry
-  // reflects its input and output alike, so no reversal changes it.
+  // With nothing to read, the register still holds its initial value, so the result is that value (reversed when the
+  // output is reflected) with the final exclusive-or applied. The catalogue gives the initial value in the order the
+  // algorithm is written, so an entry that reflects its output starts from the bit-reversed value.
+  const reverse = (v: number, width: number) => {
+    let r = 0;
+    for (let i = 0; i < width; i++) if ((v >>> i) & 1) r |= 1 << (width - 1 - i);
+    return r >>> 0;
+  };
   const empty = new Uint8Array(0);
   for (const entry of CRC_CATALOGUE) {
-    expect(entry.refin, entry.name).toBe(entry.refout);
     const mask = entry.width === 32 ? 0xffffffff : 0xffff;
-    expect(crcValue(empty, entry), entry.name).toBe(((entry.init ^ entry.xorout) & mask) >>> 0);
+    const start = entry.refout ? reverse(entry.init, entry.width) : entry.init;
+    expect(crcValue(empty, entry), entry.name).toBe(((start ^ entry.xorout) & mask) >>> 0);
   }
   expect(crcValue(empty, iso)).toBe(0);
   expect(
@@ -138,6 +144,13 @@ it('CRC-32 ISO-HDLC equals the existing crc32 export and empty input gives each 
       CRC_CATALOGUE.find((e) => e.name === 'CRC-16/ARC')!,
     ),
   ).toBe(0);
+  // CRC-A starts from 0xc6c6 as written, which is 0x6363 reversed.
+  expect(
+    crcValue(
+      empty,
+      CRC_CATALOGUE.find((e) => e.name === 'CRC-16/ISO-IEC-14443-3-A')!,
+    ),
+  ).toBe(0x6363);
 });
 
 it('RFC 3720 Appendix B.4 CRC-32C examples reproduce', () => {
