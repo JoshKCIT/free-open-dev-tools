@@ -221,16 +221,20 @@ it('Base64 digests are listed by length with or without padding and as Base64 or
 });
 
 it('non-ASCII lines are not hash strings and prototype names are not recognised', () => {
+  const E_ACUTE = String.fromCharCode(0xe9);
+  const NBSP = String.fromCharCode(0xa0);
+  const ZWSP = String.fromCharCode(0x200b);
+  const NUL = String.fromCharCode(0);
   const hex = '5f4dcc3b5aa765d61d8327deb882cf99';
   const odd = [
-    'café',
-    `${hex}é`,
-    ` ${hex}`, // a no-break space is not trimmed
-    `​${hex}`, // a zero-width space is not trimmed
+    `caf${E_ACUTE}`,
+    `${hex}${E_ACUTE}`,
+    `${NBSP}${hex}`, // a no-break space is not trimmed
+    `${ZWSP}${hex}`, // a zero-width space is not trimmed
     `\f${hex}`, // a form feed is not trimmed
     `${hex.slice(0, 16)}\t${hex.slice(16)}`, // a tab inside the line
     `${hex.slice(0, 16)}\rabc${hex.slice(16)}`, // a carriage return not followed by a line feed
-    '\u0000',
+    NUL,
   ];
   for (const line of odd) {
     const result = identifyText(line);
@@ -318,6 +322,9 @@ const HOSTILE = [
   fill('$2b$12$', 'a'),
   fill('{', 'A'),
   fill('{SSHA}', 'A'),
+  // Reaches the padding count of the LDAP rules (the body length is a multiple of 4): a run of equals signs, then one letter.
+  `{SHA}${'='.repeat(4087)}a`,
+  `{SMD5}${'='.repeat(4086)}a`,
   fill('{CRYPT}', '$'),
   fill('{CRYPT}$6$rounds=', '1'),
   fill('{PBKDF2}1$', 'a$'),
@@ -338,10 +345,26 @@ const HOSTILE = [
   fill('bcrypt_sha256$$2b$12$', 'a'),
 ];
 
+/** Lines that make several rules scan the whole line: a long run after a plausible start, and a run of equals signs. */
+const HEAVY = [
+  fill('$a$', 'a$'),
+  fill('$mykdf$', 'A'),
+  `{SSHA}${'A'.repeat(4087)}=`,
+  `{SMD5}${'A'.repeat(4087)}=`,
+  `{SHA}${'='.repeat(4087)}a`,
+  `{MD5}${'='.repeat(4088)}`,
+];
+
 it('1000 hostile lines of 4096 characters are identified in linear time', () => {
-  for (const line of HOSTILE) expect(line).toHaveLength(4096);
+  for (const line of [...HOSTILE, ...HEAVY]) {
+    expect(line.length).toBeGreaterThanOrEqual(4093);
+    expect(line.length).toBeLessThanOrEqual(4096);
+  }
   const lines: string[] = [];
-  for (let i = 0; i < 1000; i++) lines.push(HOSTILE[i % HOSTILE.length] ?? '');
+  // Half the lines are the heavy ones, so a rule that scans the line more than once per character shows up at once.
+  for (let i = 0; i < 1000; i++) {
+    lines.push((i % 2 === 0 ? HEAVY[(i / 2) % HEAVY.length] : HOSTILE[((i - 1) / 2) % HOSTILE.length]) ?? '');
+  }
   // The paste limit (262,144 characters) is a sixteenth of 1000 lines of 4096, so the 1000 lines go through identifyLine,
   // which is the whole of the identification; pastes at the limit go through identifyText below. The clock is read around
   // the identification only, and every expectation comes after the second reading.
@@ -350,7 +373,7 @@ it('1000 hostile lines of 4096 characters are identified in linear time', () => 
   for (const line of lines) found += identifyLine(line).length;
   const elapsedLines = performance.now() - startLines;
 
-  const paste = HOSTILE.join('\n');
+  const paste = [...HEAVY, ...HOSTILE].join('\n');
   const startText = performance.now();
   let pasteLines = 0;
   for (let i = 0; i < 40; i++) pasteLines += identifyText(paste).read;
@@ -359,7 +382,7 @@ it('1000 hostile lines of 4096 characters are identified in linear time', () => 
   expect(found).toBeGreaterThanOrEqual(0);
   expect(elapsedLines).toBeLessThan(2000);
   expect(paste.length).toBeLessThanOrEqual(262144);
-  expect(pasteLines).toBe(40 * HOSTILE.length);
+  expect(pasteLines).toBe(40 * (HEAVY.length + HOSTILE.length));
   expect(elapsedText).toBeLessThan(2000);
 }, 60_000);
 
