@@ -35,25 +35,53 @@ const EC_CURVES = new Map<string, Curve>([
   ['ecdsa-p521', 'P-521'],
 ]);
 
+/** One output block as a code block, with the name of its download written below as a plain string. */
+function codeValue(block: KeyOutputBlock, download: string): OutputBlock {
+  return block.language === undefined
+    ? { kind: 'code', label: block.label, value: block.text, download }
+    : { kind: 'code', label: block.label, value: block.text, language: block.language, download };
+}
+
 /**
- * One output block as a code block. Each download name is a fixed string written here, chosen by the kind of block and
- * the kind of key, and never built from the key or from the comment.
+ * One output block with its download. Each download name is a fixed string written here, chosen by the kind of block and
+ * the kind of key, and never built from the key, the comment or any pasted text.
  */
 function codeBlock(block: KeyOutputBlock, family: KeyModel['type']): OutputBlock {
   switch (block.id) {
     case 'pkcs8':
-      return { kind: 'code', label: block.label, value: block.text, download: 'private-key.pem' };
+      return codeValue(block, 'private-key.pem');
     case 'spki':
-      return { kind: 'code', label: block.label, value: block.text, download: 'public-key.pem' };
-    default:
+      return codeValue(block, 'public-key.pem');
+    case 'pkcs1-private':
+      return codeValue(block, 'rsa-private-key.pem');
+    case 'pkcs1-public':
+      return codeValue(block, 'rsa-public-key.pem');
+    case 'sec1':
+      return codeValue(block, 'ec-private-key.pem');
+    case 'jwk-private':
+      return codeValue(block, 'private-key.jwk');
+    case 'jwk-public':
+      return codeValue(block, 'public-key.jwk');
+    case 'ssh-private':
       switch (family) {
         case 'ec':
-          return { kind: 'code', label: block.label, value: block.text, download: 'id_ecdsa.pub' };
+          return codeValue(block, 'id_ecdsa');
         case 'ed25519':
-          return { kind: 'code', label: block.label, value: block.text, download: 'id_ed25519.pub' };
+          return codeValue(block, 'id_ed25519');
         default:
-          return { kind: 'code', label: block.label, value: block.text, download: 'id_rsa.pub' };
+          return codeValue(block, 'id_rsa');
       }
+    case 'ssh-public':
+      switch (family) {
+        case 'ec':
+          return codeValue(block, 'id_ecdsa.pub');
+        case 'ed25519':
+          return codeValue(block, 'id_ed25519.pub');
+        default:
+          return codeValue(block, 'id_rsa.pub');
+      }
+    default:
+      return codeValue(block, 'public-key-rfc4716.pub');
   }
 }
 
