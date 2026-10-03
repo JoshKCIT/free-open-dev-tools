@@ -10,21 +10,26 @@ import {
 } from '../src/index';
 import { readCsr } from '../src/csr';
 import { PemError } from '../src/pem';
+import { decimalOf } from '../src/hex';
 import { readCertificate } from '../src/x509';
 import {
   base64,
+  bitString,
   buildCertificate,
+  boolean,
   concat,
   context,
   extension,
+  integer,
   nul,
   oid,
   seq,
   seqOf,
   tlv,
+  utf8,
   type Bytes,
 } from './fixtures/der-build';
-import { NOW_MS, certificateDer, certificatePem, pemText, requestDer } from './fixtures/helpers';
+import { NOW_MS, certificateDer, certificateOf, certificatePem, pemText, requestDer } from './fixtures/helpers';
 
 /**
  * Hostile input: a certificate is untrusted bytes. Whatever the paste holds, the answer is a result or one plain sentence,
@@ -452,3 +457,80 @@ it('8000 fixed-seed mutations of real requests give only plain messages', () => 
   expect(read).toBeGreaterThan(50);
   expect(refused).toBeGreaterThan(500);
 }, 60_000);
+
+it('a certificate with a 300 KB exponent decodes well under a second and prints a short description', () => {
+  // A 300,000-byte public exponent: the first byte 0x7f, then 0x55 bytes, so the description can name the first bytes.
+  const huge = new Uint8Array(300_000).fill(0x55);
+  huge[0] = 0x7f;
+  const spki = seq(seq(oid('1.2.840.113549.1.1.1'), nul()), bitString(seq(integer('c1'.repeat(128)), tlv(0x02, huge))));
+  const paste = pemText('CERTIFICATE', base64(buildCertificate({ spki })));
+  // Only the decode is timed, not the building of the paste.
+  const started = performance.now();
+  const item = certificateOf(decodeInput(paste, { nowMs: NOW_MS }));
+  const elapsed = performance.now() - started;
+  expect(elapsed).toBeLessThan(1000);
+  expect(item.publicKey.bits).toBe(1024);
+  expect(item.publicKey.exponent).toBe('a number of 300,000 bytes that begins 7f 55 55 55 55 55 55 55');
+}, 60_000);
+
+it('a certificate with a 300 KB path length, distance, notice number, feature or salt decodes well under a second', () => {
+  const huge = new Uint8Array(300_000).fill(0x11);
+  huge[0] = 0x01;
+  const bigInteger = tlv(0x02, huge);
+  const described = 'a number of 300,000 bytes that begins 01 11 11 11 11 11 11 11';
+  const decode = (der: Bytes) => certificateOf(decodeInput(pemText('CERTIFICATE', base64(der)), { nowMs: NOW_MS }));
+  const lines = (item: ReturnType<typeof decode>, id: string): string[] =>
+    item.extensions.find((entry) => entry.oid === id)!.value;
+
+  const pathLength = buildCertificate({ extensions: [extension('2.5.29.19', true, seq(boolean(true), bigInteger))] });
+  const notice = buildCertificate({
+    extensions: [
+      extension(
+        '2.5.29.32',
+        false,
+        seq(
+          seq(oid('1.3.6.1.4.1.99999.1'), seq(seq(oid('1.3.6.1.5.5.7.2.2'), seq(seq(utf8('Org'), seq(bigInteger)))))),
+        ),
+      ),
+    ],
+  });
+  const distance = buildCertificate({
+    extensions: [
+      extension(
+        '2.5.29.30',
+        true,
+        seq(context(0, seq(context(2, Uint8Array.from(Buffer.from('example.test')), false), context(0, huge, false)))),
+      ),
+    ],
+  });
+  const feature = buildCertificate({ extensions: [extension('1.3.6.1.5.5.7.1.24', false, seq(bigInteger))] });
+  const salt = buildCertificate({
+    signature: seq(oid('1.2.840.113549.1.1.10'), seq(context(2, bigInteger))),
+  });
+
+  // Only the decoding is timed, not the building of the five certificates.
+  const started = performance.now();
+  const results = [pathLength, notice, distance, feature, salt].map(decode);
+  const elapsed = performance.now() - started;
+  expect(elapsed).toBeLessThan(1000);
+  expect(lines(results[0]!, '2.5.29.19')).toEqual([`CA:TRUE, pathlen:${described}`]);
+  expect(lines(results[1]!, '2.5.29.32')).toEqual([
+    'Policy: 1.3.6.1.4.1.99999.1',
+    `Notice reference: Org, numbers ${described}`,
+  ]);
+  expect(lines(results[2]!, '2.5.29.30')).toEqual([`Permitted: dNSName: example.test (minimum ${described})`]);
+  expect(lines(results[3]!, '1.3.6.1.5.5.7.1.24')).toEqual([described]);
+  expect(results[4]!.signatureAlgorithm.params).toBe(`hash SHA-1, mask MGF1 with SHA-1, salt length ${described}`);
+}, 60_000);
+
+it('a number is written as decimal up to 64 bytes and described beyond that', () => {
+  const sixtyFour = new Uint8Array(64).fill(0xff);
+  expect(decimalOf(sixtyFour)).toBe(((1n << 512n) - 1n).toString());
+  expect(decimalOf(new Uint8Array(65).fill(0xff))).toBe('a number of 65 bytes that begins ff ff ff ff ff ff ff ff');
+  // Leading zero bytes are not part of the number's size.
+  expect(decimalOf(Uint8Array.from([0, 0, 0, 5]))).toBe('5');
+  expect(decimalOf(new Uint8Array(0))).toBe('0');
+  expect(decimalOf(concat(new Uint8Array(100), new Uint8Array(65).fill(1)))).toBe(
+    'a number of 65 bytes that begins 01 01 01 01 01 01 01 01',
+  );
+});

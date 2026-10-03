@@ -21,7 +21,7 @@ import {
   type DerNode,
 } from './der';
 import { readExtensions, type ExtensionInfo } from './extensions';
-import { bigIntOf, colonHex, integerHex } from './hex';
+import { colonHex, decimalOf, integerHex } from './hex';
 import { readName, type NameInfo } from './names';
 import { CURVE_BITS, FIXED_KEY_BITS, KEY_TYPE_NAMES, oidLabel } from './oids';
 import { bytesToBase64, bytesToPem } from './pem';
@@ -141,7 +141,7 @@ export function pssParameters(bytes: Uint8Array, algorithm: Algorithm): string {
         const hashNode = generator.node.children[1];
         mask = `${oidLabel(generator.oid)}${hashNode === undefined ? '' : ` with ${hashName(bytes, hashNode)}`}`;
       } else if (field.tag === 2) {
-        salt = bigIntOf(derUnsigned(bytes, inner)).toString();
+        salt = decimalOf(derUnsigned(bytes, inner));
       }
     }
   }
@@ -164,7 +164,7 @@ export function readPublicKey(bytes: Uint8Array, node: DerNode, warnings: string
       const root = readDer(inner);
       derExpect(root, 16, 'universal', true);
       result.bits = bitLength(derUnsigned(inner, derChild(root, 0)));
-      result.exponent = bigIntOf(derUnsigned(inner, derChild(root, 1))).toString();
+      result.exponent = decimalOf(derUnsigned(inner, derChild(root, 1)));
     } else if (algorithm.oid === EC_PUBLIC_KEY) {
       const params = algorithm.node.children[1];
       if (params !== undefined && params.cls === 'universal' && params.tag === 6) {

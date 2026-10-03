@@ -21,7 +21,7 @@ import {
   type DerNode,
 } from './der';
 import { generalNamesOf, readGeneralName, readGeneralNames, type GeneralNameInfo } from './general-names';
-import { bigIntOf, cappedHex, colonHex, integerHex } from './hex';
+import { cappedHex, colonHex, decimalOf, integerHex } from './hex';
 import { OID_NAMES, oidLabel } from './oids';
 
 export interface ExtensionInfo {
@@ -128,7 +128,7 @@ function policyQualifier(bytes: Uint8Array, node: DerNode): string[] {
     const lines: string[] = [];
     for (const part of qualifier.children) {
       if (part.cls === 'universal' && part.tag === 16) {
-        const numbers = derChild(part, 1).children.map((n) => bigIntOf(derUnsigned(bytes, n)).toString());
+        const numbers = derChild(part, 1).children.map((n) => decimalOf(derUnsigned(bytes, n)));
         lines.push(`Notice reference: ${displayText(bytes, derChild(part, 0))}, numbers ${numbers.join(', ')}`);
       } else {
         lines.push(`User notice: ${displayText(bytes, part)}`);
@@ -148,7 +148,7 @@ function subtreeLines(bytes: Uint8Array, group: DerNode, word: string): string[]
     let distances = '';
     for (const part of subtree.children.slice(1)) {
       if (part.cls !== 'context') continue;
-      const number = bigIntOf(derUnsigned(bytes, { ...part, tag: 2, cls: 'universal' })).toString();
+      const number = decimalOf(derUnsigned(bytes, { ...part, tag: 2, cls: 'universal' }));
       distances += `${distances === '' ? ' (' : ', '}${part.tag === 0 ? 'minimum' : 'maximum'} ${number}`;
     }
     lines.push(`${word}: ${nameLine(base)}${distances === '' ? '' : distances + ')'}`);
@@ -192,7 +192,7 @@ export const EXTENSION_DECODERS: ReadonlyMap<string, ExtensionDecoder> = new Map
       for (const child of node.children) {
         if (child.cls === 'universal' && child.tag === 1) ca = lenientBoolean(bytes, child);
         else if (child.cls === 'universal' && child.tag === 2)
-          pathLength = bigIntOf(derUnsigned(bytes, child)).toString();
+          pathLength = decimalOf(derUnsigned(bytes, child));
         else
           throw new DerError(
             `The basic constraints at offset ${node.start} hold an element of the wrong kind.`,
@@ -284,7 +284,7 @@ export const EXTENSION_DECODERS: ReadonlyMap<string, ExtensionDecoder> = new Map
     (bytes, node) => {
       derExpect(node, 16, 'universal', true);
       return node.children.map((child) => {
-        const number = bigIntOf(derUnsigned(bytes, child)).toString();
+        const number = decimalOf(derUnsigned(bytes, child));
         return TLS_FEATURES.get(number) ?? number;
       });
     },
