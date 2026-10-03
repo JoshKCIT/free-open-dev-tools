@@ -1,0 +1,47 @@
+{
+  "name": "@fodt/hash-identifier",
+  "version": "1.0.0",
+  "description": "Paste a hash or password hash string and see the algorithms it could come from, ranked, with the reason for each.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "hash",
+    "identifier",
+    "password hash",
+    "bcrypt",
+    "md5 crypt",
+    "crypt",
+    "digest",
+    "hex"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/hash-identifier"
+  }
+}
