@@ -1328,5 +1328,12 @@
     "category": "hashing",
     "tier": 3,
     "summary": "Paste an X.509 certificate, chain or signing request and read its names, dates, key, extensions and fingerprints."
+  },
+  {
+    "id": "totp-generator",
+    "name": "TOTP & HOTP Code Generator",
+    "category": "hashing",
+    "tier": 2,
+    "summary": "Make the current and next one-time 2FA codes from a Base32 secret, with the otpauth link and QR code for an app."
   }
 ]
