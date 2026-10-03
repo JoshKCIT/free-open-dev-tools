@@ -7,10 +7,15 @@ import {
   format,
   checksumBytes,
   checksumRows,
+  shake,
+  md4,
+  ntlm,
+  SHAKE_MIN_BYTES,
+  SHAKE_MAX_BYTES,
   type InputEncoding,
   type OutputFormat,
 } from '@fodt/hash-text';
-import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import { defineTool, num, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const SECURITY_LABEL: Record<string, string> = {
   broken: 'Broken — do not use for security',
@@ -54,8 +59,21 @@ export default defineTool({
       help: 'Digests is the original list. The others add checksums and older functions.',
       options: [
         { value: 'digests', label: 'Digests (MD5, SHA, BLAKE, CRC32)' },
-        { value: 'checksums', label: 'Checksums (CRC-16 and CRC-32 variants)' },
+        { value: 'checksums', label: 'Checksums (CRC-16, CRC-32 variants, Adler-32)' },
+        { value: 'shake', label: 'SHAKE128 and SHAKE256' },
+        { value: 'legacy', label: 'MD4 and NTLM' },
       ],
+    },
+    {
+      name: 'shakeBytes',
+      label: 'SHAKE output length in bytes',
+      type: 'number',
+      default: 32,
+      min: SHAKE_MIN_BYTES,
+      max: SHAKE_MAX_BYTES,
+      step: 1,
+      help: 'A whole number from 1 to 4096. 32 bytes is 256 bits.',
+      visible: (values) => values.family === 'shake',
     },
     {
       name: 'encoding',
@@ -93,6 +111,8 @@ export default defineTool({
     { label: 'abc', values: { input: 'abc' } },
     { label: 'Hex bytes', values: { input: '00 0f ff', encoding: 'hex' } },
     { label: 'Checksums of 123456789', values: { input: '123456789', family: 'checksums' } },
+    { label: 'SHAKE128 of abc', values: { input: 'abc', family: 'shake', shakeBytes: 32 } },
+    { label: 'MD4 and NTLM of password', values: { input: 'password', family: 'legacy' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
@@ -129,6 +149,72 @@ export default defineTool({
         kind: 'note',
         tone: 'info',
         value: 'Checksums detect accidental changes. They are not hashes and give no security.',
+      });
+      return { outputs, stats: inputStats(bytes, encoding, input) };
+    }
+
+    if (str(values, 'family', 'digests') === 'shake') {
+      // The length field is read only here, where it is visible; in every other view a value left in it is ignored.
+      const length = num(values, 'shakeBytes', 32);
+      let short: Uint8Array;
+      let long: Uint8Array;
+      try {
+        short = shake(bytes, 'shake128', length);
+        long = shake(bytes, 'shake256', length);
+      } catch (err) {
+        return { outputs: [], errors: [{ message: err instanceof Error ? err.message : String(err) }] };
+      }
+      const rows = [
+        { name: 'SHAKE128', text: format(short, output) },
+        { name: 'SHAKE256', text: format(long, output) },
+      ];
+      const wanted = str(values, 'expected').trim();
+      const outputs: OutputBlock[] = [];
+      if (wanted) {
+        outputs.push(compareNote(rows.filter((r) => digestsMatch(r.text, wanted)).map((r) => r.name)));
+      }
+      for (const r of rows) {
+        outputs.push({
+          kind: 'code',
+          label: `${r.name} (${length} ${length === 1 ? 'byte' : 'bytes'})`,
+          value: r.text,
+        });
+      }
+      outputs.push({
+        kind: 'note',
+        tone: 'info',
+        value:
+          'SHAKE128 and SHAKE256 are extendable-output functions from FIPS 202: you choose the length, and a shorter output is the start of a longer one.',
+      });
+      return { outputs, stats: inputStats(bytes, encoding, input) };
+    }
+
+    if (str(values, 'family', 'digests') === 'legacy') {
+      const rows: { name: string; text: string }[] = [{ name: 'MD4', text: format(md4(bytes), output) }];
+      // NTLM is defined over the text of a password, as UTF-16LE, so it has nothing to say about bytes read from hex or Base64.
+      if (encoding === 'utf8') rows.push({ name: 'NTLM', text: format(ntlm(input), output) });
+      const wanted = str(values, 'expected').trim();
+      const outputs: OutputBlock[] = [];
+      if (wanted) {
+        outputs.push(compareNote(rows.filter((r) => digestsMatch(r.text, wanted)).map((r) => r.name)));
+      }
+      outputs.push({
+        kind: 'table',
+        label: 'MD4 and NTLM',
+        table: { headers: ['Algorithm', 'Digest'], rows: rows.map((r) => [r.name, r.text]), mono: [1] },
+      });
+      if (encoding !== 'utf8') {
+        outputs.push({
+          kind: 'note',
+          tone: 'info',
+          value: 'NTLM applies to text, so it is not shown when the input is read as hex or Base64.',
+        });
+      }
+      outputs.push({
+        kind: 'note',
+        tone: 'warn',
+        value:
+          'MD4 and NTLM are broken. They are offered only to match values that older systems already hold; do not use them for anything new or to store passwords.',
       });
       return { outputs, stats: inputStats(bytes, encoding, input) };
     }

@@ -84,5 +84,76 @@ test('hash-text: Checksums show the catalogue check values CRC-32C e3069283 and 
   // The catalogue's current name and the older name people search for are on the same row.
   await expect(rowNamed(page, 'CRC-16/IBM-3740')).toContainText('CRC-16/CCITT-FALSE');
   await expect(outputArea(page)).toContainText('Checksums detect accidental changes. They are not hashes');
-  await expect(outputArea(page).locator('table.output-table tbody tr')).toHaveCount(43);
+  await expect(outputArea(page).locator('table.output-table tbody tr')).toHaveCount(44);
+});
+
+test('hash-text: Checksums also show Adler-32 after the catalogue rows', async ({ page }) => {
+  await openTool(page, 'hash-text');
+  await setControls(page, { selects: { family: 'checksums' } });
+  await fillAndHold(page, 'input', 'Wikipedia');
+  // RFC 1950 section 8.2 defines the value; zlib.adler32 of Wikipedia is 11e60398 (Python 3.14.3).
+  const adler = rowNamed(page, 'Adler-32');
+  await expect(adler).toHaveCount(1);
+  await expect(adler).toContainText('11e60398');
+  await expect(outputArea(page).locator('table.output-table tbody tr')).toHaveCount(44);
+});
+
+test('hash-text: SHAKE128 of abc at 32 bytes shows the FIPS 202 value', async ({ page }) => {
+  await openTool(page, 'hash-text');
+  await setControls(page, { selects: { family: 'shake' } });
+  await expect(page.locator('#f-shakeBytes')).toHaveValue('32');
+  await fillAndHold(page, 'input', 'abc');
+  // createHash('shake128', { outputLength: 32 }).update('abc').digest('hex') on Node 22.14.0 (OpenSSL), recorded 2026-10-03.
+  await expect(outputArea(page)).toContainText('SHAKE128 (32 bytes)');
+  await expect(outputArea(page)).toContainText('5881092dd818bf5cf8a3ddb793fbcba74097d5c526a6d35f97b83351940f2cc8');
+  await expect(outputArea(page)).toContainText('SHAKE256 (32 bytes)');
+  // The FIPS 202 example for the empty message at 32 bytes (NIST SHAKE128_Msg0): 7F 9C 2B A4 ... EF 26.
+  await fillAndHold(page, 'input', '');
+  await expect(outputArea(page)).toContainText('7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26');
+  // A longer output starts with the shorter one.
+  await fillAndHold(page, 'shakeBytes', '64');
+  await expect(outputArea(page)).toContainText('SHAKE128 (64 bytes)');
+  await expect(outputArea(page)).toContainText(
+    '7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef263cb1eea988004b93103cfb0aeefd2a686e01fa4a58e8a3639ca8a1e3f9ae57e2',
+  );
+});
+
+test('hash-text: a SHAKE length outside 1 to 4096 is refused and the two ends are accepted', async ({ page }) => {
+  await openTool(page, 'hash-text');
+  await setControls(page, { selects: { family: 'shake' } });
+  await fillAndHold(page, 'input', 'abc');
+  const sentence = 'SHAKE output length must be a whole number from 1 to 4096.';
+  for (const wrong of ['0', '4097', '-9999999999']) {
+    await fillAndHold(page, 'shakeBytes', wrong);
+    await expect(outputArea(page)).toContainText(sentence);
+  }
+  await fillAndHold(page, 'shakeBytes', '4096');
+  await expect(outputArea(page)).toContainText('SHAKE128 (4096 bytes)');
+  await expect(outputArea(page)).not.toContainText(sentence);
+  await fillAndHold(page, 'shakeBytes', '1');
+  await expect(outputArea(page)).toContainText('SHAKE128 (1 byte)');
+});
+
+test('hash-text: MD4 and NTLM of password show the RFC 1320 and MS-NLMP values and hex input replaces NTLM with a note', async ({
+  page,
+}) => {
+  await openTool(page, 'hash-text');
+  await setControls(page, { selects: { family: 'legacy' } });
+  // RFC 1320 appendix A.5: MD4 of abc.
+  await fillAndHold(page, 'input', 'abc');
+  await expect(rowNamed(page, 'MD4')).toContainText('a448017aaf21d8525fc10ae87aa6729d');
+  // MS-NLMP section 4.2.2.1.2: the NT hash of Password, and passlib 1.7.4 nthash for password.
+  await fillAndHold(page, 'input', 'Password');
+  await expect(rowNamed(page, 'NTLM')).toContainText('a4f49c406510bdcab6824ee7c30fd852');
+  await fillAndHold(page, 'input', 'password');
+  await expect(rowNamed(page, 'NTLM')).toContainText('8846f7eaee8fb117ad06bdd830b7586c');
+  await expect(outputArea(page)).toContainText('MD4 and NTLM are broken');
+  // Read as hex, the bytes of abc have an MD4 but no NTLM, and a note says why.
+  await setControls(page, { radios: { encoding: 'hex' } });
+  await fillAndHold(page, 'input', '61 62 63');
+  await expect(rowNamed(page, 'MD4')).toContainText('a448017aaf21d8525fc10ae87aa6729d');
+  await expect(rowNamed(page, 'NTLM')).toHaveCount(0);
+  await expect(outputArea(page)).toContainText(
+    'NTLM applies to text, so it is not shown when the input is read as hex or Base64.',
+  );
 });
