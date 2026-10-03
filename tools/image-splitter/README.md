@@ -24,6 +24,7 @@ Cuts one picture into a grid of tiles inside your browser, either by a number of
 - Rows and columns each go from 1 to 100, and a tile size from 1 to 40,000 pixels; a picture cannot be cut into more rows or columns than it has pixels.
 - Tiles are written as this browser encodes PNG or JPEG; JPEG tiles lose detail, and transparent areas become white because JPEG has no transparency.
 - Splitting can be cancelled at any time; a cancelled run offers no ZIP.
+- A browser can refuse to draw a very large tile or to encode it; the page then says so, and smaller tiles work.
 - The ZIP holds at most 1 GB of tiles; it does not compress them again, because PNG and JPEG are already compressed.
 - Pictures are cut as this browser decodes them, with photo orientation applied; an animated GIF or WebP is cut as the browser draws it, normally its first frame.
 - Tile names are made from the row and column numbers only, never from the picked file's name.
