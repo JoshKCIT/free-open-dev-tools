@@ -224,7 +224,7 @@ it('a marker inside a malformed file never appears in a message', async () => {
     new Uint8Array([...truncated, ...new TextEncoder().encode(marker)]),
     new TextEncoder().encode(marker.repeat(5000)),
   ];
-  for (const input of inputs) {
+  for (const [index, input] of inputs.entries()) {
     for (const run of [() => stripMetadata(input), () => findMetadataLeft(input)]) {
       let caught: unknown = null;
       try {
@@ -232,7 +232,7 @@ it('a marker inside a malformed file never appears in a message', async () => {
       } catch (err) {
         caught = err;
       }
-      expect(caught).toBeInstanceOf(PdfToolError);
+      expect(caught, `malformed input ${index}`).toBeInstanceOf(PdfToolError);
       const error = caught as PdfToolError;
       expect(error.kind).toBe('damaged');
       expect(error.message).toBe(PDF_MESSAGES.damaged);
