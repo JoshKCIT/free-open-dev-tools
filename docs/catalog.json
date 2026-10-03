@@ -1342,5 +1342,12 @@
     "category": "hashing",
     "tier": 2,
     "summary": "Paste a hash or password hash string and see the algorithms it could come from, ranked, with the reason for each."
+  },
+  {
+    "id": "qr-barcode-reader",
+    "name": "QR Code & Barcode Reader",
+    "category": "media",
+    "tier": 3,
+    "summary": "Read QR codes and common barcodes from an image file or your camera, entirely in the browser."
   }
 ]
