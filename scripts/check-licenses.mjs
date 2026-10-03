@@ -190,6 +190,24 @@ const MANUAL_LICENSE_OVERRIDES = {
   // Apache-2.0 licence, which the published less 4.9.1 tarball omits even though its package.json declares
   // "Apache-2.0".
   'less@4.9.1': 'docs/vendored-licenses/less-LICENSE.txt',
+  // fastdom 1.0.12 and strictdom 1.0.1 (reached through mermaid 11.17.2): each package.json declares "MIT" but the
+  // published tarball has no licence file. Each README.md ends with a License section ("(The MIT License)" and the
+  // full text), quoted verbatim in the vendored file, read from the installed packages on 2026-10-03.
+  'fastdom@1.0.12': 'docs/vendored-licenses/fastdom-LICENSE.txt',
+  'strictdom@1.0.1': 'docs/vendored-licenses/strictdom-LICENSE.txt',
+};
+
+/**
+ * A package whose manifest states no licence at all (the `license` field is missing, so the gate would read
+ * "UNKNOWN") but whose own licence file states one. Consulted ONLY in that case, keyed by exact `name@version` so a
+ * later version bump re-triggers the review, and never overrides a licence a manifest does state. The value is the
+ * licence identifier the package's own licence file states.
+ */
+const MANUAL_LICENCE_ID_OVERRIDES = {
+  // khroma 2.1.0 (reached through mermaid 11.17.2): package.json has no `license` field; its own `license` file
+  // reads "The MIT License (MIT) Copyright (c) 2019-present Fabio Spampinato, Andrew Maney" followed by the MIT
+  // text (read from the installed package on 2026-10-03).
+  'khroma@2.1.0': 'MIT',
 };
 
 // Some upstream packages (e.g. typescript, @mixmark-io/domino) ship a LICENSE
@@ -243,11 +261,12 @@ for (const dep of dependencies) {
     continue;
   }
   const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-  const licence =
+  let licence =
     typeof manifest.license === 'string'
       ? manifest.license
       : (manifest.license?.type ??
         (Array.isArray(manifest.licenses) ? manifest.licenses.map((l) => l.type).join(' OR ') : 'UNKNOWN'));
+  if (licence === 'UNKNOWN') licence = MANUAL_LICENCE_ID_OVERRIDES[`${dep.name}@${manifest.version}`] ?? licence;
 
   // An exact match on the reviewed ALLOWED list is accepted before BLOCKED
   // ever runs: a licence string this project has specifically reviewed and
