@@ -40,7 +40,15 @@ it('an empty paste returns nothing and text without a certificate gets one plain
   for (const blank of ['', '   ', '\n\r\n\t ']) {
     expect(decodeInput(blank, { nowMs: NOW_MS })).toEqual({ items: [], ignored: [], warnings: [] });
   }
-  for (const text of ['hello, this is plain text', 'this is not a certificate', '{"a": 1}', 'ssh-ed25519 AAAA']) {
+  // The last two are valid Base64 and valid hex, and are not DER, so they get the same sentence.
+  for (const text of [
+    'hello, this is plain text',
+    'this is not a certificate',
+    '{"a": 1}',
+    'ssh-ed25519 AAAA',
+    'dGhpcyBpcyBwbGFpbiB0ZXh0',
+    '48 65 6c 6c 6f',
+  ]) {
     let message = '';
     let error: unknown;
     try {
@@ -66,4 +74,39 @@ it('a pasted PEM block decodes to the certificate OpenSSL printed', () => {
   expect(cert.fingerprints.sha1).toBe(CERTIFICATES['ec256']!.sha1);
   expect(cert.serialHex).toBe(CERTIFICATES['ec256']!.serial);
   expect(result.ignored).toEqual([]);
+});
+
+it('a certificate cut short is refused with a sentence that names the problem and holds none of the paste', () => {
+  const cut = certificatePem('ec256').split('\n').slice(0, 4).join('\n') + '\n-----' + 'END ' + 'CERTIFICATE-----\n';
+  let error: unknown;
+  try {
+    decodeInput(cut, { nowMs: NOW_MS });
+  } catch (err) {
+    error = err;
+  }
+  expect(error).toBeInstanceOf(CertificateError);
+  expect((error as Error).message).toMatch(/^The certificate could not be read: /);
+});
+
+it('a BEGIN line with no matching END is refused with the number of its line', () => {
+  const pasted = 'notes before the certificate\n\n' + certificatePem('ec256').split('\n').slice(0, 3).join('\n') + '\n';
+  let error: unknown;
+  try {
+    decodeInput(pasted, { nowMs: NOW_MS });
+  } catch (err) {
+    error = err;
+  }
+  expect(error).toBeInstanceOf(CertificateError);
+  expect((error as CertificateError).line).toBe(3);
+  expect((error as Error).message).toBe('The BEGIN line has no END line after it.');
+});
+
+it('a single certificate shows as one entry and two certificates as two', () => {
+  expect(decodeInput(certificatePem('leaf'), { nowMs: NOW_MS }).items).toHaveLength(1);
+  const two = certificatePem('leaf') + '\nsome text between\n' + certificatePem('int', 76, '\r\n');
+  const result = decodeInput(two, { nowMs: NOW_MS });
+  expect(result.items.map((item) => item.fingerprints.sha256)).toEqual([
+    CERTIFICATES['leaf']!.sha256,
+    CERTIFICATES['int']!.sha256,
+  ]);
 });
