@@ -1339,3 +1339,303 @@ test('image-splitter: Cancel during splitting offers no ZIP and the next run wor
   expect(entries[99]!.name).toBe('tile-r10-c10.png');
   expect(offending(requests)).toEqual([]);
 });
+
+/**
+ * Image Converter & Resizer upgrade (plan 15-07): crop, rotate and flip, and SVG input when it is allowed.
+ *
+ * Pixels are checked by reading the downloaded file with a small PNG reader written here (8-bit RGB and RGBA, every
+ * filter type, no interlace), so what is compared is the file's own pixel values and never what a browser makes of the
+ * file when it shows it again (some engines write colour tags into a canvas PNG and colour-manage the file on the way
+ * back in, moving values by one). The expected pixels come from a model written here: crop, then a clockwise quarter
+ * turn, then a mirror, over pixels that are each a different colour.
+ */
+function decodePngBytes(png: Buffer): { width: number; height: number; rgba: Uint8Array } {
+  expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+  let position = 8;
+  let width = 0;
+  let height = 0;
+  let depth = 0;
+  let colour = 0;
+  let interlace = 0;
+  const data: Buffer[] = [];
+  while (position < png.length) {
+    const length = png.readUInt32BE(position);
+    const type = png.toString('latin1', position + 4, position + 8);
+    const body = png.subarray(position + 8, position + 8 + length);
+    if (type === 'IHDR') {
+      width = body.readUInt32BE(0);
+      height = body.readUInt32BE(4);
+      depth = body[8]!;
+      colour = body[9]!;
+      interlace = body[12]!;
+    } else if (type === 'IDAT') {
+      data.push(body);
+    }
+    position += 12 + length;
+  }
+  expect([depth, interlace]).toEqual([8, 0]);
+  expect([2, 6]).toContain(colour);
+  const bytesPerPixel = colour === 6 ? 4 : 3;
+  const stride = width * bytesPerPixel;
+  const raw = inflateSync(Buffer.concat(data));
+  expect(raw.length).toBe(height * (stride + 1));
+  const flat = Buffer.alloc(height * stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]!;
+    for (let x = 0; x < stride; x++) {
+      const value = raw[y * (stride + 1) + 1 + x]!;
+      const left = x >= bytesPerPixel ? flat[y * stride + x - bytesPerPixel]! : 0;
+      const up = y > 0 ? flat[(y - 1) * stride + x]! : 0;
+      const upLeft = x >= bytesPerPixel && y > 0 ? flat[(y - 1) * stride + x - bytesPerPixel]! : 0;
+      let predicted = 0;
+      if (filter === 1) predicted = left;
+      else if (filter === 2) predicted = up;
+      else if (filter === 3) predicted = (left + up) >> 1;
+      else if (filter === 4) {
+        const pa = Math.abs(up - upLeft);
+        const pb = Math.abs(left - upLeft);
+        const pc = Math.abs(left + up - 2 * upLeft);
+        predicted = pa <= pb && pa <= pc ? left : pb <= pc ? up : upLeft;
+      } else {
+        expect([0, 1, 2, 3, 4]).toContain(filter);
+      }
+      flat[y * stride + x] = (value + predicted) & 255;
+    }
+  }
+  const rgba = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    rgba[i * 4] = flat[i * bytesPerPixel]!;
+    rgba[i * 4 + 1] = flat[i * bytesPerPixel + 1]!;
+    rgba[i * 4 + 2] = flat[i * bytesPerPixel + 2]!;
+    rgba[i * 4 + 3] = bytesPerPixel === 4 ? flat[i * bytesPerPixel + 3]! : 255;
+  }
+  return { width, height, rgba };
+}
+
+/** Chooses an option of a select field and checks the choice stuck (repeated until it holds). */
+async function chooseOption(page: Page, name: string, value: string): Promise<void> {
+  const field = page.locator(`#f-${name}`);
+  await expect(async () => {
+    await field.selectOption(value);
+    await expect(field).toHaveValue(value, { timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+}
+
+interface EditCase {
+  label: string;
+  crop?: { x: number; y: number; width: number; height: number };
+  rotate: 0 | 90 | 180 | 270;
+  flip: 'none' | 'horizontal' | 'vertical' | 'both';
+}
+
+/** The picture after the edits, as a grid of the source coordinates of each pixel: crop, quarter turns clockwise, mirror. */
+function modelEdits(width: number, height: number, edit: EditCase): [number, number][][] {
+  const c = edit.crop ?? { x: 0, y: 0, width, height };
+  let grid: [number, number][][] = [];
+  for (let y = 0; y < c.height; y++) {
+    const row: [number, number][] = [];
+    for (let x = 0; x < c.width; x++) row.push([c.x + x, c.y + y]);
+    grid.push(row);
+  }
+  for (let turn = 0; turn < edit.rotate / 90; turn++) {
+    const h = grid.length;
+    const w = grid[0]!.length;
+    const turned: [number, number][][] = [];
+    for (let y = 0; y < w; y++) {
+      const row: [number, number][] = [];
+      for (let x = 0; x < h; x++) row.push(grid[h - 1 - x]![y]!);
+      turned.push(row);
+    }
+    grid = turned;
+  }
+  if (edit.flip === 'horizontal' || edit.flip === 'both') grid = grid.map((row) => row.slice().reverse());
+  if (edit.flip === 'vertical' || edit.flip === 'both') grid = grid.slice().reverse();
+  return grid;
+}
+
+async function setEdit(page: Page, edit: EditCase): Promise<void> {
+  await chooseOption(page, 'transform', 'edit');
+  if (edit.crop) {
+    await fillField(page, 'cropX', String(edit.crop.x));
+    await fillField(page, 'cropY', String(edit.crop.y));
+    await fillField(page, 'cropW', String(edit.crop.width));
+    await fillField(page, 'cropH', String(edit.crop.height));
+  }
+  await chooseOption(page, 'rotate', String(edit.rotate));
+  await chooseOption(page, 'flip', edit.flip);
+}
+
+async function resetPage(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.locator('#f-transform')).toHaveValue('none');
+}
+
+test('image-converter: crop, rotate and flip give exactly the model pixels in this browser', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+
+  // 7 by 5, every pixel a different opaque colour.
+  const picture = distinctPng('edit.png', 7, 5, 8);
+  const cases: EditCase[] = [
+    { label: 'crop only', crop: { x: 1, y: 1, width: 4, height: 3 }, rotate: 0, flip: 'none' },
+    { label: 'rotate 90', rotate: 90, flip: 'none' },
+    { label: 'rotate 180', rotate: 180, flip: 'none' },
+    { label: 'rotate 270', rotate: 270, flip: 'none' },
+    { label: 'flip horizontal', rotate: 0, flip: 'horizontal' },
+    { label: 'flip vertical', rotate: 0, flip: 'vertical' },
+    { label: 'flip both', rotate: 0, flip: 'both' },
+    {
+      label: 'crop, rotate 90 and flip horizontal',
+      crop: { x: 2, y: 0, width: 5, height: 5 },
+      rotate: 90,
+      flip: 'horizontal',
+    },
+  ];
+  for (const edit of cases) {
+    await resetPage(page);
+    await attachImage(page, 'file', picture.file);
+    await setEdit(page, edit);
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('li', { hasText: 'edit.png' })).toBeVisible({ timeout: 30_000 });
+
+    const expected = modelEdits(7, 5, edit);
+    const decoded = decodePngBytes(await downloadNamed(page, 'edit.png'));
+    expect([decoded.width, decoded.height], edit.label).toEqual([expected[0]!.length, expected.length]);
+    await expect(outputArea(page), edit.label).toContainText(`${decoded.width} × ${decoded.height}`);
+    let wrong = 0;
+    for (let y = 0; y < decoded.height; y++) {
+      for (let x = 0; x < decoded.width; x++) {
+        const [sx, sy] = expected[y]![x]!;
+        const want = picture.rgba.subarray((sy * 7 + sx) * 4, (sy * 7 + sx) * 4 + 4);
+        const got = decoded.rgba.subarray((y * decoded.width + x) * 4, (y * decoded.width + x) * 4 + 4);
+        if (want.join(',') !== got.join(',')) wrong++;
+      }
+    }
+    expect(wrong, `${edit.label}: pixels that differ from the model`).toBe(0);
+  }
+
+  // A crop outside the picture is refused with the picture's size, and nothing is offered.
+  await resetPage(page);
+  await attachImage(page, 'file', picture.file);
+  await setEdit(page, { label: 'outside', crop: { x: 5, y: 0, width: 4, height: 2 }, rotate: 0, flip: 'none' });
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'does not fit inside the picture, which is 7 by 5 pixels',
+    {
+      timeout: 15_000,
+    },
+  );
+  expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+
+  // A width without a height is refused by name, never completed with a guess.
+  await fillField(page, 'cropW', '3');
+  await fillField(page, 'cropH', '0');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Crop width and Crop height must both be set', {
+    timeout: 15_000,
+  });
+
+  // A resize measures the edited picture: crop 4 by 3, rotate 90 (3 by 4), then 200 percent gives 6 by 8.
+  await resetPage(page);
+  await attachImage(page, 'file', picture.file);
+  await setEdit(page, { label: 'resize', crop: { x: 1, y: 1, width: 4, height: 3 }, rotate: 90, flip: 'none' });
+  await page.locator('input[name="resize"][value="percent"]').click();
+  await fillField(page, 'percent', '200');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'edit.png' })).toBeVisible({ timeout: 30_000 });
+  const resized = decodePngBytes(await downloadNamed(page, 'edit.png'));
+  expect([resized.width, resized.height]).toEqual([6, 8]);
+
+  expect(offending(requests)).toEqual([]);
+});
+
+/** Four flat rectangles, 20 by 10 each, in a 40 by 20 picture: red and green on top, blue and yellow below. */
+const FLAT_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 40 20">' +
+  '<rect x="0" y="0" width="20" height="10" fill="#ff0000"/><rect x="20" y="0" width="20" height="10" fill="#00ff00"/>' +
+  '<rect x="0" y="10" width="20" height="10" fill="#0000ff"/><rect x="20" y="10" width="20" height="10" fill="#ffff00"/></svg>';
+
+function svgFile(name: string, text: string): PickedFile {
+  return { name, mimeType: 'image/svg+xml', buffer: Buffer.from(text, 'utf8') };
+}
+
+function pixelOf(image: { width: number; rgba: Uint8Array }, x: number, y: number): string {
+  return Array.from(image.rgba.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4)).join(',');
+}
+
+test('image-converter: an SVG of flat rectangles converts with exact colours only when Allow SVG input is ticked', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+
+  // Unticked, the file is refused exactly as before: the ordinary message and nothing offered.
+  await attachImage(page, 'file', svgFile('flat.svg', FLAT_SVG));
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText("Could not convert 'flat.svg'", {
+    timeout: 15_000,
+  });
+  await expect(outputArea(page).locator('.issue-list')).toContainText('not PNG, JPEG, GIF, WebP or BMP');
+  expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+
+  // Ticked, it is drawn by the browser at its own size and the file's pixels are exactly the four colours.
+  await page.locator('#f-allowSvg').check();
+  await expect(page.locator('#f-allowSvg')).toBeChecked();
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'flat.png' })).toBeVisible({ timeout: 30_000 });
+  const plain = decodePngBytes(await downloadNamed(page, 'flat.png'));
+  expect([plain.width, plain.height]).toEqual([40, 20]);
+  expect([pixelOf(plain, 10, 5), pixelOf(plain, 30, 5), pixelOf(plain, 10, 15), pixelOf(plain, 30, 15)]).toEqual([
+    '255,0,0,255',
+    '0,255,0,255',
+    '0,0,255,255',
+    '255,255,0,255',
+  ]);
+  // Every pixel is one of the four colours: the drawing did not blend the edges of the rectangles.
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 40; x++) {
+      const expected = ['255,0,0,255', '0,255,0,255', '0,0,255,255', '255,255,0,255'][
+        (y < 10 ? 0 : 2) + (x < 20 ? 0 : 1)
+      ];
+      expect(pixelOf(plain, x, y)).toBe(expected);
+    }
+  }
+  await expect(outputArea(page)).toContainText('SVG, ');
+  await expect(outputArea(page)).toContainText('40 × 20');
+
+  // An SVG takes the edits too: rotated a quarter turn clockwise, the picture is 20 by 40 with blue top left, red top
+  // right, yellow bottom left and green bottom right.
+  await chooseOption(page, 'transform', 'edit');
+  await chooseOption(page, 'rotate', '90');
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('20 × 40', { timeout: 30_000 });
+  const turned = decodePngBytes(await downloadNamed(page, 'flat.png'));
+  expect([turned.width, turned.height]).toEqual([20, 40]);
+  expect([pixelOf(turned, 5, 10), pixelOf(turned, 15, 10), pixelOf(turned, 5, 30), pixelOf(turned, 15, 30)]).toEqual([
+    '0,0,255,255',
+    '255,0,0,255',
+    '255,255,0,255',
+    '0,255,0,255',
+  ]);
+
+  // A file that only looks like an SVG at the start, and one that is not text, take the converter's own refusal.
+  await chooseOption(page, 'transform', 'none');
+  await attachImage(page, 'file', {
+    name: 'broken.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.concat([
+      Buffer.from('<svg xmlns="http://www.w3.org/2000/svg">'),
+      Buffer.from([0xc3, 0x28]),
+      Buffer.from('</svg>'),
+    ]),
+  });
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText("Could not convert 'broken.svg'", {
+    timeout: 15_000,
+  });
+  await expect(outputArea(page).locator('.issue-list')).toContainText('not PNG, JPEG, GIF, WebP or BMP');
+
+  expect(offending(requests)).toEqual([]);
+});
