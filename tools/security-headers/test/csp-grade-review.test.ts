@@ -173,3 +173,21 @@ it('keywords and the prefixes of nonces and hashes are read without regard to ca
   expect(syntaxFindings('default-src SELF')).toHaveLength(1);
   expect(syntaxFindings("default-src 'self'; DEFAULT-SRC 'none'")).toHaveLength(1);
 });
+
+// B-WR-02: "Line N" counted semicolon-separated parts, so a one-line policy reported "Line 2".
+it('a syntax finding names the directive by its place in the policy, not a line', () => {
+  const oneLine = syntaxFindings("default-src 'self'; frobnicate x");
+  expect(oneLine).toHaveLength(1);
+  expect(oneLine[0]).toMatch(/^Directive 2: /);
+  expect(oneLine[0]).not.toMatch(/Line/);
+  // Empty parts between semicolons are not directives and are not counted.
+  expect(syntaxFindings("default-src 'self';; ; frobnicate x")[0]).toMatch(/^Directive 2: /);
+  // One directive per line, and a mix of lines and semicolons: the place counts in reading order.
+  expect(syntaxFindings("default-src 'self'\nobject-src 'none'\nfrobnicate x")[0]).toMatch(/^Directive 3: /);
+  expect(syntaxFindings("default-src 'self'; object-src 'none'\n\nfrobnicate x; img-src 'self'")[0]).toMatch(
+    /^Directive 3: /,
+  );
+  // The first directive is directive 1.
+  expect(syntaxFindings('frobnicate x; default-src none')[0]).toMatch(/^Directive 1: /);
+  expect(syntaxFindings('frobnicate x; default-src none')[1]).toMatch(/^Directive 2: /);
+});

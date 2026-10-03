@@ -641,7 +641,29 @@ function isFalseProblem(message: string): boolean {
   return parseCspDirectives(`${afterIn.slice(0, nameEnd)} ${fixed}`).problems.length === 0;
 }
 
-function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: CspSource): CspFinding[] {
+/**
+ * The parser numbers the parts a policy is split into (on a semicolon, and on a line break when there is one), empty parts
+ * included. This gives the place of each non-empty part, so a finding can say "Directive 2" for the second directive. The
+ * splitting is the parser's own, written out again because the parser does not return where a part began.
+ */
+function directivePlaces(policy: string): number[] {
+  const singleLine = !policy.includes('\n') && policy.includes(';');
+  const parts = singleLine ? policy.split(';') : policy.split('\n').flatMap((line) => line.split(';'));
+  const places = [0];
+  let place = 0;
+  for (const part of parts) {
+    if (part.trim() !== '') place++;
+    places.push(place);
+  }
+  return places;
+}
+
+function evaluate(
+  index: SourceIndex,
+  problems: readonly CspProblem[],
+  source: CspSource,
+  policy: string,
+): CspFinding[] {
   const found: CspFinding[] = [];
 
   // Scripts: the list that governs script elements (CSP Level 3 section 6.8.3).
@@ -749,8 +771,11 @@ function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: C
     found.push(finding('upgrade-insecure-requests', 'upgrade-insecure-requests'));
 
   const real = problems.filter((p) => !isFalseProblem(p.message));
+  const places = directivePlaces(policy);
   for (const problem of real.slice(0, SYNTAX_FINDING_CAP)) {
-    found.push(finding('syntax', '(policy)', { whole: `Line ${problem.line}: ${problem.message}` }));
+    found.push(
+      finding('syntax', '(policy)', { whole: `Directive ${places[problem.line] ?? problem.line}: ${problem.message}` }),
+    );
   }
   if (real.length > SYNTAX_FINDING_CAP) {
     const left = real.length - SYNTAX_FINDING_CAP;
@@ -804,7 +829,7 @@ export function gradeCsp(text: string): CspGrade {
   let findings: CspFinding[] = [];
   if (!empty) {
     const parsed = parseCspDirectives(policy);
-    findings = evaluate(indexDirectives(parsed.directives), parsed.problems, source);
+    findings = evaluate(indexDirectives(parsed.directives), parsed.problems, source, policy);
     findings.sort(compareFindings);
   }
 
