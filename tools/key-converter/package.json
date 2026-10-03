@@ -32,7 +32,10 @@
     "fingerprint",
     "webcrypto",
     "ed25519",
-    "ecdsa"
+    "ecdsa",
+    "p256",
+    "p384",
+    "p521"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -10,27 +10,34 @@ import meta from './meta.json';
 import { DerError, derHex } from './der';
 import { sshFingerprints } from './fingerprint';
 import { readPkcs8, readSpki, writePkcs8, writeSpki } from './formats';
-import { generateRsa } from './generate';
+import { generateEc, generateEd25519, generateRsa } from './generate';
 import {
   KeyConverterError,
   RSA_GENERATE_BITS,
   bytesEqual,
   isPrivate,
   keyBits,
+  type Curve,
+  type EcKey,
+  type Ed25519Key,
   type KeyModel,
   type RsaKey,
 } from './model';
 import { sshPublicBlob, sshPublicLine } from './openssh';
 import { PemError, bytesToPem } from './pem';
 
-export { meta, KeyConverterError, DerError, PemError, RSA_GENERATE_BITS, generateRsa };
-export type { KeyModel, RsaKey };
+export { meta, KeyConverterError, DerError, PemError, RSA_GENERATE_BITS, generateEc, generateEd25519, generateRsa };
+export type { Curve, EcKey, Ed25519Key, KeyModel, RsaKey };
 
 /** The kinds of key the page offers, in the order of its menu. */
 export const KEY_TYPES = [
   { id: 'rsa-2048', label: 'RSA 2048 bits' },
   { id: 'rsa-3072', label: 'RSA 3072 bits' },
   { id: 'rsa-4096', label: 'RSA 4096 bits' },
+  { id: 'ecdsa-p256', label: 'ECDSA P-256' },
+  { id: 'ecdsa-p384', label: 'ECDSA P-384' },
+  { id: 'ecdsa-p521', label: 'ECDSA P-521' },
+  { id: 'ed25519', label: 'Ed25519' },
 ] as const;
 
 export type KeyTypeId = (typeof KEY_TYPES)[number]['id'];
@@ -45,6 +52,9 @@ export const COMMENT_LIMIT = 256;
 export function keyFromGeneratedRsa(pkcs8: Uint8Array, spki: Uint8Array): RsaKey {
   const privateKey = readPkcs8(pkcs8);
   const publicKey = readSpki(spki);
+  if (privateKey.type !== 'rsa' || publicKey.type !== 'rsa') {
+    throw new KeyConverterError('This is not an RSA key.');
+  }
   if (!bytesEqual(privateKey.n, publicKey.n) || !bytesEqual(privateKey.e, publicKey.e)) {
     throw new KeyConverterError('The public key does not belong to this private key.');
   }
@@ -86,8 +96,31 @@ export function checkComment(comment: string): void {
   }
 }
 
-function exponentText(key: KeyModel): string {
+function exponentText(key: RsaKey): string {
   return BigInt('0x' + (derHex(key.e) || '0')).toString();
+}
+
+/** The short facts about a key that are not a secret: what it is and how large. */
+function keyFacts(key: KeyModel): [string, string][] {
+  switch (key.type) {
+    case 'rsa':
+      return [
+        ['Key type', 'RSA'],
+        ['Size in bits', String(keyBits(key))],
+        ['Public exponent', exponentText(key)],
+      ];
+    case 'ec':
+      return [
+        ['Key type', 'ECDSA'],
+        ['Curve', key.curve],
+        ['Size in bits', String(keyBits(key))],
+      ];
+    case 'ed25519':
+      return [
+        ['Key type', 'Ed25519'],
+        ['Size in bits', String(keyBits(key))],
+      ];
+  }
 }
 
 /** Every output of a key: the PEM blocks, the OpenSSH line, the fingerprints and the facts, all written from the model. */
@@ -121,11 +154,7 @@ export function keyOutputs(key: KeyModel, options: { comment: string }): KeyOutp
       ['SHA256', prints.sha256],
       ['MD5', prints.md5],
     ],
-    facts: [
-      ['Key type', 'RSA'],
-      ['Size in bits', String(keyBits(key))],
-      ['Public exponent', exponentText(key)],
-    ],
+    facts: keyFacts(key),
     warnings: [],
   };
 }

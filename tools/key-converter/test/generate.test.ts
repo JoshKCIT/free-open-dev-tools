@@ -38,7 +38,11 @@ const RFC8410_PRIVATE_B64 = 'MC4CAQAwBQYDK2VwBCIEINTuctv5E1hK1bbY8fdp+K06/nwoy/H
 
 it('Ed25519 from the RFC 8032 test 1 seed gives the published public key and a 48 byte PKCS8', () => {
   // The generator asks the browser's generator for 32 bytes; here that generator hands back the RFC 8032 seed.
+  // @noble/curves 2.4.0 asks the same generator for 16 bytes of its own (blinding) while it computes a public key, so only
+  // the request for the 32 byte seed is answered with the RFC 8032 seed, and every other request goes to the real one.
+  const realRandom = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
   const random = vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(((array: Uint8Array) => {
+    if (array.length !== 32) return realRandom(array);
     array.set(fromHex(TEST1_SEED));
     return array;
   }) as typeof globalThis.crypto.getRandomValues);
@@ -83,11 +87,13 @@ it('generateEd25519 takes its seed from crypto.getRandomValues and generateEc fr
   const generate = vi.spyOn(globalThis.crypto.subtle, 'generateKey');
   try {
     const key = generateEd25519();
-    expect(random).toHaveBeenCalledTimes(1);
-    const filled = random.mock.calls[0]![0] as Uint8Array;
-    expect(filled).toBeInstanceOf(Uint8Array);
-    expect(filled.length).toBe(32);
-    expect(hex(key.seed!)).toBe(hex(filled));
+    // Every request for random bytes in the run went to crypto.getRandomValues. Exactly one asked for 32 bytes, which is
+    // the seed; the others are the 16 bytes @noble/curves asks for itself while it computes the public key.
+    const requests = random.mock.calls.map((call) => call[0] as Uint8Array);
+    for (const request of requests) expect(request).toBeInstanceOf(Uint8Array);
+    const seedRequests = requests.filter((request) => request.length === 32);
+    expect(seedRequests.length).toBe(1);
+    expect(hex(key.seed!)).toBe(hex(seedRequests[0]!));
     // Two keys are two different seeds, and a seed is never all zeros.
     const other = generateEd25519();
     expect(hex(other.seed!)).not.toBe(hex(key.seed!));

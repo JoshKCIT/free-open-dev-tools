@@ -482,14 +482,22 @@ it('no thrown message, warning or output label holds a fragment of a key', () =>
   // A marker that a message would give away: as text, as hex and as Base64 at each of the three alignments.
   const marker = 'FODT-MARKER-0123456789-ABCDEFGHIJKLMNOP';
   const markerBytes = new Uint8Array(Buffer.from(marker, 'latin1'));
+  // Any fragment counts as a leak: eight characters of the marker, sixteen of its hex, or twelve of its Base64 at any of
+  // the three alignments a key inside a DER file can have.
+  const windows = (text: string, size: number): string[] =>
+    Array.from({ length: Math.max(0, text.length - size + 1) }, (_, i) => text.slice(i, i + size));
   const holdsMarker = (text: string): boolean => {
-    if (text.includes(marker) || text.includes(Buffer.from(marker).toString('hex'))) return true;
+    if (windows(marker, 8).some((piece) => text.includes(piece))) return true;
+    if (windows(Buffer.from(marker).toString('hex'), 16).some((piece) => text.includes(piece))) return true;
     for (let shift = 0; shift < 3; shift++) {
-      const encoded = Buffer.concat([Buffer.alloc(shift), Buffer.from(marker)]).toString('base64');
-      if (text.includes(encoded.slice(4, 24))) return true;
+      const encoded = Buffer.concat([Buffer.alloc(shift), Buffer.from(marker)])
+        .toString('base64')
+        .slice(4);
+      if (windows(encoded, 12).some((piece) => text.includes(piece))) return true;
     }
     return false;
   };
+
   // Hand-built DER, so the malformed keys below do not depend on the package's own writers.
   const lengthOf = (n: number): number[] => (n < 128 ? [n] : n < 256 ? [0x81, n] : [0x82, n >> 8, n & 255]);
   const tlvOf = (tag: number, body: number[]): number[] => [tag, ...lengthOf(body.length), ...body];
@@ -555,10 +563,10 @@ it('no thrown message, warning or output label holds a fragment of a key', () =>
     const secret = key.type === 'ed25519' ? key.seed! : key.type === 'ec' ? key.d! : new Uint8Array(32).fill(7);
     secrets.push([kind, secret]);
     for (const text of around) {
-      expect(text.includes(hex(secret).slice(0, 16)), `${kind}: ${text}`).toBe(false);
+      expect(text.includes(hex(secret).slice(0, 8)), `${kind}: ${text}`).toBe(false);
       for (let shift = 0; shift < 3; shift++) {
         const encoded = Buffer.concat([Buffer.alloc(shift), Buffer.from(secret)]).toString('base64');
-        expect(text.includes(encoded.slice(4, 16)), `${kind}: ${text}`).toBe(false);
+        expect(text.includes(encoded.slice(4, 12)), `${kind}: ${text}`).toBe(false);
       }
     }
   }
