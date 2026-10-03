@@ -157,3 +157,26 @@ test('hash-text: MD4 and NTLM of password show the RFC 1320 and MS-NLMP values a
     'NTLM applies to text, so it is not shown when the input is read as hex or Base64.',
   );
 });
+
+test('luhn: the default scheme still says Passes the Luhn check for 79927398713', async ({ page }) => {
+  await openTool(page, 'luhn');
+  await expect(page.locator('#f-scheme')).toHaveValue('luhn');
+  await expect(page.locator('#f-input')).toHaveValue('79927398713');
+  // The worked example of the Luhn algorithm: the doubled digits and the others add to 70, a multiple of ten.
+  await expect(outputArea(page)).toContainText('Passes the Luhn check.');
+  await expect(outputArea(page)).toContainText('Digit count');
+});
+
+test('luhn: ISBN-13 978-0-11-000222-4 is valid and its check digit computes to 4', async ({ page }) => {
+  await openTool(page, 'luhn');
+  await setControls(page, { selects: { scheme: 'isbn13' } });
+  await fillAndHold(page, 'input', '978-0-11-000222-4');
+  // The ISBN Users Manual (2012) Appendix 1 worked example: the weighted sum is 56, so the check digit is 4.
+  await expect(outputArea(page)).toContainText('Valid ISBN-13.');
+  await fillAndHold(page, 'input', '978-0-11-000222-5');
+  await expect(outputArea(page)).toContainText('Not valid: the check digit should be 4, not 5.');
+  await setControls(page, { radios: { mode: 'checkDigit' } });
+  await fillAndHold(page, 'input', '978011000222');
+  await expect(outputArea(page)).toContainText('9780110002224');
+  await expect(outputArea(page)).not.toContainText('Not valid');
+});

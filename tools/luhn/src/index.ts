@@ -2,6 +2,18 @@ import meta from './meta.json';
 
 export { meta };
 
+export {
+  CheckDigitError,
+  SCHEMES,
+  MAX_CHECK_INPUT_CHARS,
+  validateScheme,
+  computeScheme,
+  type Scheme,
+  type SchemeInfo,
+  type ValidateResult,
+  type ComputeResult,
+} from './check-digits';
+
 export class LuhnError extends Error {
   readonly position?: number;
   constructor(message: string, position?: number) {

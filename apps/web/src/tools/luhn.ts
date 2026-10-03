@@ -1,10 +1,84 @@
-import { meta, isValid, checkDigit, identify, LuhnError } from '@fodt/luhn';
+import {
+  meta,
+  isValid,
+  checkDigit,
+  identify,
+  LuhnError,
+  validateScheme,
+  computeScheme,
+  CheckDigitError,
+  SCHEMES,
+  type Scheme,
+} from '@fodt/luhn';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+
+/** What the check character of each scheme is called in a sentence. */
+const CHECK_WORD: Record<string, string> = { iban: 'check digits', vin: 'check character' };
+
+/** The check digit pages for every scheme except Luhn. The Luhn path stays in run() exactly as it was. */
+function runScheme(scheme: string, mode: string, input: string): ToolResult {
+  try {
+    const label = SCHEMES.get(scheme as Scheme)?.label ?? scheme;
+    const word = CHECK_WORD[scheme] ?? 'check digit';
+    if (mode === 'checkDigit') {
+      const computed = computeScheme(scheme, input);
+      const outputs: OutputBlock[] = [
+        { kind: 'code', label: word === 'check digits' ? 'Check digits' : 'Check digit', value: computed.checkDigit },
+        { kind: 'code', label: 'Full number', value: computed.full },
+        { kind: 'keyvalue', label: 'Detail', pairs: computed.details },
+      ];
+      for (const note of computed.notes) outputs.push({ kind: 'note', tone: 'info', value: note });
+      return { outputs, stats: [['Characters', String(computed.full.length)]] };
+    }
+    const result = validateScheme(scheme, input);
+    const outputs: OutputBlock[] = [
+      {
+        kind: 'note',
+        tone: result.valid ? 'success' : 'error',
+        value: result.valid
+          ? `Valid ${label}.`
+          : `Not valid: the ${word} should be ${result.expected}, not ${result.checkDigit}.`,
+      },
+      {
+        kind: 'keyvalue',
+        label: 'Detail',
+        pairs: [...result.details, ['Verdict', result.valid ? 'valid' : 'invalid']],
+      },
+    ];
+    for (const note of result.notes) outputs.push({ kind: 'note', tone: 'info', value: note });
+    return { outputs, stats: [['Characters', String(result.normalised.length)]] };
+  } catch (err) {
+    if (err instanceof CheckDigitError) {
+      return {
+        outputs: [],
+        errors: [
+          {
+            message: err.message,
+            line: err.position === undefined ? undefined : 1,
+            column: err.position === undefined ? undefined : err.position + 1,
+          },
+        ],
+      };
+    }
+    throw err;
+  }
+}
 
 export default defineTool({
   id: 'luhn',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
+    {
+      name: 'scheme',
+      label: 'Scheme',
+      type: 'select',
+      default: 'luhn',
+      help: 'Luhn is the original check. To compute a check digit for another scheme, type the number without its check digit: 12 digits for ISBN-13.',
+      options: [
+        { value: 'luhn', label: 'Luhn (card numbers and other identifiers)' },
+        { value: 'isbn13', label: 'ISBN-13' },
+      ],
+    },
     {
       name: 'mode',
       label: 'Mode',
@@ -29,11 +103,14 @@ export default defineTool({
     { label: 'Check a valid number', values: { mode: 'check', input: '79927398713' } },
     { label: 'Compute a check digit', values: { mode: 'checkDigit', input: '789372997' } },
     { label: 'A Visa test number', values: { mode: 'check', input: '4242424242424242' } },
+    { label: 'An ISBN-13', values: { scheme: 'isbn13', mode: 'check', input: '978-0-11-000222-4' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
     const mode = str(values, 'mode', 'check');
+    const scheme = str(values, 'scheme', 'luhn');
+    if (scheme !== 'luhn') return runScheme(scheme, mode, input);
 
     try {
       const cleanedDigitCount = input.replace(/[^0-9]/g, '').length;
