@@ -236,3 +236,37 @@ test('luhn: ISIN US0378331005, EAN-8 73513537 and UPC-A 036000291452 are valid',
   await expect(outputArea(page)).toContainText('Valid ISBN-10.');
   await expect(outputArea(page)).toContainText('9780306406157');
 });
+
+test('security-headers: with Grade this policy unticked the page emits the same headers as before', async ({
+  page,
+}) => {
+  await openTool(page, 'security-headers');
+  await expect(page.locator('#f-gradeCsp')).not.toBeChecked();
+  // CSP Level 3's own introduction example (section 1.1.1), the policy of the page's live fixture, emitted as one header value.
+  await fillAndHold(page, 'csp', "script-src https://cdn.example.com/scripts/\nobject-src 'none'");
+  await expect(outputArea(page)).toContainText(
+    "Content-Security-Policy: script-src https://cdn.example.com/scripts/; object-src 'none'",
+  );
+  // Nothing of the grading appears while the box is unticked.
+  await expect(outputArea(page)).not.toContainText('Policy weaknesses');
+  await expect(outputArea(page)).not.toContainText('Grade ');
+});
+
+test('security-headers: a policy with unsafe-inline is graded and the finding shows its fix', async ({ page }) => {
+  await openTool(page, 'security-headers');
+  await fillAndHold(page, 'csp', "script-src 'unsafe-inline'; object-src 'none'");
+  await page.locator('#f-gradeCsp').check();
+  // CSP Level 3 section 6: developers SHOULD NOT include 'unsafe-inline'. One high finding caps the grade at D.
+  await expect(outputArea(page)).toContainText('Policy weaknesses');
+  const row = outputArea(page)
+    .locator('table.output-table tbody tr')
+    .filter({ has: page.getByRole('cell', { name: 'high', exact: true }) });
+  await expect(row.first()).toContainText('script-src');
+  await expect(row.first()).toContainText("Remove 'unsafe-inline' and allow scripts by nonce or hash.");
+  await expect(outputArea(page)).toContainText(/Grade D \(\d+ of 100\)/);
+  await expect(outputArea(page)).toContainText('not a statement that a policy is secure');
+  // The builder above is untouched by grading: its header list is still there.
+  await expect(outputArea(page)).toContainText(
+    "Content-Security-Policy: script-src 'unsafe-inline'; object-src 'none'",
+  );
+});

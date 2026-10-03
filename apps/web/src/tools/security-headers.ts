@@ -1,4 +1,10 @@
-import { meta, buildSecurityHeaders, SecurityHeadersError } from '@fodt/security-headers';
+import {
+  meta,
+  buildSecurityHeaders,
+  SecurityHeadersError,
+  gradeCsp as gradePolicy,
+  type CspGrade,
+} from '@fodt/security-headers';
 import { defineTool, str, bool, num, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const REFERRER_POLICY_OPTIONS = [
@@ -35,6 +41,34 @@ const CORP_OPTIONS = [
   { value: 'cross-origin', label: 'cross-origin' },
 ];
 
+/** The grade note, the findings table and the scoring note, appended after the builder's blocks when Grade this policy is ticked. */
+function gradeBlocks(grade: CspGrade): OutputBlock[] {
+  if (grade.empty) return [{ kind: 'note', tone: 'info', value: 'Paste a policy to grade.' }];
+  const blocks: OutputBlock[] = [];
+  const tone = grade.grade === 'A' || grade.grade === 'B' ? 'success' : grade.grade === 'F' ? 'error' : 'warn';
+  blocks.push({ kind: 'note', label: 'Grade', tone, value: `Grade ${grade.grade} (${grade.score} of 100)` });
+  if (grade.findings.length === 0) {
+    blocks.push({ kind: 'note', tone: 'info', value: 'None of the rules found a weakness in this policy.' });
+  } else {
+    blocks.push({
+      kind: 'table',
+      label: 'Policy weaknesses',
+      table: {
+        headers: ['Severity', 'Directive', 'Finding', 'Why', 'Fix', 'Basis'],
+        rows: grade.findings.map((f) => [f.severity, f.directive, f.finding, f.why, f.fix, f.basis]),
+        mono: [1],
+      },
+    });
+  }
+  blocks.push({
+    kind: 'note',
+    tone: 'info',
+    value:
+      "How the grade is worked out: each rule that applies takes points off 100 (high 30, medium 15, low 5, info 0), A is 90 or more, B 75, C 60, D 40 and F below 40, and any high finding caps the grade at D. It is this page's own summary of the rules listed, not a statement that a policy is secure.",
+  });
+  return blocks;
+}
+
 export default defineTool({
   id: 'security-headers',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
@@ -46,6 +80,13 @@ export default defineTool({
       rows: 6,
       mono: true,
       default: "default-src 'self'\nobject-src 'none'\nbase-uri 'self'\nframe-ancestors 'none'",
+    },
+    {
+      name: 'gradeCsp',
+      label: 'Grade this policy',
+      type: 'checkbox',
+      default: false,
+      help: 'Grades the policy above against listed rules from W3C Content Security Policy Level 3 and shows the fix for each weakness. It does not change the headers below.',
     },
     {
       name: 'reportOnly',
@@ -106,6 +147,7 @@ export default defineTool({
   ],
   run(values): ToolResult {
     try {
+      const grading = bool(values, 'gradeCsp', false) ? gradePolicy(str(values, 'csp')) : null;
       const rawMaxAge = num(values, 'hstsMaxAge', 31536000);
       let maxAge = Math.trunc(rawMaxAge);
       const clampWarnings: string[] = [];
@@ -134,7 +176,7 @@ export default defineTool({
         path: str(values, 'netlifyPath', '/*'),
       });
 
-      if (result.headers.length === 0) return { outputs: [] };
+      if (result.headers.length === 0) return { outputs: grading ? gradeBlocks(grading) : [] };
 
       const headerList = result.headers.map((h) => `${h.name}: ${h.value}`).join('\n');
 
@@ -161,6 +203,8 @@ export default defineTool({
       if (allWarnings.length > 0) {
         outputs.push({ kind: 'note', label: 'Notes', tone: 'warn', value: allWarnings.join('\n') });
       }
+
+      if (grading) outputs.push(...gradeBlocks(grading));
 
       return { outputs };
     } catch (err) {

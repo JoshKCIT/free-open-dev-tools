@@ -10,6 +10,8 @@ export { meta };
 export { UnsafeValueError, findUnsafeCharacter, assertSingleLine } from './safe-value';
 export { CSP_DIRECTIVES, SANDBOX_TOKENS, parseCspDirectives, serialiseCsp } from './csp';
 export type { CspDirective, CspProblem, ParsedCsp } from './csp';
+export { gradeCsp, effectiveSources, CSP_RULES, CSP_SEVERITY_WEIGHTS } from './csp-grade';
+export type { CspRule, CspFinding, CspGrade, CspSeverity, CspGradeLetter } from './csp-grade';
 export { NginxDollarSignError } from './target-nginx';
 
 export class SecurityHeadersError extends Error {
