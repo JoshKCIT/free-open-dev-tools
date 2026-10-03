@@ -80,13 +80,15 @@ function rsaFromJwk(jwk: Json): KeyModel {
   });
 }
 
+const COORDINATE = 'A public key coordinate';
+
 function ecFromJwk(jwk: Json): KeyModel {
   const name = stringMember(jwk, 'crv');
   const curve = name === undefined ? undefined : JWK_CURVES.get(name);
   if (curve === undefined) throw new KeyConverterError(CURVE_SENTENCE);
   const size = curveInfo(curve).size;
-  const x = padTo(requiredBytes(jwk, 'x'), size);
-  const y = padTo(requiredBytes(jwk, 'y'), size);
+  const x = padTo(requiredBytes(jwk, 'x'), size, COORDINATE);
+  const y = padTo(requiredBytes(jwk, 'y'), size, COORDINATE);
   const point = ecNormalizePoint(curve, new Uint8Array([4, ...x, ...y]));
   const secret = bytesMember(jwk, 'd');
   if (secret === undefined) return { type: 'ec', curve, point };

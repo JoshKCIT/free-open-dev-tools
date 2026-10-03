@@ -65,12 +65,15 @@ export function curveLib(curve: Curve): typeof p256 {
   return lib;
 }
 
-/** A magnitude as exactly `size` bytes: leading zeros removed and the value padded on the left, or refused if larger. */
-export function padTo(bytes: Uint8Array, size: number): Uint8Array {
+/**
+ * A magnitude as exactly `size` bytes: leading zeros removed and the value padded on the left, or refused if larger. The
+ * refusal names `what` was too long: the private number by default, or a public key coordinate.
+ */
+export function padTo(bytes: Uint8Array, size: number, what = 'The private number'): Uint8Array {
   let skip = 0;
   while (skip < bytes.length && bytes[skip] === 0) skip++;
   const trimmed = bytes.subarray(skip);
-  if (trimmed.length > size) throw new KeyConverterError('The private number is longer than this curve allows.');
+  if (trimmed.length > size) throw new KeyConverterError(`${what} is longer than this curve allows.`);
   const out = new Uint8Array(size);
   out.set(trimmed, size - trimmed.length);
   return out;
