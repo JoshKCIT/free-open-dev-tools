@@ -361,7 +361,7 @@ export function validateScheme(scheme: string, text: string): ValidateResult {
           ['Registry release', IBAN_REGISTRY_RELEASE],
         ],
         notes: [
-          "A valid IBAN here only has the right length and check digits. The account part is not checked against the layout of the country's own account numbers, and a valid IBAN does not show that the account exists.",
+          "A valid IBAN here only has the right length and check digits; it does not show that the account exists, and the account part is not checked against the layout of the country's own account numbers.",
         ],
       };
     }
@@ -470,7 +470,7 @@ export function computeScheme(scheme: string, text: string): ComputeResult {
           ['Registry release', IBAN_REGISTRY_RELEASE],
         ],
         notes: [
-          "A computed IBAN only has the right length and check digits. The account part is not checked against the layout of the country's own account numbers, and it does not show that the account exists.",
+          "A computed IBAN only has the right length and check digits; it does not show that the account exists, and the account part is not checked against the layout of the country's own account numbers.",
         ],
       };
     }
