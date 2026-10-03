@@ -486,6 +486,7 @@ it('every rule states its severity, finding, why, fix and basis', () => {
     'nonce-short',
     'object-src',
     'base-uri',
+    'frame-ancestors-open',
     'frame-ancestors',
     'form-action',
     'default-open',
@@ -516,7 +517,7 @@ it('every rule states its severity, finding, why, fix and basis', () => {
   expect(CSP_SEVERITY_WEIGHTS.get('info')).toBe(0);
 });
 
-it('each of the 26 rules fires on a policy built for it', () => {
+it('each of the 27 rules fires on a policy built for it', () => {
   const cases: [string, string, string][] = [
     ['script-unrestricted', 'high', "img-src 'self'"],
     ['script-unsafe-inline', 'high', "script-src 'unsafe-inline'"],
@@ -533,6 +534,7 @@ it('each of the 26 rules fires on a policy built for it', () => {
     ['nonce-short', 'medium', "script-src 'nonce-abc123'"],
     ['object-src', 'medium', "script-src 'self'"],
     ['base-uri', 'medium', "script-src 'self'"],
+    ['frame-ancestors-open', 'medium', "script-src 'self'; frame-ancestors *"],
     ['frame-ancestors', 'low', "script-src 'self'"],
     ['form-action', 'low', "script-src 'self'"],
     ['default-open', 'medium', 'default-src https:'],
@@ -545,7 +547,7 @@ it('each of the 26 rules fires on a policy built for it', () => {
     ['upgrade-insecure-requests', 'info', "script-src 'self'"],
     ['syntax', 'low', "script-src 'self'; frobnicate x"],
   ];
-  expect(cases).toHaveLength(26);
+  expect(cases).toHaveLength(27);
   for (const [id, severity, text] of cases) {
     const found = rule(text, id);
     expect(found, id).toBeDefined();

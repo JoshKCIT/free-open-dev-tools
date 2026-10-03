@@ -72,18 +72,45 @@ const OPEN_NAVIGATION_POLICY =
 it('frame-ancestors and form-action that are open to every site are not graded A 100', () => {
   const result = gradeCsp(OPEN_NAVIGATION_POLICY);
   const byRule = new Map(result.findings.map((f) => [f.rule, f]));
-  expect(byRule.get('frame-ancestors')?.severity).toBe('low');
-  expect(byRule.get('frame-ancestors')?.directive).toBe('frame-ancestors');
-  expect(byRule.get('frame-ancestors')?.finding).toMatch(/any host or a whole scheme/);
+  // An open frame-ancestors fires its own medium rule (15 points) in place of the low missing-directive rule.
+  expect(byRule.has('frame-ancestors')).toBe(false);
+  expect(byRule.get('frame-ancestors-open')?.severity).toBe('medium');
+  expect(byRule.get('frame-ancestors-open')?.directive).toBe('frame-ancestors');
+  expect(byRule.get('frame-ancestors-open')?.finding).toMatch(/other sites may embed the page/);
+  expect(byRule.get('frame-ancestors-open')?.fix).toMatch(/'none' or 'self'/);
+  expect(byRule.get('frame-ancestors-open')?.basis).toMatch(/section 6\.4\.2/);
+  // form-action stays a low rule, 5 points, the same as leaving the directive out.
   expect(byRule.get('form-action')?.severity).toBe('low');
   expect(byRule.get('form-action')?.finding).toMatch(/any host or a whole scheme/);
-  // Each costs its full weight (5 points), the same as leaving the directive out.
-  expect(result.score).toBe(90);
-  expect(result.score).toBe(gradeCsp("default-src 'none'; base-uri 'none'; upgrade-insecure-requests").score);
+  expect(result.score).toBe(80);
+  expect(result.grade).toBe('B');
   // The same policy with https: in place of the star.
   const https = gradeCsp(OPEN_NAVIGATION_POLICY.replaceAll('*', 'https:'));
-  expect(https.findings.map((f) => f.rule)).toEqual(['frame-ancestors', 'form-action']);
-  expect(https.score).toBe(90);
+  expect(https.findings.map((f) => f.rule)).toEqual(['frame-ancestors-open', 'form-action']);
+  expect(https.score).toBe(80);
+  expect(https.grade).toBe('B');
+});
+
+it('an open frame-ancestors costs more than a missing one, and a missing one is still the low rule', () => {
+  const missing = gradeCsp("default-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests");
+  expect(missing.findings.map((f) => f.rule)).toEqual(['frame-ancestors']);
+  expect(missing.findings[0]?.severity).toBe('low');
+  expect(missing.score).toBe(95);
+  const open = gradeCsp(
+    "default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors https:; upgrade-insecure-requests",
+  );
+  expect(open.findings.map((f) => f.rule)).toEqual(['frame-ancestors-open']);
+  expect(open.score).toBe(85);
+  // A closed list fires neither rule.
+  const closed = gradeCsp(
+    "default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests",
+  );
+  expect(closed.findings).toEqual([]);
+  expect(closed.score).toBe(100);
+  // A meta element ignores frame-ancestors, so it counts as missing there, never as open.
+  const asMeta = gradeCsp(metaOf("default-src 'none'; frame-ancestors *"));
+  expect(asMeta.findings.map((f) => f.rule)).not.toContain('frame-ancestors-open');
+  expect(asMeta.findings.map((f) => f.rule)).toContain('frame-ancestors');
 });
 
 it('open frame-ancestors and form-action shapes: star, schemes, a wildcard host with no name and a bare top level domain', () => {
@@ -107,7 +134,7 @@ it('open frame-ancestors and form-action shapes: star, schemes, a wildcard host 
   for (const source of open) {
     for (const name of ['frame-ancestors', 'form-action']) {
       const ids = ruleIds(`default-src 'none'; ${name} ${source}`);
-      expect(ids, `${name} ${source}`).toContain(name);
+      expect(ids, `${name} ${source}`).toContain(name === 'frame-ancestors' ? 'frame-ancestors-open' : name);
     }
   }
   const closed = [
@@ -124,6 +151,7 @@ it('open frame-ancestors and form-action shapes: star, schemes, a wildcard host 
     for (const name of ['frame-ancestors', 'form-action']) {
       const ids = ruleIds(`default-src 'none'; ${name} ${source}`);
       expect(ids, `${name} ${source}`).not.toContain(name);
+      expect(ids, `${name} ${source}`).not.toContain('frame-ancestors-open');
     }
   }
 });

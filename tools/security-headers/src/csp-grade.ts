@@ -233,9 +233,18 @@ export const CSP_RULES: readonly CspRule[] = [
       "CSP Level 3 section 6.3.1 (base-uri); section 7.3 (nonce retargeting); section 8.5 (Strict CSP: base-uri 'self' or 'none')",
   },
   {
+    id: 'frame-ancestors-open',
+    severity: 'medium',
+    finding: 'frame-ancestors allows any host or a whole scheme, so other sites may embed the page.',
+    why: 'An open frame-ancestors list lets any site put the page in a frame (clickjacking), the same as having no frame-ancestors at all, but it reads as if the page were protected. A meta element cannot set it.',
+    fix: "Use frame-ancestors 'none' or 'self' in the HTTP header, or name only the sites that may embed the page.",
+    basis:
+      'CSP Level 3 section 6.4.2 (frame-ancestors lists the parents that may embed the page); section 3.3 (ignored in a meta element)',
+  },
+  {
     id: 'frame-ancestors',
     severity: 'low',
-    finding: 'frame-ancestors is missing or open, so other sites may embed the page.',
+    finding: 'frame-ancestors is missing, so other sites may embed the page.',
     why: 'frame-ancestors does not fall back to default-src, so any site may put the page in a frame (clickjacking). A meta element cannot set it.',
     fix: "Add frame-ancestors 'none' or 'self' in the HTTP header.",
     basis:
@@ -1006,11 +1015,9 @@ function evaluate(
   const ancestors = source === 'meta' ? undefined : index.get('frame-ancestors');
   if (!ancestors) found.push(finding('frame-ancestors', 'frame-ancestors'));
   else if (ancestors.some(isOpenNavigationSource)) {
-    found.push(
-      finding('frame-ancestors', 'frame-ancestors', {
-        whole: 'frame-ancestors allows any host or a whole scheme, so other sites may embed the page.',
-      }),
-    );
+    // An open list is its own medium rule: it reads as protection while any site may frame the page, which is worse than a
+    // missing directive, so it costs more than the low rule for a missing one.
+    found.push(finding('frame-ancestors-open', 'frame-ancestors'));
   }
   const formAction = index.get('form-action');
   if (!formAction) found.push(finding('form-action', 'form-action'));
