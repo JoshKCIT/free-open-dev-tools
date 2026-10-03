@@ -5,6 +5,7 @@ import {
   convertLineEndingBytes,
   convertLineEndings,
   decodeBytes,
+  looksLikeWideText,
   meta,
   parseHex,
   repairMojibake,
@@ -197,6 +198,16 @@ async function lineEndings(values: Values): Promise<ToolResult> {
     }
     const converted = convertLineEndingBytes(bytes, eol);
     const total = converted.counts.lf + converted.counts.crlf + converted.counts.cr;
+    const wide: OutputBlock[] = looksLikeWideText(bytes)
+      ? [
+          {
+            kind: 'note',
+            tone: 'warn',
+            value:
+              'Most line endings in this file sit next to zero bytes (00), which is how UTF-16 and UTF-32 write them when the file has no byte order mark. This page converts one byte at a time, so the result is not valid text in that encoding. Decode the file to text first.',
+          },
+        ]
+      : [];
     return {
       outputs: [
         {
@@ -213,6 +224,7 @@ async function lineEndings(values: Values): Promise<ToolResult> {
         total === 0
           ? { kind: 'note', tone: 'info', value: 'The file has no line endings, so nothing changed.' }
           : { kind: 'note', tone: 'success', value: `Converted ${count(total)} line ending${total === 1 ? '' : 's'}.` },
+        ...wide,
       ],
       stats: [
         ['LF found', count(converted.counts.lf)],
@@ -254,8 +266,26 @@ async function lineEndings(values: Values): Promise<ToolResult> {
 async function byteOrderMark(values: Values): Promise<ToolResult> {
   let bytes: Uint8Array;
   const picked = await pickedBytes(values);
-  if (picked) bytes = picked.bytes;
-  else {
+  // A file is used first, then the hex, then the text box; when two of them hold something the page says which it used.
+  let precedence: OutputBlock | undefined;
+  if (picked) {
+    bytes = picked.bytes;
+    const text = str(values, 'text');
+    if (picked.fromFile && (text !== '' || str(values, 'hex').trim() !== '')) {
+      precedence = {
+        kind: 'note',
+        tone: 'info',
+        value: 'A file is attached, so it was used; the text and the hex boxes were ignored.',
+      };
+    } else if (!picked.fromFile && text !== '') {
+      precedence = {
+        kind: 'note',
+        tone: 'info',
+        value:
+          'Both the Text box and the Bytes as hex box hold something. The hex was used and the Text box was ignored.',
+      };
+    }
+  } else {
     const text = str(values, 'text');
     if (text === '') return { outputs: [] };
     bytes = utf8Bytes(text);
@@ -302,6 +332,7 @@ async function byteOrderMark(values: Values): Promise<ToolResult> {
       value: action === 'remove' ? 'Removed the byte order mark.' : 'Wrote the byte order mark at the start.',
     });
   }
+  if (precedence) outputs.push(precedence);
   if (action === 'add-utf16le' || action === 'add-utf16be') {
     outputs.push({
       kind: 'note',
@@ -358,7 +389,7 @@ export default defineTool({
       rows: 4,
       mono: true,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
-      help: 'Used only when no file is attached above. Pairs of hex digits; spaces and line breaks are allowed.',
+      help: 'Used only when no file is attached above. Pairs of hex digits; spaces and line breaks are allowed. In Byte order mark mode, when this box and the Text box both hold something, this one is used.',
       visible: (v) => modeOf(v) === 'decode' || modeOf(v) === 'bom',
     },
     {

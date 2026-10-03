@@ -438,6 +438,23 @@ export function convertLineEndingBytes(
   return { bytes: out, counts };
 }
 
+/**
+ * Whether the line endings of a file sit next to zero bytes, which is how UTF-16 and UTF-32 without a byte order mark write
+ * them (0A 00, 00 0A, 0A 00 00 00 and so on): true when there is a line ending (0A or 0D) and at least half of them
+ * have a 00 byte right before or after. Converting such a file one byte at a time would corrupt it, so the page warns.
+ */
+export function looksLikeWideText(bytes: Uint8Array): boolean {
+  let endings = 0;
+  let wide = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i]!;
+    if (byte !== 0x0a && byte !== 0x0d) continue;
+    endings++;
+    if ((i > 0 && bytes[i - 1] === 0) || bytes[i + 1] === 0) wide++;
+  }
+  return endings > 0 && wide * 2 >= endings;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Byte order marks
 
