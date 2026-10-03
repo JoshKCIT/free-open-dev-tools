@@ -9,6 +9,7 @@
  * RULE, stated once and enforced by a test: no message thrown or returned from this file may ever contain a fragment
  * of a key, a secret, or a token. Describe the shape of the problem, never the content.
  */
+import { ed25519 } from '@noble/curves/ed25519.js';
 
 export class KeyConverterError extends Error {
   /** Index into the relevant text where the problem was found, when known. */
@@ -34,6 +35,10 @@ export const RSA_PRIME_TEST_MAX_BITS = 4096;
 /** The warning shown for a private RSA key above that size, whose prime factors are not tested. */
 export const UNTESTED_PRIMES_WARNING =
   'This RSA key is larger than 4096 bits, so its prime factors were not tested for primality.';
+
+/** The warning shown for an Ed25519 public key that is a point of small order. */
+export const SMALL_ORDER_WARNING =
+  'This Ed25519 public key is a point of small order, which no real key pair has. Do not use it to check signatures.';
 
 /** The longest comment the OpenSSH line carries. */
 export const COMMENT_LIMIT = 256;
@@ -150,17 +155,17 @@ export function checkComment(comment: string): void {
         i,
       );
     }
-  }
-}
-
-/**
- * A public exponent as text: a decimal number up to 8 bytes (20 digits), and a longer one by its size in bits, because an
     if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) {
       throw new KeyConverterError(
         `The comment has a control character at character ${i + 1}. A comment is written as plain text on one line, so remove it.`,
         i,
       );
     }
+  }
+}
+
+/**
+ * A public exponent as text: a decimal number up to 8 bytes (20 digits), and a longer one by its size in bits, because an
  * exponent of thousands of digits is not a number anyone reads and would fill the page.
  */
 export function exponentText(e: Uint8Array): string {
@@ -185,6 +190,15 @@ function isCommonExponent(e: Uint8Array): boolean {
   );
 }
 
+/** Whether an Ed25519 public key is a point of small order (the identity, the point of order 2, and the other torsion points). */
+function hasSmallOrder(pub: Uint8Array): boolean {
+  try {
+    return ed25519.Point.fromBytes(pub).isSmallOrder();
+  } catch {
+    return false;
+  }
+}
+
 /**
  * What is worth saying about a key itself, apart from how it was read: an RSA key under 2048 bits, and an RSA key whose
  * public exponent is neither 3 nor 65537.
@@ -202,5 +216,6 @@ export function keyWarnings(key: KeyModel): string[] {
       );
     }
   }
+  if (key.type === 'ed25519' && hasSmallOrder(key.pub)) warnings.push(SMALL_ORDER_WARNING);
   return warnings;
 }
