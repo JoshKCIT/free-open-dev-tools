@@ -1,0 +1,35 @@
+{
+  "id": "css-spinner",
+  "scenarios": [
+    {
+      "label": "ring",
+      "steps": [{ "action": "radio", "field": "type", "value": "ring" }],
+      "pixels": true
+    },
+    {
+      "label": "dual ring",
+      "steps": [{ "action": "radio", "field": "type", "value": "dual-ring" }],
+      "pixels": true
+    },
+    {
+      "label": "dots",
+      "steps": [{ "action": "radio", "field": "type", "value": "dots" }],
+      "pixels": true
+    },
+    {
+      "label": "bars",
+      "steps": [{ "action": "radio", "field": "type", "value": "bars" }],
+      "pixels": true
+    },
+    {
+      "label": "pulse",
+      "steps": [{ "action": "radio", "field": "type", "value": "pulse" }],
+      "pixels": true
+    },
+    {
+      "label": "ripple",
+      "steps": [{ "action": "radio", "field": "type", "value": "ripple" }],
+      "pixels": true
+    }
+  ]
+}

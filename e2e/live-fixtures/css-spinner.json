@@ -1,0 +1,6 @@
+{
+  "id": "css-spinner",
+  "label": "CSS Animations Level 1 and Media Queries Level 5: a ring spinner animates and stops under reduced motion",
+  "steps": [{ "action": "radio", "field": "type", "value": "ring" }],
+  "expect": ["@media (prefers-reduced-motion: reduce) {", "animation: none"]
+}
