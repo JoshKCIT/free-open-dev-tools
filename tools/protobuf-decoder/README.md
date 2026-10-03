@@ -26,7 +26,7 @@ Decodes raw Protocol Buffers bytes in your browser without a schema. The wire fo
 - Field names, enum names and default values are not in the wire format and cannot be shown.
 - A length-delimited field is a nested message guess only when its bytes parse completely as fields, so a short string that happens to look like one can show as both text and a message.
 - Packed repeated fixed-width numbers are not guessed: they show as bytes, and as a nested message only if the bytes happen to parse as one.
-- The table lists the first 500 fields and the listing the first 50,000; the page says when more were found.
+- The table lists the first 500 fields and the listing the first 50,000 fields, counting those inside nested messages and groups (a length-delimited field after that is not tried as a nested message); the page says when more were found.
 
 ## Ambiguous cases, and what this does about them
 
@@ -74,7 +74,7 @@ console.log(fields[0].readings);
 // [ { label: 'Unsigned', value: '150' }, { label: 'Signed', value: '150' }, { label: 'Zigzag', value: '75' } ]
 ```
 
-`decodeProtobuf(bytes, { nested, packed })` returns the fields of one message, each with its `path` (the field numbers from the top, such as `3.1`), `number`, `wireType`, `wireName`, byte `offset` and `readings` (a label and a value each, the first being the one a plain listing uses), and `children` for a nested message or group. `decodeProtobufInfo` also says how many fields were found and whether the list was cut at `MAX_FIELDS`. `formatDecodeRaw(fields)` writes the listing: `1: 150`, a quoted string for text, `bytes 00 01 ff` for bytes, `[1, 2, 3]` for packed varints and an indented `3 { ... }` block for a message or group. `readInputBytes(text, encoding)` reads hex or Base64. Every expected failure is a `ProtobufDecoderError` with a plain message and the byte `offset` it is about (for text that is not hex or Base64, the character position).
+`decodeProtobuf(bytes, { nested, packed })` returns the fields of one message, each with its `path` (the field numbers from the top, such as `3.1`), `number`, `wireType`, `wireName`, byte `offset` and `readings` (a label and a value each, the first being the one a plain listing uses), and `children` for a nested message or group. `decodeProtobufInfo` also says how many fields were found and whether the list was cut at `MAX_FIELDS`; `countFields(fields)` counts the fields of a decoded list, the nested ones too, which is the number kept. `formatDecodeRaw(fields)` writes the listing: `1: 150`, a quoted string for text, `bytes 00 01 ff` for bytes, `[1, 2, 3]` for packed varints and an indented `3 { ... }` block for a message or group. `readInputBytes(text, encoding)` reads hex or Base64. Every expected failure is a `ProtobufDecoderError` with a plain message and the byte `offset` it is about (for text that is not hex or Base64, the character position).
 
 ## Dependencies
 

@@ -24,7 +24,8 @@ Decodes bytes (a file or pasted hex) in a legacy text encoding, repairs text whe
 - The labels latin1 and iso-8859-1 mean windows-1252, as the WHATWG Encoding Standard defines them; choose true ISO-8859-1 to keep bytes 80 to 9F as control characters.
 - Repair works when the garbled text came from one pass of UTF-8 read as Windows-1252 or ISO-8859-1; a character outside that table, or bytes that are not UTF-8, are reported instead of guessed.
 - Text is not written into multi-byte legacy encodings such as Shift_JIS, GBK or Big5.
-- A text box keeps every line break as LF (a browser rule), so open a file to convert CRLF or CR line endings. A file is converted byte for byte, which suits UTF-8, Latin-1 and the Windows code pages; a file that starts with a UTF-16 byte order mark is refused, and UTF-16 without a mark cannot be told apart.
+- A text box keeps every line break as LF (a browser rule), so open a file to convert CRLF or CR line endings. A file is converted byte for byte, which suits UTF-8, Latin-1 and the Windows code pages; a file that starts with a UTF-16 byte order mark is refused, and UTF-16 or UTF-32 without a mark cannot be told apart for certain, so the page warns when most line endings sit next to zero bytes.
+- In Byte order mark mode a file is used first, then the hex, then the text box; when two of them hold something, the page says which one it used.
 
 ## Ambiguous cases, and what this does about them
 

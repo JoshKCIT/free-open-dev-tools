@@ -20,8 +20,9 @@ Converts MessagePack and CBOR to JSON and back, in your browser, from pasted hex
 ## Limits
 
 - Input up to 5 MiB; nesting deeper than 256 levels is refused with its byte offset.
+- The JSON text is limited to 32 MiB (33,554,432 characters): a deeply nested value indents every line, so a value of a few million items inside a few hundred levels can pass it, and the conversion is then refused with a message (CBOR diagnostic notation does not indent).
 - JSON cannot hold every MessagePack and CBOR value, so these markers are used both ways: $bigint, $bytes, $tag with $value, $ext with $hex, $timestamp, $map, $float, $undefined and $simple.
-- JSON to CBOR or MessagePack uses preferred serialization (the shortest form), so an item first written in a longer form, such as an indefinite-length array or a float with more bytes than it needs, does not come back byte for byte.
+- JSON to CBOR or MessagePack uses preferred serialization (the shortest form), so an item first written in a longer form, such as an indefinite-length array or a float with more bytes than it needs, does not come back byte for byte; converting to JSON warns, with a count, when a bignum an integer holds, a float wider than its value needs, an indefinite-length array or map, or a timestamp in a longer layout than it needs would come back in another form.
 - Unknown tags and extension types are shown, never dropped or interpreted.
 - In JSON a number with a fraction or an exponent is a float and a number without either is an integer, of any size up to 20,000 digits.
 - A CBOR bignum of more than 8,192 bytes is shown as a $tag over its bytes instead of as digits, which loses nothing.

@@ -15,7 +15,7 @@ Lists the requests a browser recorded in a HAR file, with each request's method,
 - A list of requests with start order, method, address, status, size and time, filtered by text in the address, by method and by status (404 or a class such as 4xx), and sorted by time, size or status
 - One request opened in full: request and response headers, query parameters, cookies, posted data and the response body as text
 - Base64 response bodies decoded before they are shown; only text bodies are shown, and a long body is cut with a note
-- Sensitive values flagged and masked: Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token headers, every cookie, parameters named like a token, key, secret or password, a password inside an address, and values shaped like a JSON Web Token or a Bearer credential
+- Sensitive values flagged and masked: Authorization, Proxy-Authorization, Cookie, Set-Cookie, X-API-Key, X-Auth-Token, X-CSRF-Token and X-XSRF-Token headers, every cookie, any header or parameter whose name holds token, secret, password, passwd, credential, session or signature or has key, sig, auth, pwd or pass as one of its words (X-Access-Token, Api-Key, x-goog-api-key, X-Amz-Signature, sessionid), the password and a token-shaped user name inside an address, the sensitive parameters of an address held in a header value (Referer, Location, Origin, Link, Content-Location, Refresh), in a parameter value or in a redirect address, and values shaped like a JSON Web Token or a Bearer credential
 - Sizes of -1 shown as unknown and timings of -1 shown as not applicable and left out of the total, as the specification defines them
 - Custom fields that start with an underscore are ignored
 
@@ -23,7 +23,7 @@ Lists the requests a browser recorded in a HAR file, with each request's method,
 
 - Files up to 50 MiB; the first 20,000 entries are listed, 500 per page.
 - No recorded request is ever sent, replayed or opened (a recording is read and never sent anywhere), and addresses are shown as text, never as links.
-- Sensitive values are masked to their first four characters and their length until you choose Show sensitive values; the rules are listed on this page and only catch what they describe.
+- Sensitive values are masked to a few of their first characters (one for every four characters of the value, at most four) and their length, and a password or secret shows none of its characters, until you choose Show sensitive values; the rules are listed on this page and only catch what they describe.
 - Bodies are shown as text, up to 100 KB each; images and other binary bodies are not displayed.
 - HAR files only: a recording in another format, or a HAR version before 1.1, is refused.
 
@@ -33,8 +33,10 @@ Lists the requests a browser recorded in a HAR file, with each request's method,
 - Size is the size of the returned content when the recording has one, otherwise the size of the body as received; a size of -1 means the recording does not have it and is shown as unknown
 - The list keeps the order of the recording. The specification prefers entries sorted by start time but says a reader should not rely on it, so this page shows the order the file has; sorting by time, size or status is stable, and requests with equal keys stay in recording order
 - The address filter looks at the address as it is shown, so a masked value cannot be found by searching for part of it until Show sensitive values is on
-- A value of five to eight characters is masked completely, because showing four characters of it would show most of it; longer values keep their first four characters
-- Masking looks at names and at the shape of a value. A secret in a body is found when it sits in a form field or a JSON member with a sensitive name, or has the shape of a token; a secret with another name and no recognisable shape is shown as it is
+- The flagged count and the Sensitive badge of a request count the headers, cookies, parameters, address and redirect address that are masked, and not the contents of bodies
+- Names are matched by words: a name is sensitive when it holds token, secret, password, passwd, credential, session or signature, or when one of its parts (split at anything that is not a letter or digit and between a lower and an upper case letter) is key, sig, auth, pwd, pass or passcode, so monkey, design and author are not flagged; a parameter list is split at & and at ;
+- A masked value keeps the first min(4, floor(length / 4)) of its characters, so a short value shows few or none of them and a value of sixteen or more shows four; a value whose name holds password, passwd, secret or pwd (or is pass or passcode) shows none
+- Masking looks at names and at the shape of a value. A secret in a body is found when it sits in a form field, in a line of name=value pairs, in a multipart part or in a JSON member (a string or a number, also inside a JSON string, one level deep) with a sensitive name, in an address, or has the shape of a token. Not found: a secret with an ordinary name and no recognisable shape, the members of an object named credentials when they have ordinary names, XML elements and attributes, JSON nested in JSON more than one level, addresses written with escaped slashes or an escaped ampersand, and an address with no scheme outside the Referer, Location, Origin, Link, Content-Location and Refresh headers
 
 ## Defined by
 
