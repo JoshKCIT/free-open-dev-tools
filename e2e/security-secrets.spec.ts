@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 /**
  * Behavioural proof, for the security tools of phase 14, that a key or a secret stays in the page (D-187): a private key
@@ -341,3 +343,118 @@ for (const c of PASTED_CASES) {
     await assertNothingLeft(page, recording, markers);
   });
 }
+
+/**
+ * Runs `body` with the address of a local HTTP server that records every request it receives, then waits a moment for a
+ * stray request to land, and returns what the server saw. A certificate that names this server in the addresses it carries
+ * (CRL, OCSP, CA issuers, policy statement, URI name) would show up here if the page requested one of them. Written here,
+ * the shape copied from e2e/data-files.spec.ts.
+ */
+async function withRecordingServer(body: (address: string, port: number) => Promise<void>): Promise<string[]> {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(`${request.method} ${request.url}`);
+    response.end('x');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await body(`http://127.0.0.1:${port}`, port);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+  return seen;
+}
+
+// The DER of the certificate called canary in tools/certificate-decoder/test/fixtures/certs.ts, made by OpenSSL 3.5.5 with
+// the recipe tools/certificate-decoder/test/fixtures/make-fixtures.sh (a P-256 certificate whose subject is
+// CN=FODT-SECURITY-CANARY and whose CRL, OCSP, CA issuers, policy statement and URI name all use 127.0.0.1:65535).
+const CANARY_DER_B64 = [
+  'MIICijCCAjCgAwIBAgIUFwdJOn5g/Y5LdY92rZ4HMzcZfiwwCgYIKoZIzj0EAwIw',
+  'HzEdMBsGA1UEAwwURk9EVC1TRUNVUklUWS1DQU5BUlkwHhcNMjYxMDAzMDQzODAw',
+  'WhcNMzYwOTMwMDQzODAwWjAfMR0wGwYDVQQDDBRGT0RULVNFQ1VSSVRZLUNBTkFS',
+  'WTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABFkWXKw1rwtfB5ostBPImPfCQvF3',
+  'GWEYK3syNup3PAsaUarywX2rFwT8AB6gOhbLSivhYngMmI/Gd4HqZRCNHlajggFI',
+  'MIIBRDAMBgNVHRMBAf8EAjAAMD4GA1UdEQQ3MDWCE2NhbmFyeS5leGFtcGxlLnRl',
+  'c3SGHmh0dHA6Ly8xMjcuMC4wLjE6NjU1MzUvc2FuLXVyaTArBgNVHR8EJDAiMCCg',
+  'HqAchhpodHRwOi8vMTI3LjAuMC4xOjY1NTM1L2NybDBmBggrBgEFBQcBAQRaMFgw',
+  'JwYIKwYBBQUHMAGGG2h0dHA6Ly8xMjcuMC4wLjE6NjU1MzUvb2NzcDAtBggrBgEF',
+  'BQcwAoYhaHR0cDovLzEyNy4wLjAuMTo2NTUzNS9pc3N1ZXIuY3J0MEAGA1UdIAQ5',
+  'MDcwNQYJKwYBBAGGjR8BMCgwJgYIKwYBBQUHAgEWGmh0dHA6Ly8xMjcuMC4wLjE6',
+  'NjU1MzUvY3BzMB0GA1UdDgQWBBSzFLM7ld8o0Jq2UqCEtSrG7hB/2zAKBggqhkjO',
+  'PQQDAgNIADBFAiEAmT2zn85WO7jiw6Pll804a7BcT1PGRoRelDOTFdj7x7ICIEax',
+  'ogjvYjOoPNhLyfc6VhA8ZBPpZDaCZlL8F+0Urr/6',
+].join('');
+
+/** The text of the host and port the canary certificate names, which the recording test replaces with the server's. */
+const CANARY_HOST = '127.0.0.1:65535';
+
+/**
+ * The canary certificate's DER with its five addresses pointed at a local recording server. An ephemeral port always has
+ * five digits, so the replacement keeps every length; the signature no longer matches, and the page never checks it.
+ */
+function canaryForServer(port: number): Buffer {
+  const portText = String(port);
+  expect(portText.length, 'the recording server did not get a five digit port').toBe(5);
+  const bytes = Buffer.from(CANARY_DER_B64, 'base64');
+  const needle = Buffer.from(CANARY_HOST);
+  const replacement = Buffer.from(`127.0.0.1:${portText}`);
+  expect(replacement.length).toBe(needle.length);
+  let found = 0;
+  for (let at = bytes.indexOf(needle); at >= 0; at = bytes.indexOf(needle, at + needle.length)) {
+    replacement.copy(bytes, at);
+    found++;
+  }
+  expect(found, 'the canary certificate names its address five times').toBe(5);
+  return bytes;
+}
+
+const CANARY_SUBJECT = 'FODT-SECURITY-CANARY';
+
+test('certificate-decoder: a certificate naming a local server in its CRL, OCSP, CA issuers, policy and URI fields is shown as text and the server receives nothing', async ({
+  page,
+}) => {
+  const seen = await withRecordingServer(async (address, port) => {
+    await page.goto(rel('/tools/certificate-decoder'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+    // Recorded only after the page and its own chunk have loaded, so this asserts nothing leaves while the certificate is
+    // pasted, read and shown.
+    const recording = recordEverything(page);
+
+    await fillAndHold(page, 'input', canaryForServer(port).toString('base64'));
+    await expect(outputArea(page)).toContainText(`CN=${CANARY_SUBJECT}`, { timeout: 20_000 });
+    // Every address the certificate names is on the page as characters.
+    for (const path of ['crl', 'ocsp', 'issuer.crt', 'cps', 'san-uri']) {
+      await expect(outputArea(page)).toContainText(`${address}/${path}`);
+    }
+    // Nothing in the output can load or open an address: no link, image, frame, script, form, object or embedded content.
+    expect(await outputArea(page).locator('img, iframe, script, link, form, a[href], object, embed').count()).toBe(0);
+
+    await page.waitForTimeout(500);
+    await assertNothingLeft(page, recording, [CANARY_SUBJECT]);
+  });
+  // The server the certificate names saw no request at all.
+  expect(seen).toEqual([]);
+});
+
+test('certificate-decoder: a DER certificate opened through the file picker is read in the page and nothing leaves it', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/certificate-decoder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  const recording = recordEverything(page);
+
+  const der = Buffer.from(CANARY_DER_B64, 'base64');
+  // The file is binary DER (it begins with the byte 0x30), so only a page that reads the picked bytes can show its subject.
+  expect(der[0]).toBe(0x30);
+  await page.locator('#f-file').setInputFiles({ name: 'canary.der', mimeType: 'application/pkix-cert', buffer: der });
+  await expect(outputArea(page)).toContainText(`CN=${CANARY_SUBJECT}`, { timeout: 20_000 });
+  await expect(outputArea(page)).toContainText('Certificates read');
+  expect(await outputArea(page).locator('img, iframe, script, link, form, a[href], object, embed').count()).toBe(0);
+
+  await page.waitForTimeout(500);
+  // The subject, the first line of the certificate's Base64 and the file's own name are looked for everywhere.
+  await assertNothingLeft(page, recording, [CANARY_SUBJECT, CANARY_DER_B64.slice(0, 60), 'canary.der']);
+});
