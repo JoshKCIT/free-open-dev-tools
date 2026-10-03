@@ -38,6 +38,10 @@ export const KEY_CONVERTER_START_LIMIT_MS = 10000;
 export const KEY_CONVERTER_START_LIMIT_MESSAGE =
   'The background task did not start within 10 seconds. Reload the page and try again.';
 
+export const KEY_CONVERTER_NOT_STARTED_MESSAGE = 'The background task could not start.';
+
+export const KEY_CONVERTER_STOPPED_MESSAGE = 'The background task stopped unexpectedly.';
+
 export class KeyConverterRunError extends Error {
   constructor(message: string) {
     super(message);
@@ -68,8 +72,7 @@ export function keyConverterInWorker(job: KeyConverterJobMessage, ctx: RunContex
     let runTimer: ReturnType<typeof setTimeout> | undefined;
     // Whether the job has been posted. A worker that fails after that did start, so it is not reported as unable to.
     let posted = false;
-    const failedMessage = () =>
-      posted ? 'The background task stopped unexpectedly.' : 'The background task could not start.';
+    const failedMessage = () => (posted ? KEY_CONVERTER_STOPPED_MESSAGE : KEY_CONVERTER_NOT_STARTED_MESSAGE);
 
     const removeListeners = () => {
       worker.removeEventListener('message', onMessage);
@@ -107,7 +110,7 @@ export function keyConverterInWorker(job: KeyConverterJobMessage, ctx: RunContex
           worker.postMessage(job);
           posted = true;
         } catch {
-          settle({ ok: false, error: new Error('The background task could not start.') });
+          settle({ ok: false, error: new Error(KEY_CONVERTER_NOT_STARTED_MESSAGE) });
         }
       } else if (data.type === 'key-converter-done') {
         settle({ ok: true, value: { pkcs8: data.pkcs8, spki: data.spki } });

@@ -15,7 +15,14 @@ import {
   type KeyOutputBlock,
   type KeyOutputs,
 } from '@fodt/key-converter';
-import { keyConverterInWorker } from '../lib/run-key-converter-in-worker';
+import {
+  KEY_CONVERTER_NOT_STARTED_MESSAGE,
+  KEY_CONVERTER_START_LIMIT_MESSAGE,
+  KEY_CONVERTER_STOPPED_MESSAGE,
+  KEY_CONVERTER_TIME_LIMIT_MESSAGE,
+  KeyConverterRunError,
+  keyConverterInWorker,
+} from '../lib/run-key-converter-in-worker';
 import { defineTool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 const PRIVATE_NOTE =
@@ -128,6 +135,27 @@ function failure(err: unknown, pasted?: string): ToolResult {
   return { outputs: [], errors: [{ message: 'The key could not be made or read.' }] };
 }
 
+/** The sentences of the background task that are written by this page and are safe to show as they are. */
+const FIXED_WORKER_MESSAGES: ReadonlySet<string> = new Set([
+  KEY_CONVERTER_TIME_LIMIT_MESSAGE,
+  KEY_CONVERTER_START_LIMIT_MESSAGE,
+  KEY_CONVERTER_NOT_STARTED_MESSAGE,
+  KEY_CONVERTER_STOPPED_MESSAGE,
+]);
+
+/**
+ * The message for an error while a key is made. The package's own errors and the background task's own errors carry fixed
+ * sentences; any other error (one raised by the browser's engine, an extension or a bug) gets one fixed sentence, because
+ * its own text is not under this page's control.
+ */
+function generateFailure(err: unknown): ToolResult {
+  if (err instanceof KeyConverterError || err instanceof DerError || err instanceof PemError) return failure(err);
+  if (err instanceof KeyConverterRunError || (err instanceof Error && FIXED_WORKER_MESSAGES.has(err.message))) {
+    return { outputs: [], errors: [{ message: err.message }] };
+  }
+  return { outputs: [], errors: [{ message: 'The key could not be made.' }] };
+}
+
 export default defineTool({
   id: 'key-converter',
   // Making an RSA key is real background work, so this waits for a deliberate Run press and offers Cancel while the key
@@ -238,11 +266,7 @@ export default defineTool({
       return { outputs: outputBlocks(result, key.type), warnings: result.warnings, stats };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
-      if (err instanceof KeyConverterError || err instanceof DerError || err instanceof PemError) return failure(err);
-      return {
-        outputs: [],
-        errors: [{ message: err instanceof Error && err.message ? err.message : 'The key could not be made.' }],
-      };
+      return generateFailure(err);
     }
   },
 });

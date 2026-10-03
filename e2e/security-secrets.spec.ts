@@ -518,3 +518,26 @@ test('totp-generator: with no time typed the codes come from this device clock',
   await expect(outputArea(page)).toContainText("1970-01-01 00:00:59 UTC (this device's clock)", { timeout: 20_000 });
   await expect(outputArea(page).locator('tr', { hasText: 'current (step 1)' })).toContainText('94287082');
 });
+
+test('key-converter: an unexpected failure while a key is made shows one fixed sentence and none of the engine text', async ({
+  page,
+}) => {
+  // The engine's key generator is made to fail with a text of its own, as a browser bug or an extension might. The page
+  // must not show that text, because an engine message is not under this page's control.
+  await page.addInitScript(() => {
+    const subtle = window.crypto.subtle;
+    const original = subtle.generateKey.bind(subtle) as (...args: unknown[]) => Promise<unknown>;
+    (subtle as unknown as { generateKey: unknown }).generateKey = async (...args: unknown[]) => {
+      if ((args[0] as { name?: string } | undefined)?.name === 'ECDSA') throw new Error('engine-failure-text-4417');
+      return original(...args);
+    };
+  });
+  await page.goto(rel('/tools/key-converter'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  await setControls(page, { selects: { keyType: 'ecdsa-p256' } });
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('The key could not be made.', {
+    timeout: 30_000,
+  });
+  await expect(outputArea(page)).not.toContainText('engine-failure-text-4417');
+});
