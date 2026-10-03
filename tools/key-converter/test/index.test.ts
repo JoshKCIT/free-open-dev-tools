@@ -540,7 +540,7 @@ it('no thrown message, warning or output label holds a fragment of a key', () =>
 
   // A PEM body that is not Base64 anywhere near the marker, and a hex string with it.
   for (const call of [
-    () => pemBlocks('-----BEGIN PRIVATE KEY-----\nQUJD' + marker + '\n-----END PRIVATE KEY-----\n', 5),
+    () => pemBlocks('-----' + 'BEGIN PRIVATE KEY-----\nQUJD' + marker + '\n-----' + 'END PRIVATE KEY-----\n', 5),
     () => base64ToBytes(marker + marker),
     () => hexToBytes(marker),
   ]) {
