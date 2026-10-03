@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { writePng } from './fixture-files';
 
 /**
@@ -386,6 +388,15 @@ const ENGINE_CASES: EngineCase[] = [
     limitSeconds: 20,
     limitMessage: 'Stopped after 20 seconds',
   },
+  {
+    id: 'sass-less-compiler',
+    radios: { language: 'scss' },
+    valid: { source: '$c: #336699;\n.a { color: $c; }' },
+    pressRun: true,
+    expectOutput: 'color: #336699',
+    limitSeconds: 20,
+    limitMessage: 'Stopped after 20 seconds',
+  },
 ];
 
 for (const c of ENGINE_CASES) {
@@ -583,3 +594,66 @@ for (const c of ENGINE_CASES) {
     expect(await endedWorkers(page)).toEqual([0]);
   });
 }
+
+/**
+ * Runs `body` with the address of a local HTTP server that records every request it receives, then waits a moment for a
+ * stray request to land, and returns what the server saw. A stylesheet that names this server in an import would show up
+ * here if a compiler or the page requested it. Written here, the shape copied from e2e/security-secrets.spec.ts.
+ */
+async function withRecordingServer(body: (address: string) => Promise<void>): Promise<string[]> {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(`${request.method} ${request.url}`);
+    response.end('x');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await body(`http://127.0.0.1:${port}`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+  return seen;
+}
+
+test('sass-less-compiler: an import of another file or address is refused in the page and a local server receives nothing', async ({
+  page,
+}) => {
+  // Each stylesheet names the local server in an import the compiler would have to fetch to honour: a Sass use, a Less
+  // import of an address, and a plain CSS import each compiler would copy into its output untouched.
+  const cases: { language: string; source: (address: string) => string; target: (address: string) => string }[] = [
+    { language: 'scss', source: (a) => `@use "${a}/x";`, target: (a) => `${a}/x` },
+    { language: 'less', source: (a) => `@import (less) "${a}/x.less";`, target: (a) => `${a}/x.less` },
+    { language: 'scss', source: (a) => `@import url(${a}/x.css);`, target: (a) => `url(${a}/x.css)` },
+    { language: 'less', source: (a) => `@import url(${a}/x.css);`, target: (a) => `url(${a}/x.css)` },
+  ];
+  const seen = await withRecordingServer(async (address) => {
+    await openTool(page, 'sass-less-compiler');
+    // Recorded only after the page and its own chunk have loaded, so this asserts nothing is requested while the
+    // stylesheets are compiled and refused.
+    const requests = recordRequests(page);
+    for (const c of cases) {
+      await setControls(page, { radios: { language: c.language } });
+      await fillFields(page, { source: c.source(address) });
+      await runButtonOf(page).click();
+      const issues = outputArea(page).locator('.issue-list');
+      await expect(issues).toContainText('Imports of other files and addresses are not supported here', {
+        timeout: 30_000,
+      });
+      // The refusal names the position and what the import asked for, and nothing was compiled.
+      await expect(issues).toContainText('line 1, column 1');
+      await expect(issues).toContainText(c.target(address));
+      expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    }
+    expect(requests.filter((url) => !url.startsWith('data:') && !url.startsWith('blob:'))).toEqual([]);
+  });
+  // The server the stylesheets name saw no request at all.
+  expect(seen).toEqual([]);
+
+  // The detector can fail: a page script that requests the server's address is heard by the same kind of server.
+  const control = await withRecordingServer(async (address) => {
+    await page.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+  });
+  expect(control).toEqual(['GET /control']);
+});
