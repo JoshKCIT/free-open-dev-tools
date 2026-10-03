@@ -1,0 +1,53 @@
+{
+  "id": "sprite-sheet",
+  "name": "Sprite Sheet Generator",
+  "summary": "Pack several images into one sprite sheet PNG with the CSS rules that show each image.",
+  "about": "Packs several pictures into one sprite sheet PNG on a canvas inside your browser and writes the CSS rules that show each picture from the sheet. Choose a grid or a shelf layout and the space between sprites, press Run, and get sprite.png, sprite.css, a preview of the sheet and a table of every sprite's class, position and size. Nothing is sent, stored or recorded: your pictures and the sheet stay in this page.",
+  "supports": [
+    "PNG, JPEG, GIF, WebP and BMP image files, picked several at a time",
+    "A grid layout, where every sprite sits in an equal cell in the order picked, and a shelf layout, where sprites are sorted tallest first and packed in rows",
+    "Padding from 0 to 64 pixels between neighbouring sprites",
+    "A sprite.png sheet and a sprite.css file with one rule per sprite: a background position, a width and a height",
+    "Class names made from the file names, lower case letters, digits and hyphens only"
+  ],
+  "limits": [
+    "At most 200 images, each up to 20 MB and 4,096 pixels a side.",
+    "The sheet may be at most 16,000,000 pixels and 8,192 pixels a side; a layout past that is refused, and so are images that together hold more than 16,000,000 pixels.",
+    "Images are packed as this browser decodes them, with photo orientation applied; the sheet is written as PNG.",
+    "Class names come from the file names, made lower case and cut to 40 characters; repeated names get -2, -3 and so on.",
+    "Nothing is added around the edge of the sheet; the padding is only between neighbouring sprites.",
+    "An animated GIF or WebP is packed as the browser draws it, normally its first frame.",
+    "The sheet preview on the page is shown up to 2 MB; a larger sheet is offered only as the sprite.png download.",
+    "Packing can be cancelled at any time; a cancelled run offers no sheet."
+  ],
+  "ambiguities": [
+    "A grid cell is as wide as the widest image and as tall as the tallest, so a small image among large ones leaves empty space inside its cell; the shelf layout wastes less space",
+    "The shelf is as wide as the square root of the total area of the images, or the widest image if that is wider, so the sheet is roughly square but not exactly",
+    "Pictures that are partly transparent are copied as they are, with their transparency, and nothing is added behind them",
+    "The sheet PNG is written by this browser, so its bytes differ between browsers although its pixels are the same"
+  ],
+  "standards": [
+    {
+      "label": "CSS Backgrounds and Borders Module Level 3 (background-image, background-position and background-repeat)",
+      "url": "https://www.w3.org/TR/css-backgrounds-3/"
+    },
+    {
+      "label": "Portable Network Graphics (PNG) Specification, Third Edition",
+      "url": "https://www.w3.org/TR/png-3/"
+    }
+  ],
+  "keywords": [
+    "sprite sheet",
+    "css sprite",
+    "sprite generator",
+    "image sprite",
+    "background-position",
+    "texture atlas",
+    "pack images",
+    "icon sheet"
+  ],
+  "primaryExport": "planSprites",
+  "usage": "import { planSprites, spriteCss } from '@fodt/sprite-sheet';\n\n// Sizes are in pixels; the names only become class names.\nconst plan = planSprites(\n  [\n    { name: 'home.png', width: 16, height: 16 },\n    { name: 'search.png', width: 24, height: 24 },\n  ],\n  { layout: 'grid', padding: 2 },\n);\n// plan.width and plan.height are the size of the sheet; plan.placements[i] has x, y, width, height and className.\nconsole.log(spriteCss(plan)); // .sprite-home { background-position: 0 0; width: 16px; height: 16px; } and so on",
+  "apiNotes": "`planSprites(items, { layout: 'grid' | 'shelf', padding })` returns `{ width, height, placements }`, with one placement per item in the order given; it refuses more than 200 images, an image over 4,096 pixels on a side, a padding that is not a whole number from 0 to 64, and a sheet over 8,192 pixels a side or 16,000,000 pixels, throwing `SpriteSheetError` with a plain sentence. `spriteClassName(fileName, used)` makes one class name and adds it to the `used` set. `spriteCss(plan)` writes the CSS text, and `spritePreviewCss(css, dataUrl)` swaps the one `url(sprite.png)` for a data address so the same rules can be shown on a page that does not hold the file. `checkSpriteFile(header, byteLength)` refuses an over-size, unsupported or over-large picture before any decoding.",
+  "testNotes": "Positions are worked out by hand from the layout rules and written into the tests as literals: for three images of 10 by 10, 20 by 5 and 5 by 30 with 2 pixels of padding, the grid is 42 by 62 with the images at 0 0, 22 0 and 0 32; the shelf is sorted 30, 10, 5 tall. Every plan is also checked for the property that matters: no two sprites overlap, neighbours are at least the padding apart, and every sprite lies inside the sheet. The limits are tested one step either side: 8,192 and 8,194 pixels wide, and 15,998,976 and 16,007,168 pixels in all. In a browser, pictures made fresh with a different opaque colour in every pixel are packed, and the generated rules are applied in a blank page with the sheet as a data address; every element is read back through a canvas and compared pixel for pixel with its source."
+}

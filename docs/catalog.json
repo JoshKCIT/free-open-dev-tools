@@ -1377,5 +1377,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Compare two images pixel by pixel and see the differences highlighted with the share of pixels that differ."
+  },
+  {
+    "id": "sprite-sheet",
+    "name": "Sprite Sheet Generator",
+    "category": "media",
+    "tier": 3,
+    "summary": "Pack several images into one sprite sheet PNG with the CSS rules that show each image."
   }
 ]
