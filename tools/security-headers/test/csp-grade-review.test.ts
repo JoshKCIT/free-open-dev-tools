@@ -1,6 +1,7 @@
 import { it, expect } from 'vitest';
 import { effectiveSources, gradeCsp } from '../src/csp-grade';
 import { parseCspDirectives } from '../src/csp';
+import { buildSecurityHeaders } from '../src/index';
 
 // Tests for the findings of the phase 14 code review (part B) against the policy grader. Policies are written out in full so a
 // reader can see why each one is graded as it is.
@@ -327,3 +328,140 @@ it('the grade lists the directives of the policy that it does not grade', () => 
   expect(gradeCsp(`script-src 'self'; worker-src *; ${STRICT_REST}`).notGraded).toEqual([]);
   expect(gradeCsp('').notGraded).toEqual([]);
 });
+
+// B-IN-03: a pasted page or server line was read too loosely.
+const FULL_POLICY =
+  "default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+
+it('a meta element inside an HTML comment is not read as live', () => {
+  const live = metaOf("script-src 'self'; object-src 'none'");
+  const commented = `<!-- ${metaOf("default-src 'none'")} -->\n${live}`;
+  expect(gradeCsp(commented).policy).toBe("script-src 'self'; object-src 'none'");
+  // Only a commented-out element: nothing is read from it, and the paste is graded as it is.
+  expect(gradeCsp(`<!-- ${live} -->`).source).toBe('policy');
+  // An unfinished comment swallows the rest of the page, as in a browser; an empty comment does not.
+  expect(gradeCsp(`<!-- ${live}`).source).toBe('policy');
+  expect(gradeCsp(`<!-->${live}`).source).toBe('meta');
+  expect(gradeCsp(`<!---->${live}`).source).toBe('meta');
+  // A comment-like text inside an attribute value is not a comment.
+  expect(gradeCsp(`<div title="<!--"></div>${live}`).source).toBe('meta');
+});
+
+it('character references in the content attribute of a meta element are decoded', () => {
+  expect(gradeCsp(`<meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;">`).policy).toBe(
+    "default-src 'self'",
+  );
+  expect(gradeCsp(`<meta http-equiv="Content-Security-Policy" content="default-src &apos;self&apos;">`).policy).toBe(
+    "default-src 'self'",
+  );
+  expect(gradeCsp(`<meta http-equiv="Content-Security-Policy" content="default-src &#x27;self&#X27;">`).policy).toBe(
+    "default-src 'self'",
+  );
+  expect(
+    gradeCsp(`<meta http-equiv='Content-Security-Policy' content='default-src &quot;x&quot; &amp; &lt;&gt;'>`).policy,
+  ).toBe('default-src "x" & <>');
+  // What is not a character reference stays as written, and a reference past the code point range is left alone.
+  expect(
+    gradeCsp(`<meta http-equiv="Content-Security-Policy" content="a &b; &#0; &#x110000; & &amp c &#">`).policy,
+  ).toBe('a &b; &#0; &#x110000; & &amp c &#');
+  // The policy with its quotes written as references grades the same as the plain policy.
+  const encoded = FULL_POLICY.replaceAll("'", '&#39;');
+  expect(gradeCsp(metaOf(encoded)).findings.map((f) => f.rule)).toEqual(
+    gradeCsp(metaOf(FULL_POLICY)).findings.map((f) => f.rule),
+  );
+  expect(gradeCsp(metaOf(encoded)).findings.filter((f) => f.rule === 'syntax')).toEqual([]);
+});
+
+it('a Report-Only meta element is read, and graded as a policy that is reported and not enforced', () => {
+  const html = `<head><meta http-equiv="Content-Security-Policy-Report-Only" content="${FULL_POLICY}"></head>`;
+  const result = gradeCsp(html);
+  expect(result.source).toBe('meta');
+  expect(result.policy).toBe(FULL_POLICY);
+  const report = result.findings.filter((f) => f.rule === 'report-only');
+  expect(report).toHaveLength(1);
+  expect(report[0]?.finding).toMatch(/meta element/);
+  expect(result.notes.join(' ')).toMatch(/Report-Only/);
+  // Not mistaken for the plain name.
+  expect(gradeCsp(metaOf(FULL_POLICY)).findings.map((f) => f.rule)).not.toContain('report-only');
+});
+
+it('an nginx add_header line and an Apache Header line are read as their policy', () => {
+  const nginx = `add_header Content-Security-Policy "${FULL_POLICY}" always;`;
+  const fromNginx = gradeCsp(nginx);
+  expect(fromNginx.source).toBe('header');
+  expect(fromNginx.policy).toBe(FULL_POLICY);
+  expect(fromNginx.notes.join(' ')).toMatch(/nginx/);
+  expect(fromNginx.score).toBe(100);
+  const apache = `Header always set Content-Security-Policy "${FULL_POLICY}"`;
+  const fromApache = gradeCsp(apache);
+  expect(fromApache.source).toBe('header');
+  expect(fromApache.policy).toBe(FULL_POLICY);
+  expect(fromApache.notes.join(' ')).toMatch(/Apache/);
+  // The Report-Only names, indentation, any letter case, and the other Apache words.
+  const ro = gradeCsp(`  ADD_HEADER content-security-policy-report-only '${FULL_POLICY.replaceAll("'", "\\'")}';`);
+  expect(ro.source).toBe('report-only header');
+  expect(ro.policy).toBe(FULL_POLICY);
+  expect(gradeCsp(`Header set Content-Security-Policy-Report-Only "${FULL_POLICY}"`).source).toBe('report-only header');
+  expect(gradeCsp(`Header onsuccess append Content-Security-Policy "${FULL_POLICY}"`).policy).toBe(FULL_POLICY);
+  // Other headers, unset and unfinished values are not a policy.
+  expect(gradeCsp('add_header X-Frame-Options "DENY" always;').source).toBe('policy');
+  expect(gradeCsp('Header always unset Content-Security-Policy').source).toBe('policy');
+  expect(gradeCsp('add_header Content-Security-Policy "default-src').source).toBe('policy');
+  expect(gradeCsp('add_header Content-Security-Policy-Extra "default-src \'self\'" always;').source).toBe('policy');
+});
+
+it('what the builder writes for nginx and Apache is read back as the policy it was built from', () => {
+  const built = buildSecurityHeaders({
+    csp: FULL_POLICY,
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: false },
+  });
+  for (const [name, text] of [
+    ['nginx', built.nginx],
+    ['apache', built.apache],
+  ] as const) {
+    const result = gradeCsp(text);
+    expect(result.source, name).toBe('header');
+    expect(result.policy, name).toBe(FULL_POLICY);
+    expect(result.score, name).toBe(100);
+  }
+  // A value with a double quote and a percent sign survives each server's own escaping.
+  const odd = buildSecurityHeaders({ csp: "default-src 'self'; report-uri https://r.example.invalid/csp?a=100%25" });
+  expect(gradeCsp(odd.apache).policy).toBe("default-src 'self'; report-uri https://r.example.invalid/csp?a=100%25");
+  expect(gradeCsp(odd.nginx).policy).toBe("default-src 'self'; report-uri https://r.example.invalid/csp?a=100%25");
+});
+
+it('64 KiB pastes of comments, tags, character references and server lines are graded in time', () => {
+  const size = 65536;
+  const fill = (unit: string, head = '', tail = ''): string => {
+    const body = unit.repeat(Math.ceil(size / unit.length));
+    return (head + body).slice(0, size - tail.length) + tail;
+  };
+  const shapes: [string, string][] = [
+    ['many comments', fill('<!--x-->')],
+    ['many empty comments', fill('<!---->')],
+    ['one unfinished comment', fill('a', '<!--')],
+    ['many comment openings', fill('<!--')],
+    ['many tags', fill('<a b="c">')],
+    ['many tags with long names', fill('<abcdefghij ')],
+    ['many character references', fill('&#39;', '<meta http-equiv="Content-Security-Policy" content="', '">')],
+    ['many lone ampersands', fill('&', '<meta http-equiv="Content-Security-Policy" content="', '">')],
+    [
+      'many ampersands before far semicolons',
+      fill('&aaaaaaaaaaaaaaaaaaaa', '<meta http-equiv="Content-Security-Policy" content="', ';">'),
+    ],
+    ['many nginx lines', fill('add_header X-A "b" always;\n')],
+    ['many Apache lines', fill('Header always set X-A "b"\n')],
+    ['one long nginx value', fill('a ', 'add_header Content-Security-Policy "', '" always;')],
+    ['one long escaped nginx value', fill('\\"', 'add_header Content-Security-Policy "', '" always;')],
+    ['one long Apache value with percent signs', fill('%%', 'Header set Content-Security-Policy "', '"')],
+    ['many words on a header line', fill('add_header ')],
+  ];
+  for (const [name, text] of shapes) {
+    expect(text.length, name).toBe(size);
+    const started = performance.now();
+    const result = gradeCsp(text);
+    const elapsed = performance.now() - started;
+    expect(elapsed, `${name} took ${elapsed} ms`).toBeLessThan(1000);
+    expect(result.findings.filter((f) => f.rule === 'syntax').length, name).toBeLessThanOrEqual(21);
+  }
+}, 60_000);

@@ -61,6 +61,8 @@ export interface NormalisedPolicy {
   policy: string;
   source: CspSource;
   notes: string[];
+  /** Set when the paste was a meta element that names the Report-Only header, which a meta element does not support. */
+  reportOnly?: boolean;
 }
 
 /** The longest paste that is graded: 64 KiB. A longer one is refused before it is parsed. */
@@ -502,27 +504,122 @@ function readTag(text: string, from: number): MetaTag | null {
   return null;
 }
 
-/** The content attribute of the first meta element whose http-equiv is Content-Security-Policy, or null. */
-function readMetaContent(text: string): string | null {
+interface MetaPolicy {
+  content: string;
+  /** The element says Content-Security-Policy-Report-Only, which a meta element does not support. */
+  reportOnly: boolean;
+}
+
+const NAMED_REFERENCES: ReadonlyMap<string, string> = new Map([
+  ['quot', '"'],
+  ['apos', "'"],
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+]);
+
+/** The longest character reference that is looked for: &#x10FFFF; is 10 characters, so a ; further on than 12 is not one. */
+const REFERENCE_SPAN = 12;
+
+function isDecimalDigit(code: number): boolean {
+  return code >= 48 && code <= 57;
+}
+
+function isHexDigit(code: number): boolean {
+  return isDecimalDigit(code) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102);
+}
+
+/** The text a numeric reference body (the part between &# and ;) stands for, or null when it is not a valid reference. */
+function numericReference(body: string): string | null {
+  const hex = body.startsWith('x') || body.startsWith('X');
+  const digits = hex ? body.slice(1) : body;
+  if (digits.length === 0 || digits.length > 7) return null;
+  for (let i = 0; i < digits.length; i++) {
+    const code = digits.charCodeAt(i);
+    if (!(hex ? isHexDigit(code) : isDecimalDigit(code))) return null;
+  }
+  const point = parseInt(digits, hex ? 16 : 10);
+  if (point < 1 || point > 0x10ffff || (point >= 0xd800 && point <= 0xdfff)) return null;
+  return String.fromCodePoint(point);
+}
+
+/**
+ * Decodes the character references a browser would decode in an attribute value: the five named ones (&quot; &apos; &amp;
+ * &lt; &gt;) and numeric ones (&#39; &#x27;). Anything else, a reference with no semicolon or a number that is not a
+ * character, stays as written. Moves forward only, and looks at most REFERENCE_SPAN characters past each ampersand.
+ */
+function decodeReferences(value: string): string {
+  let amp = value.indexOf('&');
+  if (amp < 0) return value;
+  let out = '';
+  let last = 0;
+  while (amp >= 0) {
+    let semi = -1;
+    const limit = Math.min(value.length, amp + REFERENCE_SPAN);
+    for (let i = amp + 1; i < limit; i++) {
+      if (value.charCodeAt(i) === CHAR_SEMICOLON) {
+        semi = i;
+        break;
+      }
+    }
+    let decoded: string | null = null;
+    if (semi > amp + 1) {
+      const body = value.slice(amp + 1, semi);
+      decoded = body.startsWith('#') ? numericReference(body.slice(1)) : (NAMED_REFERENCES.get(body) ?? null);
+    }
+    if (decoded === null) {
+      amp = value.indexOf('&', amp + 1);
+      continue;
+    }
+    out += value.slice(last, amp) + decoded;
+    last = semi + 1;
+    amp = value.indexOf('&', last);
+  }
+  return out + value.slice(last);
+}
+
+function isAsciiLetter(code: number): boolean {
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+/**
+ * The policy of the first meta element whose http-equiv is Content-Security-Policy (or the Report-Only name, which a meta
+ * element does not support), or null. Every tag is read through its attributes, so text inside a quoted attribute value is
+ * never taken for a tag, and an HTML comment is skipped (an unfinished one runs to the end of the paste, as in a browser).
+ */
+function readMetaContent(text: string): MetaPolicy | null {
+  const n = text.length;
   let at = text.indexOf('<');
   while (at >= 0) {
-    const after = at + 5;
-    const boundary =
-      after >= text.length || isSpace(text.charCodeAt(after)) || [CHAR_SLASH, CHAR_GT].includes(text.charCodeAt(after));
-    if (startsWithAscii(text, at + 1, 'meta') && boundary) {
-      const tag = readTag(text, after);
-      if (tag === null) return null;
-      if (
-        tag.httpEquiv !== null &&
-        tag.content !== null &&
-        equalsAscii(tag.httpEquiv, 0, tag.httpEquiv.length, 'content-security-policy')
-      ) {
-        return tag.content;
-      }
-      at = text.indexOf('<', tag.end + 1);
-    } else {
-      at = text.indexOf('<', at + 1);
+    if (startsWithAscii(text, at, '<!--')) {
+      // The comment ends at the first --> after the two characters of its opening, so <!--> and <!---> are empty comments.
+      const close = text.indexOf('-->', at + 2);
+      if (close < 0) return null;
+      at = text.indexOf('<', close + 3);
+      continue;
     }
+    const nameStart = at + 1;
+    if (nameStart >= n || !isAsciiLetter(text.charCodeAt(nameStart))) {
+      at = text.indexOf('<', nameStart);
+      continue;
+    }
+    let nameEnd = nameStart;
+    while (nameEnd < n) {
+      const c = text.charCodeAt(nameEnd);
+      if (isSpace(c) || c === CHAR_SLASH || c === CHAR_GT) break;
+      nameEnd++;
+    }
+    const tag = readTag(text, nameEnd);
+    if (tag === null) return null;
+    if (tag.httpEquiv !== null && tag.content !== null && equalsAscii(text, nameStart, nameEnd, 'meta')) {
+      if (equalsAscii(tag.httpEquiv, 0, tag.httpEquiv.length, 'content-security-policy')) {
+        return { content: decodeReferences(tag.content), reportOnly: false };
+      }
+      if (equalsAscii(tag.httpEquiv, 0, tag.httpEquiv.length, 'content-security-policy-report-only')) {
+        return { content: decodeReferences(tag.content), reportOnly: true };
+      }
+    }
+    at = text.indexOf('<', tag.end + 1);
   }
   return null;
 }
@@ -542,20 +639,139 @@ const HEADER_NAMES: readonly { name: string; source: CspSource; note: string }[]
 ];
 
 const META_NOTE = 'Read the content attribute of the meta element and graded it as the policy.';
+const META_REPORT_ONLY_NOTE =
+  'The meta element names Content-Security-Policy-Report-Only, which a meta element does not support, so a browser ignores it.';
+
+const CHAR_BACKSLASH = 92;
+const CHAR_PERCENT = 37;
 
 /**
- * Takes a pasted header line (Content-Security-Policy: or Content-Security-Policy-Report-Only:) or a pasted meta element
- * (http-equiv Content-Security-Policy) off the policy text, for grading only. Anything else is returned as it was.
+ * The text of a quoted value that starts at `from` (a double or single quote), with the escapes both servers recognise
+ * (a backslash before the quote or before a backslash) taken off, or an unquoted value up to white space or a semicolon.
+ * Null when the quote is never closed or there is no value. Moves forward only.
+ */
+function readServerValue(line: string, from: number): string | null {
+  const q = line.charCodeAt(from);
+  if (q === CHAR_QUOTE || q === CHAR_APOSTROPHE) {
+    let out = '';
+    let start = from + 1;
+    for (let i = from + 1; i < line.length; i++) {
+      const c = line.charCodeAt(i);
+      if (c === CHAR_BACKSLASH && i + 1 < line.length) {
+        const next = line.charCodeAt(i + 1);
+        if (next === q || next === CHAR_BACKSLASH) {
+          out += line.slice(start, i) + line[i + 1];
+          i++;
+          start = i + 1;
+        }
+      } else if (c === q) {
+        return out + line.slice(start, i);
+      }
+    }
+    return null;
+  }
+  let end = from;
+  while (end < line.length && !isSpace(line.charCodeAt(end)) && line.charCodeAt(end) !== CHAR_SEMICOLON) end++;
+  return end > from ? line.slice(from, end) : null;
+}
+
+/** The end of the word that starts at `from` (a run of anything but white space). */
+function wordEnd(line: string, from: number): number {
+  let i = from;
+  while (i < line.length && !isSpace(line.charCodeAt(i))) i++;
+  return i;
+}
+
+const APACHE_WHEN = ['always', 'onsuccess'];
+const APACHE_ACTIONS = ['set', 'setifempty', 'add', 'append', 'merge'];
+
+function wordIs(line: string, start: number, end: number, words: readonly string[]): boolean {
+  return words.some((w) => equalsAscii(line, start, end, w));
+}
+
+interface ServerLine {
+  value: string;
+  header: (typeof HEADER_NAMES)[number];
+  server: 'nginx' | 'Apache';
+}
+
+/** Which of the two Content-Security-Policy header names the word line[start, end) is, or null. */
+function headerNamed(line: string, start: number, end: number): (typeof HEADER_NAMES)[number] | null {
+  return HEADER_NAMES.find((h) => equalsAscii(line, start, end, h.name)) ?? null;
+}
+
+/** One line of nginx (add_header name value [always];) or Apache (Header [always] set name value) that sets the policy. */
+function readServerLine(line: string): ServerLine | null {
+  const first = skipSpace(line, 0);
+  const firstEnd = wordEnd(line, first);
+  if (equalsAscii(line, first, firstEnd, 'add_header')) {
+    const nameStart = skipSpace(line, firstEnd);
+    const nameEnd = wordEnd(line, nameStart);
+    const header = headerNamed(line, nameStart, nameEnd);
+    if (!header) return null;
+    const value = readServerValue(line, skipSpace(line, nameEnd));
+    return value === null ? null : { value, header, server: 'nginx' };
+  }
+  if (equalsAscii(line, first, firstEnd, 'header')) {
+    let wordStart = skipSpace(line, firstEnd);
+    let end = wordEnd(line, wordStart);
+    if (wordIs(line, wordStart, end, APACHE_WHEN)) {
+      wordStart = skipSpace(line, end);
+      end = wordEnd(line, wordStart);
+    }
+    if (!wordIs(line, wordStart, end, APACHE_ACTIONS)) return null;
+    const nameStart = skipSpace(line, end);
+    const nameEnd = wordEnd(line, nameStart);
+    const header = headerNamed(line, nameStart, nameEnd);
+    if (!header) return null;
+    const value = readServerValue(line, skipSpace(line, nameEnd));
+    if (value === null) return null;
+    // Apache writes a percent sign twice (mod_headers format specifiers); the builder does the same.
+    let single = '';
+    let from = 0;
+    for (let i = 0; i < value.length - 1; i++) {
+      if (value.charCodeAt(i) === CHAR_PERCENT && value.charCodeAt(i + 1) === CHAR_PERCENT) {
+        single += value.slice(from, i + 1);
+        from = i + 2;
+        i++;
+      }
+    }
+    return { value: single + value.slice(from), header, server: 'Apache' };
+  }
+  return null;
+}
+
+/**
+ * Takes a pasted header line (Content-Security-Policy: or Content-Security-Policy-Report-Only:), a pasted meta element
+ * (http-equiv Content-Security-Policy), or an nginx or Apache line that sets the header, off the policy text, for grading
+ * only. Anything else is returned as it was.
  */
 export function normaliseForGrading(text: string): NormalisedPolicy {
-  const content = readMetaContent(text);
-  if (content !== null) return { policy: content, source: 'meta', notes: [META_NOTE] };
+  const meta = readMetaContent(text);
+  if (meta !== null) {
+    return meta.reportOnly
+      ? { policy: meta.content, source: 'meta', notes: [META_NOTE, META_REPORT_ONLY_NOTE], reportOnly: true }
+      : { policy: meta.content, source: 'meta', notes: [META_NOTE] };
+  }
   const start = skipSpace(text, 0);
   for (const header of HEADER_NAMES) {
     if (!startsWithAscii(text, start, header.name)) continue;
     const colon = skipSpace(text, start + header.name.length);
     if (text.charCodeAt(colon) === CHAR_COLON) {
       return { policy: text.slice(skipSpace(text, colon + 1)), source: header.source, notes: [header.note] };
+    }
+  }
+  for (const line of text.split('\n')) {
+    const found = readServerLine(line);
+    if (found) {
+      const reportOnly = found.header.source === 'report-only header';
+      return {
+        policy: found.value,
+        source: found.header.source,
+        notes: [
+          `Read the value of the ${found.server} line that sets ${reportOnly ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'} and graded it as the policy.${reportOnly ? ' A Report-Only policy is reported, not enforced.' : ''}`,
+        ],
+      };
     }
   }
   return { policy: text, source: 'policy', notes: [] };
@@ -694,6 +910,7 @@ function evaluate(
   source: CspSource,
   policy: string,
   options: CspGradeOptions,
+  reportOnlyWhy: string | null,
 ): CspFinding[] {
   const found: CspFinding[] = [];
 
@@ -824,13 +1041,8 @@ function evaluate(
   }
 
   if (source === 'report-only header') found.push(finding('report-only', 'Content-Security-Policy-Report-Only'));
-  else if (options.reportOnly) {
-    found.push(
-      finding('report-only', 'Content-Security-Policy-Report-Only', {
-        whole:
-          'The Report only box is ticked, so the policy is sent as a Report-Only header: it is reported but not enforced.',
-      }),
-    );
+  else if (reportOnlyWhy !== null) {
+    found.push(finding('report-only', 'Content-Security-Policy-Report-Only', { whole: reportOnlyWhy }));
   }
   if (source === 'meta') found.push(finding('meta-limits', 'meta'));
   if (!index.has('upgrade-insecure-requests') && !options.upgradeInsecure)
@@ -909,14 +1121,25 @@ export function gradeCsp(text: string, options: CspGradeOptions = {}): CspGrade 
       `This policy is ${withCommas(text.length)} characters. The limit for grading is ${withCommas(CSP_GRADE_MAX_CHARS)}.`,
     );
   }
-  const { policy, source, notes } = normaliseForGrading(text);
+  const { policy, source, notes, reportOnly: metaReportOnly } = normaliseForGrading(text);
+  // Why the policy counts as reported and not enforced, when it does and a pasted header name does not already say so.
+  let reportOnlyWhy: string | null = null;
+  if (source !== 'report-only header') {
+    if (options.reportOnly) {
+      reportOnlyWhy =
+        'The Report only box is ticked, so the policy is sent as a Report-Only header: it is reported but not enforced.';
+    } else if (metaReportOnly) {
+      reportOnlyWhy =
+        'The meta element names Content-Security-Policy-Report-Only, which a meta element does not support, so a browser ignores it; it is graded as a policy that is reported and not enforced.';
+    }
+  }
   const empty = isBlank(policy);
   let findings: CspFinding[] = [];
   let notGraded: string[] = [];
   if (!empty) {
     const parsed = parseCspDirectives(policy);
     const index = indexDirectives(parsed.directives);
-    findings = evaluate(index, parsed.problems, source, policy, options);
+    findings = evaluate(index, parsed.problems, source, policy, options, reportOnlyWhy);
     if (options.upgradeInsecure && !index.has('upgrade-insecure-requests')) {
       notes.push(
         'The Add upgrade-insecure-requests box is ticked, so the headers built above carry upgrade-insecure-requests and the grade counts it as present.',
