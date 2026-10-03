@@ -7,7 +7,7 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Composes a Content-Security-Policy per CSP Level 3, plus HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy and Cross-Origin-Resource-Policy, and writes the same header values out for Apache, nginx, Netlify's _headers file and a plain generic list. Every value passes a single-line safety check before any output is built, so a pasted line break or control character can never start a second header or a server directive. A pasted Content-Security-Policy can also be graded: with Grade this policy ticked, the page gives a grade and a score from 24 stated rules and lists each weakness with its severity, the directive, why it matters and the fix, every rule tied to a section of W3C Content Security Policy Level 3 or marked as this page's own rule.
+Composes a Content-Security-Policy per CSP Level 3, plus HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy and Cross-Origin-Resource-Policy, and writes the same header values out for Apache, nginx, Netlify's _headers file and a plain generic list. Every value passes a single-line safety check before any output is built, so a pasted line break or control character can never start a second header or a server directive. A pasted Content-Security-Policy can also be graded: with Grade this policy ticked, the page gives a grade and a score from 26 stated rules and lists each weakness with its severity, the directive, why it matters and the fix, every rule tied to a section of W3C Content Security Policy Level 3 or marked as this page's own rule.
 
 ## Supported
 
@@ -18,8 +18,13 @@ Composes a Content-Security-Policy per CSP Level 3, plus HSTS, X-Content-Type-Op
 - Permissions-Policy written as an RFC 9651 structured-field dictionary, with * for every origin, () for none, and an allowlist of self and quoted origins
 - The same header set rendered for Apache (mod_headers), nginx (add_header), Netlify's _headers file and a plain Name: value list
 - A value carrying a line break or control character refused before any target is written, naming the field and position
-- Grading a pasted policy (the Grade this policy box, off by default): 24 rules in four severities (high, medium, low and info), each reading the source list that governs it through the CSP Level 3 section 6.8.3 fallback order, so the most specific of script-src-elem, script-src and default-src alone decides
-- A pasted header line, a Report-Only header line or a meta element, read as its policy and graded with a note of what was taken off; the headers built above use the same text, so the header name is not reported as an unknown directive
+- Grading a pasted policy (the Grade this policy box, off by default): 26 rules in four severities (high, medium, low and info), each reading the source list that governs it through the CSP Level 3 section 6.8.3 fallback order, so the most specific of script-src-elem, script-src and default-src alone decides
+- A pasted header line, a Report-Only header line, a meta element, an nginx add_header line or an Apache Header line, read as its policy and graded with a note of what was taken off; the headers built above use the same text, so the header name is not reported as an unknown directive. In a pasted page, a meta element inside an HTML comment is not read, character references such as &#39; in its content are decoded, and a meta element that names Content-Security-Policy-Report-Only (which browsers do not support) is graded as reported and not enforced
+- A policy pasted as a meta element is graded as a browser reads it: frame-ancestors, report-uri and sandbox are ignored there (CSP Level 3 section 3.3), so frame-ancestors counts as missing and each ignored directive is named in a medium finding
+- When grading, keywords and the nonce and hash prefixes are read without regard to case, and require-trusted-types-for and trusted-types are read as valid (their values are not graded); the builder's own grammar check is not changed by this
+- On this page the grade reads the Report only and Add upgrade-insecure-requests boxes: with Report only ticked the policy is graded as reported and not enforced, and with Add upgrade-insecure-requests ticked the directive counts as present
+- Inline event handlers: the list that governs script-src-attr is graded for 'unsafe-inline', and worker-src or child-src with a bare * counts like a script wildcard; the directives of a policy that no rule reads (sandbox, trusted-types, require-trusted-types-for, report-to, report-uri, style-src-attr and the other sources of worker-src) are listed beside the grade as not graded
+- frame-ancestors and form-action count as open when a source is a bare *, a whole scheme, a wildcard host with no name or a star in front of a single label such as *.com; a star in front of a public suffix with a dot in it (such as *.co.uk) is not recognised, because no public suffix list is carried
 - Policies that use 'strict-dynamic': the host, scheme and wildcard rules stay quiet and the ignored sources are reported instead, as CSP Level 3 section 8.2 describes
 - Findings listed by severity and then by rule order, each with the directive, what is wrong, why it matters, the fix and the section it rests on
 
@@ -32,14 +37,14 @@ Composes a Content-Security-Policy per CSP Level 3, plus HSTS, X-Content-Type-Op
 - Grading follows the rules listed on the page, each tied to a section of W3C Content Security Policy Level 3 or marked as this page's own rule.
 - The grade is this page's summary (high 30, medium 15 and low 5 points off 100; any high finding caps it at D); it is not a statement that a policy is secure.
 - Policies of up to 64 KiB (65,536 characters) are graded; a longer one is refused for grading.
-- A rule that applies takes its points once, however many findings it lists; the script rules read the list that governs script elements (script-src-elem, then script-src, then default-src), and script-src-attr, worker-src and the other fetch directives are not graded one by one
+- A rule that applies takes its points once, however many findings it lists; the script rules read the list that governs script elements (script-src-elem, then script-src, then default-src), and script-src-attr is read through its own fallback (script-src-attr, script-src, default-src); worker-src and child-src are read for a bare * only, and the other fetch directives are not graded one by one
 - A policy is read as pasted, with one directive per line or separated by semicolons; several policies joined by commas, and other response headers around a pasted line, are not read
 
 ## Ambiguous cases, and what this does about them
 
 - A directive this tool does not recognise (an unknown name, or a fetch directive an earlier CSP version removed) is reported with its line and dropped from the built header text, since re-emitting an unrecognised directive verbatim could not be checked for safety either
 - A Permissions-Policy feature name outside the standardised list this tool checked is a warning, not an error, because browsers ship feature names beyond that list
-- Graders weigh rules differently, so the same policy can get another letter elsewhere; this page's letter only summarises the rules it lists, and a pasted policy that is not enforced (a Report-Only header or a meta element missing directives) is graded as written
+- Graders weigh rules differently, so the same policy can get another letter elsewhere; this page's letter only summarises the rules it lists, and a pasted policy that is not enforced (a Report-Only header, or a meta element whose frame-ancestors, report-uri and sandbox a browser ignores) is graded as the browser would read it
 
 ## Defined by
 
@@ -88,7 +93,7 @@ import { gradeCsp } from '@fodt/security-headers';
 gradeCsp("script-src 'unsafe-inline'").findings;
 ```
 
-`buildSecurityHeaders` throws `SecurityHeadersError` (fields `field`, `line`) for a value a single header cannot carry safely or an option outside a specification's defined token list; CSP grammar problems are reported as line-numbered warnings instead, since a browser ignores an unrecognised directive rather than rejecting the whole policy. `gradeCsp` reads text only and returns `{ grade, score, findings, source, policy, empty, notes }`; it throws `CspGradeError` for a policy over 65,536 characters, and an `empty` result carries no grade.
+`buildSecurityHeaders` throws `SecurityHeadersError` (fields `field`, `line`) for a value a single header cannot carry safely or an option outside a specification's defined token list; CSP grammar problems are reported as line-numbered warnings instead, since a browser ignores an unrecognised directive rather than rejecting the whole policy. `gradeCsp(text, { reportOnly, upgradeInsecure })` reads text only (the two options say what the page around it does: send the policy as Report-Only, add upgrade-insecure-requests) and returns `{ grade, score, findings, source, policy, empty, notes, notGraded }`; it throws `CspGradeError` for a policy over 65,536 characters, and an `empty` result carries no grade.
 
 ## Dependencies
 
@@ -100,7 +105,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-CSP source-list grammar is checked against the ABNF fetched from CSP Level 3's own "Source Lists" section; HSTS against RFC 6797 sections 6.1 and 8.1 plus the hstspreload.org submission requirements; each token-list header against its own specification's defined values; Permissions-Policy serialisation against RFC 9651 sections 4.1.1.1 and 4.1.6; Apache and nginx escaping against each server's own fetched documentation and, for nginx, its own config-file tokenizer source. The grading rules are checked on the example policies CSP Level 3 prints itself (the section 8.5 strict policies, the section 8.2 compatibility policy, the section 8.6 exfiltration policy and the section 6.7.3.2 source lists), on a policy built for each of the 24 rules, and on a 64 KiB paste in twelve shapes that must be graded in under a second.
+CSP source-list grammar is checked against the ABNF fetched from CSP Level 3's own "Source Lists" section; HSTS against RFC 6797 sections 6.1 and 8.1 plus the hstspreload.org submission requirements; each token-list header against its own specification's defined values; Permissions-Policy serialisation against RFC 9651 sections 4.1.1.1 and 4.1.6; Apache and nginx escaping against each server's own fetched documentation and, for nginx, its own config-file tokenizer source. The grading rules are checked on the example policies CSP Level 3 prints itself (the section 8.5 strict policies, the section 8.2 compatibility policy, the section 8.6 exfiltration policy and the section 6.7.3.2 source lists), on a policy built for each of the 26 rules, and on a 64 KiB paste in twelve shapes that must be graded in under a second.
 
 ## Licence
 

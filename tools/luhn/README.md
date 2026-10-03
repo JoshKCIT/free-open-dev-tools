@@ -29,7 +29,7 @@ Checks a number against the Luhn algorithm, the checksum formula ISO/IEC 7812-1 
 - The Luhn algorithm cannot detect every error: it is known not to catch the transposition of an adjacent 0 and 9 (or 9 and 0), which is documented and tested here rather than treated as a bug.
 - The number is processed entirely on this page and is never sent anywhere.
 - In the Luhn scheme a string shorter than two digits is rejected outright; there is nothing to check with fewer.
-- Each scheme checks only the form and the check digit: a valid IBAN, ISBN, VIN or ISIN does not show that the account exists, the book was published, the vehicle was built or the security was issued.
+- Each scheme checks only the form and the check digit: a valid IBAN, ISBN, VIN or ISIN does not show that the account exists, the book was published, the vehicle was built or the security was issued. For an IBAN the check is the length and the two check digits only: the account part is not checked against the layout of the country's own account numbers, so an IBAN with letters where that country uses digits can still be valid.
 - IBAN lengths follow the SWIFT IBAN registry release named in the code (release 103, September 2026); a country outside it is refused. A territory that uses another country's code in its IBANs, such as French Guiana with FR, is not a separate country here.
 - The VIN check digit is required only for vehicles made for North America; elsewhere position 9 may be any character, so a VIN that fails the check is not necessarily wrong.
 - Inputs of up to 256 characters are read; spaces and hyphens are ignored and anything longer is refused before it is parsed.

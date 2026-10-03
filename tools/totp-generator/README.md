@@ -24,7 +24,7 @@ Turns a Base32 secret, the kind an authenticator app is given when you turn on t
 - The page does not refresh by itself: it shows the codes for the moment you last changed a field (the previous, current, next and following step) and the seconds that were left then; edit any field for fresh codes.
 - Secrets of up to 1,024 Base32 characters are read; a longer secret is refused.
 - A secret shorter than 128 bits is shown with a warning, because RFC 4226 requires at least 128 bits.
-- Times from 1970-01-01 to 9999-12-31 are read, a period must be a whole number of seconds from 1 to 86,400, and a counter a whole number from 0 to 9,007,199,254,740,991.
+- Times from 1970-01-01 to 9999-12-31 are read (near the end of that range a step that would start after 9999-12-31 is left out of the codes, and the last step is shown as ending at 23:59:59), a period must be a whole number of seconds from 1 to 86,400, and a counter a whole number from 0 to 9,007,199,254,740,991.
 - QR codes are drawn in this page from the link; nothing is fetched. The link and the QR code are made only when an account name is given, the issuer and the account name are each limited to 256 characters, and nothing is offered as a download.
 - SHA-1, 6 digits and a 30-second period work in every authenticator app; other settings are written into the link but some apps ignore them and show wrong codes, so check the codes in the app against the ones shown here.
 - The page does not know which counter an app has reached; it lists the five counters you ask for.
