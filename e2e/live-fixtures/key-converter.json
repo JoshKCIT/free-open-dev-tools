@@ -1,0 +1,6 @@
+{
+  "id": "key-converter",
+  "label": "RFC 4253 section 6.6: an RSA key with public exponent 65537 starts its OpenSSH line with the same ssh-rsa encoding, and ssh-keygen prints its fingerprint as SHA256",
+  "steps": [{ "action": "select", "field": "keyType", "value": "rsa-2048" }, { "action": "run" }],
+  "expect": ["ssh-rsa AAAAB3NzaC1yc2EAAAADAQAB", "SHA256:"]
+}

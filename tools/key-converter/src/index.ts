@@ -7,7 +7,7 @@
  * of a key, a secret, or a token. Describe the shape of the problem, never the content.
  */
 import meta from './meta.json';
-import { derHex } from './der';
+import { DerError, derHex } from './der';
 import { sshFingerprints } from './fingerprint';
 import { readPkcs8, readSpki, writePkcs8, writeSpki } from './formats';
 import { generateRsa } from './generate';
@@ -21,9 +21,9 @@ import {
   type RsaKey,
 } from './model';
 import { sshPublicBlob, sshPublicLine } from './openssh';
-import { bytesToPem } from './pem';
+import { PemError, bytesToPem } from './pem';
 
-export { meta, KeyConverterError, RSA_GENERATE_BITS, generateRsa };
+export { meta, KeyConverterError, DerError, PemError, RSA_GENERATE_BITS, generateRsa };
 export type { KeyModel, RsaKey };
 
 /** The kinds of key the page offers, in the order of its menu. */
@@ -68,7 +68,8 @@ export interface KeyOutputs {
   warnings: string[];
 }
 
-function checkComment(comment: string): void {
+/** Refuses a comment that is too long or holds a line break, before any work is done for it. */
+export function checkComment(comment: string): void {
   if (comment.length > COMMENT_LIMIT) {
     throw new KeyConverterError(
       `The comment is ${comment.length} characters. The limit is ${COMMENT_LIMIT} because the public key is written as a single line.`,

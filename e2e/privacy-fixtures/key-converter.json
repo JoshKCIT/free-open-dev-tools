@@ -1,0 +1,6 @@
+[
+  {
+    "values": { "keyType": "rsa-2048", "comment": "privacy-check" },
+    "attachesFile": false
+  }
+]
