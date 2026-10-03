@@ -1,0 +1,90 @@
+{
+  "id": "css-pattern",
+  "scenarios": [
+    {
+      "label": "diagonal stripes",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "stripes-diagonal"
+        },
+        {
+          "action": "radio",
+          "field": "output",
+          "value": "gradient"
+        }
+      ]
+    },
+    {
+      "label": "horizontal stripes",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "stripes-horizontal"
+        }
+      ]
+    },
+    {
+      "label": "vertical stripes",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "stripes-vertical"
+        }
+      ]
+    },
+    {
+      "label": "checks",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "checks"
+        }
+      ]
+    },
+    {
+      "label": "dots",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "dots"
+        }
+      ]
+    },
+    {
+      "label": "grid",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "grid"
+        }
+      ]
+    },
+    {
+      "label": "zigzag",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "zigzag"
+        }
+      ]
+    },
+    {
+      "label": "cross-hatch",
+      "steps": [
+        {
+          "action": "radio",
+          "field": "pattern",
+          "value": "cross"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "css-pattern",
+  "label": "CSS Images Level 3: diagonal stripes are a repeating linear gradient",
+  "steps": [
+    { "action": "radio", "field": "pattern", "value": "stripes-diagonal" },
+    { "action": "radio", "field": "output", "value": "gradient" }
+  ],
+  "expect": ["repeating-linear-gradient("]
+}

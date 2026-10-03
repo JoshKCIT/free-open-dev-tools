@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "output", "value": "gradient" },
+    "values": { "size": "24", "thickness": "20" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "output", "value": "svg" },
+    "values": { "size": "24", "thickness": "20" },
+    "attachesFile": false
+  }
+]
