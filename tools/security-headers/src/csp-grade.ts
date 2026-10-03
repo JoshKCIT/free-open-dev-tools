@@ -153,7 +153,7 @@ export const CSP_RULES: readonly CspRule[] = [
   {
     id: 'script-unsafe-eval',
     severity: 'medium',
-    finding: "'unsafe-eval' allows eval() and similar calls.",
+    finding: "'unsafe-eval' allows eval and the calls that work like it.",
     why: 'eval, new Function and string timers turn an injected string into running code.',
     fix: "Remove 'unsafe-eval'. If only WebAssembly needs it, use 'wasm-unsafe-eval' instead.",
     basis:
