@@ -156,7 +156,13 @@ export default defineTool({
     try {
       // Grading is off by default. When it is on and the paste carried a header name or a meta element, the builder is
       // given the policy text without it, so it does not report the header name as an unknown directive.
-      const grading = bool(values, 'gradeCsp', false) ? gradePolicy(str(values, 'csp')) : null;
+      // The page's own Report only and Add upgrade-insecure-requests boxes change what the built headers say, so the grade reads them.
+      const grading = bool(values, 'gradeCsp', false)
+        ? gradePolicy(str(values, 'csp'), {
+            reportOnly: bool(values, 'reportOnly', false),
+            upgradeInsecure: bool(values, 'upgradeInsecure', false),
+          })
+        : null;
       const policyText = grading && grading.source !== 'policy' ? grading.policy : str(values, 'csp');
       const rawMaxAge = num(values, 'hstsMaxAge', 31536000);
       let maxAge = Math.trunc(rawMaxAge);

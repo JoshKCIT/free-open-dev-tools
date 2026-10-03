@@ -318,3 +318,30 @@ test('security-headers: with Grade this policy ticked an empty policy shows Past
   await expect(outputArea(page)).not.toContainText('Policy weaknesses');
   await expect(outputArea(page)).not.toContainText(/Grade [A-F] \(/);
 });
+
+test('security-headers: the grade reads the page boxes Add upgrade-insecure-requests and Report only', async ({
+  page,
+}) => {
+  await openTool(page, 'security-headers');
+  await page.locator('#f-gradeCsp').check();
+  await fillAndHold(
+    page,
+    'csp',
+    "default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  );
+  await expect(outputArea(page)).toContainText('Grade A (100 of 100)');
+  await expect(
+    rowNamed(page, 'info').filter({ hasText: 'upgrade-insecure-requests is not in the policy' }),
+  ).toHaveCount(1);
+  // Ticking Add upgrade-insecure-requests puts the directive in the built headers, and the grade counts it as present.
+  await page.locator('#f-upgradeInsecure').check();
+  await expect(outputArea(page)).toContainText('upgrade-insecure-requests;');
+  await expect(outputArea(page)).toContainText('the grade counts it as present');
+  await expect(outputArea(page)).not.toContainText('upgrade-insecure-requests is not in the policy');
+  // Ticking Report only grades the policy as reported, not enforced.
+  await expect(outputArea(page)).not.toContainText('The Report only box is ticked');
+  await page.locator('#f-reportOnly').check();
+  await expect(outputArea(page)).toContainText(
+    'The Report only box is ticked, so the policy is sent as a Report-Only header',
+  );
+});

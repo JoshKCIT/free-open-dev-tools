@@ -25,6 +25,7 @@ export type {
   CspGrade,
   CspSeverity,
   CspGradeLetter,
+  CspGradeOptions,
   CspSource,
   NormalisedPolicy,
 } from './csp-grade';

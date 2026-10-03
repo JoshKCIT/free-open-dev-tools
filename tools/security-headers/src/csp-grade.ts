@@ -67,6 +67,14 @@ export const CSP_GRADE_MAX_CHARS = 65536;
 /** The most syntax findings listed; a paste with more says how many were left out. */
 const SYNTAX_FINDING_CAP = 20;
 
+/** What the page around the grader says about the policy: its own Report only and Add upgrade-insecure-requests boxes. */
+export interface CspGradeOptions {
+  /** The page sends the policy as a Content-Security-Policy-Report-Only header. */
+  reportOnly?: boolean;
+  /** The page adds upgrade-insecure-requests to the policy it builds. */
+  upgradeInsecure?: boolean;
+}
+
 export class CspGradeError extends Error {
   constructor(message: string) {
     super(message);
@@ -663,6 +671,7 @@ function evaluate(
   problems: readonly CspProblem[],
   source: CspSource,
   policy: string,
+  options: CspGradeOptions,
 ): CspFinding[] {
   const found: CspFinding[] = [];
 
@@ -766,8 +775,16 @@ function evaluate(
   }
 
   if (source === 'report-only header') found.push(finding('report-only', 'Content-Security-Policy-Report-Only'));
+  else if (options.reportOnly) {
+    found.push(
+      finding('report-only', 'Content-Security-Policy-Report-Only', {
+        whole:
+          'The Report only box is ticked, so the policy is sent as a Report-Only header: it is reported but not enforced.',
+      }),
+    );
+  }
   if (source === 'meta') found.push(finding('meta-limits', 'meta'));
-  if (!index.has('upgrade-insecure-requests'))
+  if (!index.has('upgrade-insecure-requests') && !options.upgradeInsecure)
     found.push(finding('upgrade-insecure-requests', 'upgrade-insecure-requests'));
 
   const real = problems.filter((p) => !isFalseProblem(p.message));
@@ -818,7 +835,7 @@ function isBlank(text: string): boolean {
  * Grades a pasted policy. A paste over CSP_GRADE_MAX_CHARS characters is refused (CspGradeError) before anything is parsed.
  * The paste may be a bare policy, a header line, a Report-Only header line or a meta element.
  */
-export function gradeCsp(text: string): CspGrade {
+export function gradeCsp(text: string, options: CspGradeOptions = {}): CspGrade {
   if (text.length > CSP_GRADE_MAX_CHARS) {
     throw new CspGradeError(
       `This policy is ${withCommas(text.length)} characters. The limit for grading is ${withCommas(CSP_GRADE_MAX_CHARS)}.`,
@@ -829,7 +846,13 @@ export function gradeCsp(text: string): CspGrade {
   let findings: CspFinding[] = [];
   if (!empty) {
     const parsed = parseCspDirectives(policy);
-    findings = evaluate(indexDirectives(parsed.directives), parsed.problems, source, policy);
+    const index = indexDirectives(parsed.directives);
+    findings = evaluate(index, parsed.problems, source, policy, options);
+    if (options.upgradeInsecure && !index.has('upgrade-insecure-requests')) {
+      notes.push(
+        'The Add upgrade-insecure-requests box is ticked, so the headers built above carry upgrade-insecure-requests and the grade counts it as present.',
+      );
+    }
     findings.sort(compareFindings);
   }
 

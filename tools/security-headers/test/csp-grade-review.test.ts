@@ -191,3 +191,34 @@ it('a syntax finding names the directive by its place in the policy, not a line'
   expect(syntaxFindings('frobnicate x; default-src none')[0]).toMatch(/^Directive 1: /);
   expect(syntaxFindings('frobnicate x; default-src none')[1]).toMatch(/^Directive 2: /);
 });
+
+// B-WR-03: the grade ignored the page's own "Upgrade insecure requests" and "Report only" boxes.
+it('the Add upgrade-insecure-requests box counts as the directive being present', () => {
+  const policy = "default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  const without = gradeCsp(policy);
+  expect(without.findings.map((f) => f.rule)).toEqual(['upgrade-insecure-requests']);
+  const ticked = gradeCsp(policy, { upgradeInsecure: true });
+  expect(ticked.findings).toEqual([]);
+  expect(ticked.notes.join(' ')).toMatch(/upgrade-insecure-requests/);
+  expect(ticked.score).toBe(100);
+  // Not ticked, or ticked as false: the same as no options at all.
+  expect(gradeCsp(policy, { upgradeInsecure: false })).toEqual(without);
+  expect(gradeCsp(policy, {})).toEqual(without);
+  // A policy that already has the directive gets no extra note.
+  expect(gradeCsp(`${policy}; upgrade-insecure-requests`, { upgradeInsecure: true }).notes).toEqual([]);
+});
+
+it('the Report only box grades the policy as reported, not enforced', () => {
+  const policy =
+    "default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+  expect(gradeCsp(policy).findings).toEqual([]);
+  const ticked = gradeCsp(policy, { reportOnly: true });
+  const found = ticked.findings.filter((f) => f.rule === 'report-only');
+  expect(found).toHaveLength(1);
+  expect(found[0]?.severity).toBe('info');
+  expect(found[0]?.finding).toMatch(/Report only/);
+  // A pasted Report-Only header and the box together are one finding, not two.
+  const both = gradeCsp(`Content-Security-Policy-Report-Only: ${policy}`, { reportOnly: true });
+  expect(both.findings.filter((f) => f.rule === 'report-only')).toHaveLength(1);
+  expect(gradeCsp(policy, { reportOnly: false })).toEqual(gradeCsp(policy));
+});
