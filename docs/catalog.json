@@ -1384,5 +1384,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Pack several images into one sprite sheet PNG with the CSS rules that show each image."
+  },
+  {
+    "id": "image-splitter",
+    "name": "Image Splitter (Grid Tiles to ZIP)",
+    "category": "media",
+    "tier": 3,
+    "summary": "Cut an image into a grid of tiles by rows and columns or by tile size and download them as a ZIP."
   }
 ]
