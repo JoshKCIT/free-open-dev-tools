@@ -1356,5 +1356,12 @@
     "category": "css",
     "tier": 3,
     "summary": "Compile SCSS, indented Sass or Less to CSS in the browser, with errors shown at their line and column."
+  },
+  {
+    "id": "mermaid-renderer",
+    "name": "Mermaid Diagram Renderer",
+    "category": "code",
+    "tier": 3,
+    "summary": "Render a Mermaid diagram description to SVG or PNG with syntax errors shown and nothing fetched."
   }
 ]
