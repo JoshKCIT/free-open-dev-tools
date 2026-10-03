@@ -7,11 +7,16 @@
  * The policy is read by the existing `parseCspDirectives` (not edited here). Effective source lists follow CSP Level 3
  * section 6.8.3 ("Get fetch directive fallback list"). Directive and rule lookups use `Map`s, so a directive named
  * `__proto__`, `constructor` or `toString` is only an unknown directive.
+ *
+ * Linear time: a paste over CSP_GRADE_MAX_CHARS is refused before anything is parsed; a pasted header name is found by
+ * comparing characters; a pasted meta element is read by a scanner that moves forward only (no regular expression runs
+ * over the paste); the existing parser is linear; and the findings of a paste full of syntax problems are capped.
  */
-import { parseCspDirectives, type CspDirective } from './csp';
+import { parseCspDirectives, type CspDirective, type CspProblem } from './csp';
 
 export type CspSeverity = 'high' | 'medium' | 'low' | 'info';
 export type CspGradeLetter = 'A' | 'B' | 'C' | 'D' | 'F';
+export type CspSource = 'policy' | 'header' | 'report-only header' | 'meta';
 
 /** One rule of the table: what it says when it fires. */
 export interface CspRule {
@@ -41,19 +46,43 @@ export interface CspGrade {
   grade: CspGradeLetter;
   score: number;
   findings: CspFinding[];
-  source: 'policy' | 'header' | 'report-only header' | 'meta';
+  source: CspSource;
+  /** The policy text that was graded: the paste with a header name or meta wrapper taken off. */
   policy: string;
   /** True when there was nothing to grade; the grade and score then carry no meaning. */
   empty: boolean;
+  /** What was taken off the paste before grading, in plain words. */
+  notes: string[];
 }
 
-/** Points taken off 100 by the first finding of each rule that fires. This is the page's own summary policy. */
+export interface NormalisedPolicy {
+  policy: string;
+  source: CspSource;
+  notes: string[];
+}
+
+/** The longest paste that is graded: 64 KiB. A longer one is refused before it is parsed. */
+export const CSP_GRADE_MAX_CHARS = 65536;
+
+/** The most syntax findings listed; a paste with more says how many were left out. */
+const SYNTAX_FINDING_CAP = 20;
+
+export class CspGradeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CspGradeError';
+  }
+}
+
+/** Points taken off 100 by each rule that fires (once per rule). This is the page's own summary policy. */
 export const CSP_SEVERITY_WEIGHTS: ReadonlyMap<CspSeverity, number> = new Map<CspSeverity, number>([
   ['high', 30],
   ['medium', 15],
   ['low', 5],
   ['info', 0],
 ]);
+
+const OWN_RULE = "This page's own rule";
 
 // The rules, in table order. Findings are listed by severity and then by this order.
 export const CSP_RULES: readonly CspRule[] = [
@@ -76,6 +105,95 @@ export const CSP_RULES: readonly CspRule[] = [
       "CSP Level 3 section 6: developers SHOULD NOT include 'unsafe-inline' or data: as valid sources; section 6.7.3.2 (does a source list allow all inline behavior)",
   },
   {
+    id: 'unsafe-inline-ignored',
+    severity: 'info',
+    finding:
+      "'unsafe-inline' is listed next to a nonce, a hash or 'strict-dynamic', so browsers that know those ignore it.",
+    why: "Browsers that support nonces and hashes ignore 'unsafe-inline' in that list; it only matters to old browsers that do not.",
+    fix: 'Keep it only as a fallback for old browsers, or remove it.',
+    basis:
+      "CSP Level 3 section 6.7.3.2: a source list with a nonce, a hash or (for scripts) 'strict-dynamic' does not allow all inline behavior",
+  },
+  {
+    id: 'script-wildcard',
+    severity: 'high',
+    finding: 'A bare * allows scripts from any host.',
+    why: 'Any host can serve a script, so an attacker can load one from their own server.',
+    fix: "Name the exact hosts, or use nonces with 'strict-dynamic'.",
+    basis:
+      "CSP Level 3 section 6.7.2.8: the source expression * matches any URL with an HTTP(S) scheme or the page's own scheme; section 8.2",
+  },
+  {
+    id: 'script-data',
+    severity: 'high',
+    finding: 'data: allows scripts written into a URL.',
+    why: 'A data: URL can carry a whole script, so any place that accepts a URL can run code.',
+    fix: 'Remove data: from the script sources.',
+    basis:
+      "CSP Level 3 section 6: developers SHOULD NOT include 'unsafe-inline' or data: as valid sources, because both enable XSS attacks",
+  },
+  {
+    id: 'script-scheme-only',
+    severity: 'high',
+    finding: 'A whole scheme (https: or http:) is allowed for scripts.',
+    why: 'Every host that uses that scheme is allowed, so any site can serve a script.',
+    fix: "Allow specific hosts, or use a nonce with 'strict-dynamic'.",
+    basis: 'CSP Level 3 section 2.3.1: a scheme such as https: matches any resource having that scheme; section 8.2',
+  },
+  {
+    id: 'host-sources-ignored',
+    severity: 'info',
+    finding:
+      "Host, scheme, wildcard or 'self' sources sit next to 'strict-dynamic', so browsers ignore them for scripts.",
+    why: "With 'strict-dynamic' in the list, browsers that support it ignore host sources, scheme sources, wildcards and 'self' for scripts; they only help old browsers.",
+    fix: 'Nothing to fix. Keep them as a fallback for old browsers, or remove them.',
+    basis:
+      "CSP Level 3 section 8.2: host-source and scheme-source expressions, as well as 'unsafe-inline' and 'self', are ignored when loading script",
+  },
+  {
+    id: 'script-unsafe-eval',
+    severity: 'medium',
+    finding: "'unsafe-eval' allows eval() and similar calls.",
+    why: 'eval, new Function and string timers turn an injected string into running code.',
+    fix: "Remove 'unsafe-eval'. If only WebAssembly needs it, use 'wasm-unsafe-eval' instead.",
+    basis:
+      "CSP Level 3 section 6.1.10: script-src gates the JavaScript execution sinks on the 'unsafe-eval' source expression",
+  },
+  {
+    id: 'script-http-host',
+    severity: 'medium',
+    finding: 'A script source uses plain http://.',
+    why: 'A script fetched over http can be changed on its way to the browser.',
+    fix: 'Use https:// sources.',
+    basis: `${OWN_RULE}: a script fetched over plain http can be altered in transit. CSP Level 3 does not require this.`,
+  },
+  {
+    id: 'strict-dynamic-no-nonce',
+    severity: 'medium',
+    finding: "'strict-dynamic' is used without a nonce or a hash.",
+    why: "With 'strict-dynamic' the host sources and 'self' are ignored, so without a nonce or hash no script can start.",
+    fix: "Add a 'nonce-...' or a hash source for each script that must run.",
+    basis:
+      "CSP Level 3 section 8.2: with 'strict-dynamic', hash and nonce expressions are honored and host sources and 'self' are ignored",
+  },
+  {
+    id: 'script-host-allowlist',
+    severity: 'low',
+    finding: 'Scripts are allowed by a list of hosts only.',
+    why: 'Host and path lists are hard to get right: a host that serves one script you need may serve others an attacker can use.',
+    fix: "Prefer a nonce or a hash with 'strict-dynamic'.",
+    basis:
+      'CSP Level 3 section 8.2: host- and path-based policies are tough to get right, and such lists end up brittle, awkward and difficult to maintain',
+  },
+  {
+    id: 'nonce-short',
+    severity: 'medium',
+    finding: 'A nonce is shorter than 22 Base64 characters (128 bits).',
+    why: 'A short nonce can be guessed, and a guessed nonce lets an attacker run their own script.',
+    fix: 'Generate 16 random bytes for every response and encode them in Base64 (22 characters or more).',
+    basis: 'CSP Level 3 section 7.1: the generated value SHOULD be at least 128 bits long (before encoding)',
+  },
+  {
     id: 'object-src',
     severity: 'medium',
     finding: "Plugin content is not blocked: object-src is missing or is not 'none'.",
@@ -83,6 +201,102 @@ export const CSP_RULES: readonly CspRule[] = [
     fix: "Add object-src 'none'.",
     basis:
       'CSP Level 3 section 6: developers SHOULD include directives that regulate sources of script and plugins (section 6.1.9 object-src)',
+  },
+  {
+    id: 'base-uri',
+    severity: 'medium',
+    finding: 'base-uri is missing, or it allows any host or a whole scheme.',
+    why: 'base-uri does not fall back to default-src. An injected base element can send relative script URLs to another site (nonce retargeting).',
+    fix: "Add base-uri 'none' or base-uri 'self'.",
+    basis:
+      "CSP Level 3 section 6.3.1 (base-uri); section 7.3 (nonce retargeting); section 8.5 (Strict CSP: base-uri 'self' or 'none')",
+  },
+  {
+    id: 'frame-ancestors',
+    severity: 'low',
+    finding: 'frame-ancestors is missing, so other sites may embed the page.',
+    why: 'frame-ancestors does not fall back to default-src, so any site may put the page in a frame (clickjacking). A meta element cannot set it.',
+    fix: "Add frame-ancestors 'none' or 'self' in the HTTP header.",
+    basis:
+      'CSP Level 3 section 6.4.2 (frame-ancestors does not fall back to default-src); section 3.3 (ignored in a meta element)',
+  },
+  {
+    id: 'form-action',
+    severity: 'low',
+    finding: 'form-action is missing, so a form may post to any address.',
+    why: 'form-action does not fall back to default-src, so an injected form can send what a visitor types to another site.',
+    fix: "Add form-action 'self'.",
+    basis: 'CSP Level 3 section 6.4.1 (form-action restricts the URLs that can be the target of a form submission)',
+  },
+  {
+    id: 'default-open',
+    severity: 'medium',
+    finding: 'default-src allows any host or a whole scheme.',
+    why: 'default-src is the fallback for every fetch directive that is not set, so each of them is open too.',
+    fix: "Start from default-src 'self' or 'none' and open only what is needed.",
+    basis:
+      'CSP Level 3 section 6.1.3 (default-src is the fallback for the other fetch directives); section 8.6 (exfiltration)',
+  },
+  {
+    id: 'exfiltration-wildcard',
+    severity: 'low',
+    finding: 'A fetch directive allows any host while default-src is restrictive.',
+    why: 'A policy only resists data leaving the page as far as its least restrictive directive allows.',
+    fix: 'Name the hosts the page really uses.',
+    basis:
+      "CSP Level 3 section 8.6: a policy's exfiltration mitigation ability depends upon the least-restrictive directive allowlist (default-src 'none'; img-src *)",
+  },
+  {
+    id: 'style-unsafe-inline',
+    severity: 'low',
+    finding: "'unsafe-inline' allows inline styles and nothing overrides it.",
+    why: 'Injected styles can restyle the page and can leak data through attribute selectors.',
+    fix: 'Use a nonce or a hash for styles.',
+    basis: 'CSP Level 3 section 6.1.13 (style-src); section 6.7.3.2 (does a source list allow all inline behavior)',
+  },
+  {
+    id: 'unsafe-hashes',
+    severity: 'low',
+    finding: "'unsafe-hashes' allows inline event handlers by their hash.",
+    why: 'A hash lets one script run but does not make sure it runs the way the author meant; a handler that does something powerful can be injected as a script.',
+    fix: "Move the handlers into scripts that use addEventListener, then remove 'unsafe-hashes'.",
+    basis:
+      "CSP Level 3 section 8.3 (usage of 'unsafe-hashes': useful for legacy sites, but should be avoided for modern sites)",
+  },
+  {
+    id: 'report-only',
+    severity: 'info',
+    finding: 'The policy was pasted as a Report-Only header, so it is reported but not enforced.',
+    why: 'A browser only sends reports for this policy and blocks nothing.',
+    fix: 'Switch to the Content-Security-Policy header when the reports are clean.',
+    basis:
+      'CSP Level 3 section 3.2 (the Content-Security-Policy-Report-Only header field monitors a policy but does not enforce it)',
+  },
+  {
+    id: 'meta-limits',
+    severity: 'info',
+    finding: 'The policy came from a meta element, which cannot carry every directive.',
+    why: 'A meta element does not support frame-ancestors, report-uri or sandbox, nor the Report-Only header, and it only applies to content after it.',
+    fix: 'Send the policy as an HTTP header when you can.',
+    basis:
+      'CSP Level 3 section 3.3 (a meta element does not support the Report-Only header or the report-uri, frame-ancestors and sandbox directives)',
+  },
+  {
+    id: 'upgrade-insecure-requests',
+    severity: 'info',
+    finding: 'upgrade-insecure-requests is not in the policy.',
+    why: 'Plain http subresources are fetched as written.',
+    fix: 'Add upgrade-insecure-requests if every host you use supports https.',
+    basis: `${OWN_RULE}: upgrade-insecure-requests comes from the Upgrade Insecure Requests specification, not from CSP Level 3.`,
+  },
+  {
+    id: 'syntax',
+    severity: 'low',
+    finding: 'A part of the policy is invalid or ignored.',
+    why: 'A browser skips what it cannot read, so the policy does less than it looks like.',
+    fix: 'Fix the part named in the finding.',
+    basis:
+      'CSP Level 3 section 2.2.1 (parse a serialized CSP: a repeated directive is ignored) and the grammar the builder above checks',
   },
 ];
 
@@ -112,9 +326,20 @@ const FALLBACK: ReadonlyMap<string, readonly string[]> = new Map([
   ['img-src', ['img-src', 'default-src']],
 ]);
 
+// The fetch directives other than script and style that the exfiltration rule reads (section 8.6).
+const EXFILTRATION_DIRECTIVES = [
+  'child-src',
+  'connect-src',
+  'font-src',
+  'frame-src',
+  'img-src',
+  'manifest-src',
+  'media-src',
+];
+
 type SourceIndex = ReadonlyMap<string, readonly string[]>;
 
-/** Name to source tokens; the first occurrence of a directive wins (CSP Level 3, parsing a serialized policy). */
+/** Name to source tokens; the first occurrence of a directive wins (CSP Level 3 section 2.2.1). */
 function indexDirectives(directives: readonly CspDirective[]): SourceIndex {
   const index = new Map<string, readonly string[]>();
   for (const d of directives) {
@@ -142,6 +367,168 @@ export function effectiveSources(
   return effectiveIn(indexDirectives(directives), name);
 }
 
+// ---- Reading what was pasted: a header line or a meta element around the policy ----
+
+const CHAR_TAB = 9;
+const CHAR_LF = 10;
+const CHAR_FF = 12;
+const CHAR_CR = 13;
+const CHAR_SPACE = 32;
+const CHAR_QUOTE = 34;
+const CHAR_APOSTROPHE = 39;
+const CHAR_SLASH = 47;
+const CHAR_COLON = 58;
+const CHAR_SEMICOLON = 59;
+const CHAR_EQUALS = 61;
+const CHAR_GT = 62;
+
+function isSpace(code: number): boolean {
+  return code === CHAR_SPACE || code === CHAR_TAB || code === CHAR_LF || code === CHAR_CR || code === CHAR_FF;
+}
+
+function skipSpace(text: string, from: number): number {
+  let i = from;
+  while (i < text.length && isSpace(text.charCodeAt(i))) i++;
+  return i;
+}
+
+function lowerAscii(code: number): number {
+  return code >= 65 && code <= 90 ? code + 32 : code;
+}
+
+/** True when text[start, end) equals the lower-case ASCII `word`, ignoring ASCII case. */
+function equalsAscii(text: string, start: number, end: number, word: string): boolean {
+  if (end - start !== word.length) return false;
+  for (let i = 0; i < word.length; i++) {
+    if (lowerAscii(text.charCodeAt(start + i)) !== word.charCodeAt(i)) return false;
+  }
+  return true;
+}
+
+function startsWithAscii(text: string, at: number, word: string): boolean {
+  return at + word.length <= text.length && equalsAscii(text, at, at + word.length, word);
+}
+
+interface MetaTag {
+  /** Index of the closing angle bracket. */
+  end: number;
+  httpEquiv: string | null;
+  content: string | null;
+}
+
+/**
+ * Reads the attributes of one tag from just after its name. Moves forward only. Returns null when the tag never
+ * ends (an unfinished quote, or no closing angle bracket), which also means no later tag in the paste can end.
+ */
+function readTag(text: string, from: number): MetaTag | null {
+  const n = text.length;
+  let i = from;
+  let httpEquiv: string | null = null;
+  let content: string | null = null;
+  while (i < n) {
+    const c = text.charCodeAt(i);
+    if (isSpace(c) || c === CHAR_SLASH) {
+      i++;
+      continue;
+    }
+    if (c === CHAR_GT) return { end: i, httpEquiv, content };
+    let nameEnd = i;
+    while (nameEnd < n) {
+      const d = text.charCodeAt(nameEnd);
+      if (isSpace(d) || d === CHAR_EQUALS || d === CHAR_GT || d === CHAR_SLASH) break;
+      nameEnd++;
+    }
+    if (nameEnd === i) {
+      // A stray equals sign with no name: step over it.
+      i++;
+      continue;
+    }
+    let j = skipSpace(text, nameEnd);
+    let value = '';
+    if (j < n && text.charCodeAt(j) === CHAR_EQUALS) {
+      j = skipSpace(text, j + 1);
+      if (j >= n) return null;
+      const q = text.charCodeAt(j);
+      if (q === CHAR_QUOTE || q === CHAR_APOSTROPHE) {
+        const close = text.indexOf(q === CHAR_QUOTE ? '"' : "'", j + 1);
+        if (close < 0) return null;
+        value = text.slice(j + 1, close);
+        j = close + 1;
+      } else {
+        const valueStart = j;
+        while (j < n && !isSpace(text.charCodeAt(j)) && text.charCodeAt(j) !== CHAR_GT) j++;
+        value = text.slice(valueStart, j);
+      }
+    }
+    // The first attribute of a name counts, as in HTML.
+    if (httpEquiv === null && equalsAscii(text, i, nameEnd, 'http-equiv')) httpEquiv = value;
+    else if (content === null && equalsAscii(text, i, nameEnd, 'content')) content = value;
+    i = j;
+  }
+  return null;
+}
+
+/** The content attribute of the first meta element whose http-equiv is Content-Security-Policy, or null. */
+function readMetaContent(text: string): string | null {
+  let at = text.indexOf('<');
+  while (at >= 0) {
+    const after = at + 5;
+    const boundary =
+      after >= text.length || isSpace(text.charCodeAt(after)) || [CHAR_SLASH, CHAR_GT].includes(text.charCodeAt(after));
+    if (startsWithAscii(text, at + 1, 'meta') && boundary) {
+      const tag = readTag(text, after);
+      if (tag === null) return null;
+      if (
+        tag.httpEquiv !== null &&
+        tag.content !== null &&
+        equalsAscii(tag.httpEquiv, 0, tag.httpEquiv.length, 'content-security-policy')
+      ) {
+        return tag.content;
+      }
+      at = text.indexOf('<', tag.end + 1);
+    } else {
+      at = text.indexOf('<', at + 1);
+    }
+  }
+  return null;
+}
+
+// Longest name first, so the Report-Only name is not read as the plain one.
+const HEADER_NAMES: readonly { name: string; source: CspSource; note: string }[] = [
+  {
+    name: 'content-security-policy-report-only',
+    source: 'report-only header',
+    note: 'Took off the header name Content-Security-Policy-Report-Only: and graded the rest as the policy. A Report-Only policy is reported, not enforced.',
+  },
+  {
+    name: 'content-security-policy',
+    source: 'header',
+    note: 'Took off the header name Content-Security-Policy: and graded the rest as the policy.',
+  },
+];
+
+const META_NOTE = 'Read the content attribute of the meta element and graded it as the policy.';
+
+/**
+ * Takes a pasted header line (Content-Security-Policy: or Content-Security-Policy-Report-Only:) or a pasted meta element
+ * (http-equiv Content-Security-Policy) off the policy text, for grading only. Anything else is returned as it was.
+ */
+export function normaliseForGrading(text: string): NormalisedPolicy {
+  const content = readMetaContent(text);
+  if (content !== null) return { policy: content, source: 'meta', notes: [META_NOTE] };
+  const start = skipSpace(text, 0);
+  for (const header of HEADER_NAMES) {
+    if (!startsWithAscii(text, start, header.name)) continue;
+    const colon = skipSpace(text, start + header.name.length);
+    if (text.charCodeAt(colon) === CHAR_COLON) {
+      return { policy: text.slice(skipSpace(text, colon + 1)), source: header.source, notes: [header.note] };
+    }
+  }
+  return { policy: text, source: 'policy', notes: [] };
+}
+
+// ---- Rules ----
+
 function hasKeyword(list: readonly string[], keyword: string): boolean {
   return list.some((t) => t.toLowerCase() === keyword);
 }
@@ -151,18 +538,133 @@ function isNonceOrHash(token: string): boolean {
   return t.startsWith("'nonce-") || t.startsWith("'sha256-") || t.startsWith("'sha384-") || t.startsWith("'sha512-");
 }
 
-function finding(id: string, directive: string): CspFinding {
+/** A host source (not a keyword, a nonce, a hash, a bare scheme or the wildcard). */
+function isHostSource(token: string): boolean {
+  return token !== '*' && !token.startsWith("'") && !token.endsWith(':');
+}
+
+function isOpenSource(token: string): boolean {
+  const t = token.toLowerCase();
+  return t === '*' || t === 'https:' || t === 'http:';
+}
+
+function finding(id: string, directive: string, text?: { whole?: string; suffix?: string }): CspFinding {
   const rule = RULE_BY_ID.get(id);
   if (!rule) throw new Error(`Unknown rule ${id}`);
   return {
     rule: rule.id,
     severity: rule.severity,
     directive,
-    finding: rule.finding,
+    finding: text?.whole ?? (text?.suffix ? `${rule.finding} ${text.suffix}` : rule.finding),
     why: rule.why,
     fix: rule.fix,
     basis: rule.basis,
   };
+}
+
+function withCommas(n: number): string {
+  const digits = String(n);
+  let out = '';
+  for (let i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 === 0) out += ',';
+    out += digits[i];
+  }
+  return out;
+}
+
+function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: CspSource): CspFinding[] {
+  const found: CspFinding[] = [];
+
+  // Scripts: the list that governs script elements (CSP Level 3 section 6.8.3).
+  const script = effectiveIn(index, 'script-src-elem');
+  if (!script) {
+    found.push(finding('script-unrestricted', 'script-src'));
+  } else {
+    const list = script.sources;
+    const lower = list.map((t) => t.toLowerCase());
+    const modern = list.some(isNonceOrHash);
+    const strict = lower.includes("'strict-dynamic'");
+    const inline = lower.includes("'unsafe-inline'");
+    if (inline && !modern && !strict) found.push(finding('script-unsafe-inline', script.directive));
+    if (inline && (modern || strict)) found.push(finding('unsafe-inline-ignored', script.directive));
+    if (strict) {
+      // Section 8.2: with 'strict-dynamic', host and scheme sources, the wildcard and 'self' are ignored for scripts, so
+      // the rules about them stay quiet and the ignored sources are only reported.
+      const ignored = list.filter((t) => t.toLowerCase() === "'self'" || !t.startsWith("'"));
+      if (ignored.length > 0) {
+        const shown = ignored.slice(0, 8).join(' ');
+        const more = ignored.length > 8 ? ` and ${ignored.length - 8} more` : '';
+        found.push(finding('host-sources-ignored', script.directive, { suffix: `Ignored here: ${shown}${more}.` }));
+      }
+    } else {
+      if (lower.includes('*')) found.push(finding('script-wildcard', script.directive));
+      if (lower.includes('data:')) found.push(finding('script-data', script.directive));
+      if (lower.includes('https:') || lower.includes('http:'))
+        found.push(finding('script-scheme-only', script.directive));
+      if (lower.some((t) => t.startsWith('http://'))) found.push(finding('script-http-host', script.directive));
+    }
+    if (lower.includes("'unsafe-eval'")) found.push(finding('script-unsafe-eval', script.directive));
+    if (strict && !modern) found.push(finding('strict-dynamic-no-nonce', script.directive));
+    if (!strict && !modern && list.some(isHostSource)) found.push(finding('script-host-allowlist', script.directive));
+  }
+
+  // Nonces in any directive (section 7.1): 22 Base64 characters are 132 bits, 21 are 126.
+  for (const [name, list] of index) {
+    const short = list.some((t) => {
+      const lowerToken = t.toLowerCase();
+      if (!lowerToken.startsWith("'nonce-") || !lowerToken.endsWith("'") || t.length < 9) return false;
+      let end = t.length - 1;
+      while (end > 7 && t.charCodeAt(end - 1) === 61) end--;
+      return end - 7 < 22;
+    });
+    if (short) found.push(finding('nonce-short', name));
+  }
+
+  const object = effectiveIn(index, 'object-src');
+  if (!object) found.push(finding('object-src', 'object-src'));
+  else if (!hasKeyword(object.sources, "'none'")) found.push(finding('object-src', object.directive));
+
+  // base-uri, frame-ancestors and form-action are read on their own: none of them falls back to default-src.
+  const base = index.get('base-uri');
+  if (!base || base.some(isOpenSource)) found.push(finding('base-uri', 'base-uri'));
+  if (!index.has('frame-ancestors')) found.push(finding('frame-ancestors', 'frame-ancestors'));
+  if (!index.has('form-action')) found.push(finding('form-action', 'form-action'));
+
+  const defaults = index.get('default-src');
+  const defaultOpen = defaults?.some(isOpenSource) ?? false;
+  if (defaultOpen) found.push(finding('default-open', 'default-src'));
+  if (defaults && !defaultOpen) {
+    for (const name of EXFILTRATION_DIRECTIVES) {
+      if (index.get(name)?.includes('*')) found.push(finding('exfiltration-wildcard', name));
+    }
+  }
+
+  const style = effectiveIn(index, 'style-src-elem');
+  if (style && hasKeyword(style.sources, "'unsafe-inline'") && !style.sources.some(isNonceOrHash)) {
+    found.push(finding('style-unsafe-inline', style.directive));
+  }
+
+  for (const [name, list] of index) {
+    if (hasKeyword(list, "'unsafe-hashes'")) found.push(finding('unsafe-hashes', name));
+  }
+
+  if (source === 'report-only header') found.push(finding('report-only', 'Content-Security-Policy-Report-Only'));
+  if (source === 'meta') found.push(finding('meta-limits', 'meta'));
+  if (!index.has('upgrade-insecure-requests'))
+    found.push(finding('upgrade-insecure-requests', 'upgrade-insecure-requests'));
+
+  for (const problem of problems.slice(0, SYNTAX_FINDING_CAP)) {
+    found.push(finding('syntax', '(policy)', { whole: `Line ${problem.line}: ${problem.message}` }));
+  }
+  if (problems.length > SYNTAX_FINDING_CAP) {
+    const left = problems.length - SYNTAX_FINDING_CAP;
+    found.push(
+      finding('syntax', '(policy, more)', {
+        whole: `${withCommas(left)} more problems are not listed here. Fix the ones above and grade again.`,
+      }),
+    );
+  }
+  return found;
 }
 
 function compareFindings(a: CspFinding, b: CspFinding): number {
@@ -170,8 +672,9 @@ function compareFindings(a: CspFinding, b: CspFinding): number {
   if (bySeverity !== 0) return bySeverity;
   const byRule = (RULE_ORDER.get(a.rule) ?? 999) - (RULE_ORDER.get(b.rule) ?? 999);
   if (byRule !== 0) return byRule;
+  // The same rule on several directives: by directive name, so the list does not depend on the order of the policy.
+  // Findings of one rule on one directive (syntax) keep the order the policy gave them.
   if (a.directive !== b.directive) return a.directive < b.directive ? -1 : 1;
-  if (a.finding !== b.finding) return a.finding < b.finding ? -1 : 1;
   return 0;
 }
 
@@ -181,34 +684,33 @@ function letterFor(score: number, anyHigh: boolean): CspGradeLetter {
   return anyHigh && (letter === 'A' || letter === 'B' || letter === 'C') ? 'D' : letter;
 }
 
-function evaluate(index: SourceIndex): CspFinding[] {
-  const found: CspFinding[] = [];
-
-  const script = effectiveIn(index, 'script-src-elem');
-  if (!script) {
-    found.push(finding('script-unrestricted', 'script-src'));
-  } else {
-    const list = script.sources;
-    const modern = list.some(isNonceOrHash);
-    const strict = hasKeyword(list, "'strict-dynamic'");
-    if (hasKeyword(list, "'unsafe-inline'") && !modern && !strict) {
-      found.push(finding('script-unsafe-inline', script.directive));
-    }
+/** True when the text holds nothing but white space and semicolons: an empty policy. */
+function isBlank(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (!isSpace(code) && code !== CHAR_SEMICOLON) return false;
   }
-
-  const object = effectiveIn(index, 'object-src');
-  if (!object) found.push(finding('object-src', 'object-src'));
-  else if (!hasKeyword(object.sources, "'none'")) found.push(finding('object-src', object.directive));
-
-  return found;
+  return true;
 }
 
+/**
+ * Grades a pasted policy. A paste over CSP_GRADE_MAX_CHARS characters is refused (CspGradeError) before anything is parsed.
+ * The paste may be a bare policy, a header line, a Report-Only header line or a meta element.
+ */
 export function gradeCsp(text: string): CspGrade {
-  const policy = text;
-  const empty = policy.trim() === '';
-  const parsed = parseCspDirectives(policy);
-  const findings = empty ? [] : evaluate(indexDirectives(parsed.directives));
-  findings.sort(compareFindings);
+  if (text.length > CSP_GRADE_MAX_CHARS) {
+    throw new CspGradeError(
+      `This policy is ${withCommas(text.length)} characters. The limit for grading is ${withCommas(CSP_GRADE_MAX_CHARS)}.`,
+    );
+  }
+  const { policy, source, notes } = normaliseForGrading(text);
+  const empty = isBlank(policy);
+  let findings: CspFinding[] = [];
+  if (!empty) {
+    const parsed = parseCspDirectives(policy);
+    findings = evaluate(indexDirectives(parsed.directives), parsed.problems, source);
+    findings.sort(compareFindings);
+  }
 
   // Each rule that fires counts once, however many findings it lists.
   const fired = new Map<string, CspSeverity>();
@@ -226,8 +728,9 @@ export function gradeCsp(text: string): CspGrade {
         ),
     score: empty ? 0 : score,
     findings,
-    source: 'policy',
+    source,
     policy,
     empty,
+    notes,
   };
 }

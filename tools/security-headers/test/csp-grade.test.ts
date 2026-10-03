@@ -462,7 +462,7 @@ it('policies over 65536 characters are refused for grading and a 65536 character
     const started = performance.now();
     const result = gradeCsp(text);
     const elapsed = performance.now() - started;
-    expect(elapsed, `${name} took ${elapsed} ms`).toBeLessThan(3000);
+    expect(elapsed, `${name} took ${elapsed} ms`).toBeLessThan(1000);
     expect(result.empty, name).toBe(false);
     // The syntax findings of a paste full of problems are capped, and the last one says how many are left out.
     expect(result.findings.filter((f) => f.rule === 'syntax').length, name).toBeLessThanOrEqual(21);
