@@ -5,6 +5,7 @@ import {
   MAX_IMAGE_BYTES,
   meta as toolMeta,
   planSprites,
+  plainPng,
   spriteClassName,
   spriteCss,
   SpriteSheetError,
@@ -590,11 +591,97 @@ it('meta states the limits that the code enforces', () => {
   expect(toolMeta.id).toBe('sprite-sheet');
 });
 
+/** CRC-32 as the PNG specification gives it (section 5.5, polynomial 0xEDB88320), written here and not taken from the package. */
+function crc32(bytes: Uint8Array): number {
+  let c = 0xffffffff;
+  for (const b of bytes) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, data: number[]): number[] {
+  const body = [...Array.from(type, (ch) => ch.charCodeAt(0)), ...data];
+  return [...u32be(data.length), ...body, ...u32be(crc32(Uint8Array.from(body)))];
+}
+
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+
+function chunkNames(png: Uint8Array): string[] {
+  const names: string[] = [];
+  let at = 8;
+  while (at < png.length) {
+    const length = ((png[at]! << 24) | (png[at + 1]! << 16) | (png[at + 2]! << 8) | png[at + 3]!) >>> 0;
+    names.push(String.fromCharCode(png[at + 4]!, png[at + 5]!, png[at + 6]!, png[at + 7]!));
+    at += 12 + length;
+  }
+  return names;
+}
+
+it('a browser PNG loses its colour profile tags and keeps its pixels', () => {
+  const ihdr = pngChunk('IHDR', [...u32be(1), ...u32be(1), 8, 6, 0, 0, 0]);
+  const idat = pngChunk('IDAT', [0x78, 0x9c, 0x63, 0x60, 0x60, 0x60, 0xf8, 0x0f, 0x00, 0x01, 0x01, 0x01, 0x00]);
+  const iend = pngChunk('IEND', []);
+  // The order WebKit writes: IHDR, sBIT, iCCP, IDAT, IEND; the others are the colour tags the PNG specification names.
+  const tagged = Uint8Array.from([
+    ...PNG_SIGNATURE,
+    ...ihdr,
+    ...pngChunk('sBIT', [8, 8, 8, 8]),
+    ...pngChunk('iCCP', [0x70, 0x00, 0x00, 1, 2, 3]),
+    ...pngChunk('gAMA', [0, 1, 0x8f, 0xc0]),
+    ...pngChunk('cHRM', new Array<number>(32).fill(1)),
+    ...pngChunk('sRGB', [0]),
+    ...pngChunk('cICP', [1, 13, 0, 1]),
+    ...pngChunk('tEXt', [65, 0, 66]),
+    ...idat,
+    ...iend,
+  ]);
+  const plain = plainPng(tagged);
+  expect(chunkNames(plain)).toEqual(['IHDR', 'tEXt', 'IDAT', 'IEND']);
+  // Every chunk that stays is byte for byte the one that was there, so the pixels and every checksum are untouched.
+  expect(Array.from(plain)).toEqual([...PNG_SIGNATURE, ...ihdr, ...pngChunk('tEXt', [65, 0, 66]), ...idat, ...iend]);
+  // A PNG with none of those chunks comes back as it was, and the input is never changed.
+  const untagged = Uint8Array.from([...PNG_SIGNATURE, ...ihdr, ...idat, ...iend]);
+  expect(Array.from(plainPng(untagged))).toEqual(Array.from(untagged));
+  expect(chunkNames(tagged)).toContain('iCCP');
+  // Anything that is not a whole PNG is returned unchanged rather than guessed at.
+  const text = new TextEncoder().encode('not a picture at all, just some text');
+  expect(Array.from(plainPng(text))).toEqual(Array.from(text));
+  const cut = tagged.slice(0, tagged.length - 7);
+  expect(Array.from(plainPng(cut))).toEqual(Array.from(cut));
+  expect(Array.from(plainPng(new Uint8Array(0)))).toEqual([]);
+  // A chunk (with room for a whole header after it) whose length runs past the end makes the whole input count as not a PNG: even the tag before it stays.
+  const lying = Uint8Array.from([
+    ...PNG_SIGNATURE,
+    ...ihdr,
+    ...pngChunk('iCCP', [1, 2, 3]),
+    0x7f,
+    0xff,
+    0xff,
+    0xff,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+  ]);
+  expect(Array.from(plainPng(lying))).toEqual(Array.from(lying));
+});
+
 it('nothing is written to the console while planning a sheet', () => {
   const plan = planSprites(THREE, { layout: 'shelf', padding: 2 });
   spriteCss(plan);
   spritePreviewCss(spriteCss(plan), 'data:image/png;base64,AAAA');
   spriteClassName('x.png', new Set());
+  plainPng(Uint8Array.from([1, 2, 3]));
   try {
     planSprites(THREE, { layout: 'grid', padding: -1 });
   } catch {

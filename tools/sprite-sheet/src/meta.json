@@ -24,7 +24,7 @@
     "A grid cell is as wide as the widest image and as tall as the tallest, so a small image among large ones leaves empty space inside its cell; the shelf layout wastes less space",
     "The shelf is as wide as the square root of the total area of the images, or the widest image if that is wider, so the sheet is roughly square but not exactly",
     "Pictures that are partly transparent are copied as they are, with their transparency, and nothing is added behind them",
-    "The sheet PNG is written by this browser, so its bytes differ between browsers although its pixels are the same"
+    "The sheet PNG is written by this browser, so its bytes differ between browsers although its pixels are the same; the colour profile tags some browsers add to a PNG are removed, so the sheet holds plain sRGB values that every browser shows as they were drawn"
   ],
   "standards": [
     {

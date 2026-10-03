@@ -19,6 +19,7 @@ export {
 } from './layout';
 export type { SpriteInput, SpriteOptions, SpritePlacement, SpritePlan } from './layout';
 export { spriteCss, spritePreviewCss, SHEET_FILE_NAME } from './css';
+export { plainPng } from './png-plain';
 
 /** The five raster formats this page accepts as image files. */
 const ACCEPTED_KINDS: FileKind[] = ['png', 'jpeg', 'gif', 'webp', 'bmp'];
