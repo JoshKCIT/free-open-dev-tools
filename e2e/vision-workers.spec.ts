@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { writePng } from './fixture-files';
+import { buildFixtureFile, writePng } from './fixture-files';
 
 /**
  * Behavioural proof of the worker-backed pages of phase 15 (D-168, D-169 and D-201): each engine runs in a MODULE worker
@@ -310,7 +310,9 @@ async function endedWorkers(page: Page): Promise<number[]> {
  * fields before the run (each made fresh by `make`); `valid` holds the text, textarea and number fields to fill (field
  * name to value); `pressRun` says the page waits for a Run press; `expectOutput` is text a finished run must show;
  * `limitSeconds` and `limitMessage` are the page's own time limit and the start of the message it must show when the
- * limit is reached.
+ * limit is reached. `protocolWorkers` is how many of the workers a run builds, counted from the first, speak this
+ * protocol (a ready message, then a `-job` and a `-done`); a page that also builds a worker of another kind, such as
+ * PDF.js's own, after the engine one lists how many come first. Absent means every worker speaks it.
  */
 interface EngineCase {
   id: string;
@@ -322,6 +324,7 @@ interface EngineCase {
   expectOutput: string;
   limitSeconds: number;
   limitMessage: string;
+  protocolWorkers?: number;
 }
 
 /**
@@ -378,6 +381,15 @@ function qrPng(): { name: string; mimeType: string; buffer: Buffer } {
   return { name: 'worker-check.png', mimeType: 'image/png', buffer: Buffer.from(writePng(side, side, rgba)) };
 }
 
+/**
+ * A PDF with a document information dictionary (its Title is the marker), written by this repository's own fixture
+ * builder from ISO 32000-1 sections 7.3 and 7.5. Its name makes the copy sample-clean.pdf.
+ */
+function taggedPdf(): { name: string; mimeType: string; buffer: Buffer } {
+  const file = buildFixtureFile('pdf', 'FODT-VISION-WORKER-PDF');
+  return { name: file.name, mimeType: file.mimeType, buffer: Buffer.from(file.buffer) };
+}
+
 const ENGINE_CASES: EngineCase[] = [
   {
     id: 'qr-barcode-reader',
@@ -396,6 +408,19 @@ const ENGINE_CASES: EngineCase[] = [
     expectOutput: 'color: #336699',
     limitSeconds: 20,
     limitMessage: 'Stopped after 20 seconds',
+  },
+  {
+    // Remove mode swallows the removal job (the first worker); the page then builds PDF.js's own worker, from a blob address
+    // too, to read the copy again, which speaks PDF.js's message protocol and not this one, so only the first worker is checked.
+    id: 'pdf-text-metadata',
+    radios: { mode: 'remove' },
+    attach: [{ field: 'file', make: taggedPdf }],
+    valid: {},
+    pressRun: true,
+    expectOutput: 'sample-clean.pdf',
+    limitSeconds: 20,
+    limitMessage: 'Stopped after 20 seconds',
+    protocolWorkers: 1,
   },
 ];
 
@@ -420,8 +445,8 @@ for (const c of ENGINE_CASES) {
     // Every worker on the site is built as an ES module (apps/web/vite.config.ts), so the page asks for one.
     for (const type of seen.types) expect(type).toBe('module');
 
-    // The job was posted only after the worker said it was ready, for every worker the page built.
-    for (let n = 0; n < seen.addresses.length; n++) {
+    // The job was posted only after the worker said it was ready, for every worker the page built that speaks the protocol.
+    for (let n = 0; n < (c.protocolWorkers ?? seen.addresses.length); n++) {
       const ready = seen.log.findIndex((entry) => entry.startsWith(`in:${n}:`) && entry.endsWith('-ready'));
       const job = seen.log.findIndex((entry) => entry.startsWith(`out:${n}:`) && entry.endsWith('-job'));
       expect(ready, `worker ${n} never reported ready: ${seen.log.join(' | ')}`).toBeGreaterThanOrEqual(0);
