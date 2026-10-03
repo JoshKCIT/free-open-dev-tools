@@ -998,7 +998,7 @@
     "name": "Image Converter & Resizer",
     "category": "media",
     "tier": 3,
-    "summary": "Convert, resize and re-encode images entirely in the browser canvas."
+    "summary": "Convert, resize, crop, rotate and flip images, and turn SVG into a raster image, entirely in the browser canvas."
   },
   {
     "id": "exif-viewer",

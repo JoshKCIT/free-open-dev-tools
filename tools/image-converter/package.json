@@ -1,7 +1,7 @@
 {
   "name": "@fodt/image-converter",
   "version": "1.0.0",
-  "description": "Convert, resize and re-encode images entirely in the browser canvas.",
+  "description": "Convert, resize, crop, rotate and flip images, and turn SVG into a raster image, entirely in the browser canvas.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +28,11 @@
     "jpeg",
     "webp",
     "avif",
-    "canvas"
+    "canvas",
+    "crop",
+    "rotate",
+    "flip",
+    "svg"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

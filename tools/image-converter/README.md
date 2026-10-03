@@ -1,13 +1,13 @@
 # Image Converter & Resizer
 
-Convert, resize and re-encode images entirely in the browser canvas.
+Convert, resize, crop, rotate and flip images, and turn SVG into a raster image, entirely in the browser canvas.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Decodes a picked PNG, JPEG, GIF, WebP or BMP image and re-encodes it to PNG, JPEG, WebP or AVIF, resized by percent, to fit inside a box or to an exact size, using the browser's own canvas and codecs. Every run reports plainly which of the four output formats this particular browser can really write, judged by the media type the browser's own encoder hands back, never assumed from a format name alone.
+Decodes a picked PNG, JPEG, GIF, WebP or BMP image (or, when you allow it, an SVG) and re-encodes it to PNG, JPEG, WebP or AVIF, optionally cropped, rotated by quarter turns and flipped, then resized by percent, to fit inside a box or to an exact size, using the browser's own canvas and codecs. Every run reports plainly which of the four output formats this particular browser can really write, judged by the media type the browser's own encoder hands back, never assumed from a format name alone.
 
 ## Supported
 
@@ -17,6 +17,8 @@ Decodes a picked PNG, JPEG, GIF, WebP or BMP image and re-encodes it to PNG, JPE
 - A quality setting for JPEG, WebP and AVIF output, and a background colour for JPEG output
 - EXIF orientation applied so a rotated photo comes out upright
 - Decoding, resizing and encoding in a background worker with progress and a Cancel button
+- Crop to a rectangle in pixels of the upright image, rotate by quarter turns (0, 90, 180 or 270 degrees) and flip horizontally, vertically or both, applied in that order before resizing
+- SVG input, read only when Allow SVG input is ticked, drawn by this browser at the size the file declares or the output size
 
 ## Limits
 
@@ -27,11 +29,19 @@ Decodes a picked PNG, JPEG, GIF, WebP or BMP image and re-encodes it to PNG, JPE
 - A transparent source written to JPEG is composited on the chosen background colour, since JPEG has no transparency.
 - AVIF, HEIC and TIFF are not accepted as input.
 - Resampling quality is whatever this browser's own canvas scaling provides; it is not a dedicated resampling algorithm.
+- Crop, rotate and flip apply in that order before resizing; a crop is measured in pixels of the upright image.
+- Rotation is by quarter turns only (0, 90, 180 or 270 degrees).
+- SVG input is read only when Allow SVG input is ticked; an SVG that refers to anything outside itself (scripts, other files or addresses, embedded pages) is refused, and one declaring more than 40,000,000 pixels is refused.
+- An SVG is drawn by this browser at the output size, so text in it uses this browser's fonts.
+- An SVG file over 10 MiB is refused.
 
 ## Ambiguous cases, and what this does about them
 
 - The quality field is a 1 to 100 number in the page, converted to the 0 to 1 fraction the HTML Standard's own canvas encode calls take; an out-of-range value is clamped rather than passed straight through to let the browser fall back to its own default, so the visitor's request stays as close to what they asked for as the standard allows.
 - Whether a source is genuinely animated (rather than simply a GIF or WebP file that happens to hold one frame) is not checked before warning that only the first frame is kept, since detecting that reliably would need decoding the whole file rather than reading its header.
+- An SVG with no width, height or viewBox is 300 by 150 pixels, as browsers draw it; a width or height in percent, em or ex is treated as missing and the viewBox size is used.
+- An SVG that is cropped, rotated or flipped is drawn at its own declared size first, so the crop is exact, and then resized; an SVG with none of those is drawn directly at the output size.
+- The SVG check refuses any attribute value or style text that hides an address behind a character reference or a backslash, since a browser would decode it before using it.
 
 ## Defined by
 
@@ -41,6 +51,8 @@ Decodes a picked PNG, JPEG, GIF, WebP or BMP image and re-encodes it to PNG, JPE
 - [RFC 9649 — WebP Image Format](https://www.rfc-editor.org/rfc/rfc9649)
 - [AV1 Image File Format (AVIF)](https://aomediacodec.github.io/av1-avif/)
 - [CSS Images Level 3 — image-orientation](https://www.w3.org/TR/css-images-3/#the-image-orientation)
+- [SVG 2](https://www.w3.org/TR/SVG2/)
+- [CSS Values and Units Module Level 4 — absolute length units](https://www.w3.org/TR/css-values-4/)
 
 ## Use it on its own
 
