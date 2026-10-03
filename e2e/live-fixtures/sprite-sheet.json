@@ -1,0 +1,6 @@
+{
+  "id": "sprite-sheet",
+  "label": "CSS Backgrounds Level 3 background-position: the first sprite of a sheet sits at 0 0, so a pasted sheet rule is named for the picked file (the sample PNG is called sample.png)",
+  "steps": [{ "action": "attach", "field": "images", "value": "png" }, { "action": "run" }],
+  "expect": [".sprite-sample"]
+}
