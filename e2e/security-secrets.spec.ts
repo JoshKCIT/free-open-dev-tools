@@ -459,6 +459,86 @@ test('certificate-decoder: a DER certificate opened through the file picker is r
   await assertNothingLeft(page, recording, [CANARY_SUBJECT, CANARY_DER_B64.slice(0, 60), 'canary.der']);
 });
 
+/** PEM armour built from parts, around Base64 lines; no whole armour line is ever written in this file. */
+function armourOf(label: string, lines: string[]): string {
+  return '-----' + 'BEGIN ' + label + '-----\n' + lines.join('\n') + '\n-----' + 'END ' + label + '-----\n';
+}
+
+/** The hex forms of a DER body that the page may show or be given: lower case, upper case and colon separated. */
+function hexMarkers(der: Buffer, bytes: number): string[] {
+  const hex = der.subarray(0, bytes).toString('hex');
+  const colons = hex.match(/../g)!.join(':');
+  return [hex, hex.toUpperCase(), colons.toUpperCase(), colons];
+}
+
+test('certificate-decoder: a certificate pasted as hex is read in the page, and its hex, its serial and its fingerprints never leave it', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/certificate-decoder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  const recording = recordEverything(page);
+
+  // The certificate as a run of hex digits, the form a command that prints DER as hex gives.
+  const der = Buffer.from(CANARY_DER_B64, 'base64');
+  await fillAndHold(page, 'input', der.toString('hex'));
+  await expect(outputArea(page)).toContainText(`CN=${CANARY_SUBJECT}`, { timeout: 20_000 });
+
+  // What the page shows in hex: every fingerprint it prints (colon separated pairs), read from the page itself.
+  const shown = await outputArea(page).innerText();
+  const fingerprints = shown.match(/(?:[0-9A-F]{2}:){15,}[0-9A-F]{2}/g) ?? [];
+  expect(fingerprints.length, 'the page shows no fingerprint').toBeGreaterThanOrEqual(3);
+  const markers = [
+    ...hexMarkers(der, 40),
+    ...fingerprints,
+    ...fingerprints.map((fingerprint) => fingerprint.replace(/:/g, '').toLowerCase()),
+  ];
+
+  await page.waitForTimeout(500);
+  await assertNothingLeft(page, recording, markers);
+});
+
+test('certificate-decoder: a private key pasted beside a certificate is skipped, never shown, and never leaves the page', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/certificate-decoder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  const recording = recordEverything(page);
+
+  const certificateLines = CANARY_DER_B64.match(/.{1,64}/g)!;
+  const pasted = armourOf('CERTIFICATE', certificateLines) + armourOf('PRIVATE KEY', RSA_2048_PKCS8_LINES);
+  await fillAndHold(page, 'input', pasted);
+  await expect(outputArea(page)).toContainText(`CN=${CANARY_SUBJECT}`, { timeout: 20_000 });
+  // The page says a private key block was skipped, and shows none of it.
+  await expect(outputArea(page)).toContainText(/PRIVATE KEY block.*ignored and is not shown/);
+  const shown = await outputArea(page).innerText();
+  for (const line of RSA_2048_PKCS8_LINES)
+    expect(shown.includes(line), 'a private key line is on the page').toBe(false);
+
+  await page.waitForTimeout(500);
+  await assertNothingLeft(page, recording, [CANARY_SUBJECT, ...RSA_2048_PKCS8_LINES]);
+});
+
+test('certificate-decoder: a private key pasted alone is not decoded, not shown, and never leaves the page', async ({
+  page,
+}) => {
+  await page.goto(rel('/tools/certificate-decoder'));
+  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  const recording = recordEverything(page);
+
+  await fillAndHold(page, 'input', armourOf('PRIVATE KEY', RSA_2048_PKCS8_LINES));
+  // The page answers in words, whatever they are, and then the output holds none of the key.
+  await expect(outputArea(page).locator('.issue-list, .note-info, .note-warn').first()).toBeVisible({
+    timeout: 20_000,
+  });
+  const shown = await outputArea(page).innerText();
+  for (const line of RSA_2048_PKCS8_LINES)
+    expect(shown.includes(line), 'a private key line is on the page').toBe(false);
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+
+  await page.waitForTimeout(500);
+  await assertNothingLeft(page, recording, RSA_2048_PKCS8_LINES);
+});
+
 // The RFC 4226 and RFC 6238 test secret (the ASCII text 12345678901234567890) as the Base32 text an app is given, written in
 // groups of four so the typed text also shows that spaces are skipped.
 const TOTP_SEED_GROUPED = 'GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ';

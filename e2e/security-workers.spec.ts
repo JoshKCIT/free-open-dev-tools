@@ -22,9 +22,16 @@ declare global {
      * What the wrapper saw. `addresses` and `types` list every worker the page built, in construction order, by
      * script address and by the type option it asked for; `log` lists, in the order they happened, `new:<n>`,
      * `in:<n>:<message type>` (a message the worker sent) and `out:<n>:<message type>` (a message the page sent,
-     * `out-swallowed` when the wrapper dropped it); `ended` lists the position of every worker the page terminated.
+     * `out-swallowed` when the wrapper dropped it); `ended` lists the position of every worker the page terminated;
+     * `release` hands the page every `done` message the wrapper was told to hold back and returns how many there were.
      */
-    __FODT_SECURITY_WORKERS__?: { addresses: string[]; types: string[]; log: string[]; ended: number[] };
+    __FODT_SECURITY_WORKERS__?: {
+      addresses: string[];
+      types: string[];
+      log: string[];
+      ended: number[];
+      release: () => number;
+    };
   }
 }
 
@@ -45,17 +52,34 @@ function runButtonOf(page: Page) {
  */
 async function installWorkerWrapper(
   page: Page,
-  options: { swallowFirstJob: boolean; swallowReady: boolean; errorAfterSwallowedJob?: boolean },
+  options: {
+    swallowFirstJob: boolean;
+    swallowReady: boolean;
+    errorAfterSwallowedJob?: boolean;
+    holdFirstDone?: boolean;
+  },
 ) {
   await page.addInitScript(
-    (modes: { swallowFirstJob: boolean; swallowReady: boolean; errorAfterSwallowedJob: boolean }) => {
+    (modes: {
+      swallowFirstJob: boolean;
+      swallowReady: boolean;
+      errorAfterSwallowedJob: boolean;
+      holdFirstDone: boolean;
+    }) => {
       const OriginalWorker = window.Worker;
       const state = {
         addresses: [] as string[],
         types: [] as string[],
         log: [] as string[],
         ended: [] as number[],
+        release: (): number => {
+          const count = held.length;
+          for (const deliver of held.splice(0)) deliver();
+          return count;
+        },
       };
+      // The `done` messages held back for the first worker, each as a call that hands it to the page's own listener.
+      const held: (() => void)[] = [];
       window.__FODT_SECURITY_WORKERS__ = state;
 
       const typeOf = (data: unknown): string => {
@@ -68,12 +92,14 @@ async function installWorkerWrapper(
         index: number;
         swallowJob: boolean;
         swallowReady: boolean;
+        holdDone: boolean;
         wrapped = new Map<EventListenerOrEventListenerObject, EventListener>();
         constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
           this.inner = new OriginalWorker(scriptURL, workerOptions);
           this.index = state.addresses.length;
           this.swallowJob = modes.swallowFirstJob && this.index === 0;
           this.swallowReady = modes.swallowReady && this.index === 0;
+          this.holdDone = modes.holdFirstDone && this.index === 0;
           state.addresses.push(String(scriptURL));
           state.types.push(workerOptions?.type ?? 'classic');
           state.log.push(`new:${this.index}`);
@@ -97,11 +123,20 @@ async function installWorkerWrapper(
         }
         addEventListener(...args: Parameters<Worker['addEventListener']>): void {
           const [type, listener, listenerOptions] = args;
-          if (this.swallowReady && type === 'message') {
-            const filtered: EventListener = (event) => {
-              if (typeOf((event as MessageEvent).data).endsWith('-ready')) return;
+          if ((this.swallowReady || this.holdDone) && type === 'message') {
+            const deliver = (event: Event): void => {
               if (typeof listener === 'function') listener.call(this.inner, event);
               else listener.handleEvent(event);
+            };
+            const filtered: EventListener = (event) => {
+              const kind = typeOf((event as MessageEvent).data);
+              if (this.swallowReady && kind.endsWith('-ready')) return;
+              // A held `done` is delivered later, by `release`, to the same listener, even after the page stopped listening.
+              if (this.holdDone && kind.endsWith('-done')) {
+                held.push(() => deliver(event));
+                return;
+              }
+              deliver(event);
             };
             this.wrapped.set(listener, filtered);
             this.inner.addEventListener(type, filtered, listenerOptions);
@@ -133,6 +168,7 @@ async function installWorkerWrapper(
       swallowFirstJob: options.swallowFirstJob,
       swallowReady: options.swallowReady,
       errorAfterSwallowedJob: options.errorAfterSwallowedJob ?? false,
+      holdFirstDone: options.holdFirstDone ?? false,
     },
   );
 }
@@ -392,6 +428,36 @@ for (const c of ENGINE_CASES) {
     await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
 
     // The next run works.
+    await startNextRun(page, c);
+    await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
+  });
+
+  test(`${c.id}: a result that arrives after Cancel is ignored, and the next run works`, async ({ page }) => {
+    // The worker really makes its key, but its `done` message is held back, so the run is still in flight when Cancel is
+    // pressed. The held message is then handed to the page afterwards, as a message that was already on its way when the
+    // worker was stopped would be. The page must not show it.
+    await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: false, holdFirstDone: true });
+    await openTool(page, c.id);
+    await setControls(page, c);
+
+    await startRun(page, c);
+    await expect(cancelButtonOf(page)).toBeVisible();
+    await waitForLog(page, 'in:0:', '-done');
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    await cancelButtonOf(page).click();
+
+    const note = outputArea(page).locator('.note-warn');
+    await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+    expect(await endedWorkers(page)).toEqual([0]);
+
+    // The late result reaches the page's listener now.
+    expect(await page.evaluate(() => window.__FODT_SECURITY_WORKERS__!.release())).toBe(1);
+    await page.waitForTimeout(500);
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    await expect(outputArea(page)).not.toContainText(c.expectOutput);
+    await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+
+    // The next run works, in a new worker.
     await startNextRun(page, c);
     await expect(outputArea(page)).toContainText(c.expectOutput, { timeout: 15_000 });
   });
