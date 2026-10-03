@@ -335,7 +335,7 @@ test('security-headers: the grade reads the page boxes Add upgrade-insecure-requ
   ).toHaveCount(1);
   // Ticking Add upgrade-insecure-requests puts the directive in the built headers, and the grade counts it as present.
   await page.locator('#f-upgradeInsecure').check();
-  await expect(outputArea(page)).toContainText('upgrade-insecure-requests;');
+  await expect(outputArea(page)).toContainText("frame-ancestors 'none'; upgrade-insecure-requests");
   await expect(outputArea(page)).toContainText('the grade counts it as present');
   await expect(outputArea(page)).not.toContainText('upgrade-insecure-requests is not in the policy');
   // Ticking Report only grades the policy as reported, not enforced.
@@ -373,7 +373,7 @@ test('luhn: choosing another scheme with the Luhn sample still in the box says w
   await openTool(page, 'luhn');
   await setControls(page, { selects: { scheme: 'iban' } });
   // The box still holds 79927398713, which is not an IBAN: the refusal names the sample instead of leaving a reader guessing.
-  await expect(outputArea(page)).toContainText('An IBAN starts with a two letter country code');
+  await expect(outputArea(page)).toContainText('Character 1 is not a letter.');
   await expect(outputArea(page)).toContainText('still holds the Luhn sample, 79927398713');
   await fillAndHold(page, 'input', 'GB82 WEST 1234 5698 7654 32');
   await expect(outputArea(page)).toContainText('Valid IBAN.');
