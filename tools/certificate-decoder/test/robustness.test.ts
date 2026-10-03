@@ -8,6 +8,7 @@ import {
   UNREADABLE_MESSAGE,
   decodeInput,
 } from '../src/index';
+import { readCsr } from '../src/csr';
 import { PemError } from '../src/pem';
 import { readCertificate } from '../src/x509';
 import {
@@ -23,7 +24,7 @@ import {
   tlv,
   type Bytes,
 } from './fixtures/der-build';
-import { NOW_MS, certificateDer, certificatePem, pemText } from './fixtures/helpers';
+import { NOW_MS, certificateDer, certificatePem, pemText, requestDer } from './fixtures/helpers';
 
 /**
  * Hostile input: a certificate is untrusted bytes. Whatever the paste holds, the answer is a result or one plain sentence,
@@ -415,3 +416,39 @@ it('long extensions and many alternative names are capped with a note of what wa
   expect(policyRow.value[0]).toBe('Policy: 1.3.6.1.4.1.99999.0');
   expect(policyRow.value[200]).toBe('and 800 more lines are not shown.');
 });
+
+it('8000 fixed-seed mutations of real requests give only plain messages', () => {
+  const bases = ['rsa', 'ec', 'ed', 'pw'].map(requestDer);
+  const random = mulberry32(SEED + 1);
+  let read = 0;
+  let refused = 0;
+  for (let index = 0; index < 8000; index++) {
+    const base = bases[index % bases.length]!;
+    const bytes = index % 2 === 0 ? mutate(base, random) : mutateTree(base, random);
+    try {
+      readCsr(bytes);
+      read++;
+    } catch (err) {
+      if (!(err instanceof DerError)) {
+        throw new Error(
+          `request mutation ${index} (seed ${SEED + 1}) threw ${(err as Error).name}: ${(err as Error).message}`,
+        );
+      }
+      refused++;
+    }
+    // Through the entry point, as PEM and as the bytes of a file: a result or a plain sentence, never the net's sentence.
+    for (const input of [pemText('CERTIFICATE REQUEST', base64(bytes)), bytes]) {
+      try {
+        decodeInput(input, { nowMs: NOW_MS });
+      } catch (err) {
+        const message = (err as Error).message;
+        const plain = err instanceof CertificateError || err instanceof DerError || err instanceof PemError;
+        if (!plain || message === UNREADABLE_MESSAGE || message.includes('\n') || message.length > 300) {
+          throw new Error(`request mutation ${index} (seed ${SEED + 1}) gave ${(err as Error).name}: ${message}`);
+        }
+      }
+    }
+  }
+  expect(read).toBeGreaterThan(50);
+  expect(refused).toBeGreaterThan(500);
+}, 60_000);
