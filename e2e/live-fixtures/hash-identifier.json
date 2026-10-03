@@ -1,0 +1,8 @@
+{
+  "id": "hash-identifier",
+  "label": "libxcrypt crypt(5) bcrypt format: a 60-character string made by passlib 1.7.4 over pyca bcrypt 4.0.1 is identified as bcrypt",
+  "steps": [
+    { "action": "fill", "field": "input", "value": "$2b$12$/vy7ZxGf2E2ffCTmkTnBvuDt80597OVIwFjbo1fXcIr3u/A2b22tC" }
+  ],
+  "expect": ["bcrypt"]
+}
