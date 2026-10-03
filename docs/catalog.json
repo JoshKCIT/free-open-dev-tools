@@ -1412,5 +1412,12 @@
     "category": "css",
     "tier": 3,
     "summary": "Build repeating stripes, checks, dots and grids as CSS gradients or an inline SVG, with a live preview."
+  },
+  {
+    "id": "form-control-styler",
+    "name": "Form Control Styler (Buttons, Switches, Checkboxes, Radios, Sliders)",
+    "category": "css",
+    "tier": 3,
+    "summary": "Style buttons, switches, checkboxes, radio buttons and range sliders while keeping the native controls."
   }
 ]
