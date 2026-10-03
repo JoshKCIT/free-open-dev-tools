@@ -70,13 +70,38 @@ export function checkRsaModulus(n: Uint8Array): void {
   }
 }
 
+const MODULUS_NOT_ODD = 'This RSA modulus is even or zero, so it cannot be the product of two odd primes.';
+const EXPONENT_TOO_SMALL = 'This RSA public exponent is smaller than 3, which no RSA key uses.';
+const EXPONENT_EVEN = 'This RSA public exponent is even, so it cannot be inverted modulo the primes.';
+const EXPONENT_TOO_BIG = 'This RSA public exponent is not smaller than the modulus.';
+
+/**
+ * Checks the public numbers of an RSA key (RFC 8017 section 3.1): the modulus is no larger than the page reads and is odd
+ * (a product of two odd primes is never even or zero), and the exponent e is at least 3, odd and smaller than the modulus.
+ * Called wherever a key model is built, so every format is held to the same rule.
+ */
+export function checkRsaPublic(n: Uint8Array, e: Uint8Array): void {
+  checkRsaModulus(n);
+  if ((n[n.length - 1] ?? 0) % 2 === 0) throw new KeyConverterError(MODULUS_NOT_ODD);
+  const eBits = bitLength(e);
+  if (eBits === 0) throw new KeyConverterError(EXPONENT_TOO_SMALL);
+  const last = e[e.length - 1]!;
+  if (eBits <= 2 && last < 3) throw new KeyConverterError(EXPONENT_TOO_SMALL);
+  if (last % 2 === 0) throw new KeyConverterError(EXPONENT_EVEN);
+  // Bits first, so a number of thousands of bytes is never converted; only an exponent of the modulus's own size is compared.
+  const nBits = bitLength(n);
+  if (eBits > nBits || (eBits === nBits && bytesToBigInt(e) >= bytesToBigInt(n))) {
+    throw new KeyConverterError(EXPONENT_TOO_BIG);
+  }
+}
+
 /**
  * Checks the numbers of an RSA key and fills in the ones that are missing. A key with no private numbers is returned as
  * it is. A private key needs d, p and q; its modulus must be p * q and d must undo e modulo p - 1 and q - 1; dp, dq and qi
  * are computed when absent and must equal the computed value when present.
  */
 export function completeRsa(key: RsaKey): RsaKey {
-  checkRsaModulus(key.n);
+  checkRsaPublic(key.n, key.e);
   const { d, p, q, dp, dq, qi } = key;
   if (
     d === undefined &&

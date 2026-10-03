@@ -142,7 +142,45 @@ export function checkComment(comment: string): void {
   }
 }
 
-/** What is worth saying about a key itself, apart from how it was read: today only an RSA key under 2048 bits. */
+/**
+ * A public exponent as text: a decimal number up to 8 bytes (20 digits), and a longer one by its size in bits, because an
+ * exponent of thousands of digits is not a number anyone reads and would fill the page.
+ */
+export function exponentText(e: Uint8Array): string {
+  let skip = 0;
+  while (skip < e.length - 1 && e[skip] === 0) skip++;
+  const bytes = e.subarray(skip);
+  if (bytes.length <= 8) {
+    let value = 0n;
+    for (const octet of bytes) value = (value << 8n) | BigInt(octet);
+    return value.toString();
+  }
+  return `a number of ${bytes.length * 8 - (Math.clz32(bytes[0]!) - 24)} bits`;
+}
+
+/** Whether the public exponent is 3 or 65537, the two values RSA keys are made with. */
+function isCommonExponent(e: Uint8Array): boolean {
+  let skip = 0;
+  while (skip < e.length - 1 && e[skip] === 0) skip++;
+  const bytes = e.subarray(skip);
+  return (
+    (bytes.length === 1 && bytes[0] === 3) || (bytes.length === 3 && bytes[0] === 1 && bytes[1] === 0 && bytes[2] === 1)
+  );
+}
+
+/**
+ * What is worth saying about a key itself, apart from how it was read: an RSA key under 2048 bits, and an RSA key whose
+ * public exponent is neither 3 nor 65537.
+ */
 export function keyWarnings(key: KeyModel): string[] {
-  return key.type === 'rsa' && keyBits(key) < 2048 ? [SHORT_RSA_WARNING] : [];
+  const warnings: string[] = [];
+  if (key.type === 'rsa') {
+    if (keyBits(key) < 2048) warnings.push(SHORT_RSA_WARNING);
+    if (!isCommonExponent(key.e)) {
+      warnings.push(
+        `This RSA key has a public exponent of ${exponentText(key.e)}. Nearly every RSA key uses 65537, and software that expects it may refuse this key.`,
+      );
+    }
+  }
+  return warnings;
 }

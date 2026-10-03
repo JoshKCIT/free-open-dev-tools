@@ -14,7 +14,7 @@ import { browserRandom } from './generate';
 import { CURVE_SENTENCE, DOES_NOT_BELONG, curveInfo, ecNormalizePoint, ecPublicFromPrivate, padTo } from './formats';
 import { CURVES, KeyConverterError, bytesEqual, checkComment, isPrivate, type Curve, type KeyModel } from './model';
 import { PemError, base64ToBytes, bytesToBase64, bytesToPem, pemBlocks } from './pem';
-import { checkRsaModulus, completeRsa, trimZeros } from './rsa-math';
+import { checkRsaModulus, checkRsaPublic, completeRsa, trimZeros } from './rsa-math';
 
 const PASSPHRASE_SENTENCE =
   'This key is protected by a passphrase. This page does not decrypt keys. Remove the passphrase on your own machine first (for example openssl pkey -in key.pem -out plain.pem), then paste the unprotected key.';
@@ -262,7 +262,7 @@ export function readSshPublicBlob(blob: Uint8Array): KeyModel {
   if (kind === 'rsa') {
     const e = reader.mpint();
     const n = reader.mpint();
-    checkRsaModulus(n);
+    checkRsaPublic(n, e);
     key = { type: 'rsa', n, e };
   } else if (kind === 'ed25519') {
     key = { type: 'ed25519', pub: ed25519Public(reader.string()) };

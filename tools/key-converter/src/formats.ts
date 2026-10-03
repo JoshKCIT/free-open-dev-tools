@@ -31,7 +31,7 @@ import {
   type KeyModel,
   type RsaKey,
 } from './model';
-import { checkRsaModulus, completeRsa } from './rsa-math';
+import { checkRsaModulus, checkRsaPublic, completeRsa } from './rsa-math';
 
 const RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
 const EC_PUBLIC_KEY = '1.2.840.10045.2.1';
@@ -154,7 +154,7 @@ export function readPkcs1Public(bytes: Uint8Array): RsaKey {
   }
   const n = derUnsigned(bytes, derChild(root, 0));
   const e = derUnsigned(bytes, derChild(root, 1));
-  checkRsaModulus(n);
+  checkRsaPublic(n, e);
   return { type: 'rsa', n, e };
 }
 
@@ -297,7 +297,7 @@ export function readSpki(der: Uint8Array): KeyModel {
     }
     const n = derUnsigned(bits.bytes, derChild(inner, 0));
     const e = derUnsigned(bits.bytes, derChild(inner, 1));
-    checkRsaModulus(n);
+    checkRsaPublic(n, e);
     return { type: 'rsa', n, e };
   }
   if (algorithmOid === EC_PUBLIC_KEY) {

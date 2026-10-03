@@ -7,7 +7,7 @@
  * of a key, a secret, or a token. Describe the shape of the problem, never the content.
  */
 import meta from './meta.json';
-import { DerError, derHex } from './der';
+import { DerError } from './der';
 import { MAX_PASTE_CHARS, readKeyInput } from './detect';
 import { sshFingerprints } from './fingerprint';
 import { readPkcs8, readSpki, writePkcs1Private, writePkcs1Public, writePkcs8, writeSec1, writeSpki } from './formats';
@@ -20,6 +20,7 @@ import {
   checkComment,
   isPrivate,
   keyBits,
+  exponentText,
   keyWarnings,
   type Curve,
   type EcKey,
@@ -93,10 +94,6 @@ export interface KeyOutputs {
   warnings: string[];
 }
 
-function exponentText(key: RsaKey): string {
-  return BigInt('0x' + (derHex(key.e) || '0')).toString();
-}
-
 /** The short facts about a key that are not a secret: what it is and how large. */
 function keyFacts(key: KeyModel): [string, string][] {
   switch (key.type) {
@@ -104,7 +101,7 @@ function keyFacts(key: KeyModel): [string, string][] {
       return [
         ['Key type', 'RSA'],
         ['Size in bits', String(keyBits(key))],
-        ['Public exponent', exponentText(key)],
+        ['Public exponent', exponentText(key.e)],
       ];
     case 'ec':
       return [
