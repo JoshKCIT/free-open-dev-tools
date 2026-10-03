@@ -1,0 +1,11 @@
+{
+  "id": "image-compare",
+  "label": "pixelmatch: an image compared with itself has no differing pixels (its published test suite counts 0 for identical inputs); the sample PNG is 16 by 16, so 256 pixels",
+  "steps": [
+    { "action": "attach", "field": "imageA", "value": "png" },
+    { "action": "attach", "field": "imageB", "value": "png" },
+    { "action": "fill", "field": "threshold", "value": "0.1" },
+    { "action": "run" }
+  ],
+  "expect": ["0 of 256"]
+}
