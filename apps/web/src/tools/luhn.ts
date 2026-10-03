@@ -18,6 +18,12 @@ const CHECK_NAME: ReadonlyMap<string, string> = new Map([
   ['vin', 'check character'],
 ]);
 
+/**
+ * The number the Number box starts with. Choosing another scheme does not clear the box (a page cannot change one field
+ * when another changes), so an error for a number that is still this sample says where it came from.
+ */
+const LUHN_SAMPLE = '79927398713';
+
 /** The check digit pages for every scheme except Luhn. The Luhn path stays in run() exactly as it was. */
 function runScheme(scheme: string, mode: string, input: string): ToolResult {
   try {
@@ -56,7 +62,10 @@ function runScheme(scheme: string, mode: string, input: string): ToolResult {
         outputs: [],
         errors: [
           {
-            message: err.message,
+            message:
+              input.trim() === LUHN_SAMPLE
+                ? `${err.message} The Number box still holds the Luhn sample, ${LUHN_SAMPLE}: type a number for this scheme, or pick one of the examples.`
+                : err.message,
             line: err.position === undefined ? undefined : 1,
             column: err.position === undefined ? undefined : err.position + 1,
           },
@@ -104,7 +113,7 @@ export default defineTool({
       label: 'Number',
       type: 'text',
       mono: true,
-      default: '79927398713',
+      default: LUHN_SAMPLE,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
       help: 'Spaces and hyphens are accepted and stripped before checking.',
     },

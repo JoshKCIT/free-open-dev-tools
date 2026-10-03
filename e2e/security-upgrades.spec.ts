@@ -366,3 +366,16 @@ test('security-headers: inline event handlers and a meta element framing directi
   await expect(rowNamed(page, 'medium').filter({ hasText: 'cannot set it, so the browser ignores it' })).toHaveCount(1);
   await expect(outputArea(page)).not.toContainText('Grade A (100 of 100)');
 });
+
+test('luhn: choosing another scheme with the Luhn sample still in the box says where the sample came from', async ({
+  page,
+}) => {
+  await openTool(page, 'luhn');
+  await setControls(page, { selects: { scheme: 'iban' } });
+  // The box still holds 79927398713, which is not an IBAN: the refusal names the sample instead of leaving a reader guessing.
+  await expect(outputArea(page)).toContainText('An IBAN starts with a two letter country code');
+  await expect(outputArea(page)).toContainText('still holds the Luhn sample, 79927398713');
+  await fillAndHold(page, 'input', 'GB82 WEST 1234 5698 7654 32');
+  await expect(outputArea(page)).toContainText('Valid IBAN.');
+  await expect(outputArea(page)).not.toContainText('Luhn sample');
+});
