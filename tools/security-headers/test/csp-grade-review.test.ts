@@ -1,5 +1,6 @@
 import { it, expect } from 'vitest';
-import { gradeCsp } from '../src/csp-grade';
+import { effectiveSources, gradeCsp } from '../src/csp-grade';
+import { parseCspDirectives } from '../src/csp';
 
 // Tests for the findings of the phase 14 code review (part B) against the policy grader. Policies are written out in full so a
 // reader can see why each one is graded as it is.
@@ -221,4 +222,29 @@ it('the Report only box grades the policy as reported, not enforced', () => {
   const both = gradeCsp(`Content-Security-Policy-Report-Only: ${policy}`, { reportOnly: true });
   expect(both.findings.filter((f) => f.rule === 'report-only')).toHaveLength(1);
   expect(gradeCsp(policy, { reportOnly: false })).toEqual(gradeCsp(policy));
+});
+
+// B-WR-06: effectiveSources() returned null for script-src, style-src and child-src with only default-src (CSP Level 3
+// section 6.8.3: each of them falls back to default-src).
+it('script-src, style-src and child-src fall back to default-src in effectiveSources', () => {
+  const onlyDefault = parseCspDirectives("default-src 'none'").directives;
+  for (const name of ['script-src', 'style-src', 'child-src']) {
+    expect(effectiveSources(onlyDefault, name), name).toEqual({ directive: 'default-src', sources: ["'none'"] });
+  }
+  // Their own directive wins when it is there, and without default-src there is nothing.
+  const own = parseCspDirectives(
+    "default-src 'none'; script-src 'self'; style-src 'self'; child-src 'self'",
+  ).directives;
+  for (const name of ['script-src', 'style-src', 'child-src']) {
+    expect(effectiveSources(own, name), name).toEqual({ directive: name, sources: ["'self'"] });
+    expect(effectiveSources([], name), name).toBeNull();
+  }
+  // The other names keep their old answers: worker-src still goes through child-src and script-src first.
+  expect(effectiveSources(parseCspDirectives("default-src 'none'; child-src 'self'").directives, 'worker-src')).toEqual(
+    {
+      directive: 'child-src',
+      sources: ["'self'"],
+    },
+  );
+  expect(effectiveSources(onlyDefault, 'base-uri')).toBeNull();
 });

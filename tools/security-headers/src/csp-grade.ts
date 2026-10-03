@@ -329,6 +329,9 @@ const SEVERITY_ORDER: ReadonlyMap<CspSeverity, number> = new Map<CspSeverity, nu
 // CSP Level 3 section 6.8.3, "Get fetch directive fallback list", in the order the section gives. A name that is not
 // listed (base-uri, form-action, frame-ancestors, sandbox, report-uri, report-to) has no fallback.
 const FALLBACK: ReadonlyMap<string, readonly string[]> = new Map([
+  ['script-src', ['script-src', 'default-src']],
+  ['style-src', ['style-src', 'default-src']],
+  ['child-src', ['child-src', 'default-src']],
   ['script-src-elem', ['script-src-elem', 'script-src', 'default-src']],
   ['script-src-attr', ['script-src-attr', 'script-src', 'default-src']],
   ['style-src-elem', ['style-src-elem', 'style-src', 'default-src']],
