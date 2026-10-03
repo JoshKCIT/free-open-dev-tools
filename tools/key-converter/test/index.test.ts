@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -10,10 +10,13 @@ import {
   keyOutputs,
   meta as toolMeta,
 } from '../src/index';
-import { readSpki, writePkcs8, writeSpki } from '../src/formats';
+import { readPkcs8, readSpki, writePkcs8, writeSpki } from '../src/formats';
+import { isPrivate } from '../src/model';
+import { PemError, base64ToBytes, hexToBytes, pemBlocks } from '../src/pem';
 import { sshPublicBlob, sshPublicLine } from '../src/openssh';
 import { sshFingerprints } from '../src/fingerprint';
 import { RSA2048_SPKI_DER_B64, RSA2048_SSH_LINE, RSA2048_SSH_MD5, RSA2048_SSH_SHA256 } from './fixtures/rsa2048-public';
+import { ED25519_PUBLIC, P256_PUBLIC, P384_PUBLIC, P521_PUBLIC } from './fixtures/ec-ed25519-public';
 
 /**
  * Second opinions: Node's Web Crypto and node:crypto (an OpenSSL-backed implementation that is not this package) for
@@ -270,4 +273,294 @@ it('meta pins @noble/curves and @noble/hashes exactly', () => {
   expect(toolMeta.limits.length).toBeGreaterThanOrEqual(3);
   expect(toolMeta.limits.join(' ')).toMatch(/60 seconds/);
   expect(toolMeta.limits.join(' ')).toMatch(/getRandomValues/);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// ECDSA and Ed25519 (task 2)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const CURVE_SIZES = new Map([
+  ['P-256', 32],
+  ['P-384', 48],
+  ['P-521', 66],
+]);
+
+/** What node:crypto (OpenSSL) writes for one fresh key of a kind, so the package is compared with a second opinion. */
+interface NodeKey {
+  kind: string;
+  pkcs8: Uint8Array;
+  spki: Uint8Array;
+  jwk: JsonWebKey;
+}
+
+function nodeKey(kind: 'ed25519' | 'P-256' | 'P-384' | 'P-521'): NodeKey {
+  const pair = kind === 'ed25519' ? generateKeyPairSync('ed25519') : generateKeyPairSync('ec', { namedCurve: kind });
+  return {
+    kind,
+    pkcs8: new Uint8Array(pair.privateKey.export({ type: 'pkcs8', format: 'der' })),
+    spki: new Uint8Array(pair.publicKey.export({ type: 'spki', format: 'der' })),
+    jwk: pair.privateKey.export({ format: 'jwk' }) as JsonWebKey,
+  };
+}
+
+it('the key types offered are RSA 2048, 3072 and 4096, ECDSA P-256, P-384 and P-521, and Ed25519', () => {
+  expect(KEY_TYPES.map((t) => t.id)).toEqual([
+    'rsa-2048',
+    'rsa-3072',
+    'rsa-4096',
+    'ecdsa-p256',
+    'ecdsa-p384',
+    'ecdsa-p521',
+    'ed25519',
+  ]);
+  expect(KEY_TYPES.map((t) => t.label)).toEqual([
+    'RSA 2048 bits',
+    'RSA 3072 bits',
+    'RSA 4096 bits',
+    'ECDSA P-256',
+    'ECDSA P-384',
+    'ECDSA P-521',
+    'Ed25519',
+  ]);
+});
+
+it('Ed25519, P-256, P-384 and P-521 keys made by Node read back and write PKCS8 and SPKI identical to Node', () => {
+  for (const kind of ['ed25519', 'P-256', 'P-384', 'P-521'] as const) {
+    for (let n = 0; n < 10; n++) {
+      const made = nodeKey(kind);
+      const label = `${kind} key ${n}`;
+      const key = readPkcs8(made.pkcs8);
+      expect(sameBytes(writePkcs8(key), made.pkcs8), `${label}: PKCS8`).toBe(true);
+      expect(sameBytes(writeSpki(key), made.spki), `${label}: SPKI`).toBe(true);
+      // The public key read alone is the public key of the private key.
+      const publicOnly = readSpki(made.spki);
+      expect(publicOnly.type, label).toBe(key.type);
+      expect(sameBytes(writeSpki(publicOnly), made.spki), `${label}: SPKI alone`).toBe(true);
+      expect(isPrivate(publicOnly), label).toBe(false);
+      expect(isPrivate(key), label).toBe(true);
+      // Every number equals the same number in Node's own JSON Web Key (RFC 7518 section 6.2, RFC 8037).
+      if (key.type === 'ed25519') {
+        expect(kind).toBe('ed25519');
+        expect(hex(key.seed!), label).toBe(hex(fromBase64Url(made.jwk.d!)));
+        expect(hex(key.pub), label).toBe(hex(fromBase64Url(made.jwk.x!)));
+      } else if (key.type === 'ec') {
+        const size = CURVE_SIZES.get(kind)!;
+        expect(key.curve, label).toBe(kind);
+        expect(hex(key.d!), label).toBe(hex(fromBase64Url(made.jwk.d!)));
+        expect(key.d!.length, label).toBe(size);
+        expect(hex(key.point), label).toBe('04' + hex(fromBase64Url(made.jwk.x!)) + hex(fromBase64Url(made.jwk.y!)));
+      } else {
+        throw new Error(`${label} was read as an RSA key`);
+      }
+    }
+  }
+}, 60_000);
+
+it('an EC private key whose public point does not match is refused with a plain message', () => {
+  const made = nodeKey('P-256');
+  const key = readPkcs8(made.pkcs8);
+  if (key.type !== 'ec') throw new Error('not an EC key');
+  const expectRefused = (call: () => unknown, pattern: RegExp) => {
+    const err = thrown(call);
+    expect(err).toBeInstanceOf(KeyConverterError);
+    const message = (err as KeyConverterError).message;
+    expect(message).toMatch(pattern);
+    // No part of the private number or the point is in the message, as hex or as Base64.
+    for (const secret of [key.d!, key.point]) {
+      expect(message.includes(hex(secret).slice(0, 10))).toBe(false);
+      expect(message.includes(Buffer.from(secret).toString('base64').slice(0, 10))).toBe(false);
+    }
+  };
+
+  // One byte of the public point altered inside an otherwise valid PKCS#8 (the point is the end of the DER).
+  const wrongPoint = Uint8Array.from(made.pkcs8);
+  wrongPoint[wrongPoint.length - 1] = wrongPoint[wrongPoint.length - 1]! ^ 0x01;
+  expectRefused(() => readPkcs8(wrongPoint), /does not belong/i);
+
+  // One byte of the private number altered while the public point is left alone.
+  const wrongNumber = Uint8Array.from(made.pkcs8);
+  const at = Buffer.from(made.pkcs8).indexOf(Buffer.from(key.d!));
+  expect(at).toBeGreaterThan(0);
+  wrongNumber[at + 5] = wrongNumber[at + 5]! ^ 0x01;
+  expectRefused(() => readPkcs8(wrongNumber), /does not belong/i);
+
+  // A public key whose point is not on the curve is refused when it is read alone.
+  const offCurve = Uint8Array.from(made.spki);
+  offCurve[offCurve.length - 1] = offCurve[offCurve.length - 1]! ^ 0x01;
+  expectRefused(() => readSpki(offCurve), /not a point on the curve|not valid/i);
+
+  // A private number of zero and one that is not the size of the curve are not keys.
+  const zero = Uint8Array.from(made.pkcs8);
+  zero.fill(0, at, at + key.d!.length);
+  expect(thrown(() => readPkcs8(zero))).toBeInstanceOf(KeyConverterError);
+});
+
+it('the OpenSSH public lines of ECDSA and Ed25519 keys follow RFC 5656 and RFC 8709', () => {
+  // The lines and fingerprints ssh-keygen 10.2p1 printed for public keys made by OpenSSL 3.5.5 and by ssh-keygen itself.
+  for (const fixture of [P256_PUBLIC, P384_PUBLIC, P521_PUBLIC, ED25519_PUBLIC]) {
+    const key = readSpki(new Uint8Array(Buffer.from(fixture.spkiB64, 'base64')));
+    expect(sshPublicLine(key, '')).toBe(fixture.sshLine);
+    const printed = sshFingerprints(sshPublicBlob(key));
+    expect(printed.sha256).toBe(fixture.sha256);
+    expect(printed.md5).toBe(fixture.md5);
+    expect(sameBytes(writeSpki(key), new Uint8Array(Buffer.from(fixture.spkiB64, 'base64')))).toBe(true);
+  }
+
+  // The blob of a fresh key, taken apart with the SSH string rules and compared with Node's own numbers.
+  for (const kind of ['P-256', 'P-384', 'P-521'] as const) {
+    const made = nodeKey(kind);
+    const key = readPkcs8(made.pkcs8);
+    const line = sshPublicLine(key, 'me@example');
+    const identifier = kind === 'P-256' ? 'nistp256' : kind === 'P-384' ? 'nistp384' : 'nistp521';
+    const [name, text, comment] = line.split(' ');
+    expect(name).toBe(`ecdsa-sha2-${identifier}`);
+    expect(comment).toBe('me@example');
+    // RFC 5656 section 3.1: string "ecdsa-sha2-<identifier>", string "<identifier>", string Q.
+    const [typeString, curveString, q] = sshStrings(new Uint8Array(Buffer.from(text!, 'base64')));
+    expect(Buffer.from(typeString!).toString('latin1')).toBe(`ecdsa-sha2-${identifier}`);
+    expect(Buffer.from(curveString!).toString('latin1')).toBe(identifier);
+    const size = CURVE_SIZES.get(kind)!;
+    expect(q!.length).toBe(1 + 2 * size);
+    expect(hex(q!)).toBe('04' + hex(fromBase64Url(made.jwk.x!)) + hex(fromBase64Url(made.jwk.y!)));
+  }
+  const edMade = nodeKey('ed25519');
+  const edKey = readPkcs8(edMade.pkcs8);
+  const [edLine, edText] = sshPublicLine(edKey, '').split(' ');
+  expect(edLine).toBe('ssh-ed25519');
+  // RFC 8709 section 4: string "ssh-ed25519", string key, the key being the 32 bytes of RFC 8032.
+  const [edType, edPublic] = sshStrings(new Uint8Array(Buffer.from(edText!, 'base64')));
+  expect(Buffer.from(edType!).toString('latin1')).toBe('ssh-ed25519');
+  expect(hex(edPublic!)).toBe(hex(fromBase64Url(edMade.jwk.x!)));
+  expect(edPublic!.length).toBe(32);
+});
+
+it('the key outputs of ECDSA and Ed25519 keys list the same blocks, the line and both fingerprints', () => {
+  for (const kind of ['ed25519', 'P-256', 'P-384', 'P-521'] as const) {
+    const made = nodeKey(kind);
+    const key = readPkcs8(made.pkcs8);
+    const result = keyOutputs(key, { comment: 'work laptop' });
+    expect(result.blocks.map((b) => b.id)).toEqual(['pkcs8', 'spki', 'ssh-public']);
+    const wrap = (body: string) => body.match(/.{1,64}/g)!.join('\n');
+    const pem = (label: string, bytes: Uint8Array) =>
+      '-----BEGIN ' +
+      label +
+      '-----\n' +
+      wrap(Buffer.from(bytes).toString('base64')) +
+      '\n-----END ' +
+      label +
+      '-----\n';
+    expect(result.blocks[0]!.text).toBe(pem('PRIVATE KEY', made.pkcs8));
+    expect(result.blocks[1]!.text).toBe(pem('PUBLIC KEY', made.spki));
+    expect(result.blocks[2]!.text).toBe(sshPublicLine(key, 'work laptop'));
+    const blob = Buffer.from(result.blocks[2]!.text.split(' ')[1]!, 'base64');
+    expect(result.fingerprints).toEqual([
+      ['SHA256', 'SHA256:' + createHash('sha256').update(blob).digest('base64').replace(/=+$/, '')],
+      ['MD5', 'MD5:' + createHash('md5').update(blob).digest('hex').match(/../g)!.join(':')],
+    ]);
+    if (kind === 'ed25519') {
+      expect(result.facts).toEqual([
+        ['Key type', 'Ed25519'],
+        ['Size in bits', '256'],
+      ]);
+    } else {
+      expect(result.facts).toEqual([
+        ['Key type', 'ECDSA'],
+        ['Curve', kind],
+        ['Size in bits', String(kind === 'P-256' ? 256 : kind === 'P-384' ? 384 : 521)],
+      ]);
+    }
+    expect(result.warnings).toEqual([]);
+  }
+  // A public key alone gives the public blocks and no private block.
+  const publicOnly = keyOutputs(readSpki(new Uint8Array(Buffer.from(ED25519_PUBLIC.spkiB64, 'base64'))), {
+    comment: '',
+  });
+  expect(publicOnly.blocks.map((b) => b.id)).toEqual(['spki', 'ssh-public']);
+});
+
+it('no thrown message, warning or output label holds a fragment of a key', () => {
+  // A marker that a message would give away: as text, as hex and as Base64 at each of the three alignments.
+  const marker = 'FODT-MARKER-0123456789-ABCDEFGHIJKLMNOP';
+  const markerBytes = new Uint8Array(Buffer.from(marker, 'latin1'));
+  const holdsMarker = (text: string): boolean => {
+    if (text.includes(marker) || text.includes(Buffer.from(marker).toString('hex'))) return true;
+    for (let shift = 0; shift < 3; shift++) {
+      const encoded = Buffer.concat([Buffer.alloc(shift), Buffer.from(marker)]).toString('base64');
+      if (text.includes(encoded.slice(4, 24))) return true;
+    }
+    return false;
+  };
+  // Hand-built DER, so the malformed keys below do not depend on the package's own writers.
+  const lengthOf = (n: number): number[] => (n < 128 ? [n] : n < 256 ? [0x81, n] : [0x82, n >> 8, n & 255]);
+  const tlvOf = (tag: number, body: number[]): number[] => [tag, ...lengthOf(body.length), ...body];
+  const sequenceOf = (...parts: number[][]): Uint8Array => Uint8Array.from(tlvOf(0x30, parts.flat()));
+  const octetOf = (bytes: ArrayLike<number>): number[] => tlvOf(0x04, Array.from(bytes));
+  const integerOf = (bytes: ArrayLike<number>): number[] => tlvOf(0x02, Array.from(bytes));
+  const version = (n: number): number[] => [0x02, 0x01, n];
+
+  // Ed25519: a seed that is 41 bytes, not 32 (RFC 8410 section 7), with the marker inside it.
+  const edBad = sequenceOf(version(0), tlvOf(0x30, [0x06, 0x03, 0x2b, 0x65, 0x70]), octetOf(octetOf(markerBytes)));
+  // EC: a private number of 39 bytes in an ECPrivateKey (RFC 5915), with the marker as the number.
+  const ecBad = sequenceOf(
+    version(0),
+    tlvOf(
+      0x30,
+      [
+        0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01,
+        0x07,
+      ],
+    ),
+    octetOf(sequenceOf(version(1), octetOf(markerBytes))),
+  );
+  // RSA: numbers that are all the marker, so the modulus is not the product of the primes (RFC 8017 appendix A.1.2).
+  const markerNumbers = [1, 2, 3, 4, 5, 6, 7, 8].map(() => integerOf(markerBytes));
+  const rsaPkcs8 = sequenceOf(
+    version(0),
+    tlvOf(0x30, [0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00]),
+    octetOf(sequenceOf(version(0), ...markerNumbers)),
+  );
+
+  for (const [what, bytes] of [
+    ['an Ed25519 key with a seed of the wrong size', edBad],
+    ['an EC key with a private number of the wrong size', ecBad],
+    ['an RSA key whose numbers do not agree', rsaPkcs8],
+  ] as const) {
+    const err = thrown(() => readPkcs8(bytes));
+    expect(err, what).toBeInstanceOf(Error);
+    expect(holdsMarker((err as Error).message), `${what}: ${(err as Error).message}`).toBe(false);
+  }
+
+  // A PEM body that is not Base64 anywhere near the marker, and a hex string with it.
+  for (const call of [
+    () => pemBlocks('-----BEGIN PRIVATE KEY-----\nQUJD' + marker + '\n-----END PRIVATE KEY-----\n', 5),
+    () => base64ToBytes(marker + marker),
+    () => hexToBytes(marker),
+  ]) {
+    const err = thrown(call);
+    expect(err).toBeInstanceOf(PemError);
+    expect(holdsMarker((err as Error).message)).toBe(false);
+  }
+
+  // Everything the outputs print around a real private key: labels, facts, fingerprint names and warnings.
+  const secrets: [string, Uint8Array][] = [];
+  for (const kind of ['ed25519', 'P-256'] as const) {
+    const key = readPkcs8(nodeKey(kind).pkcs8);
+    const result = keyOutputs(key, { comment: 'c' });
+    const around = [
+      ...result.blocks.flatMap((b) => [b.id, b.label, b.language ?? '']),
+      ...result.fingerprints.map(([name]) => name),
+      ...result.facts.flat(),
+      ...result.warnings,
+    ];
+    const secret = key.type === 'ed25519' ? key.seed! : key.type === 'ec' ? key.d! : new Uint8Array(32).fill(7);
+    secrets.push([kind, secret]);
+    for (const text of around) {
+      expect(text.includes(hex(secret).slice(0, 16)), `${kind}: ${text}`).toBe(false);
+      for (let shift = 0; shift < 3; shift++) {
+        const encoded = Buffer.concat([Buffer.alloc(shift), Buffer.from(secret)]).toString('base64');
+        expect(text.includes(encoded.slice(4, 16)), `${kind}: ${text}`).toBe(false);
+      }
+    }
+  }
+  expect(secrets.length).toBe(2);
 });

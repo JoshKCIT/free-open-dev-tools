@@ -5,6 +5,7 @@ Everything here is a second opinion recorded as a literal. The tests never run O
 | File                    | Made by                                                            | On         |
 | ----------------------- | ------------------------------------------------------------------ | ---------- |
 | `rsa2048-public.ts`     | `make-fixtures.sh`: OpenSSL 3.5.5 and ssh-keygen from OpenSSH 10.2p1 | 2026-10-03 |
+| `ec-ed25519-public.ts` | `make-fixtures.sh`: OpenSSL 3.5.5 (ECDSA keys) and ssh-keygen 10.2p1 (the Ed25519 key and every line and fingerprint) | 2026-10-03 |
 | The RFC 8032 TEST 1 key | the published vector; fingerprints printed by ssh-keygen 10.2p1    | 2026-10-03 |
 
 No private key is committed in this folder. Tests that need a private key make one at test time with Node's Web Crypto,
