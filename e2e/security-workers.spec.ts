@@ -461,11 +461,12 @@ test('key-converter: Ed25519 and ECDSA generation start no worker', async ({ pag
     await runButtonOf(page).click();
     await expect(outputArea(page)).toContainText(`page-thread-${kind.keyType}`, { timeout: 15_000 });
     await expect(outputArea(page)).toContainText(kind.line);
-    // The private block is shown: a code block whose label says private holds the PKCS#8 text.
+    // The private blocks are shown: the first code block whose label says private holds the PKCS#8 text (the page shows
+    // the same key in several private forms since plan 14-02).
     const privateBlock = outputArea(page)
       .locator('.output-block')
       .filter({ has: page.locator('.output-label', { hasText: /private/i }) });
-    await expect(privateBlock.locator('pre.output')).toContainText('-----BEGIN ' + 'PRIVATE KEY-----');
+    await expect(privateBlock.locator('pre.output').first()).toContainText('-----BEGIN ' + 'PRIVATE KEY-----');
   }
 
   const seen = await page.evaluate(() => window.__FODT_SECURITY_WORKERS__!);

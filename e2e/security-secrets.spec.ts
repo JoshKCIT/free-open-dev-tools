@@ -143,9 +143,14 @@ async function assertNothingLeft(page: Page, recording: Recording, markers: stri
   expect(inPage.privateFiles, 'the private file system holds entries').toEqual([]);
 }
 
+/** The members of a JSON Web Key that hold secret numbers. */
+const JWK_SECRET_MEMBERS = ['d', 'p', 'q', 'dp', 'dq', 'qi'];
+
 /**
  * The secret lines the page shows: every line of 40 or more Base64 characters inside a block whose label says it is
- * private. The test fails when none is found, so a page that stopped showing its key cannot pass by looking for nothing.
+ * private (the PEM bodies and the 70 column body of the OpenSSH private key), and every secret member of a private JWK
+ * block that is at least 40 characters long (its d value, and for RSA p, q, dp, dq and qi). The test fails when none is
+ * found, so a page that stopped showing its key cannot pass by looking for nothing.
  */
 async function privateMarkers(page: Page): Promise<string[]> {
   const blocks = outputArea(page)
@@ -158,10 +163,55 @@ async function privateMarkers(page: Page): Promise<string[]> {
       const trimmed = line.trim();
       if (/^[A-Za-z0-9+/=]{40,}$/.test(trimmed)) markers.push(trimmed);
     }
+    if (text.trim().startsWith('{')) {
+      const jwk = JSON.parse(text) as Record<string, unknown>;
+      for (const member of JWK_SECRET_MEMBERS) {
+        const value = jwk[member];
+        if (typeof value === 'string' && value.length >= 40) markers.push(value);
+      }
+    }
   }
   expect(markers.length, 'the private block holds no line of 40 or more Base64 characters').toBeGreaterThan(0);
   return markers;
 }
+
+// Base64 bodies of two throwaway keys made for tests (copied from tools/key-converter/test/fixtures/keys.ts; none is used
+// anywhere). The armour is built from parts in the tests, never written whole.
+const RSA_2048_PKCS8_LINES = [
+  'MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC8OD4NyBF1ojre',
+  'GaB51UMcCeZ53WhAtNOlIK75dj+fIiv/CLYIVd6U8AYgKb1NLFJ/tFt9gb7RPOoZ',
+  'HDEAZCbVcu0S9tnoh0iwzasN2+Rwg5AHYCO4QxCpQUpayAFodZarLdl/MKqn0mmt',
+  'fhQsxyDif0vhJFVR5y4p7mEqWsqr8rpq6X/uXaQ3qMuDUy/v726lApZpF6RPngsQ',
+  'RnCuUe3VvtH+oCRcrseToCn+SfLILJ3/jDj5mbN92HRInRyfhJYdUm4Z9bCoAhpF',
+  'xnj+n6dpNCfs8I8UtJit36/etJQq/e1JTDW2pXn3YySPoKkVIskPOsQ4+lsIylaY',
+  'xtpcRIuzAgMBAAECggEAA8yTfWi5PX7G9xOyWF3fIGeXa4Sguumgz1eftdusAL90',
+  '/uKt9fDHG4oqvXx03I6/+DbrlSweGLrE3jk3nf083BhumPA69BrC81qmEL4MWDRi',
+  'SbEoQhW3IODMqj9uPoMHxbBuZZxVstR9mz8NE4hOGB70qPiNm6fHF+6UBIGs+e0q',
+  'nnR49K3WsNGzh0ROMgdj097AZMsnqm14xu665lvAa9cEmJ/6UOctngZx3DuLUo8U',
+  'OR0Ojgd2Ty6WYPw+V38tD8ngBLJYH1q0eQSJsHn6527FeZnEU4+dkjbWX0bnlZqd',
+  'pAuhtNyzhHggH083kRzf01gon871R3Qy4PgG0u3JsQKBgQDn8YUswYjxxJuAXb0I',
+  'uCQUyu5jQsBxxxDnHos+EIUBexaqVwQkQytBCWQZ5vaPDPqWgdRSB6+TC96xppXB',
+  '4YteaKWixwJVjqjdTJVDCofsCsPd7vor7WnhlV3/0SORr5lHExaSVZD6tNqhsBut',
+  'L68VOMauUjnXOeOLGyhOBdLpEQKBgQDPvcjxQUFSTU2rdqQHm9yquhFPdcXWJFgC',
+  'vbyFM6fPLcVjrxw4sjzSIuF7yP/PDXZSJ3MB3ETS8Xai0P/GplPv0YW1HpCABg/U',
+  'TF+NS2dbn6eO2MqReKXOpFApPcwPtFjkyRskI22jYjYVpDQEo0c0MtT7jmRx7Jyc',
+  'Xg+bNyLIgwKBgFkTf1LF7OL038d3uI5tsaWuncjPLPtFOS+Zol4ul/YOoJDApF2M',
+  '0kLC6YetFMmxcVd1+uWaAArYBylw0ZjJFu4mAF64USQsipuausQpejPjmn9UNQ3D',
+  'uuMgqx4A4skjiBkssoF2jRxLcp+f87EaXAIpcNwnxgDrQYD96Ae24t4RAoGBALp/',
+  'Q60qiwzq70Z2LQ3TpAf1IOM39NKpMAXN9jeSxxzcl29FXk2b3bQ8sjbhnJ1yFX3t',
+  'gnbyGytQsNO8U1MwMPyEGcge11THnGBX7BQ51GFR9CfugfSU3i2kH37WxqJ2orNJ',
+  'w77uu1fJLIrDLhvXxW2cEM6A57XK2FIcs2AB4I0nAoGBAKrimYurAvkP0t4fsLjR',
+  'mbN2qOv71Uht+I3jDyrogALERrOg682EDVG1ooJyjhtSVAsegdiKlyDr6gyrBUi7',
+  '4AUgk/HP9PQSqMI3pqvAJt5BeIKRGVu4906QIIgP/BpdTuvJGnw30Q42DaVMHEbg',
+  '4XNcPApM8ffLI6ZLLdlbkU/T',
+];
+const ED25519_OPENSSH_LINES = [
+  'b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW',
+  'QyNTUxOQAAACC/cp/JIEDEtDIGhhy545tvJ0SuEdqDiMCaSJ4cL0SpZAAAAJBKvA5bSrwO',
+  'WwAAAAtzc2gtZWQyNTUxOQAAACC/cp/JIEDEtDIGhhy545tvJ0SuEdqDiMCaSJ4cL0SpZA',
+  'AAAEBd7g9NSqiupdGBDFhobOGQDwSLW0yMwgKUUu0NAUlA579yn8kgQMS0MgaGHLnjm28n',
+  'RK4R2oOIwJpInhwvRKlkAAAAB2ZpeHR1cmUBAgMEBQY=',
+];
 
 /** One key kind under test: the name in the test title and the value of the key type menu. */
 interface KeyCase {
@@ -192,6 +242,102 @@ for (const c of KEY_CASES) {
     await expect(outputArea(page)).toContainText('secret-check', { timeout: 30_000 });
 
     const markers = await privateMarkers(page);
+    await assertNothingLeft(page, recording, markers);
+  });
+}
+
+/** The text of the output block whose label contains `label`. */
+async function blockText(page: Page, label: string): Promise<string> {
+  const block = outputArea(page)
+    .locator('.output-block')
+    .filter({ has: page.locator('.output-label', { hasText: label }) });
+  return await block.locator('pre.output').first().innerText();
+}
+
+for (const c of KEY_CASES) {
+  test(`key-converter: the ${c.name} JWK d value and every OpenSSH private body line are among the secrets looked for`, async ({
+    page,
+  }) => {
+    await page.goto(rel('/tools/key-converter'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    await setControls(page, { selects: { keyType: c.keyType } });
+    await runButtonOf(page).click();
+    await expect(outputArea(page)).toContainText('OpenSSH private key', { timeout: 30_000 });
+    const markers = await privateMarkers(page);
+    const jwk = JSON.parse(await blockText(page, 'Private key, JWK')) as { d: string };
+    expect(markers, 'the d value of the private JWK is not among the markers').toContain(jwk.d);
+    const sshLines = (await blockText(page, 'OpenSSH private key'))
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => /^[A-Za-z0-9+/=]{40,}$/.test(line));
+    expect(sshLines.length, 'the OpenSSH private key shows no body line').toBeGreaterThan(0);
+    for (const line of sshLines)
+      expect(markers, 'an OpenSSH private body line is not among the markers').toContain(line);
+  });
+}
+
+/**
+ * Pasted keys. Each is put together here from Base64 pieces and armour built from parts, typed into the page in Convert
+ * mode and run; the markers are the key's own body lines plus every secret line and member the page then shows.
+ */
+interface PastedCase {
+  name: string;
+  /** The pasted text, built from its pieces. */
+  text: () => string;
+  /** The Base64 lines of the key itself, which are looked for as well as what the page shows. */
+  lines: string[];
+  /** What the page says it read the paste as. */
+  readAs: string;
+}
+
+const PASTED_CASES: PastedCase[] = [
+  {
+    name: 'RSA PKCS8',
+    text: () =>
+      '-----' +
+      'BEGIN ' +
+      'PRIVATE KEY-----\n' +
+      RSA_2048_PKCS8_LINES.join('\n') +
+      '\n-----' +
+      'END ' +
+      'PRIVATE KEY-----\n',
+    lines: RSA_2048_PKCS8_LINES,
+    readAs: 'PKCS#8 private key',
+  },
+  {
+    name: 'OpenSSH',
+    text: () =>
+      '-----' +
+      'BEGIN ' +
+      'OPENSSH PRIVATE KEY-----\n' +
+      ED25519_OPENSSH_LINES.join('\n') +
+      '\n-----' +
+      'END ' +
+      'OPENSSH PRIVATE KEY-----\n',
+    lines: ED25519_OPENSSH_LINES,
+    readAs: 'OpenSSH private key',
+  },
+];
+
+for (const c of PASTED_CASES) {
+  test(`key-converter: a pasted ${c.name} private key never reaches a request, storage, the console, the title or the address`, async ({
+    page,
+  }) => {
+    await page.goto(rel('/tools/key-converter'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+
+    // Recorded only after the page and its own chunk have loaded, so this asserts nothing leaves while the key is typed,
+    // read and shown.
+    const recording = recordEverything(page);
+
+    await setControls(page, { radios: { mode: 'convert' } });
+    await fillAndHold(page, 'input', c.text());
+    await fillAndHold(page, 'comment', 'secret-check');
+    await runButtonOf(page).click();
+    await expect(outputArea(page)).toContainText('secret-check', { timeout: 30_000 });
+    await expect(outputArea(page)).toContainText(c.readAs);
+
+    const markers = [...c.lines, ...(await privateMarkers(page))];
     await assertNothingLeft(page, recording, markers);
   });
 }
