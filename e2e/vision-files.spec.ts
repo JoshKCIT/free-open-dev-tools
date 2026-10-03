@@ -1,6 +1,8 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { crc32, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { buildFixtureFile, writePng } from './fixture-files';
 
 /**
@@ -1638,4 +1640,237 @@ test('image-converter: an SVG of flat rectangles converts with exact colours onl
   await expect(outputArea(page).locator('.issue-list')).toContainText('not PNG, JPEG, GIF, WebP or BMP');
 
   expect(offending(requests)).toEqual([]);
+});
+
+/**
+ * Starts a local server on a free port that records every request it receives, runs `body` with its address, waits a
+ * moment for any stray request to land, and returns what the server saw. An SVG that names this server (an image, a style
+ * sheet, a font, a frame, a link) would show up here if the page or the browser requested it. Written here, the shape
+ * copied from e2e/security-secrets.spec.ts.
+ */
+async function withRecordingServer(body: (address: string) => Promise<void>): Promise<string[]> {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(`${request.method} ${request.url}`);
+    response.end('x');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await body(`http://127.0.0.1:${port}`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+  return seen;
+}
+
+const SVG_NS = 'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"';
+
+interface HostileSvg {
+  name: string;
+  svg: (address: string) => string;
+  /** What the refusal must call it. */
+  construct: string;
+  /** The text whose first occurrence starts the refused construct: its character position is the message's number. */
+  at: string;
+}
+
+const flatSvg = (inner: string, head = ''): string =>
+  `${head}<svg ${SVG_NS} width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" fill="#00ff00"/>${inner}</svg>`;
+
+/** Each of these asks for something outside the SVG; every one must be refused by name and none may reach the server. */
+const HOSTILE_SVGS: HostileSvg[] = [
+  {
+    name: 'image href',
+    svg: (a) => flatSvg(`<image href="${a}/ok.svg" width="20" height="20"/>`),
+    construct: 'a link to something outside this SVG',
+    at: 'href',
+  },
+  {
+    name: 'image xlink:href',
+    svg: (a) => flatSvg(`<image xlink:href="${a}/ok.svg?x=1" width="20" height="20"/>`),
+    construct: 'a link to something outside this SVG',
+    at: 'xlink:href',
+  },
+  {
+    name: 'use of another file',
+    svg: (a) => flatSvg(`<use href="${a}/ok.svg#a"/>`),
+    construct: 'a link to something outside this SVG',
+    at: 'href',
+  },
+  {
+    name: 'style import',
+    svg: (a) => flatSvg(`<style>@import url(${a}/ok.css);</style>`),
+    construct: 'a style element that loads another file',
+    at: '<style',
+  },
+  {
+    name: 'style background address',
+    svg: (a) => flatSvg(`<style>rect{fill:url(${a}/ok.svg#x)}</style>`),
+    construct: 'a style element that loads another file',
+    at: '<style',
+  },
+  {
+    name: 'style font address',
+    svg: (a) =>
+      flatSvg(
+        `<style>@font-face{font-family:x;src:url(${a}/font.woff)} text{font-family:x}</style><text x="5" y="20">hi</text>`,
+      ),
+    construct: 'a style element that loads another file',
+    at: '<style',
+  },
+  {
+    name: 'feImage',
+    svg: (a) =>
+      flatSvg(
+        `<filter id="f"><feImage href="${a}/ok.svg?fe=1"/></filter><rect width="40" height="40" filter="url(#f)"/>`,
+      ),
+    construct: 'a link to something outside this SVG',
+    at: 'href',
+  },
+  {
+    name: 'foreignObject holding an image',
+    svg: (a) =>
+      flatSvg(
+        `<foreignObject width="40" height="40"><div xmlns="http://www.w3.org/1999/xhtml"><img src="${a}/ok.svg?fo=1"/></div></foreignObject>`,
+      ),
+    construct: 'a foreignObject element',
+    at: '<foreignObject',
+  },
+  {
+    name: 'script',
+    svg: (a) => flatSvg(`<script>new Image().src='${a}/script-ran'</script>`),
+    construct: 'a script element',
+    at: '<script',
+  },
+  {
+    name: 'onload',
+    svg: (a) =>
+      `<svg ${SVG_NS} width="40" height="40" onload="new Image().src='${a}/onload-ran'"><rect width="40" height="40"/></svg>`,
+    construct: 'an event handler attribute',
+    at: 'onload',
+  },
+  {
+    name: 'xml-stylesheet',
+    svg: (a) => flatSvg('', `<?xml version="1.0"?><?xml-stylesheet type="text/css" href="${a}/ok.css"?>`),
+    construct: 'an xml-stylesheet instruction',
+    at: '<?xml-stylesheet',
+  },
+  {
+    name: 'DOCTYPE with a definition address',
+    svg: (a) => flatSvg('', `<?xml version="1.0"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "${a}/dtd.dtd">`),
+    construct: 'a DOCTYPE declaration',
+    at: '<!DOCTYPE',
+  },
+  {
+    name: 'DOCTYPE with an external entity',
+    svg: (a) => flatSvg('&x;', `<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x SYSTEM "${a}/entity.txt">]>`),
+    construct: 'a DOCTYPE declaration',
+    at: '<!DOCTYPE',
+  },
+  {
+    name: 'anchor',
+    svg: (a) => flatSvg(`<a href="${a}/click"><rect width="40" height="40"/></a>`),
+    construct: 'a link to something outside this SVG',
+    at: 'href',
+  },
+  {
+    name: 'mask with an address',
+    svg: (a) =>
+      flatSvg(
+        `<mask id="m"><rect width="40" height="40"/></mask><rect width="40" height="40" mask="url(${a}/ok.svg#m)"/>`,
+      ),
+    construct: 'a value that loads another file',
+    at: 'mask="url(http',
+  },
+  {
+    name: 'iframe',
+    svg: (a) => flatSvg(`<iframe src="${a}/frame"/>`),
+    construct: 'an iframe element',
+    at: '<iframe',
+  },
+  {
+    name: 'object',
+    svg: (a) => flatSvg(`<object data="${a}/object"/>`),
+    construct: 'an object element',
+    at: '<object',
+  },
+  {
+    name: 'link element',
+    svg: (a) => flatSvg(`<link rel="stylesheet" href="${a}/ok.css"/>`),
+    construct: 'a link element',
+    at: '<link',
+  },
+  {
+    name: 'style attribute address',
+    svg: (a) => flatSvg(`<rect width="40" height="40" style="fill:url(${a}/ok.svg#p)"/>`),
+    construct: 'a value that loads another file',
+    at: 'style="fill',
+  },
+  {
+    name: 'embedded data picture',
+    svg: () => flatSvg(`<image href="data:image/png;base64,iVBORw0KGgo=" width="20" height="20"/>`),
+    construct: 'a link to something outside this SVG',
+    at: 'href',
+  },
+];
+
+test('image-converter: hostile SVGs are refused and a local server receives nothing', async ({ page }) => {
+  test.setTimeout(180_000);
+  expect(HOSTILE_SVGS.length).toBeGreaterThanOrEqual(18);
+  const seen = await withRecordingServer(async (address) => {
+    await openTool(page, 'image-converter');
+    const requests = recordRequests(page);
+    await page.locator('#f-allowSvg').check();
+    await expect(page.locator('#f-allowSvg')).toBeChecked();
+    for (const hostile of HOSTILE_SVGS) {
+      const text = hostile.svg(address);
+      const position = text.indexOf(hostile.at) + 1;
+      expect(position, `${hostile.name}: test data`).toBeGreaterThan(0);
+      await attachImage(page, 'file', svgFile('hostile.svg', text));
+      await runButtonOf(page).click();
+      const issues = outputArea(page).locator('.issue-list');
+      await expect(issues, hostile.name).toContainText(
+        `This SVG uses ${hostile.construct} at character ${position}, which this page does not load. Remove it and try again.`,
+        { timeout: 30_000 },
+      );
+      // The refusal never repeats the file's own text, the address it names or the script it holds.
+      const message = await issues.innerText();
+      expect(message, hostile.name).not.toContain(address);
+      expect(message, hostile.name).not.toContain('ok.css');
+      expect(message, hostile.name).not.toContain('script-ran');
+      expect(await outputArea(page).getByRole('button', { name: 'Download' }).count(), hostile.name).toBe(0);
+    }
+    // Nothing went anywhere else either: the page's own recorder saw only data and blob addresses.
+    expect(offending(requests)).toEqual([]);
+  });
+  expect(seen).toEqual([]);
+});
+
+test('image-converter: the recording server sees a plain page request, so its silence means something', async ({
+  page,
+}) => {
+  const control = await withRecordingServer(async (address) => {
+    await openTool(page, 'image-converter');
+    // The same server, asked by the page itself: it must be heard.
+    await page.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+  });
+  expect(control).toEqual(['GET /control']);
+  // And a picture the page's own document asks for is heard too, which is what an SVG with an image in it would be if it
+  // were drawn without the check.
+  const image = await withRecordingServer(async (address) => {
+    await openTool(page, 'image-converter');
+    await page.evaluate(
+      (target) =>
+        new Promise<void>((resolve) => {
+          const probe = new Image();
+          probe.onload = () => resolve();
+          probe.onerror = () => resolve();
+          probe.src = target;
+        }),
+      `${address}/control-image.svg`,
+    );
+  });
+  expect(new Set(image)).toEqual(new Set(['GET /control-image.svg']));
 });
