@@ -61,6 +61,30 @@ export function crcValue(bytes: Uint8Array, params: CrcParams): number {
   return known ? known(bytes) : makeCrc(params)(bytes);
 }
 
+/** The largest run of bytes whose sums stay below 2^32 before the remainder is taken (zlib's NMAX). */
+const ADLER_BLOCK = 5552;
+
+/**
+ * Adler-32 as RFC 1950 section 8.2 defines it: s1 starts at 1 and adds every byte, s2 starts at 0 and adds every s1, both
+ * modulo 65521, and the checksum is s2 * 65536 + s1. The remainders are taken once per block of 5552 bytes, which gives
+ * the same result as taking them at every byte.
+ */
+export function adler32(bytes: Uint8Array): number {
+  let s1 = 1;
+  let s2 = 0;
+  let i = 0;
+  while (i < bytes.length) {
+    const end = Math.min(i + ADLER_BLOCK, bytes.length);
+    for (; i < end; i++) {
+      s1 += bytes[i]!;
+      s2 += s1;
+    }
+    s1 %= 65521;
+    s2 %= 65521;
+  }
+  return ((s2 << 16) | s1) >>> 0;
+}
+
 /** The bytes a checksum of `width` bits is shown as: most significant byte first, 2 bytes for 16 bits, 4 for 32. */
 export function checksumBytes(value: number, width: number): Uint8Array {
   const out = new Uint8Array(width / 8);
@@ -79,12 +103,14 @@ export interface ChecksumRow {
   value: number;
 }
 
-/** Every checksum of the catalogue over the same bytes, in catalogue order. */
+/** Every checksum of the catalogue over the same bytes, in catalogue order, then Adler-32. */
 export function checksumRows(bytes: Uint8Array): ChecksumRow[] {
-  return CRC_CATALOGUE.map((entry) => ({
+  const rows: ChecksumRow[] = CRC_CATALOGUE.map((entry) => ({
     name: entry.name,
     aliases: [...entry.aliases],
     width: entry.width,
     value: crcValue(bytes, entry),
   }));
+  rows.push({ name: 'Adler-32', aliases: [], width: 32, value: adler32(bytes) });
+  return rows;
 }

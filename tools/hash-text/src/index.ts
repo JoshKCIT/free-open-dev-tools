@@ -321,4 +321,6 @@ export function digestsMatch(a: string, b: string): boolean {
 // Checksums that are not hashes. They live in their own files and are not part of `Algorithm`, `ALGORITHMS`,
 // `hashBytes` or `hashAll`, whose tests assert whole lists and every digest's length.
 export { CRC_CATALOGUE, type CrcParams } from './crc-catalogue';
-export { makeCrc, crcValue, checksumBytes, checksumRows, type ChecksumRow } from './checksums';
+export { makeCrc, crcValue, adler32, checksumBytes, checksumRows, type ChecksumRow } from './checksums';
+export { md4, ntlm } from './md4';
+export { shake, SHAKE_MIN_BYTES, SHAKE_MAX_BYTES, SHAKE_LENGTH_MESSAGE, type ShakeVariant } from './shake';
