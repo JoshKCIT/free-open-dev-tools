@@ -4,9 +4,13 @@ import {
   KeyConverterError,
   PemError,
   checkComment,
+  generateEc,
+  generateEd25519,
   keyFromGeneratedRsa,
   keyOutputs,
   meta,
+  type Curve,
+  type KeyModel,
   type KeyOutputBlock,
   type KeyOutputs,
 } from '@fodt/key-converter';
@@ -23,27 +27,41 @@ const RSA_BITS = new Map<string, 2048 | 3072 | 4096>([
   ['rsa-4096', 4096],
 ]);
 
+/** The curves by menu entry, read from this table and never from the entry's text. */
+const EC_CURVES = new Map<string, Curve>([
+  ['ecdsa-p256', 'P-256'],
+  ['ecdsa-p384', 'P-384'],
+  ['ecdsa-p521', 'P-521'],
+]);
+
 /**
  * One output block as a code block. Each download name is a fixed string written here, chosen by the kind of block and
- * never built from the key or from the comment.
+ * the kind of key, and never built from the key or from the comment.
  */
-function codeBlock(block: KeyOutputBlock): OutputBlock {
+function codeBlock(block: KeyOutputBlock, family: KeyModel['type']): OutputBlock {
   switch (block.id) {
     case 'pkcs8':
       return { kind: 'code', label: block.label, value: block.text, download: 'private-key.pem' };
     case 'spki':
       return { kind: 'code', label: block.label, value: block.text, download: 'public-key.pem' };
     default:
-      return { kind: 'code', label: block.label, value: block.text, download: 'id_rsa.pub' };
+      switch (family) {
+        case 'ec':
+          return { kind: 'code', label: block.label, value: block.text, download: 'id_ecdsa.pub' };
+        case 'ed25519':
+          return { kind: 'code', label: block.label, value: block.text, download: 'id_ed25519.pub' };
+        default:
+          return { kind: 'code', label: block.label, value: block.text, download: 'id_rsa.pub' };
+      }
   }
 }
 
-function outputBlocks(result: KeyOutputs): OutputBlock[] {
+function outputBlocks(result: KeyOutputs, family: KeyModel['type']): OutputBlock[] {
   const outputs: OutputBlock[] = [];
   if (result.blocks.some((block) => block.private)) {
     outputs.push({ kind: 'note', tone: 'warn', value: PRIVATE_NOTE });
   }
-  for (const block of result.blocks) outputs.push(codeBlock(block));
+  for (const block of result.blocks) outputs.push(codeBlock(block, family));
   outputs.push({ kind: 'keyvalue', label: 'Fingerprints', pairs: result.fingerprints });
   outputs.push({ kind: 'keyvalue', label: 'Key', pairs: result.facts });
   return outputs;
@@ -61,7 +79,7 @@ export default defineTool({
       name: 'keyType',
       label: 'Key type',
       type: 'select',
-      default: 'rsa-2048',
+      default: 'ed25519',
       options: KEY_TYPES.map((type) => ({ value: type.id, label: type.label })),
     },
     {
@@ -72,22 +90,36 @@ export default defineTool({
       help: 'Optional. It is written after the public key on the OpenSSH line, and it is not secret.',
     },
   ],
-  examples: [{ label: 'Generate an RSA 2048-bit key pair', values: { keyType: 'rsa-2048', comment: 'example' } }],
+  examples: [
+    { label: 'Generate an RSA 2048-bit key pair', values: { keyType: 'rsa-2048', comment: 'example' } },
+    { label: 'Generate an Ed25519 key pair', values: { keyType: 'ed25519', comment: 'example' } },
+  ],
   async run(values, ctx): Promise<ToolResult> {
-    const keyType = str(values, 'keyType', 'rsa-2048');
+    const keyType = str(values, 'keyType', 'ed25519');
     const comment = str(values, 'comment').trim();
-    const bits = RSA_BITS.get(keyType);
-    if (bits === undefined) {
+    const rsaBits = RSA_BITS.get(keyType);
+    const curve = EC_CURVES.get(keyType);
+    if (rsaBits === undefined && curve === undefined && keyType !== 'ed25519') {
       return { outputs: [], errors: [{ message: 'Choose a key type from the list.' }] };
     }
     try {
       // The comment is checked first, so a comment that will be refused never costs a key.
       checkComment(comment);
-      const generated = await keyConverterInWorker({ type: 'key-converter-job', bits }, ctx);
-      const key = keyFromGeneratedRsa(generated.pkcs8, generated.spki);
+      let key: KeyModel;
+      if (rsaBits !== undefined) {
+        // Only RSA runs in the background worker: it can freeze a page for seconds. The other kinds take milliseconds.
+        const generated = await keyConverterInWorker({ type: 'key-converter-job', bits: rsaBits }, ctx);
+        key = keyFromGeneratedRsa(generated.pkcs8, generated.spki);
+      } else if (curve !== undefined) {
+        key = await generateEc(curve);
+      } else {
+        key = generateEd25519();
+      }
       const result = keyOutputs(key, { comment });
-      const stats: [string, string][] = result.facts.slice(0, 2).map(([name, value]) => [name, value]);
-      return { outputs: outputBlocks(result), warnings: result.warnings, stats };
+      const stats: [string, string][] = result.facts
+        .filter(([name]) => name === 'Key type' || name === 'Size in bits')
+        .map(([name, value]) => [name, value]);
+      return { outputs: outputBlocks(result, key.type), warnings: result.warnings, stats };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       if (err instanceof KeyConverterError || err instanceof DerError || err instanceof PemError) {

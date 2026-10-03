@@ -1,6 +1,5 @@
 [
-  {
-    "values": { "keyType": "rsa-2048", "comment": "privacy-check" },
-    "attachesFile": false
-  }
+  { "values": { "keyType": "rsa-2048", "comment": "privacy-check" }, "attachesFile": false },
+  { "values": { "keyType": "ed25519" }, "attachesFile": false },
+  { "values": { "keyType": "ecdsa-p256" }, "attachesFile": false }
 ]
