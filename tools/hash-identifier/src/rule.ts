@@ -12,6 +12,8 @@ export type Tier = 1 | 2 | 3;
 export interface RuleMatch {
   /** Which marker matched and which fields were checked, in a sentence for the visitor. */
   reason: string;
+  /** A tier for this match that differs from the rule's own (the {CRYPT} wrapper is only a marker when its body is checked). */
+  tier?: Tier;
 }
 
 export interface HashRule {
@@ -32,7 +34,7 @@ export function rule(
   name: string,
   tier: Tier,
   source: string,
-  test: (line: string) => string | null,
+  test: (line: string) => string | { reason: string; tier: Tier } | null,
 ): HashRule {
   return {
     id,
@@ -40,8 +42,9 @@ export function rule(
     tier,
     source,
     test(line: string): RuleMatch | null {
-      const reason = test(line);
-      return reason === null ? null : { reason };
+      const result = test(line);
+      if (result === null) return null;
+      return typeof result === 'string' ? { reason: result } : result;
     },
   };
 }

@@ -141,7 +141,7 @@ function rank(line: string): Candidate[] {
     const match = r.test(line);
     if (match !== null) {
       found.push({
-        candidate: { ruleId: r.id, name: r.name, tier: r.tier, reason: match.reason, source: r.source },
+        candidate: { ruleId: r.id, name: r.name, tier: match.tier ?? r.tier, reason: match.reason, source: r.source },
         index,
       });
     }

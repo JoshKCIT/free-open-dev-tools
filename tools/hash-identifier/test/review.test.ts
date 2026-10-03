@@ -40,3 +40,30 @@ it('a crypt length-only line gets a note of its own, not the sentence about bare
   // The wrapped copies count too.
   expect(identifyText('{CRYPT}1727970000000').notes[0]).toMatch(/without a marker/);
 });
+
+// B-WR-05: {CRYPT} was claimed as a marker with the body unchecked.
+it('{CRYPT} with a body that no crypt layout checks is not tier 1, and says the body is not checked', () => {
+  const hello = identifyLine('{CRYPT}hello');
+  expect(hello.map((c) => [c.ruleId, c.tier])).toEqual([['ldap-crypt', 2]]);
+  expect(hello[0]?.reason).toMatch(/not checked/);
+  expect(hello[0]?.reason).not.toMatch(/followed by a crypt\(3\) string; the formats/);
+  // RFC 2307's own example: the body fits the DES crypt length only, so the wrapper is a shape and the body is length-only.
+  const rfc = identifyLine('{crypt}X5/DBrWPOQQaI');
+  expect(rfc.map((c) => [c.ruleId, c.tier])).toEqual([
+    ['ldap-crypt', 2],
+    ['ldap-crypt/descrypt', 3],
+    ['ldap-crypt/bigcrypt', 3],
+  ]);
+});
+
+it('{CRYPT} with a body that a marker layout checks stays tier 1', () => {
+  const md5 = identifyLine('{CRYPT}$1$saltsalt$qjXMvbEw8oaL.CzflDtaK/');
+  expect(md5.map((c) => [c.ruleId, c.tier])).toEqual([
+    ['ldap-crypt', 1],
+    ['ldap-crypt/md5crypt', 1],
+  ]);
+  expect(md5[0]?.reason).toMatch(/checked/);
+  expect(md5[0]?.reason).not.toMatch(/not checked/);
+  // The empty body is still nothing.
+  expect(identifyLine('{CRYPT}')).toEqual([]);
+});

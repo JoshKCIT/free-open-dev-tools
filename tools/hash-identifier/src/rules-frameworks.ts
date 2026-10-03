@@ -213,7 +213,24 @@ const ldapCrypt = rule(
   (line) => {
     const t = tagOf(line);
     if (t === null || t.tag !== 'CRYPT' || t.body >= line.length) return null;
-    return 'Starts with {CRYPT} (case does not matter) followed by a crypt(3) string; the formats that string fits are listed as well.';
+    // RFC 2307 says the body is a crypt(3) string, but anything can follow the tag. The marker only counts as tier 1 when a
+    // crypt format that has a marker of its own (tier 1) checks the body; otherwise the body is not checked.
+    const body = line.slice(t.body);
+    const checked = MODULAR_RULES.some(
+      (inner) => inner.id !== 'phc-unknown' && inner.tier === 1 && inner.test(body) !== null,
+    );
+    if (checked) {
+      return {
+        tier: 1,
+        reason:
+          'Starts with {CRYPT} (case does not matter) followed by a crypt(3) string whose own marker and fields were checked; the formats that string fits are listed as well.',
+      };
+    }
+    return {
+      tier: 2,
+      reason:
+        'Starts with {CRYPT} (case does not matter), but the body is not checked: no crypt format with a marker fits it, so this is the scheme label only. Any text can follow it; the formats the body fits by length alone are listed as well.',
+    };
   },
 );
 
