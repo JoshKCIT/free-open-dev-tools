@@ -86,12 +86,11 @@ function buildLess(asked: Asked[]): LessInstance {
 
   class RefusingPluginLoader extends less.AbstractPluginLoader {
     less: LessInstance;
+    // Less reads this member as the way a plugin gets at other modules; here there are none, so it answers nothing.
+    readonly require = (): null => null;
     constructor(owner: LessInstance) {
       super();
       this.less = owner;
-    }
-    require(): null {
-      return null;
     }
     loadPlugin(filename: string): Promise<never> {
       return Promise.reject(refuse(filename));
