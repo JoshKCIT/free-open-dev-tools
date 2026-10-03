@@ -4,6 +4,9 @@ import {
   decodeInput,
   digestsMatch,
   ALGORITHMS,
+  format,
+  checksumBytes,
+  checksumRows,
   type InputEncoding,
   type OutputFormat,
 } from '@fodt/hash-text';
@@ -16,11 +19,44 @@ const SECURITY_LABEL: Record<string, string> = {
   checksum: 'Checksum only, not a hash',
 };
 
+/** The "Input" statistic, as the digests view shows it; the new views share it. */
+function inputStats(bytes: Uint8Array, encoding: InputEncoding, input: string): [string, string][] {
+  return [
+    ['Input', `${bytes.length} byte${bytes.length === 1 ? '' : 's'}`],
+    ...(encoding === 'utf8' && bytes.length !== input.length
+      ? ([['Note', 'multi-byte characters present']] as [string, string][])
+      : []),
+  ];
+}
+
+/** The note shown above a table when a pasted value was compared with the values of the chosen view. */
+function compareNote(names: string[]): OutputBlock {
+  return names.length > 0
+    ? { kind: 'note', tone: 'success', value: `That value matches ${names.join(' and ')} of this input.` }
+    : {
+        kind: 'note',
+        tone: 'warn',
+        value:
+          'That value does not match any value shown for this input. Check the input encoding, and whether the original included a trailing newline.',
+      };
+}
+
 export default defineTool({
   id: 'hash-text',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     { name: 'input', label: 'Input', type: 'textarea', rows: 8, placeholder: 'Text to hash' },
+    {
+      name: 'family',
+      label: 'What to compute',
+      type: 'select',
+      default: 'digests',
+      help: 'Digests is the original list. The others add checksums and older functions.',
+      options: [
+        { value: 'digests', label: 'Digests (MD5, SHA, BLAKE, CRC32)' },
+        { value: 'checksums', label: 'Checksums (CRC-16 and CRC-32 variants)' },
+      ],
+    },
     {
       name: 'encoding',
       label: 'Read the input as',
@@ -56,6 +92,7 @@ export default defineTool({
     { label: 'Empty string', values: { input: '' } },
     { label: 'abc', values: { input: 'abc' } },
     { label: 'Hex bytes', values: { input: '00 0f ff', encoding: 'hex' } },
+    { label: 'Checksums of 123456789', values: { input: '123456789', family: 'checksums' } },
   ],
   run(values): ToolResult {
     const input = str(values, 'input');
@@ -67,6 +104,33 @@ export default defineTool({
       bytes = decodeInput(input, encoding);
     } catch (err) {
       return { outputs: [], errors: [{ message: err instanceof Error ? err.message : String(err) }] };
+    }
+
+    if (str(values, 'family', 'digests') === 'checksums') {
+      const rows = checksumRows(bytes).map((row) => ({
+        row,
+        text: format(checksumBytes(row.value, row.width), output),
+      }));
+      const wanted = str(values, 'expected').trim();
+      const outputs: OutputBlock[] = [];
+      if (wanted) {
+        outputs.push(compareNote(rows.filter((r) => digestsMatch(r.text, wanted)).map((r) => r.row.name)));
+      }
+      outputs.push({
+        kind: 'table',
+        label: 'Checksums',
+        table: {
+          headers: ['Name', 'Also known as', 'Width', 'Value', 'Decimal'],
+          rows: rows.map((r) => [r.row.name, r.row.aliases.join(', '), r.row.width, r.text, String(r.row.value)]),
+          mono: [3, 4],
+        },
+      });
+      outputs.push({
+        kind: 'note',
+        tone: 'info',
+        value: 'Checksums detect accidental changes. They are not hashes and give no security.',
+      });
+      return { outputs, stats: inputStats(bytes, encoding, input) };
     }
 
     const results = hashAll(bytes, output);
