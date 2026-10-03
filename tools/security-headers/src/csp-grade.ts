@@ -273,6 +273,15 @@ export const CSP_RULES: readonly CspRule[] = [
       'CSP Level 3 section 3.2 (the Content-Security-Policy-Report-Only header field monitors a policy but does not enforce it)',
   },
   {
+    id: 'meta-ignored-directive',
+    severity: 'medium',
+    finding: 'A directive that a meta element cannot set is in the policy, so the browser ignores it.',
+    why: 'frame-ancestors, report-uri and sandbox do nothing in a meta element, so the page is not protected the way the policy reads. The grade treats them as absent.',
+    fix: 'Send the policy as an HTTP header, which supports every directive.',
+    basis:
+      'CSP Level 3 section 3.3 (a meta element does not support the Report-Only header or the report-uri, frame-ancestors and sandbox directives)',
+  },
+  {
     id: 'meta-limits',
     severity: 'info',
     finding: 'The policy came from a meta element, which cannot carry every directive.',
@@ -325,6 +334,9 @@ const FALLBACK: ReadonlyMap<string, readonly string[]> = new Map([
   ['font-src', ['font-src', 'default-src']],
   ['img-src', ['img-src', 'default-src']],
 ]);
+
+// The directives CSP Level 3 section 3.3 says a meta element does not support.
+const META_IGNORED_DIRECTIVES: readonly string[] = ['frame-ancestors', 'report-uri', 'sandbox'];
 
 // The fetch directives other than script and style that the exfiltration rule reads (section 8.6).
 const EXFILTRATION_DIRECTIVES = [
@@ -627,7 +639,17 @@ function evaluate(index: SourceIndex, problems: readonly CspProblem[], source: C
   // base-uri, frame-ancestors and form-action are read on their own: none of them falls back to default-src.
   const base = index.get('base-uri');
   if (!base || base.some(isOpenSource)) found.push(finding('base-uri', 'base-uri'));
-  if (!index.has('frame-ancestors')) found.push(finding('frame-ancestors', 'frame-ancestors'));
+  // A meta element cannot set frame-ancestors (section 3.3), so there it counts as absent; each directive of that kind that
+  // the policy does list is reported once, by name.
+  const metaIgnored = source === 'meta' ? META_IGNORED_DIRECTIVES.filter((name) => index.has(name)) : [];
+  for (const name of metaIgnored) {
+    found.push(
+      finding('meta-ignored-directive', name, {
+        whole: `${name} is in the policy, but a meta element cannot set it, so the browser ignores it and the grade treats it as absent.`,
+      }),
+    );
+  }
+  if (source === 'meta' || !index.has('frame-ancestors')) found.push(finding('frame-ancestors', 'frame-ancestors'));
   if (!index.has('form-action')) found.push(finding('form-action', 'form-action'));
 
   const defaults = index.get('default-src');

@@ -492,11 +492,12 @@ it('every rule states its severity, finding, why, fix and basis', () => {
     'style-unsafe-inline',
     'unsafe-hashes',
     'report-only',
+    'meta-ignored-directive',
     'meta-limits',
     'upgrade-insecure-requests',
     'syntax',
   ];
-  // The research table lists 24 rules (its own text says 22); the table is followed.
+  // The research table listed 24 rules (its own text said 22); the table is followed, and the review of part B added the rules after it.
   expect(CSP_RULES.map((r) => r.id)).toEqual(ids);
   for (const r of CSP_RULES) {
     expect(['high', 'medium', 'low', 'info'], r.id).toContain(r.severity);
@@ -514,7 +515,7 @@ it('every rule states its severity, finding, why, fix and basis', () => {
   expect(CSP_SEVERITY_WEIGHTS.get('info')).toBe(0);
 });
 
-it('each of the 24 rules fires on a policy built for it', () => {
+it('each of the 25 rules fires on a policy built for it', () => {
   const cases: [string, string, string][] = [
     ['script-unrestricted', 'high', "img-src 'self'"],
     ['script-unsafe-inline', 'high', "script-src 'unsafe-inline'"],
@@ -537,11 +538,12 @@ it('each of the 24 rules fires on a policy built for it', () => {
     ['style-unsafe-inline', 'low', "default-src 'none'; style-src 'unsafe-inline'"],
     ['unsafe-hashes', 'low', `script-src 'unsafe-hashes' ${HASH}`],
     ['report-only', 'info', `Content-Security-Policy-Report-Only: ${CLEAN}`],
+    ['meta-ignored-directive', 'medium', `<meta http-equiv="Content-Security-Policy" content="${CLEAN}">`],
     ['meta-limits', 'info', `<meta http-equiv="Content-Security-Policy" content="${CLEAN}">`],
     ['upgrade-insecure-requests', 'info', "script-src 'self'"],
     ['syntax', 'low', "script-src 'self'; frobnicate x"],
   ];
-  expect(cases).toHaveLength(24);
+  expect(cases).toHaveLength(25);
   for (const [id, severity, text] of cases) {
     const found = rule(text, id);
     expect(found, id).toBeDefined();
