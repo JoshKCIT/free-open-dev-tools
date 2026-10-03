@@ -1,8 +1,8 @@
 import meta from './meta.json';
 import { parseJsonText } from './json-text';
-import { maskBodyText, maskNameValue, maskUrl, type ValueKind } from './sensitive';
+import { isSensitive, maskBodyText, maskNameValue, maskUrl, maskValue, type ValueKind } from './sensitive';
 
-export { meta };
+export { meta, isSensitive, maskValue };
 
 export class HarViewerError extends Error {
   readonly path?: string;
@@ -120,8 +120,10 @@ function readVersion(log: JsonObject): string {
   const version = raw === undefined || raw.trim() === '' ? '1.1' : raw.trim();
   const parts = /^(\d+)\.(\d+)$/.exec(version);
   if (!parts || Number(parts[1]) !== 1 || Number(parts[2]) < 1) {
+    // The version is copied from the file, so only a short plain token is quoted; anything else is masked like any value.
+    const shown = /^[0-9A-Za-z._+-]{1,20}$/.test(version) ? version : maskValue(version);
     throw new HarViewerError(
-      `HAR version "${version}" cannot be read: this page reads version 1.1 and later 1.x versions (/log/version).`,
+      `HAR version "${shown}" cannot be read: this page reads version 1.1 and later 1.x versions (/log/version).`,
       { path: '/log/version' },
     );
   }
@@ -351,7 +353,8 @@ function rowOf(entry: HarEntry, reveal: boolean): HarRequestRow {
 const SORTS: Record<string, (raw: JsonObject) => number> = {
   time: (raw) => -(totalTime(raw) ?? -Infinity),
   size: (raw) => -(responseSize(objectOf(raw.response)) ?? -Infinity),
-  status: (raw) => statusOf(raw),
+  // A request whose response has no status goes last (a status of 0, which browsers record for a failed request, is lowest).
+  status: (raw) => numberOf(objectOf(raw.response).status) ?? Infinity,
 };
 
 /**

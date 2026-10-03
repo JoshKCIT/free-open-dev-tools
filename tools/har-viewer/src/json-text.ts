@@ -19,7 +19,11 @@ export interface JsonTextResult {
   offset?: number;
 }
 
-/** A document nested deeper than this is refused before any recursive walk touches it. */
+/**
+ * The scanner that finds where a broken document goes wrong is recursive, so a broken document nested deeper than this is
+ * refused for its depth instead of its error. A valid document is read by the engine's own parser and is never walked
+ * recursively, so its depth is not limited here.
+ */
 export const MAX_JSON_DEPTH = 512;
 
 const WHITESPACE = new Set([' ', '\t', '\n', '\r']);
@@ -284,25 +288,4 @@ export function parseJsonText(text: string): JsonTextResult {
       offset: failure.at.offset,
     };
   }
-}
-
-/**
- * True when `value` nests deeper than `max` levels. Walks with an explicit
- * stack instead of recursion, so checking the depth of a pathological
- * document cannot itself overflow the call stack it exists to protect.
- */
-export function exceedsDepth(value: unknown, max: number): boolean {
-  const stack: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
-  while (stack.length > 0) {
-    const top = stack.pop()!;
-    if (top.depth > max) return true;
-    if (Array.isArray(top.value)) {
-      for (const item of top.value) stack.push({ value: item, depth: top.depth + 1 });
-    } else if (top.value !== null && typeof top.value === 'object') {
-      for (const item of Object.values(top.value as Record<string, unknown>)) {
-        stack.push({ value: item, depth: top.depth + 1 });
-      }
-    }
-  }
-  return false;
 }
