@@ -2,5 +2,27 @@
   {
     "values": { "secret": "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ", "period": "30", "at": "59" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "hotp" },
+    "values": {
+      "secret": "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ",
+      "counter": "7",
+      "account": "alice@example.com"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "totp" },
+    "values": {
+      "secret": "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ",
+      "algorithm": "SHA512",
+      "digits": "8",
+      "period": "60",
+      "at": "2009-02-13T23:31:30Z",
+      "issuer": "Example Corp",
+      "account": "bob@example.com"
+    },
+    "attachesFile": false
   }
 ]
