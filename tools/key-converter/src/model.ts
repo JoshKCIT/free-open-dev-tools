@@ -28,6 +28,13 @@ export type RsaBits = (typeof RSA_GENERATE_BITS)[number];
 /** The largest RSA modulus a key may have when it is read, so a hostile number cannot size a large calculation. */
 export const RSA_MAX_BITS = 16384;
 
+/** The largest modulus whose prime factors are tested for primality when a private key is read. */
+export const RSA_PRIME_TEST_MAX_BITS = 4096;
+
+/** The warning shown for a private RSA key above that size, whose prime factors are not tested. */
+export const UNTESTED_PRIMES_WARNING =
+  'This RSA key is larger than 4096 bits, so its prime factors were not tested for primality.';
+
 /** The longest comment the OpenSSH line carries. */
 export const COMMENT_LIMIT = 256;
 
@@ -176,6 +183,9 @@ export function keyWarnings(key: KeyModel): string[] {
   const warnings: string[] = [];
   if (key.type === 'rsa') {
     if (keyBits(key) < 2048) warnings.push(SHORT_RSA_WARNING);
+    if (key.p !== undefined && key.q !== undefined && keyBits(key) > RSA_PRIME_TEST_MAX_BITS) {
+      warnings.push(UNTESTED_PRIMES_WARNING);
+    }
     if (!isCommonExponent(key.e)) {
       warnings.push(
         `This RSA key has a public exponent of ${exponentText(key.e)}. Nearly every RSA key uses 65537, and software that expects it may refuse this key.`,

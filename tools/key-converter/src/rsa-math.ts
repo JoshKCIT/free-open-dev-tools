@@ -9,7 +9,7 @@
  * RULE, stated once and enforced by a test: no message thrown or returned from this file may ever contain a fragment
  * of a key, a secret, or a token. Describe the shape of the problem, never the content.
  */
-import { KeyConverterError, RSA_MAX_BITS, type RsaKey } from './model';
+import { KeyConverterError, RSA_MAX_BITS, RSA_PRIME_TEST_MAX_BITS, type RsaKey } from './model';
 
 const NO_PRIMES = 'This JWK has no prime factors (p and q), so it cannot be written as PKCS#1, PKCS#8 or OpenSSH.';
 const DO_NOT_AGREE = 'The numbers of this RSA key do not agree.';
@@ -70,6 +70,30 @@ export function checkRsaModulus(n: Uint8Array): void {
   }
 }
 
+const FACTOR_EVEN = 'A prime factor of this RSA key is even, so it is not prime.';
+const FACTOR_SMALL =
+  'A prime factor of this RSA key is much smaller than half the size of the modulus, so the key is not a product of two primes of equal size.';
+const FACTOR_NOT_PRIME = 'A prime factor of this RSA key failed a primality test, so it is not prime.';
+
+/** How many bits shorter than half the modulus a prime factor may be before the key is refused. */
+const FACTOR_SLACK_BITS = 16;
+
+/** base ** exponent mod modulus by square and multiply, all BigInt. */
+function modPow(base: bigint, exponent: bigint, modulus: bigint): bigint {
+  let result = 1n;
+  let square = base % modulus;
+  for (let rest = exponent; rest > 0n; rest >>= 1n) {
+    if ((rest & 1n) === 1n) result = (result * square) % modulus;
+    square = (square * square) % modulus;
+  }
+  return result;
+}
+
+/** One round of the Fermat test to base 2: a prime p gives 2^(p-1) = 1 (mod p). It finds nearly every composite, not all. */
+function probablyPrime(p: bigint): boolean {
+  return modPow(2n, p - 1n, p) === 1n;
+}
+
 const MODULUS_NOT_ODD = 'This RSA modulus is even or zero, so it cannot be the product of two odd primes.';
 const EXPONENT_TOO_SMALL = 'This RSA public exponent is smaller than 3, which no RSA key uses.';
 const EXPONENT_EVEN = 'This RSA public exponent is even, so it cannot be inverted modulo the primes.';
@@ -125,7 +149,17 @@ export function completeRsa(key: RsaKey): RsaKey {
   const bigD = bytesToBigInt(d);
   const bigP = bytesToBigInt(p);
   const bigQ = bytesToBigInt(q);
+  // A prime factor is odd and about half the size of the modulus (RFC 8017 section 3.2 describes two primes of equal size).
+  if (bigP % 2n === 0n || bigQ % 2n === 0n) throw new KeyConverterError(FACTOR_EVEN);
+  if (Math.min(bitLength(p), bitLength(q)) * 2 + FACTOR_SLACK_BITS * 2 < bitLength(key.n)) {
+    throw new KeyConverterError(FACTOR_SMALL);
+  }
   if (bigP < 3n || bigQ < 3n || bigP * bigQ !== n) throw new KeyConverterError(DO_NOT_AGREE);
+  // One probable-prime round for each factor, while the factors are 2048 bits or less (about 40 ms each); above that the page
+  // does not test and keyWarnings says so.
+  if (bitLength(key.n) <= RSA_PRIME_TEST_MAX_BITS && (!probablyPrime(bigP) || !probablyPrime(bigQ))) {
+    throw new KeyConverterError(FACTOR_NOT_PRIME);
+  }
   const pMinus = bigP - 1n;
   const qMinus = bigQ - 1n;
   // d is the inverse of e modulo both p - 1 and q - 1 (RFC 8017 section 3.2), which every real RSA key satisfies.

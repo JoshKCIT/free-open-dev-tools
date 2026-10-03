@@ -10,13 +10,14 @@
     "Pasted keys in PKCS#8 (RFC 5958), SubjectPublicKeyInfo (RFC 5280), PKCS#1 (RFC 8017), SEC1 (RFC 5915), JWK (RFC 7517, 7518 and 8037, or the first key of a JWK set), the OpenSSH private key file and public key line, and RFC 4716 public key files",
     "The private key written as PKCS#8, PKCS#1 (RSA), SEC1 (ECDSA), JWK and the OpenSSH private key file with no passphrase, and the public key written as SubjectPublicKeyInfo, PKCS#1 (RSA), JWK, the OpenSSH line and an RFC 4716 file, each with a Copy and a Download button",
     "SSH fingerprints in both forms ssh-keygen prints, SHA256 (unpadded Base64) and MD5 (colon-separated hex), and the JWK SHA-256 thumbprint of RFC 7638",
-    "RSA numbers dp, dq and qi worked out with BigInt when a key leaves them out, and the numbers checked for consistency: the modulus must be odd and the product of the primes, the public exponent must be odd, at least 3 and smaller than the modulus, and the private exponent must undo the public one"
+    "RSA numbers dp, dq and qi worked out with BigInt when a key leaves them out, and the numbers checked for consistency: the modulus must be odd and the product of the primes (which get one probable-prime test), the public exponent must be odd, at least 3 and smaller than the modulus, and the private exponent must undo the public one"
   ],
   "limits": [
     "Pastes of up to 64 KiB (65,536 characters) are read; a longer paste is refused before anything is parsed.",
     "RSA keys of up to 16,384 bits are converted; keys under 2,048 bits are shown with a warning. Generation offers 2,048, 3,072 and 4,096 bits with exponent 65537.",
     "Generating an RSA key runs in the background and stops after 60 seconds with a message; Cancel stops it at once.",
     "An RSA key is refused when its modulus is even or zero, or its public exponent is below 3, even or not smaller than the modulus; a public exponent other than 3 or 65537 is accepted with a warning, and one longer than 64 bits is shown by its size.",
+    "A private RSA key is refused when p or q is even or more than 16 bits shorter than half the modulus. For a modulus of 4,096 bits or less, p and q each get one probable-prime test (base 2), which catches nearly every composite but is not a proof; above 4,096 bits they are not tested for primality, and the page says so.",
     "Passphrase-protected PEM and OpenSSH keys are refused, and outputs are never encrypted.",
     "Private keys are shown in plain text so you can copy or download them; treat every private output as a secret and close the page when you are done.",
     "Keys are made only by the browser's Web Crypto generator and crypto.getRandomValues; nothing else supplies randomness.",

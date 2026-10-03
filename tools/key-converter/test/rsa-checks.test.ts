@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, generatePrimeSync } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { readKeyInput } from '../src/detect';
 import { keyOutputs } from '../src/index';
@@ -222,3 +222,111 @@ it('keys made by Node (OpenSSL) in every size still convert without a warning', 
     expect(jwk.key.type, String(bits)).toBe('rsa');
   }
 });
+
+// ---- A-WR-02: the prime factors of a private key ----------------------------------------------------------------------
+
+const FACTOR_EVEN_SENTENCE = 'A prime factor of this RSA key is even, so it is not prime.';
+const FACTOR_SMALL_SENTENCE =
+  'A prime factor of this RSA key is much smaller than half the size of the modulus, so the key is not a product of two primes of equal size.';
+const NOT_PRIME_SENTENCE = 'A prime factor of this RSA key failed a primality test, so it is not prime.';
+const UNCHECKED_WARNING = 'This RSA key is larger than 4096 bits, so its prime factors were not tested for primality.';
+
+const gcd = (a: bigint, b: bigint): bigint => (b === 0n ? a : gcd(b, a % b));
+function inverse(a: bigint, m: bigint): bigint {
+  let [r0, r1, t0, t1] = [m, a % m, 0n, 1n];
+  while (r1 !== 0n) {
+    const quotient = r0 / r1;
+    [r0, r1] = [r1, r0 - quotient * r1];
+    [t0, t1] = [t1, t0 - quotient * t1];
+  }
+  return ((t0 % m) + m) % m;
+}
+
+/** A private JWK from the two numbers p and q, with a private exponent that is consistent for them (RFC 8017 section 3.2). */
+function privateJwk(p: bigint, q: bigint, e = 65537n): string {
+  const lambda = ((p - 1n) / gcd(p - 1n, q - 1n)) * (q - 1n);
+  if (gcd(e, lambda) !== 1n) throw new Error('pick other numbers: e is not coprime');
+  return JSON.stringify({
+    kty: 'RSA',
+    n: b64url(toBytes(p * q)),
+    e: b64url(toBytes(e)),
+    d: b64url(toBytes(inverse(e, lambda))),
+    p: b64url(toBytes(p)),
+    q: b64url(toBytes(q)),
+  });
+}
+
+/** The product of `count` random primes of 512 bits: odd, composite and roughly 512 * count bits. */
+function composite(count: number): bigint {
+  let value = 1n;
+  for (let i = 0; i < count; i++) value *= generatePrimeSync(512, { bigint: true });
+  return value;
+}
+
+it('a private key whose prime factors are composite is refused when the modulus is 4096 bits or less', () => {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const p = composite(2);
+    const q = composite(2);
+    if (gcd(65537n, (p - 1n) * (q - 1n)) !== 1n) continue;
+    // Consistent in every other way: n = p * q and d undoes e modulo p - 1 and q - 1, so only the primality test refuses it.
+    expect(refusal(privateJwk(p, q))).toBe(NOT_PRIME_SENTENCE);
+    return;
+  }
+  throw new Error('no suitable composite numbers in 20 tries');
+});
+
+it('a private key with a tiny prime factor beside a large one is refused', () => {
+  const q = generatePrimeSync(2045, { bigint: true });
+  const jwk = privateJwk(3n, q);
+  expect(refusal(jwk)).toBe(FACTOR_SMALL_SENTENCE);
+  expect(refusal(privateJwk(q, 3n))).toBe(FACTOR_SMALL_SENTENCE);
+});
+
+it('an even prime factor is refused before anything else is calculated', () => {
+  const real = generateKeyPairSync('rsa', { modulusLength: 1024 }).privateKey.export({ format: 'jwk' });
+  const n = new Uint8Array(Buffer.from(real.n!, 'base64url'));
+  const p = new Uint8Array(Buffer.from(real.p!, 'base64url'));
+  const q = new Uint8Array(Buffer.from(real.q!, 'base64url'));
+  const d = new Uint8Array(Buffer.from(real.d!, 'base64url'));
+  const evenP = p.slice();
+  evenP[evenP.length - 1] = evenP[evenP.length - 1]! & 0xfe;
+  expect(() => completeRsa({ type: 'rsa', n, e: Uint8Array.of(1, 0, 1), d, p: evenP, q })).toThrow(
+    FACTOR_EVEN_SENTENCE,
+  );
+  const evenQ = q.slice();
+  evenQ[evenQ.length - 1] = evenQ[evenQ.length - 1]! & 0xfe;
+  expect(() => completeRsa({ type: 'rsa', n, e: Uint8Array.of(1, 0, 1), d, p, q: evenQ })).toThrow(
+    FACTOR_EVEN_SENTENCE,
+  );
+});
+
+it('above 4096 bits the prime factors are not tested and the page says so', () => {
+  const p = composite(8);
+  const q = composite(8);
+  if (gcd(65537n, (p - 1n) * (q - 1n)) !== 1n) throw new Error('pick other numbers: e is not coprime');
+  // 8192 bits is accepted (consistent numbers), with the warning that primality was not checked.
+  const read = readKeyInput(privateJwk(p, q));
+  expect(read.warnings).toEqual([UNCHECKED_WARNING]);
+  // A real key above 4096 bits warns the same way, and one at 4096 bits or less never does.
+  expect(keyOutputs(read.key, { comment: '' }).warnings).toEqual([UNCHECKED_WARNING]);
+  const real = generateKeyPairSync('rsa', { modulusLength: 3072 }).privateKey.export({
+    type: 'pkcs8',
+    format: 'pem',
+  }) as string;
+  expect(readKeyInput(real).warnings).toEqual([]);
+  // A public key of any size carries no such warning: there are no prime factors to test.
+  expect(readKeyInput(publicForms(new Uint8Array(1025).fill(0xff), toBytes(65537n))[0]![1]).warnings).toEqual([]);
+}, 60_000);
+
+it('real keys of 2048 and 4096 bits are tested for primality in well under a second and still convert', () => {
+  const p = generatePrimeSync(2048, { bigint: true });
+  let q = generatePrimeSync(2048, { bigint: true });
+  while (q === p) q = generatePrimeSync(2048, { bigint: true });
+  const jwk = privateJwk(p, q);
+  const started = performance.now();
+  const read = readKeyInput(jwk);
+  const elapsed = performance.now() - started;
+  expect(read.key.type).toBe('rsa');
+  expect(read.warnings).toEqual([]);
+  expect(elapsed).toBeLessThan(2000);
+}, 60_000);
