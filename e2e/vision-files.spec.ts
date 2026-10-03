@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { inflateSync } from 'node:zlib';
+import { crc32, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { buildFixtureFile, writePng } from './fixture-files';
 
@@ -700,21 +700,28 @@ async function downloadNamed(page: Page, name: string): Promise<Buffer> {
 }
 
 /** Decodes PNG bytes in the page and returns every pixel as RGBA numbers. */
-async function decodeRgba(page: Page, base64: string): Promise<{ width: number; height: number; data: number[] }> {
-  return page.evaluate(async (data) => {
-    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext('2d')!;
-    context.drawImage(bitmap, 0, 0);
-    return {
-      width: bitmap.width,
-      height: bitmap.height,
-      data: Array.from(context.getImageData(0, 0, bitmap.width, bitmap.height).data),
-    };
-  }, base64);
+async function decodeRgba(
+  page: Page,
+  base64: string,
+  mime = 'image/png',
+): Promise<{ width: number; height: number; data: number[] }> {
+  return page.evaluate(
+    async ([data, type]) => {
+      const bytes = Uint8Array.from(atob(data!), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: type! }));
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext('2d')!;
+      context.drawImage(bitmap, 0, 0);
+      return {
+        width: bitmap.width,
+        height: bitmap.height,
+        data: Array.from(context.getImageData(0, 0, bitmap.width, bitmap.height).data),
+      };
+    },
+    [base64, mime],
+  );
 }
 
 interface ExpectedSprite {
@@ -1066,5 +1073,269 @@ test('sprite-sheet: files with the same name get distinct class names and the ta
   await runButtonOf(page).click();
   await expect(issues).toContainText('Padding must be a whole number from 0 to 64.', { timeout: 15_000 });
 
+  expect(offending(requests)).toEqual([]);
+});
+
+/**
+ * Image Splitter (plan 15-06). A picture is made here with a different opaque colour in every pixel, split in both modes,
+ * and the downloaded ZIP is read by a small stored-ZIP reader written in this spec from PKWARE's APPNOTE (its checksums
+ * come from Node's own CRC-32, not from the page). Every PNG tile is decoded in the page and compared pixel for pixel with
+ * the matching part of the drawn picture, so edge tiles are checked as much as the others. The rectangles are worked out
+ * here from the stated rules, never taken from the page's own table. JPEG tiles are lossy: only their kind, name and size
+ * are checked.
+ */
+interface ReadZipEntry {
+  name: string;
+  method: number;
+  crc: number;
+  data: Buffer;
+}
+
+/** Reads a ZIP with no comment and no ZIP64 record, the way APPNOTE.TXT lays it out. */
+function readStoredZip(zip: Buffer): ReadZipEntry[] {
+  const end = zip.length - 22;
+  expect(zip.readUInt32LE(end)).toBe(0x06054b50);
+  expect(zip.readUInt16LE(end + 20)).toBe(0);
+  const count = zip.readUInt16LE(end + 10);
+  let at = zip.readUInt32LE(end + 16);
+  const entries: ReadZipEntry[] = [];
+  for (let i = 0; i < count; i++) {
+    expect(zip.readUInt32LE(at)).toBe(0x02014b50);
+    const method = zip.readUInt16LE(at + 10);
+    const crc = zip.readUInt32LE(at + 16);
+    const packed = zip.readUInt32LE(at + 20);
+    const size = zip.readUInt32LE(at + 24);
+    const nameLength = zip.readUInt16LE(at + 28);
+    const extraLength = zip.readUInt16LE(at + 30);
+    const commentLength = zip.readUInt16LE(at + 32);
+    const local = zip.readUInt32LE(at + 42);
+    const name = zip.toString('utf8', at + 46, at + 46 + nameLength);
+    at += 46 + nameLength + extraLength + commentLength;
+    expect(zip.readUInt32LE(local)).toBe(0x04034b50);
+    const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    expect(packed).toBe(size);
+    entries.push({ name, method, crc, data: zip.subarray(start, start + packed) });
+  }
+  return entries;
+}
+
+/** Starts and sizes of `parts` pieces of `size`, each piece starting at the whole number below its share (the rule the page states). */
+function evenSpans(size: number, parts: number): [number, number][] {
+  const edges = Array.from({ length: parts + 1 }, (_, i) => Math.floor((i * size) / parts));
+  return edges.slice(0, parts).map((start, i) => [start, edges[i + 1]! - start]);
+}
+
+/** Starts and sizes of pieces of a fixed `step`, the last one what is left. */
+function stepSpans(size: number, step: number): [number, number][] {
+  const spans: [number, number][] = [];
+  for (let start = 0; start < size; start += step) spans.push([start, Math.min(step, size - start)]);
+  return spans;
+}
+
+interface ExpectedTile {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Row-major rectangles from column and row spans, named tile-r<row>-c<column> with the given extension. */
+function expectedTiles(columns: [number, number][], rows: [number, number][], extension: string): ExpectedTile[] {
+  const pad = String(Math.max(rows.length, columns.length)).length;
+  const tiles: ExpectedTile[] = [];
+  rows.forEach(([y, height], r) =>
+    columns.forEach(([x, width], c) => {
+      const name = `tile-r${String(r + 1).padStart(pad, '0')}-c${String(c + 1).padStart(pad, '0')}.${extension}`;
+      tiles.push({ name, x, y, width, height });
+    }),
+  );
+  return tiles;
+}
+
+/** Proves one run: the table, the ZIP's structure and checksums, and (for PNG) every tile's pixels. */
+async function proveTiles(
+  page: Page,
+  picture: DistinctPicture,
+  tiles: ExpectedTile[],
+  kind: 'png' | 'jpeg',
+): Promise<void> {
+  expect(await spriteRows(page)).toEqual(
+    tiles.map((t) => [t.name, String(t.x), String(t.y), String(t.width), String(t.height)]),
+  );
+  const zip = await downloadNamed(page, 'tiles.zip');
+  const entries = readStoredZip(zip);
+  expect(entries.map((e) => e.name)).toEqual(tiles.map((t) => t.name));
+  let covered = 0;
+  for (let i = 0; i < tiles.length; i++) {
+    const entry = entries[i]!;
+    const tile = tiles[i]!;
+    expect(entry.method).toBe(0);
+    expect(entry.crc).toBe(crc32(entry.data));
+    const decoded = await decodeRgba(page, entry.data.toString('base64'), kind === 'jpeg' ? 'image/jpeg' : 'image/png');
+    expect([decoded.width, decoded.height]).toEqual([tile.width, tile.height]);
+    if (kind === 'jpeg') {
+      expect([...entry.data.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+      continue;
+    }
+    expect([...entry.data.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    for (let y = 0; y < tile.height; y++) {
+      for (let x = 0; x < tile.width; x++) {
+        const from = ((tile.y + y) * picture.width + tile.x + x) * 4;
+        const to = (y * tile.width + x) * 4;
+        expect(decoded.data.slice(to, to + 4)).toEqual(Array.from(picture.rgba.subarray(from, from + 4)));
+      }
+    }
+    covered += tile.width * tile.height;
+  }
+  if (kind === 'png') expect(covered).toBe(picture.width * picture.height);
+}
+
+test('image-splitter: every tile in the ZIP decodes to exactly the matching part of the image, edge tiles included', async ({
+  page,
+}) => {
+  await openTool(page, 'image-splitter');
+  const requests = recordRequests(page);
+
+  // A 37 by 23 picture, every pixel a different opaque colour.
+  const picture = distinctPng('wide.png', 37, 23, 6);
+  await attachImage(page, 'file', picture.file);
+
+  // Rows and columns: 3 rows and 4 columns. Columns start at 0, 9, 18 and 27 (37 / 4 = 9.25 and so on) and are 9, 9, 9 and 10
+  // wide; rows start at 0, 7 and 15 (23 / 3 = 7.67 and so on) and are 7, 8 and 8 tall.
+  await fillField(page, 'rows', '3');
+  await fillField(page, 'columns', '4');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('table.output-table')).toBeVisible({ timeout: 30_000 });
+  await expect(outputArea(page).locator('dl.kv')).toContainText('12 (3 rows by 4 columns)');
+  await expect(outputArea(page).locator('dl.kv')).toContainText('37 by 23 pixels');
+  const gridTiles = expectedTiles(evenSpans(37, 4), evenSpans(23, 3), 'png');
+  expect(gridTiles.map((t) => [t.x, t.width])).toEqual([
+    [0, 9],
+    [9, 9],
+    [18, 9],
+    [27, 10],
+    [0, 9],
+    [9, 9],
+    [18, 9],
+    [27, 10],
+    [0, 9],
+    [9, 9],
+    [18, 9],
+    [27, 10],
+  ]);
+  await proveTiles(page, picture, gridTiles, 'png');
+
+  // Tile size: 10 by 10. Columns start at 0, 10, 20 and 30, the last one 7 wide; rows start at 0, 10 and 20, the last 3 tall.
+  await page.locator('input[name="mode"][value="size"]').click();
+  await fillField(page, 'tileWidth', '10');
+  await fillField(page, 'tileHeight', '10');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('dl.kv')).toContainText(
+    'Smaller: the last column is 7 pixels wide and the last row is 3 pixels tall',
+    {
+      timeout: 30_000,
+    },
+  );
+  const sizeTiles = expectedTiles(stepSpans(37, 10), stepSpans(23, 10), 'png');
+  expect(sizeTiles).toHaveLength(12);
+  expect(sizeTiles[3]).toEqual({ name: 'tile-r1-c4.png', x: 30, y: 0, width: 7, height: 10 });
+  expect(sizeTiles[11]).toEqual({ name: 'tile-r3-c4.png', x: 30, y: 20, width: 7, height: 3 });
+  await proveTiles(page, picture, sizeTiles, 'png');
+
+  // JPEG tiles: the same rectangles, named .jpg, each a JPEG of the right size (JPEG is lossy, so no pixels are compared).
+  await page.locator('input[name="format"][value="jpeg"]').click();
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('table.output-table')).toContainText('tile-r1-c1.jpg', { timeout: 30_000 });
+  await expect(outputArea(page)).toContainText('JPEG tiles lose some detail');
+  await proveTiles(page, picture, expectedTiles(stepSpans(37, 10), stepSpans(23, 10), 'jpg'), 'jpeg');
+
+  // A tile size that would make too many tiles is refused with the count, and no ZIP is offered.
+  await page.locator('input[name="format"][value="png"]').click();
+  await fillField(page, 'tileWidth', '1');
+  await fillField(page, 'tileHeight', '1');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'That would make 851 tiles. The most is 400 tiles',
+    {
+      timeout: 15_000,
+    },
+  );
+  expect(await outputArea(page).locator('li', { hasText: 'tiles.zip' }).count()).toBe(0);
+
+  expect(offending(requests)).toEqual([]);
+});
+
+declare global {
+  interface Window {
+    __FODT_TOBLOB_DELAY_MS__?: number;
+    __FODT_TOBLOB_CALLS__?: number;
+  }
+}
+
+test('image-splitter: Cancel during splitting offers no ZIP and the next run works', async ({ page }) => {
+  // Every encode the page asks a canvas for is delayed by 40 ms (and counted), so 100 tiles take seconds on every engine
+  // and Cancel can be pressed part way through.
+  await page.addInitScript(() => {
+    window.__FODT_TOBLOB_DELAY_MS__ = 40;
+    window.__FODT_TOBLOB_CALLS__ = 0;
+    const original = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (this: HTMLCanvasElement, callback, type, quality) {
+      window.__FODT_TOBLOB_CALLS__ = (window.__FODT_TOBLOB_CALLS__ ?? 0) + 1;
+      const wait = window.__FODT_TOBLOB_DELAY_MS__ ?? 0;
+      if (wait > 0) setTimeout(() => original.call(this, callback, type, quality), wait);
+      else original.call(this, callback, type, quality);
+    };
+  });
+  await openTool(page, 'image-splitter');
+  const requests = recordRequests(page);
+  const picture = distinctPng('square.png', 100, 100, 7);
+  await attachImage(page, 'file', picture.file);
+  await fillField(page, 'rows', '10');
+  await fillField(page, 'columns', '10');
+  const calls = () => page.evaluate(() => window.__FODT_TOBLOB_CALLS__ ?? 0);
+  const tileNumber = () =>
+    page.evaluate(() => {
+      const match = /Tile (\d+) of 100/.exec(document.body.innerText);
+      return match ? Number(match[1]) : 0;
+    });
+
+  await runButtonOf(page).click();
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await expect.poll(tileNumber, { timeout: 30_000 }).toBeGreaterThanOrEqual(5);
+  await expect(page.locator('progress.tool-progress')).toBeVisible();
+  expect(await outputArea(page).locator('li', { hasText: 'tiles.zip' }).count()).toBe(0);
+
+  // Cancel: the run ends with the plain note, no ZIP is offered and the bar is gone.
+  await cancelButtonOf(page).click();
+  const note = outputArea(page).locator('.note-warn');
+  await expect(note).toHaveText('Cancelled before finishing. No result was produced.', { timeout: 3_000 });
+  expect(await outputArea(page).locator('li', { hasText: 'tiles.zip' }).count()).toBe(0);
+  expect(await outputArea(page).locator('table.output-table').count()).toBe(0);
+  await expect(page.locator('progress.tool-progress')).toHaveCount(0);
+
+  // It stopped at once: at most the tile being encoded when Cancel was pressed is finished afterwards, and nothing arrives.
+  const atCancel = await calls();
+  expect(atCancel).toBeLessThan(100);
+  await page.waitForTimeout(800);
+  expect((await calls()) - atCancel).toBeLessThanOrEqual(1);
+  expect(await outputArea(page).locator('li', { hasText: 'tiles.zip' }).count()).toBe(0);
+  await expect(note).toHaveText('Cancelled before finishing. No result was produced.');
+
+  // The next run starts from the beginning and finishes with every tile and a ZIP that holds all 100.
+  await page.evaluate(() => {
+    window.__FODT_TOBLOB_DELAY_MS__ = 0;
+  });
+  const before = await calls();
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'tiles.zip' })).toBeVisible({ timeout: 30_000 });
+  expect((await calls()) - before).toBeGreaterThanOrEqual(100);
+  const rows = await spriteRows(page);
+  expect(rows).toHaveLength(100);
+  expect(rows[0]![0]).toBe('tile-r01-c01.png');
+  expect(rows[99]![0]).toBe('tile-r10-c10.png');
+  const entries = readStoredZip(await downloadNamed(page, 'tiles.zip'));
+  expect(entries).toHaveLength(100);
+  expect(entries[99]!.name).toBe('tile-r10-c10.png');
   expect(offending(requests)).toEqual([]);
 });
