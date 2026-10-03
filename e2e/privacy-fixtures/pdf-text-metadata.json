@@ -1,0 +1,5 @@
+[
+  { "mode": { "field": "mode", "value": "text" }, "values": { "pages": "1-3" }, "attachesFile": true, "file": "pdf-3" },
+  { "mode": { "field": "mode", "value": "metadata" }, "attachesFile": true, "file": "pdf" },
+  { "mode": { "field": "mode", "value": "remove" }, "attachesFile": true, "file": "pdf" }
+]

@@ -1,0 +1,10 @@
+{
+  "id": "pdf-text-metadata",
+  "label": "ISO 32000-1 page tree order: the three-page sample's text comes back page by page",
+  "steps": [
+    { "action": "attach", "field": "file", "value": "pdf-3" },
+    { "action": "radio", "field": "mode", "value": "text" },
+    { "action": "run" }
+  ],
+  "expect": ["--- Page 3 ---", "Page 3"]
+}

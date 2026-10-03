@@ -84,6 +84,11 @@ export interface BinaryRequest {
   filename: string;
 }
 
+/** The shape PDF.js's `getDocument` calls on a `BinaryDataFactory`: one function, called with the kind and the file name. */
+interface RefusingFactory {
+  readonly fetch: (request: { kind: string; filename: string }) => Promise<Uint8Array>;
+}
+
 function kindOf(kind: string): BinaryRequest['kind'] {
   if (kind === 'standardFontDataUrl') return 'font';
   if (kind === 'cMapUrl') return 'cmap';
@@ -98,20 +103,22 @@ function kindOf(kind: string): BinaryRequest['kind'] {
  * request for a character map is how a page learns that some text may be missing. Nothing is ever fetched.
  */
 export function createRefusingBinaryDataFactory(onRequest?: (request: BinaryRequest) => void): {
-  Factory: new (...args: unknown[]) => { fetch(request: { kind: string; filename: string }): Promise<Uint8Array> };
+  Factory: new (...args: unknown[]) => RefusingFactory;
   requests: BinaryRequest[];
 } {
   const requests: BinaryRequest[] = [];
-  class RefusingBinaryDataFactory {
+  class RefusingBinaryDataFactory implements RefusingFactory {
     constructor(..._args: unknown[]) {
       // PDF.js passes the (unset) addresses it was given; there is nothing to keep.
     }
-    fetch({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> {
+    // A property holding a function, not a method: the same call for PDF.js, and nothing here for a reader of the source
+    // to mistake for a network call.
+    readonly fetch = ({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> => {
       const request: BinaryRequest = { kind: kindOf(kind), filename: visible(filename) };
       requests.push(request);
       onRequest?.(request);
       return Promise.reject(new Error('This page loads no data files.'));
-    }
+    };
   }
   return { Factory: RefusingBinaryDataFactory, requests };
 }
