@@ -1,0 +1,13 @@
+[req]
+distinguished_name=dn_leaf
+prompt=no
+string_mask=utf8only
+utf8=yes
+[dn_leaf]
+C=DE
+ST=Berlin
+L=Berlin
+O=Müller & Söhne GmbH
+OU=IT
+CN=example.com
+emailAddress=admin@example.com

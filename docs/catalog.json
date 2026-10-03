@@ -1321,5 +1321,12 @@
     "category": "hashing",
     "tier": 3,
     "summary": "Generate RSA, ECDSA and Ed25519 key pairs or convert keys between PEM, JWK and OpenSSH formats, with SSH fingerprints."
+  },
+  {
+    "id": "certificate-decoder",
+    "name": "X.509 Certificate & CSR Decoder",
+    "category": "hashing",
+    "tier": 3,
+    "summary": "Paste an X.509 certificate, chain or signing request and read its names, dates, key, extensions and fingerprints."
   }
 ]
