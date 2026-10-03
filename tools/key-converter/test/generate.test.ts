@@ -176,3 +176,26 @@ it('a generated ECDSA key is refused when the public part the engine gives is no
   );
   expect(refused).toBeInstanceOf(KeyConverterError);
 }, 60_000);
+
+it('an Ed25519 key is made where crypto.subtle is missing, because it needs only getRandomValues', async () => {
+  const real = globalThis.crypto;
+  // A page that is not in a secure context has getRandomValues but no crypto.subtle.
+  vi.stubGlobal('crypto', { getRandomValues: real.getRandomValues.bind(real) });
+  try {
+    const key = generateEd25519();
+    expect(key.type).toBe('ed25519');
+    expect(key.seed).toHaveLength(32);
+    // The generators that do need Web Crypto still say so in one plain sentence.
+    await expect(generateEc('P-256')).rejects.toThrow(/crypto\.subtle\) is not available here/);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+  // With no random generator at all, the refusal is a plain sentence of the package, not a TypeError.
+  vi.stubGlobal('crypto', undefined);
+  try {
+    expect(() => generateEd25519()).toThrow(KeyConverterError);
+    expect(() => generateEd25519()).toThrow(/random number generator/);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

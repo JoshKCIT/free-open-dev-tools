@@ -5,7 +5,8 @@
  * every browser, with the seed always supplied here). No other source of randomness is used anywhere in this package.
  *
  * `crypto.subtle` exists only in a secure context in a browser (https, or localhost); the check is made once at the
- * top of each generator so a missing interface is reported plainly instead of as an undefined property.
+ * top of each generator that needs it (RSA and ECDSA) so a missing interface is reported plainly instead of as an
+ * undefined property. Ed25519 needs only `crypto.getRandomValues`, which every context has, and has its own check.
  *
  * RULE, stated once and enforced by a test: no message thrown or returned from this file may ever contain a fragment
  * of a key, a secret, or a token. Describe the shape of the problem, never the content.
@@ -38,6 +39,16 @@ export function requireSecureContext(): void {
   }
 }
 
+/** Throws a plain message when the browser has no cryptographic random number generator. */
+function requireRandomSource(): void {
+  const g = globalThis as { crypto?: Crypto };
+  if (typeof g.crypto === 'undefined' || typeof g.crypto.getRandomValues !== 'function') {
+    throw new KeyConverterError(
+      'This browser has no cryptographic random number generator (crypto.getRandomValues), so a key cannot be made here.',
+    );
+  }
+}
+
 /**
  * Makes an RSA key pair of exactly 2048, 3072 or 4096 bits with public exponent 65537 and returns its PKCS#8 and
  * SubjectPublicKeyInfo bytes. The engine's own export is only carried here: the page reads both and writes every output
@@ -63,7 +74,7 @@ export async function generateRsa(bits: RsaBits): Promise<{ pkcs8: Uint8Array; s
  * public key is computed from it by @noble/curves; the library is never asked to make randomness of its own.
  */
 export function generateEd25519(): Ed25519Key {
-  requireSecureContext();
+  requireRandomSource();
   const seed = globalThis.crypto.getRandomValues(new Uint8Array(32));
   return { type: 'ed25519', pub: Uint8Array.from(ed25519.getPublicKey(seed)), seed };
 }
