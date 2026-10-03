@@ -223,13 +223,26 @@ it('the key outputs list the PKCS8 and SPKI blocks, the OpenSSH line and both fi
   const key = keyFromGeneratedRsa(made.pkcs8, made.spki);
   const result = keyOutputs(key, { comment: 'work laptop' });
 
-  expect(result.blocks.map((b) => b.id)).toEqual(['pkcs8', 'spki', 'ssh-public']);
-  expect(result.blocks.map((b) => b.private)).toEqual([true, false, false]);
-  expect(result.blocks.map((b) => b.label)).toEqual([
+  // The first two blocks are the PKCS#8 and SubjectPublicKeyInfo this page has always shown; the others are the formats
+  // plan 14-02 added (their bytes are compared with OpenSSL, ssh-keygen and Node in writers.test.ts).
+  expect(result.blocks.map((b) => b.id)).toEqual([
+    'pkcs8',
+    'spki',
+    'pkcs1-private',
+    'pkcs1-public',
+    'jwk-private',
+    'jwk-public',
+    'ssh-private',
+    'ssh-public',
+    'rfc4716',
+  ]);
+  expect(result.blocks.map((b) => b.private)).toEqual([true, false, true, false, true, false, true, false, false]);
+  expect(result.blocks.slice(0, 2).map((b) => b.label)).toEqual([
     'Private key, PKCS#8 (PEM)',
     'Public key, SubjectPublicKeyInfo (PEM)',
-    'OpenSSH public key',
   ]);
+  const sshLine = result.blocks.find((b) => b.id === 'ssh-public')!;
+  expect(sshLine.label).toBe('OpenSSH public key');
 
   // The armour is put together here from pieces, as the fixtures rule says, around Node's own export.
   const wrap = (body: string) => body.match(/.{1,64}/g)!.join('\n');
@@ -237,14 +250,15 @@ it('the key outputs list the PKCS8 and SPKI blocks, the OpenSSH line and both fi
     '-----BEGIN ' + label + '-----\n' + wrap(Buffer.from(bytes).toString('base64')) + '\n-----END ' + label + '-----\n';
   expect(result.blocks[0]!.text).toBe(pem('PRIVATE KEY', made.pkcs8));
   expect(result.blocks[1]!.text).toBe(pem('PUBLIC KEY', made.spki));
-  expect(result.blocks[2]!.text).toBe(sshPublicLine(key, 'work laptop'));
+  expect(sshLine.text).toBe(sshPublicLine(key, 'work laptop'));
 
-  // The fingerprints are those of the blob inside the line, computed by node:crypto.
-  const blob = Buffer.from(result.blocks[2]!.text.split(' ')[1]!, 'base64');
-  expect(result.fingerprints).toEqual([
+  // The fingerprints are those of the blob inside the line, computed by node:crypto, and then the JWK thumbprint.
+  const blob = Buffer.from(sshLine.text.split(' ')[1]!, 'base64');
+  expect(result.fingerprints.slice(0, 2)).toEqual([
     ['SHA256', 'SHA256:' + createHash('sha256').update(blob).digest('base64').replace(/=+$/, '')],
     ['MD5', 'MD5:' + createHash('md5').update(blob).digest('hex').match(/../g)!.join(':')],
   ]);
+  expect(result.fingerprints.map(([label]) => label)).toEqual(['SHA256', 'MD5', 'JWK thumbprint']);
   expect(result.facts).toEqual([
     ['Key type', 'RSA'],
     ['Size in bits', '2048'],
@@ -253,8 +267,9 @@ it('the key outputs list the PKCS8 and SPKI blocks, the OpenSSH line and both fi
   expect(result.warnings).toEqual([]);
 
   // The comment is optional, at most 256 characters, and holds no line break.
-  expect(keyOutputs(key, { comment: '' }).blocks[2]!.text.includes(' ', 'ssh-rsa '.length)).toBe(false);
-  expect(keyOutputs(key, { comment: 'x'.repeat(256) }).blocks[2]!.text.endsWith(' ' + 'x'.repeat(256))).toBe(true);
+  const sshText = (comment: string) => keyOutputs(key, { comment }).blocks.find((b) => b.id === 'ssh-public')!.text;
+  expect(sshText('').includes(' ', 'ssh-rsa '.length)).toBe(false);
+  expect(sshText('x'.repeat(256)).endsWith(' ' + 'x'.repeat(256))).toBe(true);
   for (const bad of ['x'.repeat(257), 'one\ntwo', 'one\rtwo']) {
     const err = thrown(() => keyOutputs(key, { comment: bad }));
     expect(err).toBeInstanceOf(KeyConverterError);
@@ -439,7 +454,12 @@ it('the key outputs of ECDSA and Ed25519 keys list the same blocks, the line and
     const made = nodeKey(kind);
     const key = readPkcs8(made.pkcs8);
     const result = keyOutputs(key, { comment: 'work laptop' });
-    expect(result.blocks.map((b) => b.id)).toEqual(['pkcs8', 'spki', 'ssh-public']);
+    expect(result.blocks.map((b) => b.id)).toEqual(
+      kind === 'ed25519'
+        ? ['pkcs8', 'spki', 'jwk-private', 'jwk-public', 'ssh-private', 'ssh-public', 'rfc4716']
+        : ['pkcs8', 'spki', 'sec1', 'jwk-private', 'jwk-public', 'ssh-private', 'ssh-public', 'rfc4716'],
+    );
+    const sshBlock = result.blocks.find((b) => b.id === 'ssh-public')!;
     const wrap = (body: string) => body.match(/.{1,64}/g)!.join('\n');
     const pem = (label: string, bytes: Uint8Array) =>
       '-----BEGIN ' +
@@ -451,9 +471,9 @@ it('the key outputs of ECDSA and Ed25519 keys list the same blocks, the line and
       '-----\n';
     expect(result.blocks[0]!.text).toBe(pem('PRIVATE KEY', made.pkcs8));
     expect(result.blocks[1]!.text).toBe(pem('PUBLIC KEY', made.spki));
-    expect(result.blocks[2]!.text).toBe(sshPublicLine(key, 'work laptop'));
-    const blob = Buffer.from(result.blocks[2]!.text.split(' ')[1]!, 'base64');
-    expect(result.fingerprints).toEqual([
+    expect(sshBlock.text).toBe(sshPublicLine(key, 'work laptop'));
+    const blob = Buffer.from(sshBlock.text.split(' ')[1]!, 'base64');
+    expect(result.fingerprints.slice(0, 2)).toEqual([
       ['SHA256', 'SHA256:' + createHash('sha256').update(blob).digest('base64').replace(/=+$/, '')],
       ['MD5', 'MD5:' + createHash('md5').update(blob).digest('hex').match(/../g)!.join(':')],
     ]);
@@ -475,7 +495,7 @@ it('the key outputs of ECDSA and Ed25519 keys list the same blocks, the line and
   const publicOnly = keyOutputs(readSpki(new Uint8Array(Buffer.from(ED25519_PUBLIC.spkiB64, 'base64'))), {
     comment: '',
   });
-  expect(publicOnly.blocks.map((b) => b.id)).toEqual(['spki', 'ssh-public']);
+  expect(publicOnly.blocks.map((b) => b.id)).toEqual(['spki', 'jwk-public', 'ssh-public', 'rfc4716']);
 });
 
 it('no thrown message, warning or output label holds a fragment of a key', () => {
