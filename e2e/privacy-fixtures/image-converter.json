@@ -5,5 +5,11 @@
     "values": { "quality": "85" },
     "attachesFile": true,
     "file": "jpeg"
+  },
+  {
+    "mode": { "field": "transform", "value": "edit" },
+    "values": { "quality": "85", "cropX": "2", "cropY": "2", "cropW": "8", "cropH": "8" },
+    "attachesFile": true,
+    "file": "png"
   }
 ]

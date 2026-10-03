@@ -28,11 +28,14 @@ import type {
   ImageConverterNeedsPageCanvasMessage,
 } from './workers/image-converter.worker';
 import {
+  formatInfo,
   interpretEncodeResult,
   outputFileName,
   OUTPUT_FORMATS,
+  planEdits,
   type ConvertOptions,
   type FileKind,
+  type ImageEdits,
   type OutputFormatId,
 } from '@fodt/image-converter';
 import type { RunContext } from './tool-ui';
@@ -171,7 +174,13 @@ async function finishOnPageThread(data: ImageConverterNeedsPageCanvasMessage): P
       ctx.fillStyle = data.background;
       ctx.fillRect(0, 0, data.targetWidth, data.targetHeight);
     }
-    ctx.drawImage(bitmap, 0, 0, data.targetWidth, data.targetHeight);
+    ctx.drawImage(
+      (data.edits ? drawEdited(bitmap, data.edits) : undefined) ?? bitmap,
+      0,
+      0,
+      data.targetWidth,
+      data.targetHeight,
+    );
     // See the worker's own `testStepDelayMs` doc comment: an engine with no
     // `OffscreenCanvas` anywhere finishes this whole step here rather than
     // in the worker, so the same artificial test-only pause is honoured on
@@ -200,6 +209,77 @@ async function finishOnPageThread(data: ImageConverterNeedsPageCanvasMessage): P
   } finally {
     bitmap.close();
   }
+}
+
+/**
+ * Draws the cropped, turned and mirrored picture onto a canvas of the edited size (never attached to the document),
+ * from the plan `planEdits` makes: the same function, on the same decoded size, as the worker's own drawing site.
+ * Returns nothing when the edits change nothing, so the plain path is used. Every transform number is a whole number,
+ * so each pixel is copied to its place and smoothing is off.
+ */
+function drawEdited(bitmap: ImageBitmap, edits: ImageEdits): CanvasImageSource | undefined {
+  const plan = planEdits(bitmap.width, bitmap.height, edits);
+  if (plan.identity) return undefined;
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
+  if (typeof OffscreenCanvas !== 'undefined') {
+    canvas = new OffscreenCanvas(plan.width, plan.height);
+  } else {
+    canvas = document.createElement('canvas');
+    canvas.width = plan.width;
+    canvas.height = plan.height;
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('This browser could not provide a 2D drawing surface for this image.');
+  ctx.imageSmoothingEnabled = false;
+  const [a, b, c, d, e, f] = plan.transform;
+  ctx.setTransform(a, b, c, d, e, f);
+  ctx.drawImage(
+    bitmap,
+    plan.source.x,
+    plan.source.y,
+    plan.source.width,
+    plan.source.height,
+    0,
+    0,
+    plan.source.width,
+    plan.source.height,
+  );
+  return canvas;
+}
+
+/**
+ * Encodes a canvas the page drew itself (the SVG path) to the chosen format and returns the file bytes. A canvas that
+ * is never attached to the document is used by the caller; for JPEG, which has no transparency, the canvas is first
+ * laid over the background colour. The same media-type check as every other encode in this file refuses a browser that
+ * would hand back another format under the requested name.
+ */
+export async function encodeCanvasOnPage(
+  canvas: HTMLCanvasElement,
+  format: OutputFormatId,
+  qualityFraction: number,
+  background: string,
+): Promise<{ bytes: Uint8Array; mediaType: string }> {
+  const info = formatInfo(format);
+  let surface = canvas;
+  if (format === 'jpeg') {
+    const flat = document.createElement('canvas'); // never appended to the document
+    flat.width = canvas.width;
+    flat.height = canvas.height;
+    const flatContext = flat.getContext('2d');
+    if (!flatContext) throw new Error('This browser could not provide a 2D drawing surface for this image.');
+    flatContext.fillStyle = background;
+    flatContext.fillRect(0, 0, flat.width, flat.height);
+    flatContext.drawImage(canvas, 0, 0);
+    surface = flat;
+  }
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    const done = (b: Blob | null) => (b ? resolve(b) : reject(new Error('This browser could not encode the image.')));
+    if (format === 'png') surface.toBlob(done, info.mediaType);
+    else surface.toBlob(done, info.mediaType, qualityFraction);
+  });
+  const interpretation = interpretEncodeResult(info.mediaType, blob.type);
+  if (!interpretation.ok) throw new Error(encodeFailureMessage(format, interpretation.substitutedType!));
+  return { bytes: new Uint8Array(await blob.arrayBuffer()), mediaType: info.mediaType };
 }
 
 /** Cached for the lifetime of the page: the answer never changes between runs, and probing again on every run would waste a worker round trip. */

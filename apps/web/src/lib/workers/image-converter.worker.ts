@@ -34,8 +34,11 @@ import {
   planSize,
   largestFittingSize,
   MAX_OUTPUT_PIXELS,
+  planEdits,
   type ConvertOptions,
+  type EditPlan,
   type FileKind,
+  type ImageEdits,
   type OutputFormatId,
 } from '@fodt/image-converter';
 
@@ -119,6 +122,8 @@ export interface ImageConverterNeedsPageCanvasMessage {
   warnings: string[];
   /** Forwarded from the job message; see its own doc comment. */
   testStepDelayMs?: number;
+  /** Crop, rotate and flip, when the visitor asked for any; the page plans them again with the same `planEdits`. */
+  edits?: ImageEdits;
 }
 
 export type ImageConverterWorkerMessage =
@@ -193,6 +198,34 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Draws the cropped, turned and mirrored picture onto a surface of the edited
+ * size, from the plan `planEdits` made (the page-thread fallback in
+ * `run-image-converter-in-worker.ts` makes the same plan with the same
+ * function). Every transform number is a whole number, so each pixel is
+ * copied to its place and smoothing is off.
+ */
+function drawEdited(bitmap: ImageBitmap, plan: EditPlan): OffscreenCanvas {
+  const canvas = new OffscreenCanvas(plan.width, plan.height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new ImageConverterError('This browser could not provide a 2D drawing surface for this image.');
+  ctx.imageSmoothingEnabled = false;
+  const [a, b, c, d, e, f] = plan.transform;
+  ctx.setTransform(a, b, c, d, e, f);
+  ctx.drawImage(
+    bitmap,
+    plan.source.x,
+    plan.source.y,
+    plan.source.width,
+    plan.source.height,
+    0,
+    0,
+    plan.source.width,
+    plan.source.height,
+  );
+  return canvas;
+}
+
 async function handleJob(job: ImageConverterJobMessage): Promise<void> {
   let bitmap: ImageBitmap | undefined;
   let transferredOwnership = false;
@@ -219,10 +252,19 @@ async function handleJob(job: ImageConverterJobMessage): Promise<void> {
     let targetWidth = plan.targetWidth;
     let targetHeight = plan.targetHeight;
     let warnings = plan.warnings;
-    if (bitmap.width !== plan.sourceWidth || bitmap.height !== plan.sourceHeight) {
+    // Crop, rotate and flip are planned on the decoded picture's real, upright size (crop is in pixels of that
+    // picture); an edit that changes nothing leaves this path exactly as it was.
+    let editPlan: EditPlan | undefined = job.options.edits
+      ? planEdits(bitmap.width, bitmap.height, job.options.edits)
+      : undefined;
+    if (editPlan?.identity) editPlan = undefined;
+    if (editPlan || bitmap.width !== plan.sourceWidth || bitmap.height !== plan.sourceHeight) {
       sourceWidth = bitmap.width;
       sourceHeight = bitmap.height;
-      const resized = planSize({ width: sourceWidth, height: sourceHeight }, job.options.resize);
+      const resized = planSize(
+        { width: editPlan?.width ?? sourceWidth, height: editPlan?.height ?? sourceHeight },
+        job.options.resize,
+      );
       targetWidth = resized.width;
       targetHeight = resized.height;
       warnings = [...warnings, ...resized.warnings];
@@ -255,6 +297,7 @@ async function handleJob(job: ImageConverterJobMessage): Promise<void> {
           background: plan.background,
           warnings,
           testStepDelayMs: stepDelay,
+          edits: editPlan ? job.options.edits : undefined,
         },
         [forThePage],
       );
@@ -272,7 +315,7 @@ async function handleJob(job: ImageConverterJobMessage): Promise<void> {
       ctx.fillStyle = plan.background;
       ctx.fillRect(0, 0, targetWidth, targetHeight);
     }
-    ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
+    ctx.drawImage(editPlan ? drawEdited(bitmap, editPlan) : bitmap, 0, 0, targetWidth, targetHeight);
     workerGlobal.postMessage({ type: 'image-converter-progress', fraction: 2 / 3, detail: 'Resized' });
     if (stepDelay) await sleep(stepDelay);
 

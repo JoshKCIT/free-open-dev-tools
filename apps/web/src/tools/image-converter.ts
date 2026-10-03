@@ -1,5 +1,20 @@
-import { meta, OUTPUT_FORMATS, type OutputFormatId, type ResizeMode } from '@fodt/image-converter';
-import { probeEncodersInWorker, convertImageInWorker } from '../lib/run-image-converter-in-worker';
+import {
+  meta,
+  OUTPUT_FORMATS,
+  FLIPS,
+  ROTATIONS,
+  type FlipMode,
+  type ImageEdits,
+  type OutputFormatId,
+  type ResizeMode,
+  type Rotation,
+} from '@fodt/image-converter';
+import {
+  probeEncodersInWorker,
+  convertImageInWorker,
+  type ConvertImageResult,
+} from '../lib/run-image-converter-in-worker';
+import { rasterizeSvgFile, type SvgConvertResult } from '../lib/image-converter-svg';
 import {
   defineTool,
   bool,
@@ -17,6 +32,49 @@ const ACCEPT = 'image/png,image/jpeg,image/gif,image/webp,image/bmp';
 
 function resizeModeIs(values: Values, mode: ResizeMode): boolean {
   return str(values, 'resize', 'none') === mode;
+}
+
+/** Crop sides are whole pixels from 0 to this many. */
+const CROP_MAX = 100_000;
+
+function transformIsEdit(values: Values): boolean {
+  return str(values, 'transform', 'none') === 'edit';
+}
+
+/**
+ * Reads the crop, rotation and flip fields, only when Crop, rotate or flip is chosen (a hidden field never changes a
+ * result). A crop value outside its range or not a whole number is refused naming the field, never replaced.
+ */
+function readEdits(values: Values): { edits?: ImageEdits; error?: string } {
+  if (!transformIsEdit(values)) return {};
+  const sides = [
+    ['cropX', 'Crop left'],
+    ['cropY', 'Crop top'],
+    ['cropW', 'Crop width'],
+    ['cropH', 'Crop height'],
+  ] as const;
+  const read: Record<string, number> = {};
+  for (const [name, label] of sides) {
+    const value = num(values, name, 0);
+    if (!Number.isInteger(value) || value < 0 || value > CROP_MAX) {
+      return { error: `${label} must be a whole number from 0 to ${CROP_MAX.toLocaleString('en-US')}.` };
+    }
+    read[name] = value;
+  }
+  const rotate = Number(str(values, 'rotate', '0'));
+  const flip = str(values, 'flip', 'none');
+  const edits: ImageEdits = {
+    rotate: (ROTATIONS as readonly number[]).includes(rotate) ? (rotate as Rotation) : 0,
+    flip: (FLIPS as readonly string[]).includes(flip) ? (flip as FlipMode) : 'none',
+  };
+  const width = read.cropW!;
+  const height = read.cropH!;
+  if (width === 0 && height === 0) return { edits };
+  if (width === 0 || height === 0) {
+    return { error: 'Crop width and Crop height must both be set, or both left at 0 to keep the whole image.' };
+  }
+  edits.crop = { x: read.cropX!, y: read.cropY!, width, height };
+  return { edits };
 }
 
 function formatNeedsQuality(values: Values): boolean {
@@ -102,6 +160,88 @@ const fields: Field[] = [
     default: false,
     visible: (values) => resizeModeIs(values, 'fit'),
   },
+  {
+    name: 'transform',
+    label: 'Crop, rotate and flip',
+    type: 'select',
+    default: 'none',
+    options: [
+      { value: 'none', label: 'No crop, rotate or flip' },
+      { value: 'edit', label: 'Crop, rotate or flip' },
+    ],
+    help: 'Applied in this order before any resize: crop, then rotate, then flip.',
+  },
+  {
+    name: 'cropX',
+    label: 'Crop left',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: CROP_MAX,
+    visible: transformIsEdit,
+    help: 'Pixels from the left edge of the upright image.',
+  },
+  {
+    name: 'cropY',
+    label: 'Crop top',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: CROP_MAX,
+    visible: transformIsEdit,
+    help: 'Pixels from the top edge of the upright image.',
+  },
+  {
+    name: 'cropW',
+    label: 'Crop width',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: CROP_MAX,
+    visible: transformIsEdit,
+    help: 'Pixels. Leave width and height at 0 to keep the whole image.',
+  },
+  {
+    name: 'cropH',
+    label: 'Crop height',
+    type: 'number',
+    default: 0,
+    min: 0,
+    max: CROP_MAX,
+    visible: transformIsEdit,
+    help: 'Pixels. Leave width and height at 0 to keep the whole image.',
+  },
+  {
+    name: 'rotate',
+    label: 'Rotate',
+    type: 'select',
+    default: '0',
+    options: ROTATIONS.map((degrees) => ({
+      value: String(degrees),
+      label: degrees === 0 ? 'Not rotated' : `${degrees} degrees clockwise`,
+    })),
+    visible: transformIsEdit,
+  },
+  {
+    name: 'flip',
+    label: 'Flip',
+    type: 'select',
+    default: 'none',
+    options: [
+      { value: 'none', label: 'Not flipped' },
+      { value: 'horizontal', label: 'Left to right' },
+      { value: 'vertical', label: 'Top to bottom' },
+      { value: 'both', label: 'Both ways' },
+    ],
+    visible: transformIsEdit,
+  },
+  {
+    name: 'allowSvg',
+    label: 'Allow SVG input',
+    type: 'checkbox',
+    default: false,
+    help: 'Off, an SVG is refused. On, an SVG that stays within itself (no scripts, other files or addresses) is drawn by this browser and converted. The file picker may need All files to show it.',
+  },
 ];
 
 function writableTable(writable: Record<OutputFormatId, boolean>): [string, string][] {
@@ -140,6 +280,9 @@ export default defineTool({
       pairs: writableTable(writable),
     };
 
+    const { edits, error: editError } = readEdits(values);
+    if (editError) return { outputs: [capabilityOutput], errors: [{ message: editError }] };
+
     const options = {
       format: str(values, 'format', 'png') as OutputFormatId,
       quality: num(values, 'quality', 85),
@@ -152,11 +295,15 @@ export default defineTool({
         keepAspect: bool(values, 'keepAspect', false),
         enlarge: bool(values, 'enlarge', false),
       },
+      ...(edits ? { edits } : {}),
     };
 
-    let result;
+    let result: ConvertImageResult | SvgConvertResult;
     try {
-      result = await convertImageInWorker(file, options, ctx);
+      // An SVG is drawn on this page only when its box is ticked; every other file, and every SVG with the box
+      // unticked, takes the one path this page always had, error text included.
+      const svg = bool(values, 'allowSvg', false) ? await rasterizeSvgFile(file, options, ctx) : undefined;
+      result = svg ?? (await convertImageInWorker(file, options, ctx));
     } catch (err) {
       // An abort rejection is let through rather than swallowed: the
       // runner's own cancel handling already owns the single cancellation
