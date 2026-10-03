@@ -1,7 +1,11 @@
+import { createHmac } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { decodeBase32, encodeBase32 } from '../src/base32';
 import { hotp, secondsLeft, totpStep, totpWindow, type OtpAlgorithm } from '../src/otp';
 import { MAX_TIME_CHARS, TimeError, formatUtc, parseTimeInput } from '../src/time';
-import { meta as toolMeta } from '../src/index';
+import { Base32Error, TotpError, computeCodes, meta as toolMeta } from '../src/index';
+import { otpauthUri } from '../src/uri';
+import { HOTP_CASES, PYOTP_VERSION, TOTP_CASES } from './fixtures/pyotp-cases';
 
 /**
  * Expected values come only from the specifications: RFC 4226 Appendix D (the ten HOTP values), RFC 6238 Appendix B (the
@@ -261,4 +265,337 @@ it('second 59 is the last second of step 1 and second 60 starts step 2 with 30 s
 it('meta pins @noble/hashes exactly', () => {
   expect(toolMeta.id).toBe('totp-generator');
   expect(toolMeta.dependencies['@noble/hashes']).toBe('2.4.0');
+});
+
+// The RFC 4226 and RFC 6238 test secret as the Base32 text an app is given, grouped by spaces.
+const RFC_SEED_B32 = 'GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ';
+
+it('the window lists the previous, current, next and following steps with their start and end', () => {
+  const at59 = totpWindow(SEED_20, { seconds: 59, period: 30, digits: 8, algorithm: 'SHA1' });
+  expect(at59.map((row) => [row.label, row.step, row.startSeconds, row.endSeconds])).toEqual([
+    ['previous', 0n, 0, 29],
+    ['current', 1n, 30, 59],
+    ['next', 2n, 60, 89],
+    ['after next', 3n, 90, 119],
+  ]);
+  // RFC 4226 Appendix D "Truncated Decimal" for counts 0 to 3 is 1284755224, 1094287082, 137359152 and 1726969429; the
+  // last eight digits of each are the 8 digit codes of the steps (and step 1 is the RFC 6238 value for time 59).
+  expect(at59.map((row) => row.code)).toEqual(['84755224', '94287082', '37359152', '26969429']);
+  // At the very first second there is no previous step.
+  const at0 = totpWindow(SEED_20, { seconds: 0, period: 30, digits: 6, algorithm: 'SHA1' });
+  expect(at0.map((row) => [row.label, row.step])).toEqual([
+    ['current', 0n],
+    ['next', 1n],
+    ['after next', 2n],
+  ]);
+  expect(at0.map((row) => row.code)).toEqual(['755224', '287082', '359152']);
+  // The last second of step 0 and the first of step 1.
+  expect(totpWindow(SEED_20, { seconds: 29, period: 30, digits: 6, algorithm: 'SHA1' })[0]?.label).toBe('current');
+  expect(totpWindow(SEED_20, { seconds: 30, period: 30, digits: 6, algorithm: 'SHA1' })[0]?.label).toBe('previous');
+  // A period of one second: every step is one second, so start and end are the same second.
+  const one = totpWindow(SEED_20, { seconds: 5, period: 1, digits: 6, algorithm: 'SHA1' });
+  expect(one.map((row) => [row.step, row.startSeconds, row.endSeconds])).toEqual([
+    [4n, 4, 4],
+    [5n, 5, 5],
+    [6n, 6, 6],
+    [7n, 7, 7],
+  ]);
+  // The longest period, a day, ending on the last second of the day.
+  const day = totpWindow(SEED_20, { seconds: 86399, period: 86400, digits: 6, algorithm: 'SHA1' });
+  expect(day.map((row) => [row.label, row.startSeconds, row.endSeconds])).toEqual([
+    ['current', 0, 86399],
+    ['next', 86400, 172799],
+    ['after next', 172800, 259199],
+  ]);
+  // The same through computeCodes: the seconds left as of the run are reported with the window.
+  const totpOf = (over: Partial<Parameters<typeof computeCodes>[0]> = {}) =>
+    computeCodes({ mode: 'totp', secret: RFC_SEED_B32, algorithm: 'SHA1', digits: 6, period: 30, seconds: 0, ...over });
+  const result = totpOf({ digits: 8, seconds: 59 });
+  expect(result.window.map((row) => row.code)).toEqual(['84755224', '94287082', '37359152', '26969429']);
+  expect(result.secondsLeft).toBe(1);
+  expect(result.counters).toEqual([]);
+  expect(totpOf({ digits: 8, seconds: 60 }).secondsLeft).toBe(30);
+  // Period and time limits: 1 and 86400 are accepted, 0 and 86401 are refused naming the field.
+  for (const period of [1, 86400]) expect(() => totpOf({ period })).not.toThrow();
+  for (const period of [0, 86401, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    expect(() => totpOf({ period }), String(period)).toThrowError('Period must be a whole number from 1 to 86400.');
+  }
+  for (const seconds of [-1, 1.5, 253402300800, Number.NaN]) {
+    expect(() => totpOf({ seconds }), String(seconds)).toThrowError(TotpError);
+  }
+});
+
+it('HOTP lists counters N to N+4 and refuses counters beyond 9007199254740991', () => {
+  const hotpOf = (over: Partial<Parameters<typeof computeCodes>[0]> = {}) =>
+    computeCodes({ mode: 'hotp', secret: RFC_SEED_B32, algorithm: 'SHA1', digits: 6, counter: 0, ...over });
+  const rowsAt = (counter: number) => hotpOf({ counter }).counters;
+  // RFC 4226 Appendix D: counts 0 to 9.
+  expect(rowsAt(0).map((row) => [row.counter, row.code])).toEqual(
+    RFC4226_CODES.slice(0, 5).map((code, count) => [BigInt(count), code]),
+  );
+  expect(rowsAt(5).map((row) => [row.counter, row.code])).toEqual(
+    RFC4226_CODES.slice(5, 10).map((code, count) => [BigInt(count + 5), code]),
+  );
+  const result = hotpOf({ counter: 3 });
+  expect(result.window).toEqual([]);
+  expect(result.secondsLeft).toBeUndefined();
+  // The largest counter is accepted and its rows run on past it as 64 bit counters.
+  const top = rowsAt(9007199254740991);
+  expect(top.map((row) => row.counter)).toEqual([
+    9007199254740991n,
+    9007199254740992n,
+    9007199254740993n,
+    9007199254740994n,
+    9007199254740995n,
+  ]);
+  expect(top.map((row) => row.code)).toEqual(top.map((row) => hotp(SEED_20, row.counter, 6, 'SHA1')));
+  // Larger, negative, fractional and non-numeric counters are refused naming the field.
+  for (const counter of [9007199254740992, 1e300, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    expect(() => rowsAt(counter), String(counter)).toThrowError(
+      'Counter must be a whole number from 0 to 9007199254740991.',
+    );
+  }
+  expect(() => hotpOf({ counter: '5' as unknown as number })).toThrowError(TotpError);
+  expect(() => hotpOf({ counter: undefined })).toThrowError(TotpError);
+  // Each mode reads only its own fields: a hidden period, time or counter never blocks the mode in use.
+  expect(() => hotpOf({ counter: 1, period: 0, seconds: -5 })).not.toThrow();
+  expect(() =>
+    computeCodes({
+      mode: 'totp',
+      secret: RFC_SEED_B32,
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      seconds: 59,
+      counter: -1,
+    }),
+  ).not.toThrow();
+  // A mode that is neither is refused.
+  expect(() => hotpOf({ mode: 'both' as unknown as 'hotp' })).toThrowError(TotpError);
+});
+
+it('60 random cases recorded from pyotp 2.10.0 give the same codes', () => {
+  expect(PYOTP_VERSION).toBe('2.10.0');
+  expect(TOTP_CASES.length).toBe(60);
+  // The cases cover all three algorithms, all three digit counts and all three periods.
+  expect(new Set(TOTP_CASES.map((c) => c.algorithm))).toEqual(new Set(['SHA1', 'SHA256', 'SHA512']));
+  expect(new Set(TOTP_CASES.map((c) => c.digits))).toEqual(new Set([6, 7, 8]));
+  expect(new Set(TOTP_CASES.map((c) => c.period))).toEqual(new Set([15, 30, 60]));
+  for (const c of TOTP_CASES) {
+    const seed = hexBytes(c.seedHex);
+    // pyotp wrote the Base32 text, so reading it back is also checked against Python's encoder.
+    expect(Array.from(decodeBase32(c.seedB32)), c.seedB32).toEqual(Array.from(seed));
+    expect(encodeBase32(seed, false)).toBe(c.seedB32);
+    expect(
+      hotp(seed, totpStep(c.seconds, c.period), c.digits, c.algorithm),
+      `${c.algorithm} ${c.digits} ${c.period} ${c.seconds}`,
+    ).toBe(c.code);
+    const current = computeCodes({
+      mode: 'totp',
+      secret: c.seedB32.toLowerCase(),
+      algorithm: c.algorithm,
+      digits: c.digits,
+      period: c.period,
+      seconds: c.seconds,
+    }).window.find((row) => row.label === 'current');
+    expect(current?.code).toBe(c.code);
+  }
+});
+
+it('20 random HOTP cases recorded from pyotp 2.10.0 give the same codes, with counters past 32 and 53 bits', () => {
+  expect(HOTP_CASES.length).toBe(20);
+  const counters = HOTP_CASES.map((c) => c.counter);
+  for (const wide of [
+    '4294967295',
+    '4294967296',
+    '9007199254740991',
+    '9007199254740992',
+    '9223372036854775808',
+    '18446744073709551615',
+  ]) {
+    expect(counters, wide).toContain(wide);
+  }
+  for (const c of HOTP_CASES) {
+    expect(
+      hotp(hexBytes(c.seedHex), BigInt(c.counter), c.digits, c.algorithm),
+      `${c.algorithm} ${c.digits} ${c.counter}`,
+    ).toBe(c.code);
+  }
+  // A counter that needs more than 8 bytes is refused by the algorithm itself.
+  expect(() => hotp(SEED_20, 18446744073709551616n, 6, 'SHA1')).toThrowError(TotpError);
+  expect(() => hotp(SEED_20, -1n, 6, 'SHA1')).toThrowError(TotpError);
+});
+
+it('200 random HOTP values equal an HMAC built with Node crypto', () => {
+  // A small seeded generator (mulberry32), never an unseeded random source.
+  let state = 0x14050;
+  const next = (): number => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const algorithms = ['SHA1', 'SHA256', 'SHA512'] as const;
+  for (let round = 0; round < 200; round++) {
+    const secret = Uint8Array.from({ length: 10 + Math.floor(next() * 50) }, () => Math.floor(next() * 256));
+    const algorithm = algorithms[Math.floor(next() * 3)]!;
+    const digits = (6 + Math.floor(next() * 3)) as 6 | 7 | 8;
+    const counter = (BigInt(Math.floor(next() * 2 ** 32)) << 21n) | BigInt(Math.floor(next() * 2 ** 21));
+    // RFC 4226 section 5.3 written out again here with Node's own HMAC: an 8 byte big-endian counter, the low 4 bits of the
+    // last byte as the offset, 31 bits from there, then the last `digits` decimal digits.
+    const message = Buffer.alloc(8);
+    message.writeBigUInt64BE(counter);
+    const mac = createHmac(algorithm.toLowerCase(), secret).update(message).digest();
+    const offset = mac[mac.length - 1]! & 0x0f;
+    const bin = mac.readUInt32BE(offset) & 0x7fffffff;
+    expect(hotp(secret, counter, digits, algorithm), `${algorithm} ${digits} ${counter}`).toBe(
+      String(bin % 10 ** digits).padStart(digits, '0'),
+    );
+  }
+}, 60_000);
+
+it('short secrets, 7 digits and non-default settings give their notes', () => {
+  const SHORT = 'This secret is 64 bits. RFC 4226 requires at least 128 bits and recommends 160.';
+  const SEVEN = 'Many authenticator apps do not accept 7-digit codes.';
+  const OTHER =
+    'SHA-1, 6 digits and a 30-second period work in every authenticator app. Other settings are written into the link, but some apps ignore them and show wrong codes; check against the codes shown here before relying on it.';
+  const bytes = (n: number) => Uint8Array.from({ length: n }, (_, i) => (i * 37 + 11) & 255);
+  const totpOf = (secret: Uint8Array, over: Partial<Parameters<typeof computeCodes>[0]> = {}) =>
+    computeCodes({
+      mode: 'totp',
+      secret: encodeBase32(secret),
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      seconds: 59,
+      ...over,
+    });
+  const hotpOf = (over: Partial<Parameters<typeof computeCodes>[0]> = {}) =>
+    computeCodes({ mode: 'hotp', secret: encodeBase32(bytes(20)), algorithm: 'SHA1', digits: 6, counter: 0, ...over });
+  // RFC 4226 section 4 requirement R6: at least 128 bits, 160 recommended.
+  expect(totpOf(bytes(8)).warnings).toEqual([SHORT]);
+  expect(totpOf(bytes(15)).warnings).toEqual([
+    'This secret is 120 bits. RFC 4226 requires at least 128 bits and recommends 160.',
+  ]);
+  expect(totpOf(bytes(16)).warnings).toEqual([]);
+  expect(totpOf(bytes(20)).warnings).toEqual([]);
+  // The warning is a warning: the codes are still made.
+  expect(totpOf(bytes(8)).window.length).toBe(4);
+  // The usual settings give no note at all.
+  expect(totpOf(bytes(20)).notes).toEqual([]);
+  expect(totpOf(bytes(20), { digits: 7 }).notes).toEqual([SEVEN, OTHER]);
+  expect(totpOf(bytes(20), { digits: 8 }).notes).toEqual([OTHER]);
+  expect(totpOf(bytes(20), { algorithm: 'SHA256' }).notes).toEqual([OTHER]);
+  expect(totpOf(bytes(20), { algorithm: 'SHA512' }).notes).toEqual([OTHER]);
+  expect(totpOf(bytes(20), { period: 60 }).notes).toEqual([OTHER]);
+  expect(totpOf(bytes(20), { period: 1 }).notes).toEqual([OTHER]);
+  // HOTP has no period, so a period never gives a note there; its algorithm and digits still do.
+  expect(hotpOf({ period: 60 }).notes).toEqual([]);
+  expect(hotpOf({ digits: 7 }).notes).toEqual([SEVEN, OTHER]);
+  expect(hotpOf({ algorithm: 'SHA256' }).notes).toEqual([OTHER]);
+  // The link is made only when an account name is given, and carries the settings.
+  expect(totpOf(bytes(20)).uri).toBeUndefined();
+  expect(totpOf(bytes(20), { account: '   ' }).uri).toBeUndefined();
+  const withLink = totpOf(bytes(20), { issuer: 'Example', account: 'alice', digits: 8 });
+  expect(withLink.uri).toBe(
+    otpauthUri({
+      type: 'totp',
+      secret: bytes(20),
+      issuer: 'Example',
+      account: 'alice',
+      algorithm: 'SHA1',
+      digits: 8,
+      period: 30,
+      counter: 0n,
+    }),
+  );
+  const hotpLink = hotpOf({ issuer: 'Example', account: 'alice', counter: 9 });
+  expect(hotpLink.uri?.endsWith('&issuer=Example&counter=9')).toBe(true);
+  // Issuer and account have a length limit of 256 characters each.
+  expect(() => totpOf(bytes(20), { account: 'a'.repeat(257) })).toThrowError(
+    /Account is 257 characters. The limit is 256/,
+  );
+  expect(() => totpOf(bytes(20), { issuer: 'i'.repeat(257), account: 'a' })).toThrowError(
+    /Issuer is 257 characters. The limit is 256/,
+  );
+  expect(() => totpOf(bytes(20), { issuer: 'i'.repeat(256), account: 'a'.repeat(256) })).not.toThrow();
+  // A secret over 1,024 characters is refused by its length before it is read; 1,024 is read.
+  const longSecret = (length: number) => () =>
+    computeCodes({ mode: 'totp', secret: 'A'.repeat(length), algorithm: 'SHA1', digits: 6, period: 30, seconds: 0 });
+  expect(longSecret(1025)).toThrowError(/This secret is 1025 characters. The limit is 1,024/);
+  expect(longSecret(1024)).not.toThrow();
+  // An empty secret, digits and an algorithm out of range are refused plainly.
+  expect(() => totpOf(new Uint8Array(0))).toThrowError(TotpError);
+  expect(() => totpOf(bytes(20), { secret: '- = -' })).toThrowError(TotpError);
+  expect(() => totpOf(bytes(20), { digits: 9 })).toThrowError('Digits must be a whole number from 6 to 8.');
+  expect(() => totpOf(bytes(20), { digits: 5 })).toThrowError('Digits must be a whole number from 6 to 8.');
+  for (const algorithm of ['MD5', '__proto__', 'toString', 'constructor', 'sha1']) {
+    expect(() => totpOf(bytes(20), { algorithm: algorithm as unknown as 'SHA1' }), algorithm).toThrowError(
+      'Algorithm must be SHA1, SHA256 or SHA512.',
+    );
+  }
+});
+
+it('no thrown message, warning or note holds the secret', () => {
+  // A 20 byte secret that is not one of the RFC seeds, as Base32 text and as hexadecimal.
+  const seed = Uint8Array.from({ length: 20 }, (_, i) => (i * 53 + 7) & 255);
+  const base32 = encodeBase32(seed, false);
+  const hex = Array.from(seed, (b) => b.toString(16).padStart(2, '0')).join('');
+  const windows = (text: string, size: number): string[] =>
+    Array.from({ length: text.length - size + 1 }, (_, i) => text.slice(i, i + size));
+  const hexWindows = windows(hex, 8);
+  const leaks = (text: string, typed: string): boolean =>
+    windows(typed.replace(/[ -]/g, ''), 8).some((w) => text.includes(w)) || hexWindows.some((w) => text.includes(w));
+  const typedForms = [
+    base32,
+    base32.toLowerCase(),
+    `${base32.slice(0, 16)} ${base32.slice(16)}`,
+    `${base32.slice(0, 7)}1${base32.slice(8)}`,
+    `${base32}!`,
+    `${base32}${base32}`.slice(0, 41),
+    base32.slice(0, 9),
+  ];
+  const seen: string[] = [];
+  const variations: Partial<Parameters<typeof computeCodes>[0]>[] = [
+    {},
+    { period: 0 },
+    { seconds: -1 },
+    { digits: 9 },
+    { mode: 'hotp', counter: -1 },
+    { account: 'a'.repeat(300) },
+    { issuer: 'x', account: 'ok' },
+  ];
+  for (const typed of typedForms) {
+    for (const over of variations) {
+      try {
+        const result = computeCodes({
+          mode: 'totp',
+          secret: typed,
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          seconds: 59,
+          ...over,
+        });
+        seen.push(...result.warnings, ...result.notes);
+      } catch (err) {
+        expect(err instanceof TotpError || err instanceof Base32Error, 'an error of an unknown kind').toBe(true);
+        seen.push((err as Error).message);
+      }
+    }
+  }
+  expect(seen.length).toBeGreaterThan(20);
+  for (const text of seen) {
+    for (const typed of typedForms) expect(leaks(text, typed), text).toBe(false);
+    expect(text.includes('otpauth'), text).toBe(false);
+  }
+  // A time typed as text is never repeated either.
+  for (const text of ['ZQXJ-MARKER-1', '2009-02-30-MARKER']) {
+    expect(() => parseTimeInput(text)).toThrowError(TimeError);
+    try {
+      parseTimeInput(text);
+    } catch (err) {
+      expect((err as Error).message.includes('MARKER')).toBe(false);
+    }
+  }
 });
