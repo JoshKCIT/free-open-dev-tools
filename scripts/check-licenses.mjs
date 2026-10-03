@@ -186,6 +186,10 @@ const MANUAL_LICENSE_OVERRIDES = {
   // states CC0. That statement is quoted verbatim in the vendored file (the repository's later LICENSE file is a
   // different, MIT, licence for later versions and is deliberately not used).
   'railroad-diagrams@1.0.0': 'docs/vendored-licenses/railroad-diagrams-LICENSE.txt',
+  // fetched from https://raw.githubusercontent.com/less/less.js/master/LICENSE (2026-10-03): the repository's own
+  // Apache-2.0 licence, which the published less 4.9.1 tarball omits even though its package.json declares
+  // "Apache-2.0".
+  'less@4.9.1': 'docs/vendored-licenses/less-LICENSE.txt',
 };
 
 // Some upstream packages (e.g. typescript, @mixmark-io/domino) ship a LICENSE

@@ -1349,5 +1349,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Read QR codes and common barcodes from an image file or your camera, entirely in the browser."
+  },
+  {
+    "id": "sass-less-compiler",
+    "name": "SCSS & Less Compiler",
+    "category": "css",
+    "tier": 3,
+    "summary": "Compile SCSS, indented Sass or Less to CSS in the browser, with errors shown at their line and column."
   }
 ]
