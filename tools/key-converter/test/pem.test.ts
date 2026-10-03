@@ -114,7 +114,7 @@ it('500 KiB of BEGIN lines without an END is refused in linear time', () => {
   const error = thrown(() => pemBlocks(withoutEnd, 100));
   const elapsed = performance.now() - startedAt;
   expect(error).toBeInstanceOf(PemError);
-  expect(elapsed).toBeLessThan(1000);
+  expect(elapsed).toBeLessThan(500);
 
   // Many different labels, and one END at the very end that matches none of them, is just as cheap.
   const labels = Array.from({ length: 5000 }, (_, i) => `${BEGIN}LABEL ${i}${DASHES}\n`).join('');
@@ -123,7 +123,7 @@ it('500 KiB of BEGIN lines without an END is refused in linear time', () => {
   const secondError = thrown(() => pemBlocks(padded, 100));
   const secondElapsed = performance.now() - secondStart;
   expect(secondError).toBeInstanceOf(PemError);
-  expect(secondElapsed).toBeLessThan(1000);
+  expect(secondElapsed).toBeLessThan(500);
 
   // Dashes and BEGIN with no label, over and over, find nothing and cost one pass.
   const noise = `${BEGIN}${DASHES}`.repeat(Math.ceil((500 * 1024) / 16));
@@ -131,7 +131,7 @@ it('500 KiB of BEGIN lines without an END is refused in linear time', () => {
   const found = pemBlocks(noise, 100);
   const thirdElapsed = performance.now() - thirdStart;
   expect(found).toEqual([]);
-  expect(thirdElapsed).toBeLessThan(1000);
+  expect(thirdElapsed).toBeLessThan(500);
 }, 60_000);
 
 it('Base64 errors give the position of the first bad character and never the character', () => {
@@ -165,7 +165,7 @@ it('Base64 errors give the position of the first bad character and never the cha
   const longPadding = thrown(() => base64ToBytes('QQ' + '='.repeat(200_000)));
   const elapsed = performance.now() - startedAt;
   expect(longPadding).toBeInstanceOf(PemError);
-  expect(elapsed).toBeLessThan(1000);
+  expect(elapsed).toBeLessThan(500);
 });
 
 it('the Base64 and hex codecs match the RFC 4648 section 10 test vectors', () => {

@@ -104,6 +104,9 @@ it('the DER reader accepts definite lengths only and refuses indefinite, non-min
   expectDerError(() => readDer(padded), /shortest|minimal/i, 1);
   // A length past the end of the data, checked before any slice is taken.
   expectDerError(() => readDer(bytes(0x04, 0x05, 0xaa, 0xbb)), /runs past the end/i, 0);
+  // One byte too long is as much a refusal as many bytes too long, and exactly enough is accepted.
+  expectDerError(() => readDer(bytes(0x04, 0x03, 0xaa, 0xbb)), /runs past the end/i, 0);
+  expect(readDer(bytes(0x04, 0x02, 0xaa, 0xbb)).end).toBe(4);
   expectDerError(() => readDer(bytes(0x04, 0x84, 0xff, 0xff, 0xff, 0xff, 0x01)), /runs past the end/i, 0);
   // A child that overruns its parent, even though the file as a whole has the bytes.
   expectDerError(() => readDer(bytes(0x30, 0x03, 0x04, 0x05, 0xaa, 0xbb, 0xcc, 0xdd, 0xee)), /runs past the end/i, 2);
@@ -158,11 +161,9 @@ it('the DER reader stops at 24 levels of nesting and 200000 elements', () => {
 
   // Elements: a SEQUENCE of NULLs. The SEQUENCE itself is element 1, so 199999 NULLs make exactly 200000.
   const withNulls = (count: number): Uint8Array => {
-    const out = new Uint8Array(5 + count * 2);
-    const total = count * 2;
-    out.set([0x30, 0x83, (total >> 16) & 255, (total >> 8) & 255, total & 255], 0);
-    for (let i = 0; i < count; i++) out[5 + i * 2] = 0x05;
-    return out;
+    const body = new Uint8Array(count * 2);
+    for (let i = 0; i < count; i++) body[i * 2] = 0x05;
+    return sequenceAround(body);
   };
   expect(readDer(withNulls(199999)).children.length).toBe(199999);
   expectDerError(() => readDer(withNulls(200000)), /too many|elements/i);
