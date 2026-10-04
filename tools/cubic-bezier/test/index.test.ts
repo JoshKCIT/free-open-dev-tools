@@ -1,7 +1,7 @@
 import { it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { CubicBezierError, EASING_PRESETS, generateEasing } from '../src/index';
+import { CubicBezierError, EASING_PRESETS, generateEasing, meta as toolMeta } from '../src/index';
 import {
   KEYWORD_CURVES,
   NAMED_CURVES,
@@ -381,4 +381,11 @@ it('nothing is written to the console while shaping curves', () => {
   } finally {
     for (const spy of spies) spy.mockRestore();
   }
+});
+
+it('the limits say that y values are held to -1 to 2 and the code holds them there with a warning', () => {
+  expect(toolMeta.limits.join(' ')).toContain('y values are held to -1 to 2');
+  const high = generateEasing({ preset: 'custom', p1: { x: 0.2, y: 5 }, p2: { x: 0.8, y: -7 } });
+  expect(high.value).toBe('cubic-bezier(0.2, 2, 0.8, -1)');
+  expect(high.warnings).toHaveLength(2);
 });

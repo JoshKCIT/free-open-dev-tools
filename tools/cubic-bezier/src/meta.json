@@ -11,7 +11,7 @@
     "The cubic-bezier() value and the transition-timing-function declaration to copy, and the preview CSS to download"
   ],
   "limits": [
-    "Both x values are kept in the range 0 to 1, as the cubic-bezier() function requires; y values may go from -1 to 2.",
+    "Both x values are kept in the range 0 to 1, as the cubic-bezier() function requires; y values are held to -1 to 2 with a warning, although CSS itself allows any y value.",
     "The motion preview stops when the visitor's system asks for reduced motion, and the copied CSS carries that rule.",
     "The handle pad shows progress upward, so its second number is 1 minus the curve's y value; the cubic-bezier() text shows the real values.",
     "Sampled values are computed to six decimals.",
