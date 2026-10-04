@@ -400,3 +400,25 @@ it('a drawing is given a fixed pixel size without losing its viewBox, role or st
   expect(svgSize(`<svg xmlns="${SVG_NS}" viewBox="0,0,30,20"/>`)).toEqual({ width: 30, height: 20 });
   expect(svgSize(`<svg xmlns="${SVG_NS}" viewBox="0 0 0 20" width="5" height="6"/>`)).toEqual({ width: 5, height: 6 });
 });
+
+it('a style element inside a style element is refused as malformed, so no style text goes unchecked', () => {
+  const address = 'http://127.0.0.1:9/x.css';
+  const cases: Array<[string, string]> = [
+    ['an import after the inner element closes', wrap(`<style><style></style>@import url(${address});</style>`)],
+    ['an import before the inner element opens', wrap(`<style>@import url(${address});<style></style></style>`)],
+    ['an import inside the inner element', wrap(`<style><style>@import url(${address});</style></style>`)],
+    ['three levels', wrap(`<style><style><style></style></style>@import url(${address});</style>`)],
+    ['an empty inner element', wrap('<style><style></style></style>')],
+    ['an inner element with an attribute', wrap('<style><style type="text/css"></style></style>')],
+  ];
+  for (const [what, svg] of cases) {
+    expect(refusalOf(svg).message, what).toBe(refusal('markup that is not well formed'));
+  }
+  // Style elements one after the other, and a style element that closes itself, are not nested and stay allowed.
+  expect(() => scrubSvg(wrap('<style>a{b:c}</style><style>d{e:f}</style>'))).not.toThrow();
+  expect(() => scrubSvg(wrap('<style/><style>a{b:c}</style>'))).not.toThrow();
+  // A style element inside a group is still checked as before.
+  expect(refusalOf(wrap(`<g><style>@import url(${address});</style></g>`)).message).toBe(
+    refusal('a style rule that loads something'),
+  );
+});

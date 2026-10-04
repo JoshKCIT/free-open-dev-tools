@@ -461,6 +461,9 @@ export function scrubSvg(svg: string): ScrubResult {
     const tag = readStartTag(svg, lt);
     if (rootClosed) refuse('malformed');
     if (!ALLOWED_ELEMENTS.has(tag.name)) refuse(tag.name === 'script' ? 'script' : 'element');
+    // One flag and one buffer track the text of a style element, so a style element inside another would make the
+    // outer one's text go unchecked. Mermaid never writes one, so it is refused as malformed.
+    if (tag.name === 'style' && inStyle) refuse('malformed');
     if (!rootSeen) {
       if (tag.name !== 'svg') refuse('malformed');
       rootSeen = true;
