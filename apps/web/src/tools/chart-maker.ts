@@ -171,7 +171,7 @@ export default defineTool({
         ['SVG size', formatBytes(new TextEncoder().encode(chart.svg).length)],
       ];
       if (str(values, 'format', 'svg') === 'png') {
-        const png = await chartSvgToPng(chart.svg, 2);
+        const png = await chartSvgToPng(chart.svg, 2, ctx.signal);
         // A result that is ready after the form has moved on is not offered.
         if (ctx.signal.aborted) throw new ChartPngError('The run was cancelled.');
         outputs.push({

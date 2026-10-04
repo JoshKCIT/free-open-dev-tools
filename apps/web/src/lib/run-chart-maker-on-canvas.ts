@@ -11,6 +11,7 @@
 import { CHART_HEIGHT, CHART_WIDTH } from '@fodt/chart-maker';
 
 const PNG_FAILED_MESSAGE = 'This browser could not draw the chart as a PNG.';
+const PNG_CANCELLED_MESSAGE = 'The run was cancelled.';
 
 /** The most the picture may be enlarged: at 4 times it is 3,200 by 1,920 pixels. */
 const MAX_SCALE = 4;
@@ -30,20 +31,42 @@ export function svgDataUrl(svg: string): string {
 
 /**
  * Draws the SVG on a white canvas `scale` times its own size (a whole number from 1 to 4) and returns the PNG bytes.
- * Throws `ChartPngError` when the browser cannot load the SVG as an image, cannot make a 2D surface or cannot encode.
+ * Throws `ChartPngError` when the browser cannot load the SVG as an image, cannot make a 2D surface or cannot encode,
+ * and when `signal` is aborted: the wait for the image stops at once and nothing more is drawn.
  */
-export async function chartSvgToPng(svg: string, scale: number): Promise<Uint8Array> {
+export async function chartSvgToPng(svg: string, scale: number, signal?: AbortSignal): Promise<Uint8Array> {
   if (!Number.isInteger(scale) || scale < 1 || scale > MAX_SCALE) throw new ChartPngError(PNG_FAILED_MESSAGE);
   const width = CHART_WIDTH * scale;
   const height = CHART_HEIGHT * scale;
 
   const image = new Image();
   const loaded = new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = () => reject(new ChartPngError(PNG_FAILED_MESSAGE));
+    const stop = (): void => reject(new ChartPngError(PNG_CANCELLED_MESSAGE));
+    if (signal?.aborted) {
+      stop();
+      return;
+    }
+    signal?.addEventListener('abort', stop, { once: true });
+    image.onload = () => {
+      signal?.removeEventListener('abort', stop);
+      resolve();
+    };
+    image.onerror = () => {
+      signal?.removeEventListener('abort', stop);
+      reject(new ChartPngError(PNG_FAILED_MESSAGE));
+    };
   });
   image.src = svgDataUrl(svg);
-  await loaded;
+  try {
+    await loaded;
+  } catch (err) {
+    // A cancelled wait must not leave the image loading for nobody.
+    image.onload = null;
+    image.onerror = null;
+    image.src = '';
+    throw err;
+  }
+  if (signal?.aborted) throw new ChartPngError(PNG_CANCELLED_MESSAGE);
 
   const canvas = document.createElement('canvas'); // never appended to the document
   canvas.width = width;
@@ -55,6 +78,7 @@ export async function chartSvgToPng(svg: string, scale: number): Promise<Uint8Ar
   context.fillRect(0, 0, width, height);
   context.drawImage(image, 0, 0, width, height);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (signal?.aborted) throw new ChartPngError(PNG_CANCELLED_MESSAGE);
   if (blob === null || blob.type !== 'image/png') throw new ChartPngError(PNG_FAILED_MESSAGE);
   return new Uint8Array(await blob.arrayBuffer());
 }
