@@ -163,7 +163,6 @@ it('numbers are read strictly and anything else is refused naming its row and co
     '$5',
     '1_000',
     fullWidth,
-    '',
     ' ',
   ];
   for (const cell of bad) {
@@ -171,6 +170,15 @@ it('numbers are read strictly and anything else is refused naming its row and co
     expect(refusal(() => parseTable('A,"' + cell + '"', { header: false }))).toMatch(/^Row 1, column 2/);
     expect(refusal(() => parseTable('L,V\nA,"' + cell + '"', { header: true }))).toMatch(/^Row 2, column 2/);
   }
+  // An empty cell in a column that has a header is refused; with no header, a column that is empty in every row is not a
+  // number column at all, so it is left out with a note and there is nothing to draw yet.
+  expect(refusal(() => parseTable('L,V\nA,""', { header: true }))).toMatch(/^Row 2, column 2: this value is empty/);
+  expect(parseTable('A,""', { header: false })).toEqual({
+    headers: [],
+    labels: [],
+    series: [],
+    notes: ['Column 2 is empty and was left out.'],
+  });
   // A decimal comma in a tab separated paste is refused the same way.
   expect(refusal(() => parseTable('A\t3,5', { header: false }))).toMatch(/^Row 1, column 2/);
 
@@ -272,7 +280,7 @@ it('an empty paste gives no chart and a single row gives one bar, one point and 
   expect(circle).not.toBeNull();
   expect(circle![0]).toMatch(/aria-label="Apples: 3"/);
   // The whole circle is one shape, so no slice needs an arc that starts and ends at the same point.
-  expect(pie).not.toMatch(/<path/);
+  expect(pie).not.toMatch(/<path/);
 
   // A single row still has an alt text, a description and a table.
   const one = must('Apples,3', { type: 'bar', header: false });

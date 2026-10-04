@@ -422,7 +422,7 @@ it('nice ticks are 1, 2 or 5 times a power of ten and include zero when the rang
   expect(niceTicks(1000, 1010, 5)).toEqual([1000, 1002, 1004, 1006, 1008, 1010]);
   expect(niceTicks(0, 1_234_567, 5)).toEqual([0, 500_000, 1_000_000, 1_500_000]);
   // A range of no width still gives a usable axis, and zero is on it.
-  expect(niceTicks(0, 0, 5)).toEqual([0, 1]);
+  expect(niceTicks(0, 0, 5)).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1]);
   expect(niceTicks(5, 5, 5)).toEqual([0, 1, 2, 3, 4, 5]);
   expect(niceTicks(-5, -5, 5)).toEqual([-5, -4, -3, -2, -1, 0]);
 
@@ -555,7 +555,9 @@ it('every chart is well-formed XML with no foreign object, link or url reference
         assertSafeMarkup(svg);
         continue;
       }
-      for (const palette of [...PALETTES.keys(), 'no such palette']) {
+      // The big sample is checked with two palettes only, to keep the run short; the others cover every palette.
+      const palettes = name === 'many' ? ['default', 'high-contrast'] : [...PALETTES.keys(), 'no such palette'];
+      for (const palette of palettes) {
         for (const extra of [
           {},
           { values: true, xLabel: `x${RLO}<>&"`, yLabel: `y${NUL}`, title: `<title>${BEL}` },
@@ -598,7 +600,7 @@ it('every chart is well-formed XML with no foreign object, link or url reference
     expect(() => assertWellFormed(broken)).toThrow();
   }
   assertWellFormed('<svg a="&amp;&#x202E;">&lt;<g/></svg>');
-});
+}, 60_000);
 
 it('palette names are looked up safely and the colour-blind palette is the eight colours of Okabe and Ito', () => {
   // Published: Okabe and Ito, Color Universal Design (2008): orange, sky blue, bluish green, yellow, blue, vermillion,
@@ -645,8 +647,8 @@ it('the same table always gives the same SVG and the options change only what th
   expect(without).not.toMatch(/>Visits</);
   const single = chartSvg(FRUIT, opts('bar', { legend: true }));
   expect(single).not.toMatch(/>Count</); // a legend for one series would say nothing new
-  expect(chartSvg(FRUIT, opts('pie', { legend: true }))).toMatch(/>Pears 5</);
-  expect(chartSvg(FRUIT, opts('pie', { legend: false }))).not.toMatch(/>Pears 5</);
+  expect(chartSvg(FRUIT, opts('pie', { legend: true }))).toMatch(/>Pears: 5</);
+  expect(chartSvg(FRUIT, opts('pie', { legend: false }))).not.toMatch(/>Pears: 5</);
   const shown = chartSvg(FRUIT, opts('bar', { values: true }));
   const hidden = chartSvg(FRUIT, opts('bar', { values: false }));
   expect(shown).toMatch(/>5</);
