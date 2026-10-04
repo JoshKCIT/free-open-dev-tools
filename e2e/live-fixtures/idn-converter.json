@@ -1,0 +1,9 @@
+{
+  "id": "idn-converter",
+  "label": "UTS 46 with IdnaTestV2 17.0.0: bücher.de is xn--bcher-kva.de",
+  "steps": [
+    { "action": "radio", "field": "direction", "value": "to-ascii" },
+    { "action": "fill", "field": "names", "value": "bücher.de" }
+  ],
+  "expect": ["xn--bcher-kva.de"]
+}

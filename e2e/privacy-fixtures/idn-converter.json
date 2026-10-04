@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "direction", "value": "to-ascii" },
+    "values": { "names": "bücher.example\nExample.COM" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "direction", "value": "to-unicode" },
+    "values": { "names": "xn--bcher-kva.example\nxn--mnchen-3ya.example" },
+    "attachesFile": false
+  }
+]
