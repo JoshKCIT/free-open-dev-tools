@@ -10,9 +10,13 @@
  */
 import { MAX_TEXT_CHARS, MAX_TEXT_PAGES, head, visible } from './shared';
 
-/** The part of a PDF.js page this module uses. */
+/**
+ * The part of a PDF.js page this module uses. The text is read with `streamTextContent` when the page has it, so reading
+ * can stop at the character budget; `getTextContent` (the whole page at once) is the fallback for a page without it.
+ */
 export interface PdfPageLike {
   getTextContent(): Promise<{ items: unknown[] }>;
+  streamTextContent?(): ReadableStream<{ items: unknown[] }>;
   cleanup(): void;
 }
 
@@ -67,6 +71,47 @@ function joinItems(items: unknown[]): string {
   return out;
 }
 
+/**
+ * The text of one page, read as a stream of items and cut at `remaining` characters: reading stops, and the stream is
+ * cancelled, as soon as the text read so far passes the budget, so a page that holds millions of items is not built in
+ * full. `capped` is true when the page had more text than the budget allowed. A page with no `streamTextContent` is read
+ * whole, and the caller cuts it.
+ */
+async function readPageText(
+  page: PdfPageLike,
+  remaining: number,
+  signal: AbortSignal,
+): Promise<{ text: string; capped: boolean }> {
+  if (typeof page.streamTextContent !== 'function') {
+    return { text: joinItems((await page.getTextContent()).items), capped: false };
+  }
+  const reader = page.streamTextContent().getReader();
+  let text = '';
+  let capped = false;
+  let finished = false;
+  try {
+    for (;;) {
+      if (signal.aborted) throw cancelled();
+      const { done, value } = await reader.read();
+      if (done) {
+        finished = true;
+        break;
+      }
+      text += joinItems(value.items);
+      if (text.length > remaining) {
+        text = head(text, remaining);
+        capped = true;
+        break;
+      }
+    }
+  } finally {
+    // Whatever stopped the read, the stream is told to stop producing. Not awaited: the answer comes from the worker,
+    // and a worker that is busy must not hold up the page.
+    if (!finished) void reader.cancel().catch(() => undefined);
+  }
+  return { text, capped };
+}
+
 function listPages(numbers: number[]): string {
   const shown = numbers.slice(0, 20).join(', ');
   return numbers.length > 20 ? `${shown} and ${numbers.length - 20} more` : shown;
@@ -75,8 +120,9 @@ function listPages(numbers: number[]): string {
 /**
  * Reads the text of `pages` (1-based page numbers, in the order given) from `doc`. A page whose text cannot be read is
  * recorded as failed and the others are still read. Reading stops, with a note, after 500 pages of the list or when the
- * text reaches 2,000,000 characters (the page that crosses the limit is cut there). Rejects with `The run was cancelled.`
- * when the signal aborts, before the next page is requested.
+ * text reaches 2,000,000 characters (the page that crosses the limit is cut there, and the rest of that page is not read:
+ * its text is streamed and the stream is cancelled at the limit). Rejects with `The run was cancelled.` when the signal
+ * aborts, before the next page is requested or the next piece of the page is read.
  */
 export async function extractPageTexts(
   doc: PdfDocLike,
@@ -103,11 +149,12 @@ export async function extractPageTexts(
     }
     const number = wanted[i]!;
     let text = '';
+    let capped = false;
     let unreadable = false;
     try {
       const page = await doc.getPage(number);
       try {
-        text = joinItems((await page.getTextContent()).items);
+        ({ text, capped } = await readPageText(page, MAX_TEXT_CHARS - characters, options.signal));
       } finally {
         try {
           page.cleanup();
@@ -121,7 +168,7 @@ export async function extractPageTexts(
     }
     if (options.signal.aborted) throw cancelled();
 
-    let reachedLimit = false;
+    let reachedLimit = capped;
     if (characters + text.length > MAX_TEXT_CHARS) {
       text = head(text, MAX_TEXT_CHARS - characters);
       reachedLimit = true;
