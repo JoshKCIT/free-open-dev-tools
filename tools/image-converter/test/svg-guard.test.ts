@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { scanSvg, looksLikeSvg, SvgGuardError } from '../src/svg-guard';
+import { scanSvg, looksLikeSvg, MAX_USE_ELEMENTS, SvgGuardError } from '../src/svg-guard';
 
 /**
  * Top-level `it(...)` calls only. The hostile list is written here from the
@@ -321,6 +321,78 @@ it('the SVG scan accepts shapes, gradients, internal references, comments and a 
   }
 });
 
+it('the SVG scan accepts a filter and a few use references, and refuses reuse that holds reuse and more than 1000 use elements', () => {
+  expect(MAX_USE_ELEMENTS).toBe(1000);
+  const refusal = (svg: string): SvgGuardError => {
+    try {
+      scanSvg(svg);
+    } catch (err) {
+      expect(err).toBeInstanceOf(SvgGuardError);
+      return err as SvgGuardError;
+    }
+    throw new Error('the scan accepted it');
+  };
+  const NESTED = 'a use element that reuses another reuse';
+
+  // A normal SVG with a blur filter, a gradient and a few uses of plain shapes and a symbol is accepted.
+  const normal = wrap(
+    '<defs><filter id="f"><feGaussianBlur stdDeviation="2"/><feTurbulence baseFrequency="0.05" numOctaves="3"/></filter>' +
+      '<rect id="r" width="4" height="4" fill="#f00"/><symbol id="s"><circle r="2"/></symbol>' +
+      '<g id="grp"><rect width="2" height="2"/><circle r="1"/></g></defs>' +
+      '<use href="#r" x="1" y="1" filter="url(#f)"/><use href="#r" x="9"/><use xlink:href="#s"/><use href="#grp"/>' +
+      '<use href="#not-in-this-file"/>',
+  );
+  expect(() => scanSvg(normal)).not.toThrow();
+
+  // A reuse of an element that itself holds a reuse is refused at the reusing element, wherever the definition is.
+  const holder = '<g id="a"><use href="#b"/></g>';
+  for (const svg of [
+    wrap(`${holder}<use href="#a"/>`),
+    wrap(`<use href="#a"/>${holder}`),
+    wrap(`<defs><symbol id="a"><g><g><use xlink:href="#b"/></g></g></symbol></defs><use href="#a"/>`),
+    // A reuse of a reuse is a chain too, and an element that holds a reuse of itself is the loop of them all.
+    wrap('<use id="a" href="#b"/><use href="#a"/>'),
+    wrap('<g id="a"><use href="#a"/></g>'),
+    // A tag that is never closed still counts.
+    `${OPEN}<g id="a"><use href="#b"/><use href="#a"/>`,
+  ]) {
+    const err = refusal(svg);
+    expect(err.construct, svg).toBe(NESTED);
+    // The position is that of the reusing element that points at the holder (the last use of the reference).
+    expect(svg.slice(err.position - 1, err.position + 4), svg).toBe('<use ');
+    expect(err.message, svg).toBe(
+      `This SVG has a use element at character ${err.position} that reuses an element holding another use element, which this page does not draw. Reuse plain shapes and groups instead.`,
+    );
+  }
+  // The position of the reusing element, exactly.
+  const where = wrap(`${holder}<rect width="1" height="1"/><use href="#a"/>`);
+  expect(refusal(where).position).toBe(where.lastIndexOf('<use href="#a"/>') + 1);
+
+  // Two uses of the same plain group, and a holder that nothing reuses, are fine.
+  expect(() =>
+    scanSvg(wrap('<g id="a"><rect width="1" height="1"/></g><use href="#a"/><use href="#a"/>')),
+  ).not.toThrow();
+  expect(() => scanSvg(wrap(`${holder}<use href="#other"/>`))).not.toThrow();
+
+  // 1000 use elements are accepted; the 1001st is refused at its own position, whatever they point at.
+  const uses = (n: number): string => '<rect id="r" width="1" height="1"/>' + '<use href="#r"/>'.repeat(n);
+  expect(() => scanSvg(wrap(uses(1000)))).not.toThrow();
+  const many = wrap(uses(1001));
+  const tooMany = refusal(many);
+  expect(tooMany.construct).toBe('more than 1,000 use elements');
+  expect(tooMany.position).toBe(many.lastIndexOf('<use href="#r"/>') + 1);
+  expect(tooMany.message).toBe(
+    `This SVG has more than 1,000 use elements (the 1,001st is at character ${tooMany.position}), which this page does not draw. Remove some and try again.`,
+  );
+  // Uses written with a prefix, in any case, and uses that point nowhere still count.
+  expect(refusal(wrap('<svg:use/>'.repeat(1001))).construct).toBe('more than 1,000 use elements');
+  expect(refusal(wrap('<USE/>'.repeat(1001))).construct).toBe('more than 1,000 use elements');
+  // The earlier refusals still come first: a script after 1001 uses is found only if it comes before the count is passed.
+  expect(refusal(wrap('<script/>' + uses(1001))).construct).toBe(SCRIPT);
+  // Nothing of the file's text is in either message.
+  expect(refusal(wrap(`<g id="${MARK}"><use href="#${MARK}"/></g><use href="#${MARK}"/>`)).message).not.toContain(MARK);
+});
+
 it('the SVG scan runs in linear time on 1 MiB of hostile markup', () => {
   const MiB = 1024 * 1024;
   const fill = (unit: string): string => unit.repeat(Math.ceil(MiB / unit.length));
@@ -341,6 +413,9 @@ it('the SVG scan runs in linear time on 1 MiB of hostile markup', () => {
     { name: 'many parentheses', text: wrap(`<style>${fill('url(#a(')}</style>`) },
     { name: 'many backslashes', text: wrap(`<g d="${fill(BS)}"/>`) },
     { name: 'many words that start like a hostile one', text: wrap(fill('<scrip/>')) },
+    { name: 'many nested groups with ids and one reuse', text: wrap(`${fill('<g id="a">')}<use href="#a"/>`) },
+    { name: 'many reuses of one id', text: wrap(`<g id="a"/>${fill('<use href="#a"/>')}`) },
+    { name: 'many nested groups closed in a row', text: wrap(`${fill('<g id="a">')}${fill('</g>')}`) },
   ];
   for (const { name, text } of inputs) {
     expect(text.length, name).toBeGreaterThanOrEqual(MiB);

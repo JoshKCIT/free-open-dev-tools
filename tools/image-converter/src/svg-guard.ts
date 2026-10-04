@@ -18,19 +18,28 @@
  * character reference or a backslash is decoded or refused first, so nothing
  * can be hidden from the check by writing it another way.
  *
+ * Also refused, because drawing cannot be stopped once it starts: more than 1,000 use elements, and a use element that
+ * reuses an element holding another use element (or that is one itself), which is how a short file is made to draw an
+ * enormous number of shapes. A use of a plain shape, symbol or group, and any filter, are accepted.
+ *
  * The scan walks the text once with index searches (no pattern runs over the
  * whole text), so a million characters take a few milliseconds whatever they
  * hold. Messages name the kind of thing and its character position, never
  * any of the text.
  */
 
+/** The most use elements an SVG may hold. */
+export const MAX_USE_ELEMENTS = 1000;
+
 export class SvgGuardError extends Error {
   readonly construct: string;
   /** 1-based character position of the refused construct in the SVG text. */
   readonly position: number;
-  constructor(construct: string, position: number) {
+  /** `message` is for the few refusals that are not about something this page does not load; it never holds the file's text. */
+  constructor(construct: string, position: number, message?: string) {
     super(
-      `This SVG uses ${construct} at character ${position}, which this page does not load. Remove it and try again.`,
+      message ??
+        `This SVG uses ${construct} at character ${position}, which this page does not load. Remove it and try again.`,
     );
     this.name = 'SvgGuardError';
     this.construct = construct;
@@ -283,6 +292,22 @@ export function scanSvg(text: string): void {
   let declarationAllowed = true;
   let styleStart = -1;
   let styleParts: string[] = [];
+  // Reuse bookkeeping: the open elements (an id, whether the element is a use, whether a use is inside it), the ids seen
+  // and whether the element holding each is or holds a use, and the references of the uses in document order.
+  interface Open {
+    id: string | undefined;
+    isUse: boolean;
+    holdsUse: boolean;
+  }
+  const open: Open[] = [];
+  const reusing = new Map<string, boolean>();
+  const uses: { ref: string | undefined; position: number }[] = [];
+  const finish = (element: Open): void => {
+    const reuse = element.isUse || element.holdsUse;
+    if (element.id !== undefined && (reuse || !reusing.has(element.id))) reusing.set(element.id, reuse);
+    const parent = open[open.length - 1];
+    if (reuse && parent) parent.holdsUse = true;
+  };
 
   const endStyle = (): void => {
     if (styleStart === -1) return;
@@ -340,19 +365,55 @@ export function scanSvg(text: string): void {
       let t = i + 2;
       while (t < end && !isSpace(text.charCodeAt(t))) t++;
       if (localName(text.slice(i + 2, t)) === 'style') endStyle();
+      const closed = open.pop();
+      if (closed) finish(closed);
       i = end + 1;
       continue;
     }
 
-    const tag = readStartTag(text, i, checkElementName, checkAttribute);
+    let id: string | undefined;
+    let href: string | undefined;
+    const tag = readStartTag(text, i, checkElementName, (name, raw, at) => {
+      checkAttribute(name, raw, at);
+      if (name === 'id') id = decodeReferences(raw);
+      else if (localName(name) === 'href') href = decodeReferences(raw);
+    });
     const local = localName(tag.name);
     if (local === 'style' && !tag.selfClosing) {
       styleStart = position;
       styleParts = [];
     }
+    const isUse = local === 'use';
+    if (isUse) {
+      if (uses.length >= MAX_USE_ELEMENTS) {
+        throw new SvgGuardError(
+          'more than 1,000 use elements',
+          position,
+          `This SVG has more than 1,000 use elements (the 1,001st is at character ${position}), which this page does not draw. Remove some and try again.`,
+        );
+      }
+      uses.push({ ref: href !== undefined && href.charCodeAt(0) === 35 ? href.slice(1) : undefined, position });
+    }
+    const element: Open = { id, isUse, holdsUse: false };
+    if (tag.selfClosing) finish(element);
+    else open.push(element);
     i = tag.end;
   }
   endStyle();
+  // Elements never closed are closed at the end of the text, innermost first.
+  for (let k = open.length - 1; k >= 0; k--) {
+    const element = open.pop()!;
+    finish(element);
+  }
+  for (const use of uses) {
+    if (use.ref !== undefined && reusing.get(use.ref) === true) {
+      throw new SvgGuardError(
+        'a use element that reuses another reuse',
+        use.position,
+        `This SVG has a use element at character ${use.position} that reuses an element holding another use element, which this page does not draw. Reuse plain shapes and groups instead.`,
+      );
+    }
+  }
 }
 
 /** The text of the start tag of the first element, with its attributes decoded; used to size an SVG. */

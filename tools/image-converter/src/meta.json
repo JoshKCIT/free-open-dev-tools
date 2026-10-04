@@ -23,7 +23,9 @@
     "Resampling quality is whatever this browser's own canvas scaling provides; it is not a dedicated resampling algorithm.",
     "Crop, rotate and flip apply in that order before resizing; a crop is measured in pixels of the upright image. The cropped, rotated or flipped picture is drawn once at its full size before it is resized, so it is refused when it is over 40,000,000 pixels, however small the resize.",
     "Rotation is by quarter turns only (0, 90, 180 or 270 degrees).",
-    "SVG input is read only when Allow SVG input is ticked; an SVG that refers to anything outside itself (scripts, other files or addresses, embedded pages) is refused, and one declaring more than 40,000,000 pixels is refused.",
+    "SVG input is read only when Allow SVG input is ticked; an SVG that refers to anything outside itself (scripts, other files or addresses, embedded pages) is refused.",
+    "An SVG is refused when it declares more than 16,777,216 pixels, or when it would be drawn at more than that (its output size, when it is not cropped, rotated or flipped), when it holds more than 1,000 use elements, and when a use element reuses an element that holds another use element. Filters are allowed.",
+    "An SVG is drawn on the page itself, not in the background, because a background task cannot draw one; drawing an SVG cannot be cancelled once it starts, and a heavy filter in an allowed SVG can make the page wait.",
     "An SVG is drawn by this browser at the output size, so text in it uses this browser's fonts.",
     "An SVG file over 10 MiB is refused."
   ],

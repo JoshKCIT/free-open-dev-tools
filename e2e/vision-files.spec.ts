@@ -2354,6 +2354,52 @@ test('image-converter: the recording server sees a plain page request, so its si
   expect(new Set(image)).toEqual(new Set(['GET /control-image.svg']));
 });
 
+test('image-converter: an SVG with a filter and a few uses converts, and reuse that holds reuse or over 1000 uses is refused', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+  await page.locator('#f-allowSvg').check();
+  await expect(page.locator('#f-allowSvg')).toBeChecked();
+
+  // A filter that moves nothing and two uses of one green square: both halves come out green.
+  const normal =
+    `<svg ${SVG_NS} width="40" height="20" viewBox="0 0 40 20"><defs><filter id="f"><feOffset dx="0" dy="0"/></filter>` +
+    '<rect id="r" width="20" height="20" fill="#00ff00"/></defs><use href="#r"/><use href="#r" x="20" filter="url(#f)"/></svg>';
+  await attachImage(page, 'file', svgFile('normal.svg', normal));
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'normal.png' })).toBeVisible({ timeout: 30_000 });
+  const converted = decodePngBytes(await downloadNamed(page, 'normal.png'));
+  expect([converted.width, converted.height]).toEqual([40, 20]);
+  expect([pixelOf(converted, 10, 10), pixelOf(converted, 30, 10)]).toEqual(['0,255,0,255', '0,255,0,255']);
+
+  // A use of an element that holds another use is refused at the using element, by name and position.
+  const chained = flatSvg('<g id="a"><use href="#b"/></g><use href="#a"/>');
+  await attachImage(page, 'file', svgFile('chained.svg', chained));
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    `This SVG has a use element at character ${chained.lastIndexOf('<use href="#a"/>') + 1} that reuses an element holding another use element, which this page does not draw.`,
+    { timeout: 30_000 },
+  );
+  expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+
+  // 1001 use elements are refused at the 1001st; 1000 are drawn.
+  const uses = (n: number): string => '<defs><rect id="q" width="1" height="1"/></defs>' + '<use href="#q"/>'.repeat(n);
+  const crowded = flatSvg(uses(1001));
+  await attachImage(page, 'file', svgFile('crowded.svg', crowded));
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    `This SVG has more than 1,000 use elements (the 1,001st is at character ${crowded.lastIndexOf('<use href="#q"/>') + 1})`,
+    { timeout: 30_000 },
+  );
+  await attachImage(page, 'file', svgFile('thousand.svg', flatSvg(uses(1000))));
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'thousand.png' })).toBeVisible({ timeout: 30_000 });
+
+  expect(offending(requests)).toEqual([]);
+});
+
 /** The sentence every file over 100 MB is told, by any page that reads a picked file by its reported size. */
 const OVER_100_MB = 'This file is larger than 100 MB, the most this page accepts.';
 

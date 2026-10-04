@@ -4,7 +4,7 @@
  *
  * Why the page thread: a worker has no `Image`, and `createImageBitmap` refuses SVG, so an SVG can only be drawn here
  * (research C12). The text is checked first by `scanSvg` (nothing it names outside itself is ever drawn), its size is
- * read by `svgSize` (refused over 40,000,000 pixels before any canvas exists), and it is shown to the browser through an
+ * read by `svgSize` (refused over 16,777,216 pixels before any canvas exists, and an SVG is never drawn at more than that), and it is shown to the browser through an
  * image whose address is a `data:` address built here from the text, never an object address: a picture loaded from a
  * data address loads nothing and runs nothing, and does not mark the canvas as holding another site's pixels.
  *

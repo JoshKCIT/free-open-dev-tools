@@ -2,6 +2,7 @@ import meta from './meta.json';
 import { assertFileKind, type FileKind, type SniffResult } from './file-sniff';
 import { planSize, largestFittingSize, MAX_OUTPUT_PIXELS, type ResizeMode, type SizeSource } from './sizing';
 import { formatInfo, type OutputFormatId } from './capabilities';
+import { MAX_SVG_PIXELS } from './svg-size';
 import { planEdits, planEditedSize, type EditPlan, type ImageEdits } from './edits';
 
 export { meta };
@@ -13,7 +14,7 @@ export { sniffFile, assertFileKind, FileSignatureError, FILE_KINDS, MAX_HEADER_B
 export type { FileKind, SniffResult, FileKindLimits } from './file-sniff';
 export { planEdits, planEditedSize, ImageEditError, ROTATIONS, FLIPS } from './edits';
 export type { ImageEdits, EditPlan, CropRect, Rotation, FlipMode } from './edits';
-export { scanSvg, looksLikeSvg, looksLikeSvgStart, SvgGuardError } from './svg-guard';
+export { scanSvg, looksLikeSvg, looksLikeSvgStart, SvgGuardError, MAX_USE_ELEMENTS } from './svg-guard';
 export { svgSize, SvgSizeError, MAX_SVG_PIXELS } from './svg-size';
 
 /** The five raster formats this tool reads. AVIF, HEIC and TIFF are never accepted as input (D-133). */
@@ -305,6 +306,15 @@ export function planSvgConversion(
   const warnings = [...sizePlan.warnings];
   if (sizePlan.width * sizePlan.height > MAX_OUTPUT_PIXELS) {
     throw new ImageConverterError(tooLargeMessage(fileName, sizePlan.width, sizePlan.height));
+  }
+
+  // With edits the vector is drawn at its own size (svgSize holds that to the same limit) and the edited picture is
+  // resized as a picture; without them the vector itself is drawn at the output size.
+  if (!edits && sizePlan.width * sizePlan.height > MAX_SVG_PIXELS) {
+    throw new ImageConverterError(
+      `Could not convert '${fileName}': this SVG would be drawn at ${sizePlan.width} by ${sizePlan.height} pixels, ` +
+        `above the ${MAX_SVG_PIXELS.toLocaleString('en-US')}-pixel limit this page draws an SVG at. Choose a smaller output size.`,
+    );
   }
 
   const qualityFraction = clampQuality(options.quality, warnings);

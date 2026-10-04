@@ -11,8 +11,8 @@ import { svgSize, MAX_SVG_PIXELS, SvgSizeError } from '../src/svg-size';
 const NS = 'xmlns="http://www.w3.org/2000/svg"';
 const svg = (attrs: string): string => `<svg ${NS} ${attrs}></svg>`;
 
-it('SVG size comes from width and height in CSS absolute units, then the viewBox, then 300 by 150, and is refused over 40000000 pixels', () => {
-  expect(MAX_SVG_PIXELS).toBe(40_000_000);
+it('SVG size comes from width and height in CSS absolute units, then the viewBox, then 300 by 150, and is refused over 16777216 pixels', () => {
+  expect(MAX_SVG_PIXELS).toBe(16_777_216);
   const size = (attrs: string): [number, number] => {
     const s = svgSize(svg(attrs));
     return [s.width, s.height];
@@ -64,11 +64,14 @@ it('SVG size comes from width and height in CSS absolute units, then the viewBox
   });
   expect(svgSize(`<svg ${NS} width="__proto__" height="constructor"/>`)).toEqual({ width: 300, height: 150 });
 
-  // The limit is on the pixel count: exactly 40,000,000 is allowed, one more is refused before any drawing.
-  expect(size('width="8000" height="5000"')).toEqual([8000, 5000]);
+  // The limit is on the pixel count: exactly 16,777,216 (4096 by 4096) is allowed, one more is refused before any drawing.
+  expect(size('width="4096" height="4096"')).toEqual([4096, 4096]);
+  expect(size('width="8192" height="2048"')).toEqual([8192, 2048]);
   for (const attrs of [
     'width="10000" height="5000"',
-    'width="8000" height="5001"',
+    'width="8000" height="5000"',
+    'width="4096" height="4097"',
+    'width="16777217" height="1"',
     'width="1000000" height="1000000"',
     'width="1e300" height="1e300"',
     'width="5in" height="5in" viewBox="0 0 1 1"',
@@ -83,7 +86,7 @@ it('SVG size comes from width and height in CSS absolute units, then the viewBox
     if (attrs.startsWith('width="5in"')) expect(caught, attrs).toBeUndefined();
     else {
       expect(caught, attrs).toBeInstanceOf(SvgSizeError);
-      expect((caught as Error).message, attrs).toContain('40,000,000');
+      expect((caught as Error).message, attrs).toContain('16,777,216');
     }
   }
   // The first element must be an svg element.

@@ -450,3 +450,41 @@ it('crop, rotate and flip are refused when the edited picture, before any resize
     ).targetWidth,
   ).toBe(1000);
 });
+
+it('an SVG is drawn at no more than 16,777,216 pixels: its own size with edits, its output size without', () => {
+  const options = (resize: ConvertOptions['resize'], edits?: ConvertOptions['edits']): ConvertOptions => ({
+    format: 'png',
+    quality: 85,
+    background: '#ffffff',
+    resize,
+    ...(edits ? { edits } : {}),
+  });
+  const refusal = (width: number, height: number): string =>
+    `Could not convert 'a.svg': this SVG would be drawn at ${width} by ${height} pixels, above the 16,777,216-pixel limit this page draws an SVG at. Choose a smaller output size.`;
+
+  // Without edits the vector is drawn straight at the output size: 4096 by 4096 is fine, one more row is not.
+  const natural = { width: 100, height: 100 };
+  expect(planSvgConversion(natural, 'a.svg', options({ mode: 'exact', width: 4096, height: 4096 })).targetWidth).toBe(
+    4096,
+  );
+  expect(() => planSvgConversion(natural, 'a.svg', options({ mode: 'exact', width: 4096, height: 4097 }))).toThrow(
+    refusal(4096, 4097),
+  );
+  // 6000 by 6000 is under the output limit of every other format and still refused for an SVG.
+  expect(() => planSvgConversion(natural, 'a.svg', options({ mode: 'exact', width: 6000, height: 6000 }))).toThrow(
+    refusal(6000, 6000),
+  );
+  expect(() => planSvgConversion(natural, 'a.svg', options({ mode: 'exact', width: 6000, height: 6000 }))).toThrow(
+    ImageConverterError,
+  );
+
+  // With edits the vector is drawn at its own size (held to the same limit by svgSize), and the edited picture is then
+  // resized as a picture, so a larger output is not an SVG drawing.
+  const edited = options({ mode: 'exact', width: 6000, height: 6000 }, { rotate: 90, flip: 'none' });
+  expect(planSvgConversion(natural, 'a.svg', edited).targetWidth).toBe(6000);
+
+  // The output limit of 40,000,000 still comes first.
+  expect(() => planSvgConversion(natural, 'a.svg', options({ mode: 'exact', width: 7000, height: 7000 }))).toThrow(
+    "above this browser's own 40,000,000-pixel limit",
+  );
+});

@@ -11,8 +11,11 @@
  */
 import { readRootElement, SvgGuardError } from './svg-guard';
 
-/** The most pixels an SVG may declare before anything is drawn. */
-export const MAX_SVG_PIXELS = 40_000_000;
+/**
+ * The most pixels an SVG may declare, and the most it is drawn at, before anything is drawn. An SVG is drawn on the
+ * page itself and drawing cannot be stopped once it starts, so this is well below the limit for a picture.
+ */
+export const MAX_SVG_PIXELS = 16_777_216;
 
 export class SvgSizeError extends Error {
   constructor(message: string) {
