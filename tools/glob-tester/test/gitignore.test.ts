@@ -1,5 +1,5 @@
 import { it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { gitignoreRows, type GitignoreRow } from '../src/gitignore';
+import { gitignoreRows, withoutTrailingSpaces, type GitignoreRow } from '../src/gitignore';
 import { meta as toolMeta } from '../src/index';
 import { gitCase, gitCorpus, gitDecision, pathIndex, type GitCase } from './corpus';
 
@@ -326,4 +326,42 @@ it('line numbers stay exact across many rules, and when a re-included directory 
     isDirectory: true,
     decidedBy: { kind: 'rule', line: 70, negated: true },
   });
+});
+
+it('unquoted trailing spaces are dropped before a rule is read and a quoted space stays, as git reads a .gitignore line', () => {
+  const backslash = String.fromCharCode(92);
+  // The gitignore documentation: "Trailing spaces are ignored unless they are quoted with backslash".
+  expect(withoutTrailingSpaces('node_modules/ ')).toBe('node_modules/');
+  expect(withoutTrailingSpaces('build/     ')).toBe('build/');
+  expect(withoutTrailingSpaces('foo' + backslash + ' ')).toBe('foo' + backslash + ' ');
+  expect(withoutTrailingSpaces('foo' + backslash + '  ')).toBe('foo' + backslash + ' ');
+  // A backslash that is itself quoted does not quote the space after it.
+  expect(withoutTrailingSpaces('foo' + backslash + backslash + ' ')).toBe('foo' + backslash + backslash);
+  expect(withoutTrailingSpaces('a b ')).toBe('a b');
+  expect(withoutTrailingSpaces('foo' + backslash)).toBe('foo' + backslash);
+  expect(withoutTrailingSpaces('   ')).toBe('');
+  expect(withoutTrailingSpaces('tab\t')).toBe('tab\t');
+
+  // The case the review found: a directory rule with a trailing space still matches at every depth, as git decides.
+  const nested = gitCase('trailing-space-dir');
+  expect(nested.text).toBe('node_modules/ ');
+  const rows = rowsFor(nested);
+  for (const path of [
+    'packages/app/node_modules/',
+    'packages/app/node_modules/x/index.js',
+    'node_modules/x/index.js',
+  ]) {
+    const git = gitDecision(nested, pathIndex(path));
+    expect(git).toMatchObject({ ignored: true, line: 1 });
+    const row = rows[pathIndex(path)] as GitignoreRow;
+    expect(row.ignored, path).toBe(true);
+    expect(lineOf(row), path).toBe(1);
+  }
+  // The pasted line is what the row names, with its trailing space, and the line numbers still count every line.
+  const second = gitignoreRows('*.tmp\nbuild/   \n', 'src/build/out.js\nbuild/');
+  expect(second[0]).toMatchObject({
+    ignored: true,
+    decidedBy: { kind: 'parent', directory: 'src/build/', line: 2, pattern: 'build/   ' },
+  });
+  expect(second[1]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 2, pattern: 'build/   ' } });
 });

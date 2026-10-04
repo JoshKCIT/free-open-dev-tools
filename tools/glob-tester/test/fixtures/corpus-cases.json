@@ -352,6 +352,70 @@
     {
       "id": "question-dir",
       "text": "a/?/foo"
+    },
+    {
+      "id": "trailing-space-dir",
+      "text": "node_modules/ "
+    },
+    {
+      "id": "trailing-spaces-dir",
+      "text": "build/   "
+    },
+    {
+      "id": "trailing-space-anchored-dir",
+      "text": "/build/ "
+    },
+    {
+      "id": "trailing-space-middle-slash",
+      "text": "a/b "
+    },
+    {
+      "id": "trailing-space-star-dir",
+      "text": "*/ "
+    },
+    {
+      "id": "trailing-space-nested-dir",
+      "text": "src/lib/ "
+    },
+    {
+      "id": "trailing-space-negation",
+      "text": "*.log\n!keep.log  "
+    },
+    {
+      "id": "trailing-space-dir-then-negation",
+      "text": "build/ \n!build/keep.txt"
+    },
+    {
+      "id": "trailing-space-doublestar",
+      "text": "a/**/foo "
+    },
+    {
+      "id": "trailing-space-anchored-name",
+      "text": "/foo "
+    },
+    {
+      "id": "trailing-space-comment",
+      "text": "# note  \nfoo"
+    },
+    {
+      "id": "escaped-trailing-space-dir",
+      "text": "logs/\\ "
+    },
+    {
+      "id": "escaped-space-then-space",
+      "text": "foo\\  "
+    },
+    {
+      "id": "escaped-backslash-then-space",
+      "text": "foo\\\\ "
+    },
+    {
+      "id": "crlf-trailing-space-dir",
+      "text": "build/ \r\n*.log\r\n"
+    },
+    {
+      "id": "spaces-only-line",
+      "text": "*.log\n   \n!keep.log"
     }
   ],
   "gitignorePaths": [
@@ -426,7 +490,13 @@
     ".config/",
     "\u00fc/",
     "caf\u00e9/",
-    "\u65e5\u672c/"
+    "\u65e5\u672c/",
+    "packages/app/node_modules/",
+    "packages/app/node_modules/x/index.js",
+    "src/build/",
+    "src/build/out.js",
+    "x/a/b/",
+    "x/a/b/c.txt"
   ],
   "globPatterns": [
     "*.js",

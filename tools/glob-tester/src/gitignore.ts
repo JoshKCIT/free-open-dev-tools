@@ -25,7 +25,34 @@ type Engine = ReturnType<typeof ignore>;
 
 interface Rule {
   line: number;
+  /** The line as pasted, for showing. */
   text: string;
+  /** The line as the rule engine reads it: the pasted line with its unquoted trailing spaces taken off. */
+  pattern: string;
+}
+
+const BACKSLASH = 92;
+const SPACE = 32;
+
+/**
+ * Takes the trailing spaces off a pattern line, as the gitignore documentation describes ("Trailing spaces are ignored
+ * unless they are quoted with backslash"). A backslash quotes the character after it, so the line is read from the
+ * start, skipping each backslash and the character it quotes; only the final run of unquoted spaces is dropped. A space
+ * that follows a quoted backslash is not quoted itself and goes, one that is quoted stays. Only the space character
+ * counts: a trailing tab stays.
+ */
+export function withoutTrailingSpaces(line: string): string {
+  let keep = 0;
+  for (let i = 0; i < line.length; i++) {
+    const unit = line.charCodeAt(i);
+    if (unit === BACKSLASH) {
+      i += 1;
+      keep = Math.min(i + 1, line.length);
+    } else if (unit !== SPACE) {
+      keep = i + 1;
+    }
+  }
+  return line.slice(0, keep);
 }
 
 /** How many rules share one engine when the last matching rule is looked for. */
@@ -54,8 +81,9 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
   const full = ignore({ ignorecase: false });
   forEachLine(text, (lineText, line) => {
     if (isBlank(lineText)) return;
-    rules.push({ line, text: lineText });
-    full.add({ pattern: lineText, mark: String(line) });
+    const pattern = withoutTrailingSpaces(lineText);
+    rules.push({ line, text: lineText, pattern });
+    full.add({ pattern, mark: String(line) });
   });
 
   // Every path is checked before the first one is decided, so a refusal never follows partial work.
@@ -67,7 +95,7 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
     const built: Engine[] = new Array<Engine>(to - from + 1);
     for (let j = to; j >= from; j--) {
       const rule = rules[j] as Rule;
-      const engine = ignore({ ignorecase: false }).add({ pattern: rule.text, mark: String(rule.line) });
+      const engine = ignore({ ignorecase: false }).add({ pattern: rule.pattern, mark: String(rule.line) });
       const next = built[j + 1 - from];
       if (next !== undefined) engine.add(next);
       built[j - from] = engine;
@@ -156,15 +184,15 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
       if (excluded !== '') {
         const index = lastMatching(excluded, touched);
         const rule = index < 0 ? undefined : (rules[index] as Rule);
-        if (rule !== undefined && !rule.text.startsWith('!')) {
+        if (rule !== undefined && !rule.pattern.startsWith('!')) {
           row.decidedBy = { kind: 'parent', directory: excluded, line: rule.line, pattern: rule.text };
         }
       } else {
         const index = lastMatching(key, touched);
         const rule = index < 0 ? undefined : (rules[index] as Rule);
         // The named rule must agree with the package's answer: a rule that is not a negation ignores the path.
-        if (rule !== undefined && rule.text.startsWith('!') === !answer.ignored) {
-          row.decidedBy = { kind: 'rule', line: rule.line, pattern: rule.text, negated: rule.text.startsWith('!') };
+        if (rule !== undefined && rule.pattern.startsWith('!') === !answer.ignored) {
+          row.decidedBy = { kind: 'rule', line: rule.line, pattern: rule.text, negated: rule.pattern.startsWith('!') };
         }
       }
     }

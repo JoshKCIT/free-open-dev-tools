@@ -5,9 +5,9 @@ this folder, and its answers are stored here.
 
 | File                          | What it holds                                                                                                                       |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `corpus-cases.json`           | The inputs: 88 .gitignore texts, 72 paths (files and directories), 40 glob patterns and 57 file paths. Written by hand.             |
+| `corpus-cases.json`           | The inputs: 104 .gitignore texts, 78 paths (files and directories), 40 glob patterns and 57 file paths. Written by hand.             |
 | `record-git-corpus.mjs`       | The script that asks git and writes the two files below. Run by hand: `node record-git-corpus.mjs <scratch folder>`.               |
-| `git-corpus.json`             | `git check-ignore -v -n -z --no-index --stdin` for every .gitignore text against every path: 6,336 answers.                         |
+| `git-corpus.json`             | `git check-ignore -v -n -z --no-index --stdin` for every .gitignore text against every path: 8,112 answers.                         |
 | `git-pathspec-corpus.json`    | `git ls-files -z -- ":(glob)<pattern>"` for every glob pattern against the 57 files: 2,280 answers.                                 |
 
 - **Git version:** `git version 2.53.0.windows.1` (Git for Windows), recorded in both files as `gitVersion`.
