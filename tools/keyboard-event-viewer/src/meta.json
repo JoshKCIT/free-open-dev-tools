@@ -12,7 +12,7 @@
     "Left, right and numpad variants of a key through the location value, and held keys through repeat"
   ],
   "limits": [
-    "The history keeps the latest 200 events in this page's memory only; Clear history empties it.",
+    "The history keeps the latest 200 events in this page's memory only, whether or not their type is shown, and it is forgotten when you leave the page; Clear history empties it.",
     "Key names and composition text are shown with control and direction-changing characters escaped and cut at 64 characters.",
     "This page shows every key you type while the capture box has focus, so do not type passwords or other secrets into it.",
     "Your browser and operating system keep some key combinations for themselves (for example switching tabs or windows, or an input method switch), so those never reach the page.",
@@ -22,6 +22,7 @@
     "key is the character or named key the press produced, so it changes with the keyboard layout and with Shift; code names the physical key whatever the layout. On a non-US layout the same code can show different key values.",
     "The key down and key up of one press are separate rows, and so are two events with the same key and code, such as the repeated key downs of a held key (repeat is true on the second and later ones).",
     "During an input method session a key down often reports the key Process and the legacy value 229, with isComposing true, instead of the key you pressed.",
+    "A composition event carries no isComposing value of its own, so its row shows true from compositionstart through compositionupdate and false at compositionend; key events show the value the browser reported.",
     "The numpad location on key up can differ between browsers for the same press; each row shows what this browser reported."
   ],
   "standards": [
