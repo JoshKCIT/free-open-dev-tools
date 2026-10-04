@@ -17,7 +17,7 @@ import {
  *  - The history lives in this module's memory, is bounded by the package's KeyHistory (200 rows), is emptied by
  *    Clear history and is forgotten when the capture area leaves the page. Nothing is logged, stored, put in the
  *    address, the title or a file name, or sent.
- *  - Cells are written with textContent only, and the shown text has control and direction-changing characters escaped.
+ *  - Cells are written with textContent only, and the shown text has control, invisible and direction-changing characters escaped.
  *  - Tab, Shift+Tab and Escape are never prevented, so focus can always leave the box (no keyboard trap).
  *  - The box is an ordinary editable text area: an input method only starts in an editable element.
  *

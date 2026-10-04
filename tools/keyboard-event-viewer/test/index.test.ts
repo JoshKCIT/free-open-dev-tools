@@ -291,3 +291,26 @@ it('nothing is written to the console while formatting events', () => {
   expect(spies.warn).not.toHaveBeenCalled();
   expect(spies.error).not.toHaveBeenCalled();
 });
+
+it('characters that show nothing in a key or composition text are shown as escapes, the Braille blank included', () => {
+  const open = String.fromCodePoint(92) + 'u{';
+  const hidden = [
+    0xad, 0xa0, 0x34f, 0x1680, 0x180e, 0x2000, 0x200a, 0x200b, 0x200c, 0x200d, 0x2028, 0x2029, 0x202f, 0x205f, 0x2060,
+    0x3000, 0x3164, 0xfe0f, 0xfeff, 0xffa0, 0x2800, 0xe0020, 0x1d173,
+  ];
+  for (const point of hidden) {
+    const shown = visible('a' + String.fromCodePoint(point) + 'b').shown;
+    expect(shown, 'U+' + point.toString(16)).toBe('a' + open + point.toString(16).toUpperCase() + '}b');
+  }
+  expect(visible(String.fromCharCode(0xd800)).shown).toBe(open + 'D800}');
+  expect(visible(String.fromCodePoint(0x1f600)).shown).toBe(String.fromCodePoint(0x1f600));
+  for (const point of [0x2801, 0x28ff, 0xfc, 0x65e5, 0x20, 0x2e, 0x1f600]) {
+    expect(visible(String.fromCodePoint(point)).shown).toBe(String.fromCodePoint(point));
+  }
+  // The row shows the escape for a key whose name is a no-break space, and a composition text with a zero width space.
+  const row = recordRow(
+    record({ key: String.fromCodePoint(0xa0), type: 'compositionupdate', data: 'x' + String.fromCodePoint(0x200b) }),
+  );
+  expect(row[1]).toBe(open + 'A0}');
+  expect(row[11]).toBe('x' + open + '200B}');
+});

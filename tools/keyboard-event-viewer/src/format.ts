@@ -56,21 +56,50 @@ export const KEY_COLUMNS: readonly string[] = [
 const ELLIPSIS = String.fromCodePoint(0x2026);
 const ESCAPE_OPEN = String.fromCodePoint(92) + 'u{';
 
-/** True for the characters that are shown as a code point instead of themselves. */
+/**
+ * Code point ranges that are shown as an escape instead of themselves: the control characters, the characters that change
+ * the direction of the text around them (Unicode Standard Annex 9), characters with no visible shape (soft hyphen, zero
+ * width space, joiners, word joiner, byte order mark, variation selectors, the invisible filler characters, the Braille
+ * blank and the tag characters), blank characters that look like a space, and unpaired surrogates. A path or a key name can
+ * hide in exactly these characters. The table is the one the IDN converter's own text uses, copied here because a tool
+ * folder never imports from another, with U+2800 added.
+ */
+const HIDDEN_RANGES: readonly (readonly [number, number])[] = [
+  [0x0000, 0x001f],
+  [0x007f, 0x009f],
+  [0x00a0, 0x00a0],
+  [0x00ad, 0x00ad],
+  [0x034f, 0x034f],
+  [0x061c, 0x061c],
+  [0x115f, 0x1160],
+  [0x1680, 0x1680],
+  [0x17b4, 0x17b5],
+  [0x180b, 0x180f],
+  [0x2000, 0x200f],
+  [0x2028, 0x202f],
+  [0x205f, 0x206f],
+  [0x2800, 0x2800],
+  [0x3000, 0x3000],
+  [0x3164, 0x3164],
+  [0xd800, 0xdfff],
+  [0xfe00, 0xfe0f],
+  [0xfeff, 0xfeff],
+  [0xffa0, 0xffa0],
+  [0xfff9, 0xfffb],
+  [0xfffe, 0xffff],
+  [0x1d173, 0x1d17a],
+  [0xe0000, 0xe0fff],
+];
+
 function needsEscape(point: number): boolean {
-  return (
-    point <= 0x1f ||
-    (point >= 0x7f && point <= 0x9f) ||
-    point === 0x61c ||
-    point === 0x200e ||
-    point === 0x200f ||
-    (point >= 0x202a && point <= 0x202e) ||
-    (point >= 0x2066 && point <= 0x2069)
-  );
+  for (const range of HIDDEN_RANGES) {
+    if (point >= range[0] && point <= range[1]) return true;
+  }
+  return false;
 }
 
 /**
- * Text that is safe to show: control characters and characters that change text direction are written as
+ * Text that is safe to show: hidden characters and characters that change text direction are written as
  * a backslash, `u`, braces and the code point in hex; only the first 64 code points are kept.
  */
 export function visible(text: string): { shown: string; truncated: boolean } {

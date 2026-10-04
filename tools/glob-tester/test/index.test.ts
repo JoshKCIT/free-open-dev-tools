@@ -352,3 +352,26 @@ it('shown patterns and paths have control and direction-changing characters esca
     String.fromCodePoint(0x1f600).repeat(2) + String.fromCodePoint(0x2026),
   );
 });
+
+it('characters that show nothing are shown as escapes, so a hidden character in a pattern or path can be seen', () => {
+  // The review's example: src/a, a zero width space, .ts reads as src/a.ts and is a different path. Soft hyphen, no-break
+  // space, line separator, byte order mark, the Braille blank (a pattern of dots that draws nothing) and the other
+  // invisible characters are escaped too. Built at run time (a file-writing tool can turn written escapes into characters).
+  const open = String.fromCodePoint(92) + 'u{';
+  const hidden = [
+    0xad, 0xa0, 0x34f, 0x1680, 0x180e, 0x2000, 0x200a, 0x200b, 0x200c, 0x200d, 0x2028, 0x2029, 0x202f, 0x205f, 0x2060,
+    0x3000, 0x3164, 0xfe0f, 0xfeff, 0xffa0, 0x2800, 0xe0020, 0x1d173,
+  ];
+  for (const point of hidden) {
+    const shown = visible('a' + String.fromCodePoint(point) + 'b', 10);
+    expect(shown, 'U+' + point.toString(16)).toBe('a' + open + point.toString(16).toUpperCase() + '}b');
+  }
+  expect(visible('src/a' + String.fromCodePoint(0x200b) + '.ts', 20)).toBe('src/a' + open + '200B}.ts');
+  // A lone surrogate is shown as an escape as well, and a pair as the character it makes.
+  expect(visible(String.fromCharCode(0xd800), 10)).toBe(open + 'D800}');
+  expect(visible(String.fromCodePoint(0x1f600), 10)).toBe(String.fromCodePoint(0x1f600));
+  // Visible characters next to the hidden ones are left alone: the other Braille patterns, accented letters, CJK text.
+  for (const point of [0x2801, 0x28ff, 0xfc, 0x65e5, 0x20, 0x2e, 0x1f600]) {
+    expect(visible(String.fromCodePoint(point), 10)).toBe(String.fromCodePoint(point));
+  }
+});

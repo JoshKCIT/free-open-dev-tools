@@ -7,24 +7,49 @@ const ELLIPSIS = String.fromCodePoint(0x2026);
 const ESCAPE_OPEN = String.fromCodePoint(92) + 'u{';
 
 /**
- * True for the characters shown as a code point instead of themselves: the control characters, and the characters that
- * change the direction of the text around them (Unicode Standard Annex 9: U+061C, U+200E, U+200F, U+202A to U+202E and
- * U+2066 to U+2069), which can make a path read as a different one.
+ * Code point ranges that are shown as an escape instead of themselves: the control characters, the characters that change
+ * the direction of the text around them (Unicode Standard Annex 9), characters with no visible shape (soft hyphen, zero
+ * width space, joiners, word joiner, byte order mark, variation selectors, the invisible filler characters, the Braille
+ * blank and the tag characters), blank characters that look like a space, and unpaired surrogates. A path or a key name can
+ * hide in exactly these characters. The table is the one the IDN converter's own text uses, copied here because a tool
+ * folder never imports from another, with U+2800 added.
  */
+const HIDDEN_RANGES: readonly (readonly [number, number])[] = [
+  [0x0000, 0x001f],
+  [0x007f, 0x009f],
+  [0x00a0, 0x00a0],
+  [0x00ad, 0x00ad],
+  [0x034f, 0x034f],
+  [0x061c, 0x061c],
+  [0x115f, 0x1160],
+  [0x1680, 0x1680],
+  [0x17b4, 0x17b5],
+  [0x180b, 0x180f],
+  [0x2000, 0x200f],
+  [0x2028, 0x202f],
+  [0x205f, 0x206f],
+  [0x2800, 0x2800],
+  [0x3000, 0x3000],
+  [0x3164, 0x3164],
+  [0xd800, 0xdfff],
+  [0xfe00, 0xfe0f],
+  [0xfeff, 0xfeff],
+  [0xffa0, 0xffa0],
+  [0xfff9, 0xfffb],
+  [0xfffe, 0xffff],
+  [0x1d173, 0x1d17a],
+  [0xe0000, 0xe0fff],
+];
+
 function needsEscape(point: number): boolean {
-  return (
-    point <= 0x1f ||
-    (point >= 0x7f && point <= 0x9f) ||
-    point === 0x61c ||
-    point === 0x200e ||
-    point === 0x200f ||
-    (point >= 0x202a && point <= 0x202e) ||
-    (point >= 0x2066 && point <= 0x2069)
-  );
+  for (const range of HIDDEN_RANGES) {
+    if (point >= range[0] && point <= range[1]) return true;
+  }
+  return false;
 }
 
 /**
- * Pasted text made safe to show: control characters and direction-changing characters are written as a backslash, `u`,
+ * Pasted text made safe to show: hidden and direction-changing characters are written as a backslash, `u`,
  * braces and the code point in hex, and only the first `maxCharacters` characters (code points) are kept, with an
  * ellipsis after them when something was left out.
  */
