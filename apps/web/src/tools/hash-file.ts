@@ -1,4 +1,4 @@
-import { meta, ALGORITHMS, digestsMatch, type OutputFormat } from '@fodt/hash-file';
+import { meta, ALGORITHMS, digestsMatch, expectedDigestLength, type OutputFormat } from '@fodt/hash-file';
 import { hashFileInWorker } from '../lib/run-in-worker';
 import {
   defineTool,
@@ -133,7 +133,7 @@ export default defineTool({
           value: `That checksum matches ${matched.map((m) => m.label).join(' and ')} of this file.`,
         });
       } else {
-        const normalizedExpectedLength = expected.replace(/[\s:_-]/g, '').length;
+        const normalizedExpectedLength = expectedDigestLength(expected);
         const anyLengthMatches = results.some((r) => r.digest.length === normalizedExpectedLength);
         outputs.push({
           kind: 'note',
