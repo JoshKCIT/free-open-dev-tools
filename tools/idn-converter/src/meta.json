@@ -6,7 +6,7 @@
   "supports": [
     "Unicode to ASCII, ASCII to Unicode, or automatic (a name with a non-ASCII character goes to ASCII, a name with an xn-- label goes to Unicode, any other name is shown both ways)",
     "A strict profile, as for registering a name (hyphen rules, ASCII letters, digits and hyphens only, label and name lengths), and a browser address bar profile with the hyphen, character and length checks switched off",
-    "Mapping and normalisation as UTS #46 defines them, so capitals, full-width letters and the ideographic full stop are read the way a browser reads them, and the Unicode form shown is the mapped and normalised one, not the pasted spelling",
+    "Mapping and normalisation as UTS #46 defines them, so capitals, full-width letters and the ideographic full stop are read the way a browser reads them, characters UTS #46 ignores (a soft hyphen, a zero width space) are removed, and the Unicode form shown is the mapped and normalised one, not the pasted spelling",
     "Explanations by the rule families the Unicode conformance data uses: hyphens, bidirectional text, joiners, characters not allowed in a host name, label and name length, characters or xn-- labels that cannot be processed, and empty labels",
     "Lengths measured in octets of the ASCII form, as UTS #46 says"
   ],
@@ -21,7 +21,8 @@
   "ambiguities": [
     "The strict and browser profiles give different answers for the same name: a name with hyphens in the third and fourth positions, a space or an underscore, or a label over 63 octets is invalid when strict and converts under the browser profile.",
     "The page shows the first label that fails each rule family; a name can break more than one rule, and a name whose characters cannot be processed at all is explained by that alone.",
-    "UTS #46 judges bidirectional text on the whole name: a name is a bidirectional name if any of its labels has a right-to-left character, and then every label is held to the bidirectional rules."
+    "UTS #46 judges bidirectional text on the whole name: a name is a bidirectional name if any of its labels has a right-to-left character, and then every label is held to the bidirectional rules.",
+    "The browser profile is the UTS #46 half of what a browser does. A browser also keeps an all-ASCII host as typed and refuses a host that holds a space, a slash, a percent sign or another forbidden host character; this page does not apply those URL parser steps, so such a name can show as converted here and still be refused by an address bar."
   ],
   "standards": [
     {
@@ -57,9 +58,9 @@
     "internationalized domain name"
   ],
   "primaryExport": "convertNames",
-  "usage": "TODO",
-  "apiNotes": "TODO",
-  "testNotes": "TODO",
+  "usage": "import { convertNames, explainName, STRICT } from '@fodt/idn-converter';\n\nconst [row] = convertNames('bücher.example', { direction: 'auto', profile: 'strict' });\nrow.ascii;   // 'xn--bcher-kva.example'\nrow.unicode; // 'bücher.example'\n\nconst [bad] = convertNames('a_b.example', { direction: 'to-ascii', profile: 'strict' });\nbad.valid;    // false\nbad.problems; // [{ label: 1, family: 'std3', message: '...', codePoints: ['U+005F'] }]\n\nexplainName('a..b', STRICT); // [{ label: 2, family: 'empty-label', ... }]",
+  "apiNotes": "`convertNames(text, { direction, profile })` size-checks the text first (an `IdnConverterError` naming the limit and, for a name, its line; it never repeats the text), skips blank lines, trims each name and returns one `ConvertedName` per name: `line` (counting blank lines), `input`, the way it was judged (`direction`: `to-ascii`, `to-unicode` or `both`), `ascii`, `unicode`, `valid` and `problems`. A name that is not valid has `ascii` and `unicode` null. `convertName(name, options)` converts one name exactly as given. `explainName(name, profile, direction)` returns an empty list exactly when the name is valid and otherwise one `LabelProblem` per kind of problem: the label number counted in the mapped name (0 for the whole name), the family (`hyphen`, `bidi`, `joiner`, `std3`, `length`, `processing`, `empty-label`), a plain ASCII message that repeats nothing pasted, and at most 8 offending code points as `U+XXXX`. `visible(text)` shows control, direction-changing and invisible characters as `\\u{XXXX}` escapes. Lengths are only checked going to ASCII.",
+  "testNotes": "The Unicode conformance file IdnaTestV2.txt 17.0.0 is vendored byte for byte under test/fixtures/idna (with the Unicode License V3 text and a record of its address, SHA-256 and git blob SHA, which a test checks) and read by the test's own reader. Every one of its 6,391 rows is converted three ways: ToASCII with transitional processing off, ToASCII with it on, and ToUnicode, each with the strict profile, and the verdict and the value must equal the file's (U+FFFD in a result stands for any one code point, as the file says); the empty label status the file adds for ToUnicode is checked on its 271 rows. Every explanation must name only families the row's status codes belong to, and must name every family the file lists when the name passes the basic rules. The browser profile must differ from the strict one only in the hyphen, STD3 and length checks. Boundaries (63 and 253 octets, the three input limits), bidirectional checking on the whole name, Punycode decoding failures, escaping of hidden characters, the RFC 3492 sample strings, a second Punycode encoder written from the RFC and 6,000 seeded random names (explained exactly when refused) complete the checks. The package prints nothing.",
   "dependencies": {
     "tr46": "6.0.0"
   },

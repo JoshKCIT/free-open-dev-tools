@@ -105,6 +105,14 @@ it('inputs over the limits are refused before conversion', () => {
   // Characters are counted as people see them, not as UTF-16 units: a name of 4,096 emoji is accepted.
   expect(thrown(() => checkSizes(cp(0x1f600).repeat(MAX_NAME_CHARACTERS)))).toBeUndefined();
   expect(thrown(() => checkSizes(cp(0x1f600).repeat(MAX_NAME_CHARACTERS + 1)))).toBeInstanceOf(IdnConverterError);
+  // The input limit counts characters the same way: 25 names of 2,400 emoji are 60,000 characters (120,000 UTF-16 units)
+  // and are accepted; 25 names of 4,000 emoji are 100,024 characters with the line feeds, and are refused.
+  const sixtyThousand = Array.from({ length: 25 }, () => cp(0x1f600).repeat(2400)).join('\n');
+  expect(thrown(() => checkSizes(sixtyThousand))).toBeUndefined();
+  const hundredThousand = Array.from({ length: 25 }, () => cp(0x1f600).repeat(4000)).join('\n');
+  const refusedEmoji = thrown(() => checkSizes(hundredThousand));
+  expect(refusedEmoji).toBeInstanceOf(IdnConverterError);
+  expect((refusedEmoji as IdnConverterError).message).toContain('100,024');
 });
 
 it('labels of 63 octets and names of 253 octets pass and one more fails under the strict profile', () => {
@@ -121,6 +129,12 @@ it('labels of 63 octets and names of 253 octets pass and one more fails under th
   expect(sixtyFour?.problems[0]?.message).toContain('64');
   // The browser profile does not check lengths.
   expect(convertNames(label64 + '.example', BROWSER_ASCII)[0]?.valid).toBe(true);
+  // Going to Unicode no length is checked (UTS 46 ToUnicode has none), and the ASCII form is still shown.
+  expect(convertNames(label64 + '.example', { direction: 'to-unicode', profile: 'strict' })[0]).toMatchObject({
+    valid: true,
+    ascii: label64 + '.example',
+    unicode: label64 + '.example',
+  });
 
   // 253 octets: three labels of 63, one of 61, and three dots.
   const name253 = [label63, label63, label63, 'b'.repeat(61)].join('.');
@@ -133,6 +147,13 @@ it('labels of 63 octets and names of 253 octets pass and one more fails under th
   expect(over?.problems).toHaveLength(1);
   expect(over?.problems[0]).toMatchObject({ family: 'length' });
   expect(over?.problems[0]?.message).toContain('254');
+  // A final full stop is not counted in the name's length (UTS 46 4.2) but is itself refused by the strict profile.
+  const rootOnly = convertNames(name253 + '.', STRICT_ASCII)[0];
+  expect(rootOnly?.problems).toHaveLength(1);
+  expect(rootOnly?.problems[0]?.message).toContain('ends with a full stop');
+  const rootAndLong = convertNames(name254 + '.', STRICT_ASCII)[0];
+  expect(rootAndLong?.problems).toHaveLength(2);
+  expect(rootAndLong?.problems.some((problem) => problem.message.includes('254'))).toBe(true);
   expect(convertNames(name254, BROWSER_ASCII)[0]?.valid).toBe(true);
 
   // Lengths are octets of the ASCII form: a label of Han characters counts its xn-- form. Eleven characters (U+4E00 and
@@ -183,6 +204,10 @@ it('automatic direction goes to ASCII for a non-ASCII name, to Unicode for an xn
   expect(rows[1]).toMatchObject({ valid: true, ascii: 'xn--bcher-kva.de', unicode: 'b' + cp(0xfc) + 'cher.de' });
   expect(rows[2]).toMatchObject({ valid: true, ascii: 'example.com', unicode: 'example.com' });
   expect(rows[3]).toMatchObject({ valid: true, ascii: 'xn--bcher-kva.de', unicode: 'b' + cp(0xfc) + 'cher.de' });
+  // An xn-- label that is not the first one counts, and so does one in capitals.
+  expect(convertNames('www.xn--bcher-kva.de', { direction: 'auto', profile: 'strict' })[0]?.direction).toBe(
+    'to-unicode',
+  );
   // A name with one non-ASCII character goes to ASCII even when another label is already Punycode.
   expect(convertNames('xn--bcher-kva.' + cp(0xfc) + 'x', { direction: 'auto', profile: 'browser' })[0]?.direction).toBe(
     'to-ascii',
@@ -257,7 +282,13 @@ it('messages never repeat what was pasted', () => {
       }
     }
   }
-  // Bad options are refused without echoing them.
+  // Bad options are refused without echoing them, even when there is nothing to convert.
+  expect(thrown(() => convertNames('', { direction: 'auto', profile: MARKER as never }))).toBeInstanceOf(
+    IdnConverterError,
+  );
+  expect(thrown(() => convertNames('', { direction: MARKER as never, profile: 'strict' }))).toBeInstanceOf(
+    IdnConverterError,
+  );
   for (const bad of [MARKER, '__proto__', 'constructor', 'toString', '']) {
     const asProfile = thrown(() => convertNames('a.example', { direction: 'auto', profile: bad as never }));
     expect(asProfile).toBeInstanceOf(IdnConverterError);
@@ -286,6 +317,18 @@ it('names that are keys of every object are converted as ordinary names', () => 
   expect(PROFILES.get('__proto__' as never)).toBeUndefined();
   expect(PROFILES.get('constructor' as never)).toBeUndefined();
 });
+
+it('5,000 valid names convert in a few seconds', () => {
+  const names = Array.from({ length: MAX_LINES }, (_, index) => cp(0xe9) + index + '.example');
+  const started = performance.now();
+  const rows = convertNames(names.join('\n'), { direction: 'auto', profile: 'strict' });
+  const elapsed = performance.now() - started;
+  expect(rows).toHaveLength(MAX_LINES);
+  expect(
+    rows.every((row) => row.valid && row.problems.length === 0 && row.ascii !== null && row.unicode !== null),
+  ).toBe(true);
+  expect(elapsed).toBeLessThan(20_000);
+}, 60_000);
 
 it('5,000 invalid names are explained in a few seconds', () => {
   const names = Array.from(

@@ -1,5 +1,6 @@
+import { toASCII as tr46ToASCII, toUnicode as tr46ToUnicode } from 'tr46';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { BROWSER, FAMILY_WORDS, PROBLEM_FAMILIES, STRICT, convertName, explainName } from '../src/index';
+import { BROWSER, FAMILY_WORDS, PROBLEM_FAMILIES, STRICT, convertName, explainName, visible } from '../src/index';
 import { readVendoredRows } from './idna-test-file';
 
 // Expected values here come from Unicode's UTS #46 (the validity criteria and the processing steps), from RFC 5893 for
@@ -42,6 +43,8 @@ it('bidi rules are judged on the whole name, not label by label', () => {
   // The order of the labels does not matter: the whole name is one bidi domain name.
   const reversed = toAscii(alef + '.0' + agrave);
   expect(reversed.problems.map((problem) => [problem.family, problem.label])).toEqual([['bidi', 2]]);
+  // A profile with the bidi check off judges nothing by those rules, and the name is then valid.
+  expect(explainName('0' + agrave + '.' + alef, { ...STRICT, checkBidi: false })).toEqual([]);
   // The browser profile keeps the bidi check on.
   expect(toAscii('0' + agrave + '.' + alef, 'browser').problems.map((problem) => problem.family)).toEqual(['bidi']);
 });
@@ -183,7 +186,7 @@ it('every explanation is short plain ASCII that repeats nothing pasted', () => {
           }
           expect(problem.codePoints.length).toBeLessThanOrEqual(8);
           expect(PROBLEM_FAMILIES).toContain(problem.family);
-          expect(Number.isInteger(problem.label) && problem.label >= 1).toBe(true);
+          expect(Number.isInteger(problem.label) && problem.label >= 0).toBe(true);
         }
       }
     }
@@ -208,4 +211,106 @@ it('family names are looked up in a Map and have words for the page', () => {
   }
   for (const key of ['__proto__', 'constructor', 'toString', 'hasOwnProperty'])
     expect(FAMILY_WORDS.get(key)).toBeUndefined();
+});
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+it('a name is explained exactly when conversion refuses it, for 6,000 seeded random names', () => {
+  // Pieces that exercise every family: letters, digits, hyphens, dots (and the dots UTS 46 maps to dots), underscores,
+  // Punycode starts and bad Punycode, combining marks, joiners, Hebrew and Arabic letters and digits, deviation
+  // characters, characters with no mapping, controls, emoji and an unpaired surrogate. Built at run time.
+  const pieces = [
+    'a',
+    'b',
+    'z',
+    'x',
+    '0',
+    '7',
+    '-',
+    '--',
+    '.',
+    '.',
+    cp(0x3002),
+    cp(0xff0e),
+    '_',
+    ' ',
+    'xn--',
+    'xn--a',
+    'xn--9999999',
+    'xn--bcher-kva',
+    'A',
+    'B',
+    'ab--',
+    cp(0xe9),
+    cp(0xfc),
+    cp(0xdf),
+    cp(0x3c2),
+    cp(0x300),
+    cp(0x308),
+    cp(0x200c),
+    cp(0x200d),
+    cp(0x94d),
+    cp(0x5d0),
+    cp(0x5d1),
+    cp(0x627),
+    cp(0x628),
+    cp(0x660),
+    cp(0x661),
+    cp(0x6f1),
+    cp(0x4e2d),
+    cp(0x6587),
+    cp(0xff41),
+    cp(0x1f600),
+    cp(0x202e),
+    cp(0x7),
+    cp(0xad),
+    cp(0x200b),
+    cp(0xe000),
+    cp(0xfffd),
+    cp(0xa0),
+    cp(0x2488),
+    String.fromCharCode(0xd800),
+  ];
+  const random = mulberry32(46);
+  let refusedCount = 0;
+  for (let i = 0; i < 6000; i++) {
+    const count = 1 + Math.floor(random() * 7);
+    let name = '';
+    for (let j = 0; j < count; j++) name += pieces[Math.floor(random() * pieces.length)] ?? 'a';
+    for (const profile of [STRICT, BROWSER]) {
+      for (const direction of ['to-ascii', 'to-unicode'] as const) {
+        const explained = explainName(name, profile, direction).length > 0;
+        const unicode = tr46ToUnicode(name, profile);
+        const labels = unicode.domain.split('.');
+        const body = labels.length > 1 && labels[labels.length - 1] === '' ? labels.slice(0, -1) : labels;
+        const emptyLabel = body.includes('');
+        const refused = emptyLabel || (direction === 'to-ascii' ? tr46ToASCII(name, profile) === null : unicode.error);
+        if (explained !== refused) {
+          throw new Error(
+            'seeded name ' +
+              i +
+              ' ' +
+              direction +
+              ' explained=' +
+              explained +
+              ' refused=' +
+              refused +
+              ' ' +
+              visible(name, 40),
+          );
+        }
+        if (refused) refusedCount++;
+      }
+    }
+  }
+  expect(refusedCount).toBeGreaterThan(8000);
 });
