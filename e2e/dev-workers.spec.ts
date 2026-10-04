@@ -544,9 +544,14 @@ test('glob-tester: a backtracking pattern stops after 5 seconds with a plain mes
 });
 
 test('glob-tester: the platform the browser reports never changes a glob result', async ({ browser, baseURL }) => {
-  // The same input is shown on three pages that report three different platforms. picomatch asks the platform when it is
-  // not told, and on a Windows machine it also reads a backslash as a separator and writes a different regular
-  // expression; the tool tells it not to, so the whole output (the table and the regular expressions) is identical.
+  // The same input is shown on three pages that report three different platforms, in the page and in the background
+  // worker, where picomatch reads it (a worker's navigator is its own WorkerNavigator, not the page's Navigator).
+  // picomatch asks the platform when it is not told, and on a Windows machine it also reads a backslash as a separator
+  // and writes a different regular expression; the tool tells it not to, so the whole output (the table and the
+  // regular expressions) is identical. The fake reaches the worker because the init script wraps the Worker
+  // constructor: each worker the page builds starts from a small module that sets WorkerNavigator.platform and then
+  // imports the page's own worker script. The real platform of the machine running the test therefore cannot change the
+  // outcome, and the test can fail on any machine when the platform is not pinned.
   const patterns = 'src/**/*.ts\n*.{js,md}\n@(x|y).txt\n[!a]*';
   const paths = 'src/a.ts\nsrc/lib/b.ts\nREADME.md\nx.txt\nbbb\n.hidden.js';
   const shown: string[] = [];
@@ -555,10 +560,39 @@ test('glob-tester: the platform the browser reports never changes a glob result'
     try {
       await context.addInitScript((reported: string) => {
         Object.defineProperty(Navigator.prototype, 'platform', { get: () => reported, configurable: true });
+        const OriginalWorker = window.Worker;
+        const prefix = `Object.defineProperty(WorkerNavigator.prototype, 'platform', { get: () => ${JSON.stringify(reported)}, configurable: true });`;
+        window.Worker = class extends OriginalWorker {
+          constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
+            // A blob address is already absolute; any other address is made absolute, because it is imported from a blob.
+            const address = new URL(String(scriptURL), document.baseURI).href;
+            const source = `${prefix}\nawait import(${JSON.stringify(address)});`;
+            super(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })), {
+              ...workerOptions,
+              type: 'module',
+            });
+          }
+        };
       }, platform);
       const page = await context.newPage();
       await openTool(page, 'glob-tester');
       expect(await page.evaluate(() => navigator.platform)).toBe(platform);
+      // The fake really is what a worker reads: a probe worker built the same way reports the faked platform.
+      const inWorker = await page.evaluate(
+        () =>
+          new Promise<string>((resolve, reject) => {
+            const probe = new Worker(
+              URL.createObjectURL(new Blob(['postMessage(self.navigator.platform);'], { type: 'text/javascript' })),
+              { type: 'module' },
+            );
+            probe.onmessage = (event: MessageEvent<string>) => {
+              resolve(event.data);
+              probe.terminate();
+            };
+            probe.onerror = () => reject(new Error('the probe worker failed'));
+          }),
+      );
+      expect(inWorker).toBe(platform);
       await setControls(page, { radios: { mode: 'glob' } });
       await fillFields(page, { patterns, paths });
       await expect(outputArea(page).locator('table')).toContainText('src/lib/b.ts', { timeout: 15_000 });
