@@ -25,7 +25,9 @@ Paste a docker run command and get the same container written as a Compose servi
 - Options with no Compose equivalent (for example --rm, --detach, --cidfile) are listed with the reason instead of being written.
 - --link, --volumes-from and network addresses without a user-defined network need another service or network in the same file; they are listed, not written.
 - Files named by --env-file and --label-file must exist when Compose runs.
-- Only docker run and docker container run are read; docker run options placed before the word run, a shell pipeline and anything else a shell would run are refused.
+- Only docker run and docker container run are read; docker options placed before the word run, a shell pipeline and anything else a shell would run are refused.
+- At most the first 1,000 rows of the options table and the first 200 items of each list are shown; the counts above them cover every option.
+- A value such as a size or a number that is written as a variable (for example -m $MEM) is not checked and is written as text for Compose to fill in.
 
 ## Ambiguous cases, and what this does about them
 
@@ -34,12 +36,21 @@ Paste a docker run command and get the same container written as a Compose servi
 - --entrypoint takes one program name, not a command line: docker uses the whole text as the program, so it is written as a one-item list.
 - --restart no is written as the quoted string "no", because an unquoted no is read as a boolean by YAML 1.1.
 - Options given more than once: a single-value option keeps the last value (as docker does); list options keep every value.
+- A -v or --mount source is treated as a named volume, and declared at the top level, when it looks like a docker volume name: at least two characters, letters, digits, underscore, dot or dash, starting with a letter or digit. Anything else, such as a path or a source with a variable in it, is left as written.
+- A --network value of host, none, bridge, default or container: is a network mode and becomes network_mode; any other value is a user-defined network, written under networks and declared external at the top level, because docker run expects it to exist already.
 
 ## Defined by
 
 - [Docker CLI reference for docker run](https://docs.docker.com/reference/cli/docker/container/run/)
 - [Compose Specification](https://github.com/compose-spec/compose-spec/blob/main/spec.md)
 - [POSIX Shell Command Language, section 2.2 Quoting](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html)
+
+## Bundled data
+
+This folder ships a data file that is not an npm dependency, so it travels with the folder when it is
+copied out on its own:
+
+- **Compose Specification JSON Schema** (Apache-2.0) — [source](https://github.com/compose-spec/compose-spec). "Compose Specification" schema by the Compose Specification project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 914ec15d1fa498969c0df5c1d672306db3256089.
 
 ## Use it on its own
 
@@ -64,7 +75,7 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ```ts
 import { convertDockerRun } from '@fodt/docker-run-to-compose';
 
-const result = convertDockerRun('docker run --rm -p 8080:80 --name web nginx:1.27');
+const result = convertDockerRun('docker run --name web -p 8080:80 --rm nginx:1.27');
 result.yaml;
 // services:
 //   web:
@@ -89,7 +100,7 @@ result.validation.valid; // true
 npm test
 ```
 
-The option table is checked against the flag registrations in the Docker CLI source files cli/command/container/opts.go and run.go at a recorded commit, copied unchanged with their licence and an UPSTREAM.md of git blob SHAs; every registered flag must be in the table with a Compose key or a reason. Every option that has a Compose key is converted from a sample value and the service must be accepted by the Compose Specification JSON schema, bundled here as an unchanged copy of the upstream file. The same samples were also run through docker compose config with no daemon, and that record is committed. The shell reading, the dollar rules, the size limit and the rule that messages never repeat pasted text have their own tests.
+The option table is checked against the flag registrations in the Docker CLI source files cli/command/container/opts.go and run.go at a recorded commit, copied unchanged with their licence and an UPSTREAM.md of git blob SHAs: all 108 registered flags must be in the table with their value type, short form and a Compose key or a reason. Every option that has a Compose key is converted from a sample command and the service must be accepted by the Compose Specification JSON schema, bundled here as an unchanged copy of the upstream file. The same 108 samples and ten recorded commands were run through docker compose config (Compose v5.3.1, no daemon), which accepted all 118 YAML files, and through docker run with no daemon (Docker 29.6.2), whose own option reader accepted every option and value except the newest flag, --umask; that record is committed with the script that made it. The shell reading, the dollar rules, the size limit, the YAML quoting and the rule that messages never repeat pasted text have their own tests, and a browser test compares the page output for ten recorded commands with the YAML the unit tests assert in four browsers.
 
 ## Licence
 
