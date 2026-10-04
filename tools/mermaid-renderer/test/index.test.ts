@@ -425,7 +425,7 @@ it('the engine receives the text without the lines it would drop, so a parser li
     lineOffset: 0,
   });
   expect(prepareDiagram('---\ntitle: My Title\n---\n\nflowchart LR\n  A --> B')).toEqual({
-    text: '---\ntitle: My Title\n---\nflowchart LR\n  A --> B',
+    text: '---\ntitle: "My Title"\n---\nflowchart LR\n  A --> B',
     lineOffset: 4,
   });
   expect(prepareDiagram('---\n---\npie\n  "a" : 1').lineOffset).toBe(2);
@@ -435,6 +435,33 @@ it('the engine receives the text without the lines it would drop, so a parser li
   });
   expect(prepareDiagram('')).toEqual({ text: '', lineOffset: 0 });
   expect(prepareDiagram('%% only a comment')).toEqual({ text: '', lineOffset: 1 });
+});
+
+it('a frontmatter title is written back as a quoted scalar unless it already is one, so a colon in it is not read as settings', () => {
+  const heading = (title: string): string =>
+    prepareDiagram(`---\ntitle: ${title}\n---\nflowchart LR\n  A --> B`).text.split('\n')[1] ?? '';
+  expect(heading('Plan: phase 1')).toBe('title: "Plan: phase 1"');
+  expect(heading('My Title')).toBe('title: "My Title"');
+  expect(heading('A #1 plan')).toBe('title: "A #1 plan"');
+  expect(heading('He said "hi"')).toBe('title: "He said \\"hi\\""');
+  expect(heading('a\\b')).toBe('title: "a\\\\b"');
+  expect(heading('- not a list')).toBe('title: "- not a list"');
+  expect(heading('')).toBe('title: ""');
+  // A title the visitor already quoted as a YAML scalar is left as written, in either quote style.
+  expect(heading('"Plan: phase 1"')).toBe('title: "Plan: phase 1"');
+  expect(heading("'Plan: phase 1'")).toBe("title: 'Plan: phase 1'");
+  expect(heading('"it\\"s"')).toBe('title: "it\\"s"');
+  expect(heading("'it''s'")).toBe("title: 'it''s'");
+  // A quote that does not close the whole text is plain text and gets quoted whole.
+  expect(heading('"a" b')).toBe('title: "\\"a\\" b"');
+  // Characters YAML refuses in a quoted scalar are written as escapes (built at run time, invisible in a source file).
+  const next = String.fromCodePoint(0x85);
+  const separator = String.fromCodePoint(0x2028);
+  expect(heading(`a${next}b${separator}c`)).toBe('title: "a\\u0085b\\u2028c"');
+  // The text handed to the engine has the title block as its only frontmatter, and the line count is unchanged.
+  const prepared = prepareDiagram('---\ntitle: Plan: phase 1\n---\nflowchart LR\n  A --> B');
+  expect(prepared.text).toBe('---\ntitle: "Plan: phase 1"\n---\nflowchart LR\n  A --> B');
+  expect(prepared.lineOffset).toBe(3);
 });
 
 it('the png size is the svg size times the scale, and a size over the limits is refused with the numbers', () => {

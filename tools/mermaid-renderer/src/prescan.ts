@@ -307,6 +307,39 @@ function splitLines(text: string): string[] {
   }
 }
 
+/** A whole double-quoted YAML scalar, and a whole single-quoted one. */
+const DOUBLE_QUOTED = /^"(?:[^"\\]|\\.)*"$/;
+const SINGLE_QUOTED = /^'(?:[^']|'')*'$/;
+
+/**
+ * The title as written back into the frontmatter: left alone when it is already a whole quoted YAML scalar, and
+ * otherwise written as a double-quoted one, so a colon, a number sign or a leading dash in it is text and not YAML
+ * syntax. Backslashes and quotes are escaped, and the characters YAML does not allow in a quoted scalar as they stand
+ * (control characters, U+0085, the line and paragraph separators, the byte order mark and U+FFFE and U+FFFF) are written
+ * as escapes.
+ */
+function quotedTitle(title: string): string {
+  if (DOUBLE_QUOTED.test(title) || SINGLE_QUOTED.test(title)) return title;
+  let out = '"';
+  for (const char of title) {
+    const unit = char.codePointAt(0) ?? 0;
+    if (char === '"' || char === '\\') out += `\\${char}`;
+    else if (
+      unit < 0x20 ||
+      (unit >= 0x7f && unit <= 0x9f) ||
+      unit === 0x2028 ||
+      unit === 0x2029 ||
+      unit === 0xfeff ||
+      unit === 0xfffe ||
+      unit === 0xffff ||
+      (unit >= 0xd800 && unit <= 0xdfff)
+    ) {
+      out += `\\u${unit.toString(16).toUpperCase().padStart(4, '0')}`;
+    } else out += char;
+  }
+  return `${out}"`;
+}
+
 /** The text a diagram is drawn from, and how many lines of the pasted text come before its first line. */
 export interface PreparedDiagram {
   text: string;
@@ -347,7 +380,7 @@ export function prepareDiagram(text: string): PreparedDiagram {
     first++;
   }
   const body = lines.slice(first).map((line) => (isComment(line) ? '' : line));
-  const heading = title === undefined ? '' : `---\ntitle: ${title}\n---\n`;
+  const heading = title === undefined ? '' : `---\ntitle: ${quotedTitle(title)}\n---\n`;
   const prepared = heading + body.join('\n');
   // The engine reads settings from any block at the start of the text that matches its own frontmatter pattern. Run
   // that pattern on the text built here and refuse unless what it finds is the title block written above, so no

@@ -279,6 +279,13 @@ test('mermaid-renderer: the diagram title and description reach the image text a
   await fillAndHold(page, '---\ntitle: Frontmatter heading\n---\nflowchart LR\n  A --> B');
   await runAndWait(page);
   await expect(image).toHaveAttribute('alt', 'Mermaid flowchart diagram: Frontmatter heading', { timeout: 30_000 });
+
+  // A title with a colon in it is drawn, not refused as unreadable YAML, and the colon stays in the title.
+  await fillAndHold(page, '---\ntitle: Plan: phase 1\n---\nflowchart LR\n  A --> B');
+  await runAndWait(page);
+  await expect(image).toHaveAttribute('alt', 'Mermaid flowchart diagram: Plan: phase 1', { timeout: 30_000 });
+  await expect(outputArea(page).locator('.issue-list')).toHaveCount(0);
+  await expect(outputArea(page).locator('pre').first()).toContainText('Plan: phase 1');
 });
 
 test('mermaid-renderer: a syntax error shows the parser line and none of the diagram text', async ({ page }) => {
