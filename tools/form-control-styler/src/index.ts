@@ -167,7 +167,15 @@ function opaque(colour: RgbaColor): RgbaColor {
   return { ...colour, alpha: 1 };
 }
 
-/** Removes control, line-break and bidirectional characters, collapses spaces, cuts to the limit; an empty one is Option. */
+/** True for a zero-width character: U+200B to U+200D, U+2060 and U+FEFF. It is removed, not turned into a space. */
+function isZeroWidth(cp: number): boolean {
+  return (cp >= 0x200b && cp <= 0x200d) || cp === 0x2060 || cp === 0xfeff;
+}
+
+/**
+ * Removes zero-width characters, turns tab, line feed, carriage return and the other control, line-break and
+ * bidirectional characters into a space, collapses spaces and cuts to the limit; a label with nothing left is Option.
+ */
 function cleanLabel(text: string | undefined): string {
   if (typeof text !== 'string') return DEFAULT_LABEL;
   let out = '';
@@ -175,6 +183,11 @@ function cleanLabel(text: string | undefined): string {
   let count = 0;
   for (const ch of text) {
     const cp = ch.codePointAt(0)!;
+    if (isZeroWidth(cp)) {
+      count++;
+      if (count >= 4096) break;
+      continue;
+    }
     const hidden =
       cp <= 0x20 ||
       (cp >= 0x7f && cp <= 0xa0) ||
@@ -182,8 +195,7 @@ function cleanLabel(text: string | undefined): string {
       cp === 0x200e ||
       cp === 0x200f ||
       (cp >= 0x2028 && cp <= 0x202e) ||
-      (cp >= 0x2066 && cp <= 0x2069) ||
-      cp === 0xfeff;
+      (cp >= 0x2066 && cp <= 0x2069);
     if (hidden) {
       if (!lastSpace) out += ' ';
       lastSpace = true;

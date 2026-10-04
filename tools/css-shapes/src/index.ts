@@ -150,7 +150,16 @@ function isHidden(cp: number): boolean {
   );
 }
 
-/** The text with control and direction characters taken out, cut to 200 characters without splitting a pair. */
+/** True for a zero-width character: U+200B to U+200D, U+2060 and U+FEFF. */
+function isZeroWidth(cp: number): boolean {
+  return (cp >= 0x200b && cp <= 0x200d) || cp === 0x2060 || cp === 0xfeff;
+}
+
+/**
+ * The text with zero-width characters and the other control and direction characters taken out, tab, line feed and
+ * carriage return each turned into a space, cut to 200 characters without splitting a pair. Text with nothing left
+ * after the removals is no text.
+ */
 function cleanText(raw: string | undefined, warnings: string[]): string {
   if (typeof raw !== 'string' || raw.length === 0) return '';
   let out = '';
@@ -158,17 +167,24 @@ function cleanText(raw: string | undefined, warnings: string[]): string {
   let cut = false;
   for (const ch of raw) {
     const cp = ch.codePointAt(0) as number;
-    if (isHidden(cp)) {
+    const space = cp === 9 || cp === 10 || cp === 13;
+    if (!space && (isZeroWidth(cp) || isHidden(cp))) {
       removed = true;
       continue;
     }
+    if (space) removed = true;
     if (out.length + ch.length > MAX_TEXT) {
       cut = true;
       break;
     }
-    out += ch;
+    out += space ? ' ' : ch;
   }
-  if (removed) warnings.push('Control and text direction characters were removed from the text.');
+  if (removed) {
+    warnings.push(
+      'Control, zero-width and text direction characters were removed from the text, and tabs and line breaks became spaces.',
+    );
+  }
+  if (removed && out.trim() === '') return '';
   if (cut) warnings.push(`The text was longer than ${MAX_TEXT} characters, so the first ${MAX_TEXT} were used.`);
   return out;
 }

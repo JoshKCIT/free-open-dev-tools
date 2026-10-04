@@ -499,3 +499,26 @@ it('nothing is written to the console while styling controls', () => {
     for (const spy of spies) spy.mockRestore();
   }
 });
+
+it('a label has zero-width characters removed, tab and line breaks turned into a space, and an all-removed label becomes Option', () => {
+  const zeroWidth = [0x200b, 0x200c, 0x200d, 0x2060, 0xfeff].map((cp) => String.fromCodePoint(cp));
+  const TAB = String.fromCodePoint(9);
+  const LF = String.fromCodePoint(10);
+  const CR = String.fromCodePoint(13);
+  for (const z of zeroWidth) {
+    const code = z.codePointAt(0)!.toString(16);
+    // Removed, not turned into a space: the two halves of a word join.
+    expect(styleControls({ control: 'button', text: `a${z}b` }).markup, `U+${code}`).toContain('>ab</button>');
+  }
+  // A label made only of them is not blank: it is the default label.
+  for (const control of CONTROL_IDS) {
+    expect(styleControls({ control, text: zeroWidth.join('') }).markup, control).toContain('Option');
+    expect(styleControls({ control, text: zeroWidth[0]!.repeat(5) }).markup, control).toContain('Option');
+  }
+  // Tab, line feed and carriage return are each a space (a run of spaces is one space, as before).
+  expect(styleControls({ control: 'button', text: `a${TAB}b` }).markup).toContain('>a b</button>');
+  expect(styleControls({ control: 'button', text: `a${LF}b${CR}${LF}c` }).markup).toContain('>a b c</button>');
+  expect(styleControls({ control: 'button', text: `${TAB}${LF}${CR}` }).markup).toContain('>Option</button>');
+  // Zero-width characters between spaces do not leave two spaces.
+  expect(styleControls({ control: 'button', text: `a ${zeroWidth[0]!} b` }).markup).toContain('>a b</button>');
+});

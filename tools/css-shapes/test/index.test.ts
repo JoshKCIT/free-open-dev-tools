@@ -496,3 +496,28 @@ it('nothing is written to the console while generating shapes', () => {
     for (const spy of spies) spy.mockRestore();
   }
 });
+
+it('text has zero-width characters removed, tab and line breaks turned into a space, and an all-removed text is no text', () => {
+  const zeroWidth = [0x200b, 0x200c, 0x200d, 0x2060, 0xfeff].map((cp) => String.fromCodePoint(cp));
+  const TAB = String.fromCodePoint(9);
+  const LF = String.fromCodePoint(10);
+  const CR = String.fromCodePoint(13);
+  for (const z of zeroWidth) {
+    const code = z.codePointAt(0)!.toString(16);
+    expect(generateShape({ shape: 'bubble', text: `a${z}b` }).tree.text, `U+${code}`).toBe('ab');
+  }
+  // Each of tab, line feed and carriage return is one space.
+  expect(generateShape({ shape: 'bubble', text: `a${TAB}b` }).tree.text).toBe('a b');
+  expect(generateShape({ shape: 'tooltip', text: `a${LF}b` }).tree.text).toBe('a b');
+  expect(generateShape({ shape: 'ribbon', text: `a${CR}${LF}b` }).tree.children?.[1]?.text).toBe('a  b');
+  // Text made only of removed characters is the same as no text: the shape is drawn without any.
+  const plain = generateShape({ shape: 'bubble', text: '' });
+  for (const text of [zeroWidth.join(''), `${TAB}${LF}${CR}`, `${zeroWidth[0]!}${LF}${zeroWidth[1]!}`]) {
+    const result = generateShape({ shape: 'bubble', text });
+    expect(result.tree, JSON.stringify(text)).toEqual(plain.tree);
+    expect(result.markup, JSON.stringify(text)).toBe(plain.markup);
+    expect(result.warnings.join(' ')).toMatch(/removed|replaced/i);
+  }
+  // Plain spaces typed by the visitor are not touched.
+  expect(generateShape({ shape: 'bubble', text: '  hi  ' }).tree.text).toBe('  hi  ');
+});
