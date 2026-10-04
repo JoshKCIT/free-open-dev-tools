@@ -252,11 +252,18 @@ function sniffBmp(bytes: Uint8Array): SniffResult | null {
   const headerSizeLE = bytes[14]! | (bytes[15]! << 8) | (bytes[16]! << 16) | (bytes[17]! << 24);
   if (headerSizeLE === 12) {
     if (!need(bytes, 14 + 12)) return null;
-    return { kind: 'bmp', width: readUint16LE(bytes, 18), height: readUint16LE(bytes, 20) };
+    const coreWidth = readUint16LE(bytes, 18);
+    const coreHeight = readUint16LE(bytes, 20);
+    if (coreWidth < 1 || coreHeight < 1) return null;
+    return { kind: 'bmp', width: coreWidth, height: coreHeight };
   }
-  if (!need(bytes, 14 + 8)) return null;
+  // The width is at offset 18 and the height at offset 22, so the fields end at byte 26 (14 + 12).
+  if (!need(bytes, 14 + 12)) return null;
   const width = readInt32LE(bytes, 18);
   const height = readInt32LE(bytes, 22);
+  // A width is never negative or zero and a height is never zero (a negative height only means top-down); anything
+  // else is not a real picture, and a negative width would make width * height negative and slip past a pixel limit.
+  if (width < 1 || height === 0) return null;
   return { kind: 'bmp', width, height: Math.abs(height) };
 }
 
@@ -331,9 +338,9 @@ function describeAccepted(accepted: FileKind[]): string {
 
 /**
  * Refuses an empty file, a file over `limits.maxBytes`, an unrecognised
- * header, a recognised kind outside `accepted`, or -- once the sniffed
- * result carries dimensions -- a declared pixel count over
- * `limits.maxPixels`. Returns the sniff result only when every check
+ * header, a recognised kind outside `accepted`, a declared width or height
+ * below 1, or -- once the sniffed result carries dimensions -- a declared
+ * pixel count over `limits.maxPixels`. Returns the sniff result only when every check
  * passes. Never quotes any byte of the file's own content in a message.
  */
 export function assertFileKind(bytes: Uint8Array, accepted: FileKind[], limits: FileKindLimits): SniffResult {
@@ -349,6 +356,12 @@ export function assertFileKind(bytes: Uint8Array, accepted: FileKind[], limits: 
   }
   if (!accepted.includes(result.kind)) {
     throw new FileSignatureError(`this is not ${describeAccepted(accepted)}`, 'wrong-kind');
+  }
+  if (result.width !== undefined && result.height !== undefined && (result.width < 1 || result.height < 1)) {
+    throw new FileSignatureError(
+      `the size of this ${KIND_WORDS[result.kind]} could not be read from its header`,
+      'no-size',
+    );
   }
   if (
     limits.maxPixels !== undefined &&

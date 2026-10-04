@@ -193,3 +193,32 @@ it('nothing is written to the console while reading codes', async () => {
     error.mockRestore();
   }
 }, 60_000);
+
+/** The 26 bytes of a BMP the header check reads: "BM", the file header, a 40 byte info header size, width, height. */
+function bmpHeader(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(26);
+  bytes.set([0x42, 0x4d], 0);
+  bytes[10] = 54;
+  bytes[14] = 40;
+  const view = new DataView(bytes.buffer);
+  view.setInt32(18, width, true);
+  view.setInt32(22, height, true);
+  return bytes;
+}
+
+it('a BMP or PNG with a negative, zero or unreadable size is refused with a plain size message, not accepted', () => {
+  expect(checkImageFile(bmpHeader(10, 10), 1000)).toEqual({ kind: 'bmp', width: 10, height: 10 });
+  expect(checkImageFile(bmpHeader(10, -10), 1000)).toEqual({ kind: 'bmp', width: 10, height: 10 });
+  for (const header of [
+    bmpHeader(-100_000, 100_000),
+    bmpHeader(-2_147_483_648, 2_000_000_000),
+    bmpHeader(0, 5),
+    bmpHeader(5, 0),
+    bmpHeader(10, 10).slice(0, 22),
+    pngHeader(0, 5),
+    pngHeader(5, 0),
+  ]) {
+    expect(() => checkImageFile(header, 1000)).toThrow(CodeReaderError);
+    expect(() => checkImageFile(header, 1000)).toThrow(/size of this image could not be read/);
+  }
+});

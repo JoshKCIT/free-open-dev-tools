@@ -39,6 +39,13 @@ export interface ImagePixels {
 
 const KINDS_SENTENCE = 'PNG, JPEG, GIF, WebP or BMP';
 
+const SIZE_UNREADABLE = 'The size of this image could not be read from its header.';
+
+/** True when the bytes start with the two letters "BM" that open every BMP file. */
+function isBmpStart(header: Uint8Array): boolean {
+  return header.length >= 2 && header[0] === 0x42 && header[1] === 0x4d;
+}
+
 /**
  * Refuses a file that should not be decoded, before it is decoded: one over 50 MB (from its reported size, whatever
  * the header says), an empty one, one that is not a PNG, JPEG, GIF, WebP or BMP image, and one that declares more than
@@ -65,12 +72,15 @@ export function checkImageFile(
           'This image declares more than 50,000,000 pixels, the most this reader accepts. Choose a smaller image.',
         );
       }
+      if (err.reason === 'no-size' || (err.reason === 'unrecognised' && isBmpStart(header))) {
+        throw new CodeReaderError(SIZE_UNREADABLE);
+      }
       throw new CodeReaderError(`This is not a ${KINDS_SENTENCE} image.`);
     }
     throw new CodeReaderError('This image could not be checked.');
   }
   if (sniffed.width === undefined || sniffed.height === undefined) {
-    throw new CodeReaderError('The size of this image could not be read from its header.');
+    throw new CodeReaderError(SIZE_UNREADABLE);
   }
   return { kind: sniffed.kind, width: sniffed.width, height: sniffed.height };
 }

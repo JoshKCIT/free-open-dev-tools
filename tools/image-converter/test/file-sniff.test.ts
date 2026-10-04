@@ -284,3 +284,45 @@ it('a kind outside the accepted list is refused with the accepted kinds named', 
     expect((err as FileSignatureError).message).toContain('GIF');
   }
 });
+
+it('a BMP with a negative or zero width, or a zero height, is not read as an image', () => {
+  expect(sniffFile(minimalBmp(-100_000, 100_000, false))).toBeNull();
+  expect(sniffFile(minimalBmp(-2_147_483_648, 2_000_000_000, false))).toBeNull();
+  expect(sniffFile(minimalBmp(0, 4, false))).toBeNull();
+  expect(sniffFile(minimalBmp(4, 0, false))).toBeNull();
+  expect(sniffFile(minimalBmp(4, 0, true))).toBeNull();
+  expect(() =>
+    assertFileKind(minimalBmp(-100_000, 100_000, false), ['bmp'], { maxBytes: 1024, maxPixels: 1000 }),
+  ).toThrow(FileSignatureError);
+});
+
+it('a BMP header cut off before its height field is not read, and a core-header BMP with no size is refused', () => {
+  const cutOff = minimalBmp(10, 10, false).slice(0, 14 + 8);
+  expect(sniffFile(cutOff)).toBeNull();
+  const full = minimalBmp(10, 10, false);
+  expect(sniffFile(full.slice(0, 14 + 12))).toEqual({ kind: 'bmp', width: 10, height: 10 });
+});
+
+it('an image that declares a width or height below 1 is refused in every format with a plain size message', () => {
+  const zeroSized: Uint8Array[] = [
+    minimalPng(0, 5),
+    minimalPng(5, 0),
+    minimalBaselineJpeg(0, 5),
+    minimalBaselineJpeg(5, 0),
+    minimalGif89a(0, 5),
+    minimalGif89a(5, 0),
+  ];
+  for (const bytes of zeroSized) {
+    try {
+      assertFileKind(bytes, ['png', 'jpeg', 'gif'], { maxBytes: 1024, maxPixels: 1000 });
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(FileSignatureError);
+      expect((err as FileSignatureError).reason).toBe('no-size');
+      expect((err as FileSignatureError).message).toContain('size');
+    }
+  }
+  // Without a pixel limit the check still applies, and a normal image is still accepted.
+  expect(() => assertFileKind(minimalPng(0, 5), ['png'], { maxBytes: 1024 })).toThrow(FileSignatureError);
+  expect(assertFileKind(minimalPng(1, 1), ['png'], { maxBytes: 1024 })).toEqual({ kind: 'png', width: 1, height: 1 });
+});
