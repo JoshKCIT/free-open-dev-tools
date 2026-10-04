@@ -20,13 +20,14 @@ Reads QR codes and common barcodes from a picture you choose, or from your camer
 ## Limits
 
 - Files up to 50 MB and up to 50,000,000 declared pixels are accepted; larger ones are refused before decoding.
+- A picture of more than 16,777,216 pixels (a 48 megapixel photograph, for example) is scaled down to that size before it is read, because Safari on an iPhone or iPad draws a larger canvas blank; a small code in a very large photograph may therefore be missed.
 - Reading stops after 20 seconds with a message; Cancel stops it at once.
-- The camera starts only when you press Run with Camera chosen; it stops when a code is read, when you press Cancel, when you leave the page, or after 30 seconds.
+- The camera starts only when you press Run with Camera chosen; it stops when a code is read, when you press Cancel, when you leave the page, or 30 seconds after the camera opens.
 - If the camera does not start within 15 seconds the page stops waiting; allow camera access when the browser asks.
 - Camera frames are read in the page and never recorded, stored or sent.
 - A UPC-A code is reported as the EAN-13 code the engine returns, with a leading zero; the 12 digit UPC-A form is shown in a note.
 - Rotated Data Matrix codes, strongly blurred photos and light-on-dark one-dimensional barcodes or PDF417 codes are not read.
-- At most 16 codes are reported for one image, and the text shown for each code is cut at 4096 characters with a note; control and direction-changing characters are shown escaped.
+- At most 16 codes are reported for one image, and the text shown for each code is cut at 4096 characters with a note; control, direction-changing and invisible characters (such as zero width marks and tag characters) are shown escaped.
 - A one-dimensional barcode needs each bar at least about two pixels wide: an EAN-13 shrunk to half size, with 1.5 pixel bars, was not read.
 
 ## Ambiguous cases, and what this does about them
@@ -82,7 +83,7 @@ const codes = await readCodes(pixels);
 // codes[0].label is 'QR Code' and codes[0].text is the exact text.
 ```
 
-`prepareReader(wasmBinary)` hands the engine its WebAssembly bytes once and keeps the promise, so a second call reuses it; nothing is ever located or fetched. `readCodes(pixels, { maxSymbols })` reads RGBA pixels and returns one `{ format, label, text, shown, truncated, notes }` per code: `format` is the engine's own name, `label` the plain name, `text` the exact decoded text, `shown` the same text with control and direction-changing characters escaped as \u{...} and cut at `MAX_TEXT_SHOWN`. `checkImageFile(header, byteLength)` refuses an over-size file, an unsupported kind or more declared pixels than `MAX_INPUT_PIXELS` before any decoding, throwing `CodeReaderError` with a plain message that never holds the file name. `codeRows(results)` gives the table rows (Format, Text, Notes).
+`prepareReader(wasmBinary)` hands the engine its WebAssembly bytes once and keeps the promise, so a second call reuses it; nothing is ever located or fetched. `readCodes(pixels, { maxSymbols })` reads RGBA pixels and returns one `{ format, label, text, shown, truncated, notes }` per code: `format` is the engine's own name, `label` the plain name, `text` the exact decoded text, `shown` the same text with control, direction-changing and invisible characters escaped as \u{...} and cut at `MAX_TEXT_SHOWN`. `checkImageFile(header, byteLength)` (give it up to `MAX_IMAGE_HEADER_BYTES`, 2 MiB, of the start of the file, since a JPEG's size can lie behind a long profile) refuses an over-size file, an unsupported kind or more declared pixels than `MAX_INPUT_PIXELS` before any decoding, throwing `CodeReaderError` with a plain message that never holds the file name. `codeRows(results)` gives the table rows (Format, Text, Notes).
 
 ## Dependencies
 

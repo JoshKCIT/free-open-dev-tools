@@ -21,6 +21,7 @@ Reads a PDF's text one page at a time, shows its document information and XMP me
 ## Limits
 
 - Files up to 100 MB are accepted; text is read from at most 500 pages and 2,000,000 characters, with a note when more exists.
+- A file whose compressed streams would decode to more than 64 MiB in one stream, or 256 MiB in all, is refused before it is read, with the message that it expands to more data than this page can hold in memory; pictures are not counted, and a deliberately crafted file can hide a stream from this check.
 - A PDF that needs a password to open is refused; an encrypted PDF is not rewritten, so Remove mode refuses it.
 - The file identifier (/ID) stays in the copy; annotations, form data, attachments, bookmarks and page content are not changed.
 - Reading stops after 20 seconds without progress, and removal after 20 seconds; Cancel stops either at once.
@@ -28,7 +29,7 @@ Reads a PDF's text one page at a time, shows its document information and XMP me
 - Text that relies on a built-in Chinese, Japanese or Korean character map may be missing, because this page loads no extra data files.
 - The copy is a rewritten file: a digital signature in it no longer validates, and it is saved without object streams, so it can be larger.
 - Only the metadata fields ISO 32000-1 names are removed; text in page content, annotations, bookmarks, form fields or attached files can still identify an author.
-- Each value shown is cut at 1,000 characters, at most 200 custom keys and 200 XMP properties are listed, and control and direction-changing characters are shown escaped.
+- Each value shown is cut at 1,000 characters, at most 200 custom keys and 200 XMP properties are listed, and control, direction-changing and invisible characters (such as zero width marks and tag characters) are shown escaped.
 
 ## Ambiguous cases, and what this does about them
 
@@ -82,7 +83,7 @@ const left = await findMetadataLeft(bytes);
 if (left.length === 0) writeFileSync('report-clean.pdf', bytes);
 ```
 
-`stripMetadata(bytes)` loads the file with pdf-lib without letting it stamp its own name, deletes the trailer Info dictionary, every Metadata, PieceInfo and LastModified key in any dictionary or stream dictionary, then deletes every object that cannot be reached from the Root, the Encrypt entry or the ID (that is what removes the author and XMP of an earlier revision that pdf-lib would otherwise keep), and saves without object streams. It returns the new bytes and a `StripReport`; an encrypted or damaged file throws `PdfToolError` with a plain message that never holds the file name or any of its content. `findMetadataLeft(bytes)` loads a copy again and lists any trailer Info and any dictionary that still holds one of those keys. `extractPageTexts(pdfDocument, pages, { signal, onPage })` reads the text of an already opened PDF.js document page by page and stops at 500 pages or 2,000,000 characters; `formatPageTexts` joins the pages under --- Page N --- headings. `describeMetadata(info, xmp)` turns the information dictionary and the XMP properties into rows with control characters escaped. `checkPdfFile(header, byteLength)` and `cleanCopyName(fileName)` check a picked file before it is parsed and name the copy.
+`stripMetadata(bytes)` loads the file with pdf-lib without letting it stamp its own name, deletes the trailer Info dictionary, every Metadata, PieceInfo and LastModified key in any dictionary or stream dictionary, then deletes every object that cannot be reached from the Root, the Encrypt entry or the ID (that is what removes the author and XMP of an earlier revision that pdf-lib would otherwise keep), and saves without object streams. It returns the new bytes and a `StripReport`; an encrypted or damaged file throws `PdfToolError` with a plain message that never holds the file name or any of its content. `findMetadataLeft(bytes)` loads a copy again and lists any trailer Info and any dictionary that still holds one of those keys. `extractPageTexts(pdfDocument, pages, { signal, onPage })` reads the text of an already opened PDF.js document page by page and stops at 500 pages or 2,000,000 characters; `formatPageTexts` joins the pages under --- Page N --- headings. `describeMetadata(info, xmp)` turns the information dictionary and the XMP properties into rows with control characters escaped. `checkPdfFile(header, byteLength)` and `cleanCopyName(fileName)` check a picked file before it is parsed and name the copy. `checkExpansion(bytes, { limits, signal, onProgress })` finds every stream, runs it through the filters its dictionary names (Flate, LZW, ASCII85, ASCII hex and run-length, every stage of a chain counted) with the platform's DecompressionStream, keeps nothing, and throws `PdfToolError` kind `size` the moment one stream decodes past 64 MiB or all together past 256 MiB; `stripMetadata` and `findMetadataLeft` call it before pdf-lib loads the file.
 
 ## Dependencies
 
