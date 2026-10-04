@@ -793,3 +793,450 @@ test('date-diff: business days and ISO weeks give the same answers in time zones
     }
   }
 });
+
+// --- The random number generator (16-09): dice, coin flips, lottery draws and list picks, and the unchanged default ---
+
+/** Every code block of the output by its label, such as "Drawn in order" or "Sorted". */
+async function readCodeBlocks(page: Page): Promise<Record<string, string>> {
+  return outputArea(page).evaluate((section) => {
+    const blocks: Record<string, string> = {};
+    for (const block of Array.from(section.querySelectorAll('.output-block'))) {
+      const label = block.querySelector('.output-label > span:first-child')?.textContent ?? '';
+      const pre = block.querySelector('pre.output');
+      if (label && pre) blocks[label] = pre.textContent ?? '';
+    }
+    return blocks;
+  });
+}
+
+/** The small facts above the output, such as "Heads 5", as name and value. */
+async function readStats(page: Page): Promise<Record<string, string>> {
+  return outputArea(page).evaluate((section) => {
+    const stats: Record<string, string> = {};
+    for (const item of Array.from(section.querySelectorAll('.stats > span'))) {
+      const value = item.querySelector('strong')?.textContent ?? '';
+      stats[(item.textContent ?? '').slice(0, (item.textContent ?? '').length - value.length).trim()] = value;
+    }
+    return stats;
+  });
+}
+
+/** Chooses a mode of the random number page and checks which settings are on screen for it. */
+async function chooseRandomMode(page: Page, mode: string, visibleSettings: string[]): Promise<void> {
+  await page.locator(`input[name="mode"][value="${mode}"]`).click();
+  const all = [
+    'min',
+    'max',
+    'count',
+    'places',
+    'unique',
+    'source',
+    'notation',
+    'flips',
+    'poolSize',
+    'drawSize',
+    'items',
+    'pickCount',
+    'withReplacement',
+  ];
+  for (const name of all) {
+    await expect(page.locator(`#f-${name}`), `${name} in the ${mode} mode`).toHaveCount(
+      visibleSettings.includes(name) ? 1 : 0,
+    );
+  }
+}
+
+const numbersOf = (text: string): number[] => (text === 'none' ? [] : text.split(', ').map(Number));
+const sortedUp = (numbers: number[]): number[] => [...numbers].sort((a, b) => a - b);
+const sumOf = (numbers: number[]): number => numbers.reduce((total, n) => total + n, 0);
+/** Lines in alphabetical order, so a pick can be compared with the list it was picked from. */
+const sortedByText = (lines: string[]): string[] => [...lines].sort();
+
+/** One term of a dice expression as the test expects to see it, worked out from the grammar and not from the package. */
+interface DiceTermWanted {
+  notation: string;
+  sign: 1 | -1;
+  /** A plain number; or the dice: how many, how many sides ('F' for a fudge die) and which dice count. */
+  constant?: number;
+  count?: number;
+  sides?: number | 'F';
+  keep?: { which: 'highest' | 'lowest'; n: number };
+}
+
+const diceTerm = (
+  notation: string,
+  count: number,
+  sides: number | 'F',
+  keep?: { which: 'highest' | 'lowest'; n: number },
+  sign: 1 | -1 = 1,
+): DiceTermWanted => ({ notation, sign, count, sides, keep });
+const plainTerm = (notation: string, sign: 1 | -1, constant: number): DiceTermWanted => ({ notation, sign, constant });
+
+const DICE_CASES: [string, DiceTermWanted[]][] = [
+  ['2d6+3', [diceTerm('2d6', 2, 6), plainTerm('+3', 1, 3)]],
+  ['4d6kh3', [diceTerm('4d6kh3', 4, 6, { which: 'highest', n: 3 })]],
+  ['4d6kl3', [diceTerm('4d6kl3', 4, 6, { which: 'lowest', n: 3 })]],
+  ['4d6dl1', [diceTerm('4d6dl1', 4, 6, { which: 'highest', n: 3 })]],
+  ['4d6dh1', [diceTerm('4d6dh1', 4, 6, { which: 'lowest', n: 3 })]],
+  ['2d6dh2', [diceTerm('2d6dh2', 2, 6, { which: 'lowest', n: 0 })]],
+  ['d%', [diceTerm('1d%', 1, 100)]],
+  ['3dF', [diceTerm('3dF', 3, 'F')]],
+  ['1d20+1d4-2', [diceTerm('1d20', 1, 20), diceTerm('+1d4', 1, 4), plainTerm('-2', -1, 2)]],
+  ['1d4-1d4', [diceTerm('1d4', 1, 4), diceTerm('-1d4', 1, 4, undefined, -1)]],
+  [
+    ' 2D6KH1 + d4 - 1 ',
+    [diceTerm('2d6kh1', 2, 6, { which: 'highest', n: 1 }), diceTerm('+1d4', 1, 4), plainTerm('-1', -1, 1)],
+  ],
+  ['1000d6kh10+500dF', [diceTerm('1000d6kh10', 1000, 6, { which: 'highest', n: 10 }), diceTerm('+500dF', 500, 'F')]],
+];
+
+/** Rolls the notation through the page and checks every cell of the answer against the grammar's meaning. */
+async function rollAndCheck(page: Page, notation: string, wanted: DiceTermWanted[]): Promise<void> {
+  await fillAndHold(page, 'notation', notation);
+  await run(page);
+  await expect
+    .poll(async () => (await readTable(page))[0]?.[0], `the answer for ${notation}`)
+    .toBe(wanted[0]!.notation);
+  const rows = await readTable(page);
+  expect(rows, notation).toHaveLength(wanted.length);
+  let total = 0;
+  let diceRolled = 0;
+  wanted.forEach((term, index) => {
+    const row = rows[index]!;
+    expect(row[0], `${notation}: term ${index + 1}`).toBe(term.notation);
+    if (term.constant !== undefined) {
+      expect(row.slice(1), `${notation}: constant`).toEqual([
+        'none',
+        'none',
+        'none',
+        String(term.sign * term.constant),
+      ]);
+      total += term.sign * term.constant;
+      return;
+    }
+    const rolled = numbersOf(row[1]!);
+    const kept = numbersOf(row[2]!);
+    const dropped = numbersOf(row[3]!);
+    expect(rolled, `${notation}: dice rolled`).toHaveLength(term.count!);
+    for (const die of rolled) {
+      expect(Number.isInteger(die)).toBe(true);
+      if (term.sides === 'F') {
+        expect([-1, 0, 1], `${notation}: fudge die ${die}`).toContain(die);
+      } else {
+        expect(die, `${notation}: die ${die}`).toBeGreaterThanOrEqual(1);
+        expect(die, `${notation}: die ${die}`).toBeLessThanOrEqual(term.sides!);
+      }
+    }
+    // Kept and dropped together are exactly the dice rolled.
+    expect(sortedUp([...kept, ...dropped]), `${notation}: kept and dropped are the dice rolled`).toEqual(
+      sortedUp(rolled),
+    );
+    let wantedKept = sortedUp(rolled);
+    if (term.keep) {
+      wantedKept =
+        term.keep.which === 'lowest'
+          ? wantedKept.slice(0, term.keep.n)
+          : wantedKept.slice(wantedKept.length - term.keep.n);
+    }
+    expect(sortedUp(kept), `${notation}: the dice that count`).toEqual(wantedKept);
+    const subtotal = term.sign * sumOf(kept);
+    expect(row[4], `${notation}: subtotal`).toBe(String(subtotal));
+    total += subtotal;
+    diceRolled += term.count!;
+  });
+  expect((await readCodeBlocks(page))['Total'], `${notation}: total`).toBe(String(total));
+  expect((await readStats(page))['Dice rolled'], `${notation}: dice rolled`).toBe(String(diceRolled));
+}
+
+test('random-number: dice, coin, lottery and pick modes show their results and hide the source select', async ({
+  page,
+}) => {
+  await openTool(page, 'random-number');
+
+  // First paint: the integer mode, with its settings and the source select on screen and none of the new settings.
+  await expect(page.locator('input[name="mode"][value="integer"]')).toBeChecked();
+  expect(
+    await page.locator('input[name="mode"]').evaluateAll((radios) => radios.map((r) => (r as HTMLInputElement).value)),
+  ).toEqual(['integer', 'decimal', 'dice', 'coin', 'lottery', 'pick']);
+  await chooseRandomMode(page, 'integer', ['min', 'max', 'count', 'unique', 'source']);
+  await chooseRandomMode(page, 'decimal', ['min', 'max', 'count', 'places', 'source']);
+
+  // Dice: the grammar is on screen before any roll, and nothing of the integer settings is.
+  await chooseRandomMode(page, 'dice', ['notation']);
+  const help = page.locator('.field', { has: page.locator('#f-notation') });
+  await expect(help).toContainText("expression := term (('+' | '-') term)*");
+  await expect(help).toContainText("dice := [count] 'd' (sides | '%' | 'F') [modifier]");
+  await expect(page.locator('#f-notation')).toHaveValue('2d6+3');
+  for (const [notation, wanted] of DICE_CASES) await rollAndCheck(page, notation, wanted);
+  expect(await outputArea(page).locator('table thead th').allTextContents()).toEqual([
+    'Term',
+    'Dice rolled',
+    'Kept',
+    'Dropped',
+    'Subtotal',
+  ]);
+  // The grammar and its explanation stay with every answer.
+  for (const sentence of [
+    "expression := term (('+' | '-') term)*",
+    'term := dice | integer',
+    "modifier := ('kh' | 'kl' | 'dh' | 'dl') [n]",
+    'd% is d100 and dF is a fudge die',
+  ]) {
+    expect(await outputArea(page).innerText(), sentence).toContain(sentence);
+  }
+
+  // Bad notation: a fixed sentence with the position of the problem, the grammar still shown, and the text never echoed.
+  const marker = 'FODT-MARKER-3141';
+  const refused: [string, string][] = [
+    [
+      '2d6kh3',
+      'This is not dice notation: the keep or drop count must be from 1 to the number of dice in the term at character 6.',
+    ],
+    ['1001d6', 'This is not dice notation: a term cannot roll more than 1,000 dice at character 1.'],
+    ['d1', 'This is not dice notation: the number of sides must be from 2 to 1,000,000 at character 2.'],
+    ['2d6+', 'This is not dice notation: a number or dice such as d6 was expected at character 5.'],
+    [marker, 'This is not dice notation: a number or dice such as d6 was expected at character 1.'],
+    [`2d6+${marker}`, 'This is not dice notation: a number or dice such as d6 was expected at character 5.'],
+    ['x'.repeat(201), 'This is not dice notation: the text is longer than 200 characters at character 201.'],
+  ];
+  for (const [text, sentence] of refused) {
+    await fillAndHold(page, 'notation', text);
+    await run(page);
+    await expect.poll(readIssues.bind(null, page), `the refusal for ${text.slice(0, 12)}`).toContain(sentence);
+    const shown = await outputArea(page).innerText();
+    expect(shown).not.toContain(marker);
+    expect(shown).not.toContain('xxxxx');
+    expect(shown).toContain('term := dice | integer');
+  }
+  // An empty notation shows nothing at all.
+  await fillAndHold(page, 'notation', '');
+  await run(page);
+  await expect(outputArea(page).locator('ul.issue-list')).toHaveCount(0);
+  await expect(outputArea(page).locator('pre.output')).toHaveCount(0);
+
+  // Coin flips: each flip shown, and the counts agree with the flips shown.
+  await chooseRandomMode(page, 'coin', ['flips']);
+  await expect(page.locator('#f-flips')).toHaveValue('10');
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('10 coin flips');
+  let flips = await readIds(page);
+  expect(flips).toHaveLength(10);
+  for (const flip of flips) expect(['heads', 'tails']).toContain(flip);
+  let stats = await readStats(page);
+  expect(Number(stats['Heads']) + Number(stats['Tails'])).toBe(10);
+  expect(Number(stats['Heads'])).toBe(flips.filter((flip) => flip === 'heads').length);
+  expect(stats['Source']).toBe('crypto.getRandomValues');
+  await fillAndHold(page, 'flips', '10000');
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('10000 coin flips');
+  flips = await readIds(page);
+  expect(flips).toHaveLength(10_000);
+  stats = await readStats(page);
+  expect(Number(stats['Heads']) + Number(stats['Tails'])).toBe(10_000);
+  expect(Number(stats['Heads'])).toBeGreaterThan(4_500);
+  expect(Number(stats['Heads'])).toBeLessThan(5_500);
+  // The number the privacy check types, and both ends just outside the range, are refused naming the field.
+  for (const bad of ['-98765123456', '0', '10001', '2.5']) {
+    await fillAndHold(page, 'flips', bad);
+    await run(page);
+    await expect
+      .poll(readIssues.bind(null, page), `flips ${bad}`)
+      .toContain('Flips must be a whole number from 1 to 10,000.');
+  }
+  await fillAndHold(page, 'flips', '1');
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('1 coin flip');
+
+  // Lottery draws: numbers without repeats in draw order and sorted.
+  await chooseRandomMode(page, 'lottery', ['poolSize', 'drawSize']);
+  await expect(page.locator('#f-poolSize')).toHaveValue('49');
+  await expect(page.locator('#f-drawSize')).toHaveValue('6');
+  const draw = async (drawSize: number): Promise<{ order: number[]; sorted: number[] }> => {
+    let blocks: Record<string, string> = {};
+    await expect
+      .poll(async () => {
+        blocks = await readCodeBlocks(page);
+        return blocks['Drawn in order']?.split(', ').length ?? 0;
+      }, `a draw of ${drawSize}`)
+      .toBe(drawSize);
+    return {
+      order: blocks['Drawn in order']!.split(', ').map(Number),
+      sorted: blocks['Sorted']!.split(', ').map(Number),
+    };
+  };
+  await run(page);
+  let drawn = await draw(6);
+  expect(new Set(drawn.order).size).toBe(6);
+  for (const n of drawn.order) {
+    expect(n).toBeGreaterThanOrEqual(1);
+    expect(n).toBeLessThanOrEqual(49);
+  }
+  expect(drawn.sorted).toEqual(sortedUp(drawn.order));
+  expect((await readStats(page))['Numbers drawn']).toBe('6');
+  // A draw as large as the pool is a full shuffle: every number once.
+  await fillAndHold(page, 'drawSize', '49');
+  await run(page);
+  drawn = await draw(49);
+  expect(drawn.sorted).toEqual(Array.from({ length: 49 }, (_, i) => i + 1));
+  expect(sortedUp(drawn.order)).toEqual(drawn.sorted);
+  // One more than the pool, a pool of one, and the number the privacy check types are refused naming the field.
+  await fillAndHold(page, 'drawSize', '50');
+  await run(page);
+  await expect
+    .poll(readIssues.bind(null, page))
+    .toContain('The draw size cannot be larger than the pool size: only 49 different numbers exist.');
+  await fillAndHold(page, 'drawSize', '6');
+  for (const bad of ['-98765123456', '1', '1000001']) {
+    await fillAndHold(page, 'poolSize', bad);
+    await run(page);
+    await expect
+      .poll(readIssues.bind(null, page), `pool ${bad}`)
+      .toContain('Pool size must be a whole number from 2 to 1,000,000.');
+  }
+  await fillAndHold(page, 'drawSize', '-98765123456');
+  await fillAndHold(page, 'poolSize', '49');
+  await run(page);
+  await expect.poll(readIssues.bind(null, page)).toContain('Draw size must be a whole number from 1 to 10,000.');
+  // The ends of the ranges: a pool of 2 drawn out, and 10,000 numbers out of 1,000,000.
+  await fillAndHold(page, 'poolSize', '2');
+  await fillAndHold(page, 'drawSize', '2');
+  await run(page);
+  drawn = await draw(2);
+  expect(drawn.sorted).toEqual([1, 2]);
+  await fillAndHold(page, 'poolSize', '1000000');
+  await fillAndHold(page, 'drawSize', '10000');
+  await run(page);
+  drawn = await draw(10_000);
+  expect(new Set(drawn.order).size).toBe(10_000);
+  expect(Math.min(...drawn.sorted)).toBeGreaterThanOrEqual(1);
+  expect(Math.max(...drawn.sorted)).toBeLessThanOrEqual(1_000_000);
+
+  // Picks from a list: blank lines ignored, two identical lines are two items, no line twice without replacement.
+  await chooseRandomMode(page, 'pick', ['items', 'pickCount', 'withReplacement']);
+  await expect(page.locator('#f-pickCount')).toHaveValue('1');
+  await expect(page.locator('#f-withReplacement')).not.toBeChecked();
+  await run(page);
+  await expect(outputArea(page).locator('pre.output')).toHaveCount(0);
+  await fillAndHold(page, 'items', 'Ada\nBo\nCy\nBo\n\n   \nDee');
+  await fillAndHold(page, 'pickCount', '5');
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('5 picks');
+  expect(sortedByText(await readIds(page))).toEqual(['Ada', 'Bo', 'Bo', 'Cy', 'Dee']);
+  stats = await readStats(page);
+  expect(stats['Items in the list']).toBe('5');
+  expect(stats['Picked']).toBe('without replacement');
+  await fillAndHold(page, 'pickCount', '6');
+  await run(page);
+  await expect
+    .poll(readIssues.bind(null, page))
+    .toContain('The list holds 5 items, so 6 cannot be picked without replacement.');
+  await page.locator('#f-withReplacement').setChecked(true);
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('6 picks');
+  const withReplacement = await readIds(page);
+  expect(withReplacement).toHaveLength(6);
+  for (const line of withReplacement) expect(['Ada', 'Bo', 'Cy', 'Dee']).toContain(line);
+  expect((await readStats(page))['Picked']).toBe('with replacement');
+  await fillAndHold(page, 'items', '   \n\n ');
+  await run(page);
+  await expect.poll(readIssues.bind(null, page)).toContain('The list has no items: every line is blank.');
+  await fillAndHold(page, 'items', `${marker} ${'x'.repeat(250)}`);
+  await run(page);
+  await expect.poll(readIssues.bind(null, page)).toContain('Line 1 is longer than 200 characters.');
+  expect(await outputArea(page).innerText()).not.toContain(marker);
+  await fillAndHold(page, 'items', 'a\nb');
+  for (const bad of ['-98765123456', '0', '10001']) {
+    await fillAndHold(page, 'pickCount', bad);
+    await run(page);
+    await expect
+      .poll(readIssues.bind(null, page), `picks ${bad}`)
+      .toContain('Picks must be a whole number from 1 to 10,000.');
+  }
+
+  // Back in the integer mode every setting is on screen again, with the value it had.
+  await chooseRandomMode(page, 'integer', ['min', 'max', 'count', 'unique', 'source']);
+  await expect(page.locator('#f-min')).toHaveValue('1');
+  await expect(page.locator('#f-max')).toHaveValue('6');
+});
+
+test('random-number: the default integer mode still answers 7 first for a range of 7 to 7', async ({ page }) => {
+  await openTool(page, 'random-number');
+
+  // First paint is as it always was: integer mode, 1 to 6, one value, the cryptographic source.
+  await expect(page.locator('input[name="mode"][value="integer"]')).toBeChecked();
+  await expect(page.locator('#f-min')).toHaveValue('1');
+  await expect(page.locator('#f-max')).toHaveValue('6');
+  await expect(page.locator('#f-count')).toHaveValue('1');
+  await expect(page.locator('#f-source')).toHaveValue('crypto');
+  await expect(page.locator('#f-unique')).not.toBeChecked();
+  await expect(page.locator('#f-places')).toHaveCount(0);
+  await run(page);
+  await expect.poll(async () => (await readIds(page)).length).toBe(1);
+  expect(Number((await readIds(page))[0])).toBeGreaterThanOrEqual(1);
+  expect(Number((await readIds(page))[0])).toBeLessThanOrEqual(6);
+  expect(await readLabel(page)).toBe('1 random integer');
+
+  // The first code block of a 7 to 7 range is 7, and so are five of them.
+  await fillAndHold(page, 'min', '7');
+  await fillAndHold(page, 'max', '7');
+  await run(page);
+  await expect.poll(async () => (await readIds(page))[0]).toBe('7');
+  expect(await readIds(page)).toEqual(['7']);
+  await fillAndHold(page, 'count', '5');
+  await run(page);
+  await expect.poll(async () => (await readIds(page)).length).toBe(5);
+  expect(await readIds(page)).toEqual(['7', '7', '7', '7', '7']);
+  expect(await readLabel(page)).toBe('5 random integers');
+  expect((await readStats(page))['Range']).toBe('7–7');
+
+  // The old refusals keep their words.
+  await fillAndHold(page, 'min', '10');
+  await fillAndHold(page, 'max', '3');
+  await run(page);
+  await expect.poll(readIssues.bind(null, page)).toContain('The lower bound (10) is above the upper bound (3).');
+  await fillAndHold(page, 'min', '1');
+  await fillAndHold(page, 'max', '3');
+  await page.locator('#f-unique').setChecked(true);
+  await run(page);
+  await expect
+    .poll(readIssues.bind(null, page))
+    .toContain('5 unique integers were requested but the range 1 to 3 only holds 3 distinct values.');
+  await page.locator('#f-unique').setChecked(false);
+
+  // Decimals still carry exactly the places asked for, and the non-cryptographic source is still named when chosen.
+  await page.locator('input[name="mode"][value="decimal"]').click();
+  await fillAndHold(page, 'min', '0');
+  await fillAndHold(page, 'max', '1');
+  await fillAndHold(page, 'places', '3');
+  await fillAndHold(page, 'count', '4');
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('4 random decimals');
+  const decimals = await readIds(page);
+  expect(decimals).toHaveLength(4);
+  for (const value of decimals) expect(value).toMatch(/^[01]\.\d{3}$/);
+  await page.locator('#f-source').selectOption('math');
+  await run(page);
+  await expect.poll(async () => (await readStats(page))['Source']).toBe('Math.random');
+
+  // A hidden setting of the older modes never changes a newer mode: with the non-cryptographic source chosen and a
+  // range of 7 to 7 left behind, a lottery draw still comes from the cryptographic source and is not all sevens.
+  await page.locator('input[name="mode"][value="integer"]').click();
+  await fillAndHold(page, 'min', '7');
+  await fillAndHold(page, 'max', '7');
+  await page.locator('input[name="mode"][value="lottery"]').click();
+  await expect(page.locator('#f-source')).toHaveCount(0);
+  await run(page);
+  await expect.poll(async () => (await readStats(page))['Pool']).toBe('1 to 49');
+  expect((await readStats(page))['Source']).toBe('crypto.getRandomValues');
+  const lottery = (await readCodeBlocks(page))['Sorted']!.split(', ');
+  expect(new Set(lottery).size).toBe(6);
+
+  // Back in the integer mode the settings it had are still there, and 7 to 7 still answers 7.
+  await page.locator('input[name="mode"][value="integer"]').click();
+  await expect(page.locator('#f-min')).toHaveValue('7');
+  await expect(page.locator('#f-source')).toHaveValue('math');
+  await fillAndHold(page, 'count', '1');
+  await run(page);
+  await expect.poll(async () => (await readStats(page))['Range']).toBe('7–7');
+  expect(await readIds(page)).toEqual(['7']);
+});
