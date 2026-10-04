@@ -64,11 +64,13 @@ export function compileSass(
 
   const logger: sass.Logger = {
     warn(message, warnOptions) {
-      if (warnOptions.deprecation) {
-        // The compiler's own notice: its first line only, without whatever it quotes from the stylesheet.
-        keep(describeEngineMessage(message.slice(0, MESSAGE_KEPT_CHARS), source, COMPILER_FAILED));
-      } else {
+      if (warnOptions.span === undefined) {
+        // The visitor's own @warn, which the compiler gives no position: shown as written, and labelled.
         keep(`@warn: ${message.slice(0, MESSAGE_KEPT_CHARS)}`);
+      } else {
+        // A notice from the compiler itself, deprecation or not (math.div() on a string, for one): it carries a position
+        // and may quote the stylesheet, so its first line only is shown, without whatever it quotes.
+        keep(describeEngineMessage(message.slice(0, MESSAGE_KEPT_CHARS), source, COMPILER_FAILED));
       }
     },
     debug(message) {

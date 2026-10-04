@@ -429,3 +429,26 @@ it('nothing is written to the console while compiling', async () => {
   await failureOf('@use "foo";', 'scss');
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
+
+it('a notice from the Sass compiler with a position is shown as a short compiler notice, not labelled as the visitor own @warn', async () => {
+  // math.div with a string is the compiler's own notice (it carries a position and is not a deprecation), and it quotes
+  // the argument in the rest of its text; only the visitor's own @warn is labelled and shown as written.
+  const marker = 'FODT-SECRET-7Q2';
+  const notice = await compileStylesheet(`@use "sass:math";\na { b: math.div("${marker}", 2) }`, {
+    language: 'scss',
+    style: 'expanded',
+  });
+  expect(notice.warnings).toHaveLength(1);
+  expect(notice.warnings[0]).toBe('math.div() will only support number arguments in a future release.');
+  expect(notice.warnings[0]).not.toContain('@warn');
+  expect(notice.warnings[0]).not.toContain(marker);
+  // The visitor's own @warn stays labelled and word for word, beside a compiler notice, in the order they happened.
+  const both = await compileStylesheet(`@use "sass:math";\n@warn "${marker}";\na { b: math.div("x", 2) }`, {
+    language: 'scss',
+    style: 'expanded',
+  });
+  expect(both.warnings).toEqual([
+    `@warn: ${marker}`,
+    'math.div() will only support number arguments in a future release.',
+  ]);
+});
