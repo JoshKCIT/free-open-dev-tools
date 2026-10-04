@@ -1,0 +1,6 @@
+{
+  "id": "cubic-bezier",
+  "label": "CSS Easing Functions Level 1: ease is cubic-bezier(0.25, 0.1, 0.25, 1)",
+  "steps": [{ "action": "select", "field": "preset", "value": "ease" }],
+  "expect": ["cubic-bezier(0.25, 0.1, 0.25, 1)"]
+}

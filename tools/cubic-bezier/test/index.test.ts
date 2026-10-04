@@ -176,7 +176,7 @@ it('progress is 0 at the start and 1 at the end and matches an independent bisec
     curves.push([x1, y1, x2, y2]);
   }
   // Curves with a flat or vertical start or end, where the slope is zero or large.
-  curves.push([0, 0, 1, 1], [0, 1, 1, 0], [1, 0, 0, 1], [0, 2, 1, -1], [1, 2, 0, -1], [0.5, 0, 0.5, 1]);
+  curves.push([0, 0, 1, 1], [0, 1, 1, 0], [0, 2, 1, -1], [0.5, 0, 0.5, 1]);
 
   let worst = 0;
   for (const curve of curves) {
@@ -191,6 +191,20 @@ it('progress is 0 at the start and 1 at the end and matches an independent bisec
     }
   }
   expect(worst).toBeLessThanOrEqual(1e-6);
+
+  // Two curves whose x(t) is flat at an input of one half (x1 = 1 and x2 = 0 make x(t) = 0.5 + 4(t - 0.5)^3 there): a
+  // rounding error of one part in 1e16 in x moves t by about 3e-6, so no solver, the bisection above included, can say y
+  // better than about 1e-5 at that one input. They are held to 1e-4 and every other input to 1e-6.
+  for (const [x1, y1, x2, y2] of [
+    [1, 0, 0, 1],
+    [1, 2, 0, -1],
+  ] as Points[]) {
+    for (let i = 0; i <= 100; i++) {
+      const input = i / 100;
+      const difference = Math.abs(solveProgress(x1, y1, x2, y2, input) - bisectProgress(x1, y1, x2, y2, input));
+      expect(difference, `flat curve ${[x1, y1, x2, y2]} at ${input}`).toBeLessThanOrEqual(input === 0.5 ? 1e-4 : 1e-6);
+    }
+  }
 
   // Linear is the identity; ease at one half is 0.802403 (0.802403387584857 by the bisection above, recomputed here).
   for (let i = 0; i <= 20; i++) expect(solveProgress(0, 0, 1, 1, i / 20)).toBeCloseTo(i / 20, 9);

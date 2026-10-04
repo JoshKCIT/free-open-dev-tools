@@ -1,0 +1,7 @@
+[
+  {
+    "mode": { "field": "preset", "value": "custom" },
+    "values": { "duration": "1" },
+    "attachesFile": false
+  }
+]
