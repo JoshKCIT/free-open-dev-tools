@@ -833,3 +833,32 @@ test('mermaid-renderer: PNG export draws the diagram at the chosen scale and off
   }
   expect(await page.evaluate(() => window.__FODT_MERMAID_CREATED__)).toBe(before);
 });
+
+test('mermaid-renderer: a PNG over the size cap keeps the SVG and says why the PNG is missing', async ({ page }) => {
+  test.setTimeout(120_000);
+  await openTool(page);
+  await page.locator('input[name="format"][value="png"]').click();
+  await page.locator('#f-scale').fill('4');
+  // About 40 boxes in a row: wide enough that four times its width is far over the 8,192 pixel side limit.
+  const row = Array.from({ length: 40 }, (_, i) => `  N${i}[Step number ${i}] --> N${i + 1}[Step number ${i + 1}]`);
+  await fillAndHold(page, `flowchart LR\n${row.join('\n')}`);
+  await runAndWait(page);
+  const output = outputArea(page);
+  // The SVG outputs are still there: the picture, its text and the SVG stats.
+  await expect(output.locator('img').first()).toHaveAttribute('alt', /^Mermaid flowchart diagram/, { timeout: 30_000 });
+  await expect(output.locator('pre').first()).toContainText('<svg');
+  await expect(output).toContainText('SVG size');
+  // The PNG message stands as a warning, not as an input problem, and there is no PNG to download.
+  await expect(output.locator('.note-warn')).toContainText(
+    /The PNG would be \d+ by \d+ pixels\. The limit is 16,000,000 pixels and 8,192 on a side; choose a smaller scale\./,
+  );
+  await expect(output.locator('.issue-list')).toHaveCount(0);
+  await expect(output.locator('li').filter({ hasText: 'diagram.png' })).toHaveCount(0);
+  await expect(output).not.toContainText('PNG size');
+
+  // A smaller scale gives the PNG, and the warning is gone.
+  await page.locator('#f-scale').fill('1');
+  await runAndWait(page);
+  await expect(output.locator('li').filter({ hasText: 'diagram.png' })).toBeVisible({ timeout: 30_000 });
+  await expect(output.locator('.note-warn')).toHaveCount(0);
+});

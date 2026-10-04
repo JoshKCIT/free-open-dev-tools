@@ -160,16 +160,28 @@ export default defineTool({
         ['Type', scrubbed.type ?? 'Mermaid'],
         ['SVG size', formatBytes(new TextEncoder().encode(svg).length)],
       ];
+      const warnings: string[] = [];
       if (wantsPng) {
-        const png = await svgToPng(svg, scale);
-        outputs.push({
-          kind: 'files',
-          label: 'PNG',
-          files: [{ name: 'diagram.png', mime: 'image/png', content: png }],
-        });
-        stats.push(['PNG size', `${Math.ceil(natural.width * scale)} × ${Math.ceil(natural.height * scale)} px`]);
+        // The SVG has been drawn and checked, so a PNG that cannot be made (over the size limits, or a browser that
+        // cannot draw it) is said in a warning and does not take the SVG away.
+        try {
+          const png = await svgToPng(svg, scale);
+          outputs.push({
+            kind: 'files',
+            label: 'PNG',
+            files: [{ name: 'diagram.png', mime: 'image/png', content: png }],
+          });
+          stats.push(['PNG size', `${Math.ceil(natural.width * scale)} × ${Math.ceil(natural.height * scale)} px`]);
+        } catch (pngError) {
+          if (ctx.signal.aborted) throw pngError;
+          warnings.push(
+            pngError instanceof MermaidError || pngError instanceof MermaidFrameError
+              ? pngError.message
+              : 'This diagram could not be turned into a PNG.',
+          );
+        }
       }
-      return { outputs, stats };
+      return warnings.length === 0 ? { outputs, stats } : { outputs, stats, warnings };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       return { outputs: [], errors: [issueOf(err, lineOffset)] };
