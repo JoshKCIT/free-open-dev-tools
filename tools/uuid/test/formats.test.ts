@@ -115,7 +115,10 @@ it('ULID decodes the specification example to its time and refuses a first chara
   );
 
   // The alphabet has no I, L, O or U, and the length is exactly 26.
-  for (const bad of ['I', 'L', 'O', 'U', 'u', '-', '!', ' ']) {
+  expect(messageOf(() => decodeUlid('01ARZ3NDEKTSV4RRFFQ6 G5FAV'))).toBe(
+    'A ULID uses only the characters 0 to 9 and A to Z without I, L, O and U.',
+  );
+  for (const bad of ['I', 'L', 'O', 'U', 'u', '-', '!', '~']) {
     expect(messageOf(() => decodeUlid('01ARZ3NDEKTSV4RRFFQ69G5FA' + bad))).toBe(
       'A ULID uses only the characters 0 to 9 and A to Z without I, L, O and U.',
     );
@@ -288,6 +291,15 @@ it('ObjectId draws its random part and counter once and counts on with a wrap', 
   expect(messageOf(() => fresh.generateObjectIds(1, 4294967296 * 1000))).toBe(
     'The time is outside what an ObjectId can hold (0 to 2^32 - 1 seconds since 1970).',
   );
+
+  // Another page load with a counter that starts at 0x123456: all three counter bytes are written in order.
+  vi.resetModules();
+  const other = (await import('../src/objectid')) as typeof import('../src/objectid');
+  feed.push(0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0x12, 0x34, 0x56);
+  expect(other.generateObjectIds(2, now)).toEqual([
+    '507f1f77' + 'a0b1c2d3e4' + '123456',
+    '507f1f77' + 'a0b1c2d3e4' + '123457',
+  ]);
 });
 
 it('Snowflake ids decode with BigInt to time, datacenter, worker and sequence for a chosen epoch', () => {
