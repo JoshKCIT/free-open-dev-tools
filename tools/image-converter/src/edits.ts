@@ -160,7 +160,8 @@ export function planEdits(bitmapWidth: number, bitmapHeight: number, edits: Imag
 }
 
 /**
- * The size the edited picture will have, worked from a size read out of a
+ * The size the edited picture will have (and whether the edits change anything at all, which is when a picture of
+ * that size is drawn), worked from a size read out of a
  * file header. A JPEG may store its picture turned a quarter (its own
  * orientation note), so the header size can be the sideways size of the
  * upright picture: for a JPEG a crop that fits the sideways size is accepted
@@ -172,15 +173,15 @@ export function planEditedSize(
   headerHeight: number,
   edits: ImageEdits,
   mayBeStoredTurned: boolean,
-): { width: number; height: number } {
+): { width: number; height: number; changes: boolean } {
   try {
     const plan = planEdits(headerWidth, headerHeight, edits);
-    return { width: plan.width, height: plan.height };
+    return { width: plan.width, height: plan.height, changes: !plan.identity };
   } catch (err) {
     if (mayBeStoredTurned && err instanceof ImageEditError) {
       try {
         const plan = planEdits(headerHeight, headerWidth, edits);
-        return { width: plan.width, height: plan.height };
+        return { width: plan.width, height: plan.height, changes: !plan.identity };
       } catch {
         // Neither orientation fits: report the first refusal.
       }

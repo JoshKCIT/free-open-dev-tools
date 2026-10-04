@@ -87,6 +87,20 @@ function tooLargeMessage(fileName: string, width: number, height: number): strin
   );
 }
 
+/**
+ * The refusal for edits that would draw an edited picture, before any resize, over the output pixel limit. The edited
+ * picture is drawn once at its full size and then resized, and a canvas of that size is as large as one this tool
+ * refuses as an output (a browser may draw one canvas in a different way than two, so a single combined draw was not
+ * used: its pixels differ from the two-step result).
+ */
+function editedTooLargeMessage(fileName: string, width: number, height: number): string {
+  return (
+    `Could not convert '${fileName}': the cropped, rotated or flipped picture would be ${width} by ${height} pixels ` +
+    `before it is resized, above this browser's own ${MAX_OUTPUT_PIXELS.toLocaleString('en-US')}-pixel limit. ` +
+    'Crop it to a smaller area first.'
+  );
+}
+
 /** '#rgb' or '#rrggbb' only; anything else falls back to '#ffffff' with a warning naming the field. */
 function parseBackground(raw: string, warnings: string[]): string {
   const trimmed = raw.trim();
@@ -145,9 +159,14 @@ export function planConversion(
 
   // With edits, resizing measures the cropped and turned size. A JPEG may store its picture turned a quarter,
   // so its header size is only a first guess; the drawing site plans again from the decoded picture.
-  const sizeSource: SizeSource = options.edits
-    ? planEditedSize(source.width, source.height, options.edits, sniffed.kind === 'jpeg')
-    : source;
+  let sizeSource: SizeSource = source;
+  if (options.edits) {
+    const edited = planEditedSize(source.width, source.height, options.edits, sniffed.kind === 'jpeg');
+    sizeSource = { width: edited.width, height: edited.height };
+    if (edited.changes && edited.width * edited.height > MAX_OUTPUT_PIXELS) {
+      throw new ImageConverterError(editedTooLargeMessage(fileName, edited.width, edited.height));
+    }
+  }
   const sizePlan = planSize(sizeSource, options.resize);
   const warnings = [...sizePlan.warnings];
 
@@ -211,6 +230,9 @@ export function replanForDecoded(
 ): DecodedReplan {
   let edits: EditPlan | undefined = options.edits ? planEdits(decoded.width, decoded.height, options.edits) : undefined;
   if (edits?.identity) edits = undefined;
+  if (edits && edits.width * edits.height > MAX_OUTPUT_PIXELS) {
+    throw new ImageConverterError(editedTooLargeMessage(fileName, edits.width, edits.height));
+  }
   if (!edits && decoded.width === plan.sourceWidth && decoded.height === plan.sourceHeight) {
     return {
       sourceWidth: plan.sourceWidth,

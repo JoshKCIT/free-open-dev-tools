@@ -1,5 +1,11 @@
 import { it, expect, vi } from 'vitest';
-import { planConversion, planSvgConversion, ImageConverterError, type ConvertOptions } from '../src/index';
+import {
+  planConversion,
+  planSvgConversion,
+  replanForDecoded,
+  ImageConverterError,
+  type ConvertOptions,
+} from '../src/index';
 import { planEdits, ImageEditError, ROTATIONS, FLIPS, type ImageEdits } from '../src/edits';
 import { planSize } from '../src/sizing';
 import { scanSvg } from '../src/svg-guard';
@@ -367,4 +373,80 @@ it('nothing is written to the console while planning edits or checking an SVG', 
       spy.mockRestore();
     }
   }
+});
+
+it('crop, rotate and flip are refused when the edited picture, before any resize, is over the output pixel limit', () => {
+  const options = (resize: ConvertOptions['resize'], edits?: ImageEdits): ConvertOptions => ({
+    format: 'png',
+    quality: 85,
+    background: '#ffffff',
+    resize,
+    ...(edits ? { edits } : {}),
+  });
+  const tenPercent = { mode: 'percent', percent: 10 } as const;
+  const refusal = (width: number, height: number): string =>
+    `Could not convert 'a.png': the cropped, rotated or flipped picture would be ${width} by ${height} pixels before it is resized, above this browser's own 40,000,000-pixel limit. Crop it to a smaller area first.`;
+
+  // A picture of 100,000,000 pixels, turned and then shrunk to a tenth, would need an edit canvas of the full size.
+  const big = minimalPng(10_000, 10_000);
+  expect(() => planConversion(big, 'a.png', options(tenPercent, { rotate: 90, flip: 'none' }))).toThrow(
+    refusal(10_000, 10_000),
+  );
+  expect(() => planConversion(big, 'a.png', options(tenPercent, { rotate: 180, flip: 'none' }))).toThrow(
+    ImageConverterError,
+  );
+  expect(() => planConversion(big, 'a.png', options(tenPercent, { rotate: 0, flip: 'horizontal' }))).toThrow(
+    ImageConverterError,
+  );
+  // A crop that is still over the limit is refused, naming the cropped size; one at or under it is accepted.
+  const crop = (side: number): ImageEdits => ({
+    crop: { x: 0, y: 0, width: side, height: side },
+    rotate: 90,
+    flip: 'none',
+  });
+  expect(() => planConversion(big, 'a.png', options(tenPercent, crop(7000)))).toThrow(refusal(7000, 7000));
+  expect(planConversion(big, 'a.png', options(tenPercent, crop(6000))).targetWidth).toBe(600);
+
+  // Exactly 40,000,000 pixels is accepted; one more row is not.
+  expect(
+    planConversion(minimalPng(8000, 5000), 'a.png', options(tenPercent, { rotate: 90, flip: 'none' })).targetWidth,
+  ).toBe(500);
+  expect(() =>
+    planConversion(minimalPng(8000, 5001), 'a.png', options(tenPercent, { rotate: 90, flip: 'none' })),
+  ).toThrow(ImageConverterError);
+
+  // A JPEG stored turned a quarter has the same area either way.
+  expect(() =>
+    planConversion(minimalJpeg(10_000, 10_000), 'a.png', options(tenPercent, { rotate: 90, flip: 'none' })),
+  ).toThrow(ImageConverterError);
+
+  // No canvas is made for edits that change nothing, and none for no edits: the resize alone is held to its own limit.
+  expect(planConversion(big, 'a.png', options(tenPercent)).targetWidth).toBe(1000);
+  expect(planConversion(big, 'a.png', options(tenPercent, { rotate: 0, flip: 'none' })).targetWidth).toBe(1000);
+  expect(
+    planConversion(
+      big,
+      'a.png',
+      options(tenPercent, { crop: { x: 0, y: 0, width: 10_000, height: 10_000 }, rotate: 0, flip: 'none' }),
+    ).targetWidth,
+  ).toBe(1000);
+
+  // The plan made again against the decoded picture says the same (a header can differ from the decoded size).
+  const small = planConversion(minimalPng(100, 50), 'a.png', options(tenPercent, { rotate: 90, flip: 'none' }));
+  expect(() =>
+    replanForDecoded(
+      small,
+      'a.png',
+      { width: 10_000, height: 10_000 },
+      options(tenPercent, { rotate: 90, flip: 'none' }),
+    ),
+  ).toThrow(refusal(10_000, 10_000));
+  expect(
+    replanForDecoded(
+      small,
+      'a.png',
+      { width: 10_000, height: 10_000 },
+      options(tenPercent, { rotate: 0, flip: 'none' }),
+    ).targetWidth,
+  ).toBe(1000);
 });

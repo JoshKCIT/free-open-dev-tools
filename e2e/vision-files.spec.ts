@@ -2438,6 +2438,55 @@ test('image-converter: a file over 100 MB is refused from its reported size, as 
   expect(offending(requests)).toEqual([]);
 });
 
+/** A PNG signature and header chunk only: enough for a page to read the declared size, never enough to decode. */
+function pngHeaderOnly(width: number, height: number): PickedFile {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 6, 0, 0, 0], 8);
+  const type = Buffer.from('IHDR', 'latin1');
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(13);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([type, header])));
+  return {
+    name: 'wide.png',
+    mimeType: 'image/png',
+    buffer: Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), length, type, header, crc]),
+  };
+}
+
+test('image-converter: crop, rotate or flip of a picture over 40,000,000 pixels is refused before decoding, however small the resize', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+
+  // 6500 by 6500 is 42,250,000 pixels. Turned, it needs a picture of that size before the resize to a tenth.
+  await attachImage(page, 'file', pngHeaderOnly(6500, 6500));
+  await setEdit(page, { label: 'turn', rotate: 90, flip: 'none' });
+  await page.locator('input[name="resize"][value="percent"]').click();
+  await fillField(page, 'percent', '10');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    "Could not convert 'wide.png': the cropped, rotated or flipped picture would be 6500 by 6500 pixels before it is resized, above this browser's own 40,000,000-pixel limit. Crop it to a smaller area first.",
+    { timeout: 30_000 },
+  );
+  expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+
+  // Cropped to 6000 by 6000 (36,000,000) the plan is accepted: the file then fails later only because it holds no picture.
+  await fillField(page, 'cropX', '0');
+  await fillField(page, 'cropY', '0');
+  await fillField(page, 'cropW', '6000');
+  await fillField(page, 'cropH', '6000');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toBeVisible({ timeout: 30_000 });
+  await expect(outputArea(page).locator('.issue-list')).not.toContainText('before it is resized', { timeout: 30_000 });
+
+  expect(offending(requests)).toEqual([]);
+});
+
 // --- CSS spinner and CSS pattern (plan 15-08) ---------------------------------------------------------------------------
 
 /** Waits for the auto run to finish: the debounce, then the Output panel's own busy signal. */
