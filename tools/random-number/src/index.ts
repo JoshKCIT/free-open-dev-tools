@@ -1,4 +1,5 @@
 import meta from './meta.json';
+import { drawUniformInt } from './sampler';
 
 export { meta };
 
@@ -66,39 +67,6 @@ function fixedByteReader(bytes: number[]): () => number {
 function makeByteReader(source: RandomNumberSource, byteSource?: number[]): () => number {
   if (byteSource) return fixedByteReader(byteSource);
   return source === 'math' ? mathByteReader() : cryptoByteReader();
-}
-
-/**
- * Draws a uniform integer in [0, span) by rejection sampling.
- *
- * A modulo of a random word (`randomByte % span`) is the tempting shortcut,
- * and it is biased whenever `span` does not divide the word size evenly: the
- * values below the remainder of that division come up more often than the
- * values above it. For a 3-value range over a single byte, modulo gives
- * 86/256, 85/256 and 85/256 -- a bias too small to catch reliably in a
- * sample-count test at any size that does not flake, but real all the same.
- *
- * Rejection sampling removes it instead: compute the largest multiple of
- * `span` that fits in the drawn word size, discard any draw that lands above
- * it (the incomplete final block), and redraw. Every value that survives is
- * then exactly uniform.
- */
-function drawUniformInt(span: number, readByte: () => number): number {
-  if (span <= 1) return 0;
-
-  let bytesNeeded = 1;
-  let wordSize = 256;
-  while (wordSize < span) {
-    bytesNeeded++;
-    wordSize *= 256;
-  }
-  const maxValid = Math.floor(wordSize / span) * span - 1;
-
-  for (;;) {
-    let value = 0;
-    for (let i = 0; i < bytesNeeded; i++) value = value * 256 + readByte();
-    if (value <= maxValid) return value % span;
-  }
 }
 
 function generateIntegers(lo: number, hi: number, count: number, unique: boolean, readByte: () => number): string[] {
@@ -195,3 +163,43 @@ export function generate(options: RandomNumberOptions): RandomNumberResult {
   const values = generateIntegers(lo, hi, count, unique, readByte);
   return { values, source, min: lo, max: hi, mode };
 }
+
+// Dice, coin flips, lottery draws and list picks: new files that draw only through the shared rejection sampler.
+export { RandomDrawError } from './sampler';
+export {
+  DICE_GRAMMAR,
+  DiceError,
+  MAX_CONSTANT,
+  MAX_DICE_PER_TERM,
+  MAX_DICE_TOTAL,
+  MAX_NOTATION_CHARACTERS,
+  MAX_SIDES,
+  MIN_SIDES,
+  parseDiceNotation,
+  rollDice,
+} from './dice';
+export type {
+  DiceConstantTerm,
+  DiceDiceTerm,
+  DiceExpression,
+  DiceModifier,
+  DiceModifierKind,
+  DiceRoll,
+  DiceTerm,
+  RolledTerm,
+} from './dice';
+export {
+  MAX_DRAW_SIZE,
+  MAX_FLIPS,
+  MAX_ITEM_CHARACTERS,
+  MAX_ITEMS,
+  MAX_LIST_CHARACTERS,
+  MAX_PICKS,
+  MAX_POOL_SIZE,
+  MIN_POOL_SIZE,
+  drawLottery,
+  flipCoins,
+  pickItems,
+  readItemLines,
+} from './picks';
+export type { CoinFlips, CoinSide, LotteryDraw, PickOptions } from './picks';

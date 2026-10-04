@@ -227,6 +227,10 @@ it('limits on flips, lottery draws, picks and list items are refused before any 
   expect(thrown(() => pickItems({ items: [...manyItems, 'one more'], count: 1, replace: true }, noBytes))).toBe(
     'The list has more than 10,000 items.',
   );
+  // A single item above 200 characters is refused even when it is handed over as an array.
+  expect(thrown(() => pickItems({ items: ['y'.repeat(201)], count: 1, replace: true }, noBytes))).toBe(
+    'An item is longer than 200 characters.',
+  );
   // Blank lines do not count towards the 10,000 items.
   expect(pickItems({ items: [...manyItems, '', '  '], count: 1, replace: true })).toHaveLength(1);
 
@@ -238,6 +242,11 @@ it('limits on flips, lottery draws, picks and list items are refused before any 
   const long = marker + 'y'.repeat(201 - marker.length);
   const message = thrown(() => readItemLines('first\n\n' + long + '\nlast'));
   expect(message).toBe('Line 3 is longer than 200 characters.');
+  // Windows line breaks count as one line each, so the line number is the same.
+  const crlf = String.fromCharCode(13) + '\n';
+  expect(thrown(() => readItemLines('first' + crlf + crlf + long + crlf + 'last'))).toBe(
+    'Line 3 is longer than 200 characters.',
+  );
   expect(message).not.toContain('FODT');
   // A paste above 2,100,000 characters is refused by its length before it is split.
   const hugeStart = Date.now();

@@ -270,7 +270,7 @@ it('d100 dice roll 1 to 100 and fudge dice roll minus one, zero or plus one', ()
   expect(rollDice(parseDiceNotation('4dF'), { byteSource: [2, 2, 2, 2] }).total).toBe(4);
 
   // The real source: every value is in range and every end of the range turns up.
-  const hundred = rollDice(parseDiceNotation('2000d%')).terms[0]!.rolls;
+  const hundred = rollDice(parseDiceNotation('1000d%+1000d%')).terms.flatMap((t) => t.rolls);
   expect(Math.min(...hundred)).toBe(1);
   expect(Math.max(...hundred)).toBe(100);
   const fudged = rollDice(parseDiceNotation('1000dF+1000dF')).terms.flatMap((t) => t.rolls);
@@ -368,4 +368,19 @@ it('nothing is written to the console while rolling a very large expression and 
   expect(logSpy.log).not.toHaveBeenCalled();
   expect(logSpy.warn).not.toHaveBeenCalled();
   expect(logSpy.error).not.toHaveBeenCalled();
+});
+
+it('look-alike letters and digits and line breaks are not part of the notation', () => {
+  // Characters that only look like notation (a Kelvin sign for k, a full width d, a full width digit) are refused.
+  const kelvin = String.fromCodePoint(0x212a);
+  const fullWidthD = String.fromCodePoint(0xff44);
+  const fullWidthTwo = String.fromCodePoint(0xff12);
+  expect(refusal('4d6' + kelvin + 'h3')).toBe('This is not dice notation: a + or - was expected at character 4.');
+  expect(refusal('2' + fullWidthD + '6')).toBe('This is not dice notation: a + or - was expected at character 2.');
+  expect(refusal(fullWidthTwo + 'd6')).toBe(
+    'This is not dice notation: a number or dice such as d6 was expected at character 1.',
+  );
+  // A line break is not a space; a tab is.
+  expect(refusal('2d6\n+3')).toBe('This is not dice notation: a + or - was expected at character 4.');
+  expect(parseDiceNotation('2d6\t+\t3').terms).toHaveLength(2);
 });
