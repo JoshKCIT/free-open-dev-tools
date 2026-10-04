@@ -82,7 +82,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@zxcvbn-ts/language-common](https://github.com/zxcvbn-ts/zxcvbn) | 4.1.3 | MIT | direct | tools/password-strength |
 | [@zxcvbn-ts/language-en](https://github.com/zxcvbn-ts/zxcvbn) | 4.1.1 | MIT | direct | tools/password-strength |
 | [acorn](https://github.com/acornjs/acorn) | 8.18.0 | MIT | direct | tools/eslint-to-biome, tools/html-formatter, tools/js-formatter |
-| [ajv](https://ajv.js.org) | 8.20.0 | MIT | direct | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
+| [ajv](https://ajv.js.org) | 8.20.0 | MIT | direct | tools/docker-compose-validator, tools/docker-run-to-compose, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [ajv-draft-04](https://github.com/ajv-validator/ajv-draft-04#readme) | 1.0.0 | MIT | direct | tools/openapi-validator |
 | [ajv-formats](https://github.com/ajv-validator/ajv-formats#readme) | 3.0.1 | MIT | direct | tools/json-schema-validator, tools/openapi-validator |
 | [ansi-regex]() | 5.0.1 | MIT | transitive (via strip-ansi) | tools/qr-generator, tools/totp-generator |
@@ -182,8 +182,8 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [es-toolkit](https://es-toolkit.dev) | 1.52.0 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [escape-string-regexp]() | 5.0.0 | MIT | transitive (via mdast-util-find-and-replace) | tools/bbcode |
 | [exifr](https://mutiny.cz/exifr/) | 7.1.3 | MIT | direct | tools/exif-viewer |
-| [fast-deep-equal](https://github.com/epoberezkin/fast-deep-equal#readme) | 3.1.3 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
-| [fast-uri](https://github.com/fastify/fast-uri) | 3.1.8 | BSD-3-Clause | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
+| [fast-deep-equal](https://github.com/epoberezkin/fast-deep-equal#readme) | 3.1.3 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/docker-run-to-compose, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
+| [fast-uri](https://github.com/fastify/fast-uri) | 3.1.8 | BSD-3-Clause | transitive (via ajv) | tools/docker-compose-validator, tools/docker-run-to-compose, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [fast-xml-builder](https://github.com/NaturalIntelligence/fast-xml-builder) | 1.3.1 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastdom](https://github.com/wilsonpage/fastdom) | 1.0.12 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
@@ -197,6 +197,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
 | [iconv-lite](https://github.com/ashtuchkin/iconv-lite) | 0.6.3 | MIT | transitive (via d3-dsv) | tools/mermaid-renderer |
+| [ignore](https://github.com/kaelzhang/node-ignore) | 7.0.8 | MIT | direct | tools/glob-tester |
 | [immutable](https://immutable-js.com) | 5.1.9 | MIT | transitive (via sass) | tools/sass-less-compiler |
 | [import-meta-resolve]() | 4.2.0 | MIT | transitive (via @iconify/utils) | tools/mermaid-renderer |
 | [internmap](https://github.com/mbostock/internmap/) | 1.0.1 | ISC | transitive (via d3-array) | tools/mermaid-renderer |
@@ -205,7 +206,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [is-unsafe](https://github.com/NaturalIntelligence/is-unsafe) | 2.0.2 | MIT | transitive (via fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [is-what](https://github.com/mesqueeb/is-what#readme) | 4.1.16 | MIT | transitive (via copy-anything) | tools/sass-less-compiler |
 | [jq-wasm](https://github.com/owenthereal/jq-wasm#readme) | 3.0.0-jq-1.8.2 | MIT | direct | tools/jq-playground |
-| [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 1.0.0 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
+| [json-schema-traverse](https://github.com/epoberezkin/json-schema-traverse#readme) | 1.0.0 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/docker-run-to-compose, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [jsonpath-rfc9535](https://github.com/P0lip/jsonpath-rfc9535) | 1.3.0 | Apache-2.0 | direct | tools/jsonpath |
 | [katex](https://katex.org) | 0.16.47 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [khroma]() | 2.1.0 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
@@ -283,12 +284,14 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [pdfjs-dist](https://mozilla.github.io/pdf.js/) | 6.3.289 | Apache-2.0 | direct | tools/pdf-text-metadata, tools/pdf-to-image |
 | [php-parser](https://glayzzle.com/) | 3.7.0 | BSD-3-Clause | transitive (via @prettier/plugin-php) | tools/php-formatter |
 | [picocolors]() | 1.1.1 | ISC | transitive (via svgo) | tools/svg-optimizer |
+| [picomatch](https://github.com/micromatch/picomatch) | 4.0.7 | MIT | direct | tools/glob-tester |
 | [pixelmatch](https://github.com/mapbox/pixelmatch#readme) | 7.2.0 | ISC | direct | tools/image-compare |
 | [pngjs](https://github.com/lukeapage/pngjs) | 7.0.0 | MIT | transitive (via pixelmatch) | tools/image-compare |
 | [pngjs](https://github.com/lukeapage/pngjs) | 5.0.0 | MIT | transitive (via qrcode) | tools/qr-generator, tools/totp-generator |
 | [points-on-curve](https://github.com/pshihn/bezier-points#readme) | 0.2.0 | MIT | transitive (via points-on-path, roughjs) | tools/mermaid-renderer |
 | [points-on-path](https://github.com/pshihn/points-on-path#readme) | 0.2.1 | MIT | transitive (via roughjs) | tools/mermaid-renderer |
 | [prettier](https://prettier.io) | 3.9.9 | MIT | direct | tools/css-formatter, tools/graphql-formatter, tools/html-formatter, tools/js-formatter, tools/markdown-formatter, tools/php-formatter |
+| [punycode](https://mths.be/punycode) | 2.3.1 | MIT | transitive (via tr46) | tools/idn-converter |
 | [qrcode](http://github.com/soldair/node-qrcode) | 1.5.4 | MIT | direct | tools/qr-generator, tools/totp-generator |
 | [railroad-diagrams](https://github.com/tabatkins/railroad-diagrams) | 1.0.0 | CC0-1.0 | transitive (via nearley) | tools/sql-formatter |
 | [randexp](http://fent.github.io/randexp.js/) | 0.4.6 | MIT | transitive (via nearley) | tools/sql-formatter |
@@ -299,7 +302,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [readdirp](https://github.com/paulmillr/readdirp) | 5.1.1 | MIT | transitive (via chokidar) | tools/sass-less-compiler |
 | [relateurl](https://github.com/stevenvachon/relateurl) | 0.2.7 | MIT | transitive (via html-minifier-terser) | tools/html-formatter |
 | [require-directory](https://github.com/troygoode/node-require-directory/) | 2.1.1 | MIT | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
-| [require-from-string]() | 2.0.2 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
+| [require-from-string]() | 2.0.2 | MIT | transitive (via ajv) | tools/docker-compose-validator, tools/docker-run-to-compose, tools/github-actions-validator, tools/json-schema-validator, tools/k8s-validator, tools/openapi-validator |
 | [require-main-filename](https://github.com/yargs/require-main-filename#readme) | 2.0.0 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [ret](git://github.com/fent/ret.js) | 0.1.15 | MIT | transitive (via randexp) | tools/sql-formatter |
 | [robust-predicates](https://github.com/mourner/robust-predicates) | 3.0.3 | Unlicense | transitive (via delaunator) | tools/mermaid-renderer |
@@ -309,6 +312,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [sass](https://github.com/sass/dart-sass) | 1.103.1 | MIT | direct | tools/sass-less-compiler |
 | [sax](ssh://git@github.com/isaacs/sax-js) | 1.6.1 | BlueOak-1.0.0 | transitive (via svgo) | tools/svg-optimizer |
 | [scheduler](https://react.dev/) | 0.28.0 | MIT | transitive (via react-dom) | apps/web |
+| [semver](https://github.com/npm/node-semver) | 7.8.5 | ISC | direct | tools/semver-checker |
 | [set-blocking](https://github.com/yargs/set-blocking#readme) | 2.0.0 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [set-cookie-parser](https://github.com/nfriedly/set-cookie-parser) | 2.7.2 | MIT | transitive (via react-router) | apps/web |
 | [smol-toml](github:squirrelchat/smol-toml) | 1.9.0 | BSD-3-Clause | direct | tools/data-convert |
@@ -326,6 +330,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [tagged-tag]() | 1.0.0 | MIT | transitive (via type-fest) | tools/qr-barcode-reader |
 | [terser](https://terser.org) | 5.51.2 | BSD-2-Clause | direct | tools/html-formatter, tools/js-formatter |
 | [tinyexec](https://github.com/tinylibs/tinyexec#readme) | 1.3.1 | MIT | transitive (via @antfu/install-pkg) | tools/mermaid-renderer |
+| [tr46](https://github.com/jsdom/tr46) | 6.0.0 | MIT | direct | tools/idn-converter |
 | [ts-dedent](https://github.com/tamino-martinius/node-ts-dedent) | 2.3.0 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [tslib](https://www.typescriptlang.org/) | 2.8.1 | 0BSD | transitive (via @cantoo/pdf-lib, camel-case, dot-case, lower-case, no-case, param-case, pascal-case) | tools/html-formatter, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/pdf-text-metadata |
 | [turndown](https://github.com/mixmark-io/turndown) | 7.2.4 | MIT | direct | tools/markdown-html |
@@ -341,7 +346,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [xml-naming](https://github.com/NaturalIntelligence/xml-naming) | 0.3.0 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [xpath](https://github.com/goto100/xpath) | 0.0.34 | MIT | direct | tools/xpath-tester |
 | [y18n](https://github.com/yargs/y18n) | 4.0.3 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
-| [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/docker-compose-validator, tools/dotenv-toolkit, tools/eslint-to-biome, tools/github-actions-validator, tools/json-schema-generator, tools/json-to-code, tools/k8s-validator, tools/mock-data, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
+| [yaml](https://eemeli.org/yaml/) | 2.9.1 | ISC | direct | tools/data-convert, tools/docker-compose-validator, tools/docker-run-to-compose, tools/dotenv-toolkit, tools/eslint-to-biome, tools/github-actions-validator, tools/json-schema-generator, tools/json-to-code, tools/k8s-validator, tools/mock-data, tools/openapi-to-typescript, tools/openapi-validator, tools/yaml-formatter |
 | [yargs](https://yargs.js.org/) | 15.4.1 | MIT | transitive (via qrcode) | tools/qr-generator, tools/totp-generator |
 | [yargs-parser](https://github.com/yargs/yargs-parser) | 18.1.3 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [zwitch]() | 2.0.4 | MIT | transitive (via mdast-util-to-markdown) | tools/bbcode |
@@ -5864,6 +5869,34 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### ignore 7.0.8
+
+Licence: MIT
+
+```text
+Copyright (c) 2013 Kael Zhang <i@kael.me>, contributors
+http://kael.me/
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### immutable 5.1.9
 
 Licence: MIT
@@ -8984,6 +9017,34 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
+### picomatch 4.0.7
+
+Licence: MIT
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017-present, Jon Schlinkert.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ### pixelmatch 7.2.0
 
 Licence: ISC
@@ -9128,6 +9189,33 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### punycode 2.3.1
+
+Licence: MIT
+
+```text
+Copyright Mathias Bynens <https://mathiasbynens.be/>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ### qrcode 1.5.4
@@ -11402,6 +11490,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### semver 7.8.5
+
+Licence: ISC
+
+```text
+The ISC License
+
+Copyright (c) Isaac Z. Schlueter and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
 ### set-blocking 2.0.0
 
 Licence: ISC
@@ -11853,6 +11963,34 @@ Licence: MIT
 MIT License
 
 Copyright (c) 2024 Tinylibs
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### tr46 6.0.0
+
+Licence: MIT
+
+```text
+The MIT License (MIT)
+
+Copyright (c) Sebastian Mayr
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -12410,6 +12548,7 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | Dart SDK runtime and core libraries | BSD-3-Clause | `tools/dart-formatter` | [source](https://github.com/dart-lang/sdk/tree/3.10.7) |
 | dart_style formatter | BSD-3-Clause | `tools/dart-formatter` | [source](https://github.com/dart-lang/dart_style/tree/v3.1.4) |
 | Compose Specification JSON Schema | Apache-2.0 | `tools/docker-compose-validator` | [source](https://github.com/compose-spec/compose-spec) |
+| Compose Specification JSON Schema | Apache-2.0 | `tools/docker-run-to-compose` | [source](https://github.com/compose-spec/compose-spec) |
 | Unicode emoji-test.txt 18.0 | Unicode-3.0 | `tools/emoji-picker` | [source](https://www.unicode.org/Public/emoji/latest/emoji-test.txt) |
 | Biome ESLint-migrate rule map | MIT | `tools/eslint-to-biome` | [source](https://github.com/biomejs/biome) |
 | GitHub Actions Workflow JSON Schema | Apache-2.0 | `tools/github-actions-validator` | [source](https://github.com/SchemaStore/schemastore) |
@@ -12417,6 +12556,7 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | Go standard library 1.25.5 | BSD-3-Clause | `tools/go-formatter` | [source](https://github.com/golang/go/tree/go1.25.5/src/go/format) |
 | TinyGo runtime | BSD-3-Clause | `tools/go-formatter` | [source](https://github.com/tinygo-org/tinygo/tree/v0.40.1) |
 | IANA Language Subtag Registry | CC0-1.0 | `tools/hreflang` | [source](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry) |
+| Unicode IDNA Mapping Table 17.0.0 compiled into tr46 6.0.0 | Unicode-3.0 | `tools/idn-converter` | [source](https://www.unicode.org/Public/17.0.0/idna/IdnaMappingTable.txt) |
 | Emscripten runtime | MIT | `tools/jq-playground` | [source](https://github.com/emscripten-core/emscripten/tree/6.0.0) |
 | jq 1.8.2 | MIT | `tools/jq-playground` | [source](https://github.com/jqlang/jq/tree/jq-1.8.2) |
 | Oniguruma | BSD-2-Clause | `tools/jq-playground` | [source](https://github.com/kkos/oniguruma/tree/4ef89209a239c1aea328cf13c05a2807e5c146d1) |
@@ -13399,6 +13539,26 @@ changed. The full Apache-2.0 licence text is vendored alongside the schema
 at tools/docker-compose-validator/test/fixtures/compose-spec/LICENSE.
 ```
 
+### Compose Specification JSON Schema (bundled into `tools/docker-run-to-compose`)
+
+Licence: Apache-2.0 ([full text](https://www.apache.org/licenses/LICENSE-2.0))
+
+Attribution: "Compose Specification" schema by the Compose Specification project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 914ec15d1fa498969c0df5c1d672306db3256089.
+
+```text
+Compose Specification JSON Schema
+Source: https://github.com/compose-spec/compose-spec
+Commit: 914ec15d1fa498969c0df5c1d672306db3256089 (schema/compose-spec.json)
+Fetched: 2026-09-25
+Licence: Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+This file is a byte-for-byte copy of schema/compose-spec.json from the
+compose-spec/compose-spec repository at the commit above, wrapped in a
+TypeScript module with an explicit wide type annotation. No content was
+changed. The full Apache-2.0 licence text is vendored alongside the schema
+at tools/docker-run-to-compose/test/fixtures/compose-spec/LICENSE.
+```
+
 ### Unicode emoji-test.txt 18.0 (bundled into `tools/emoji-picker`)
 
 Licence: Unicode-3.0 ([full text](https://www.unicode.org/license.txt))
@@ -13664,6 +13824,65 @@ and shown on the hreflang page.
 Attribution: IANA Language Subtag Registry, dedicated to the public domain
 by IANA and IETF under CC0 1.0
 (https://creativecommons.org/publicdomain/zero/1.0/legalcode).
+```
+
+### Unicode IDNA Mapping Table 17.0.0 compiled into tr46 6.0.0 (bundled into `tools/idn-converter`)
+
+Licence: Unicode-3.0 ([full text](https://www.unicode.org/license.txt))
+
+Attribution: "IdnaMappingTable.txt", (c) 2025 Unicode, Inc., from the Unicode Character Database and UTS #46, licensed under the Unicode License V3 (https://www.unicode.org/license.txt), compiled into the tr46 package.
+
+```text
+IDNA Mapping Table 17.0.0 (UTS #46), compiled into tr46 6.0.0
+Version: 17.0.0 (UTS #46, Unicode 17.0.0)
+Source: https://www.unicode.org/Public/17.0.0/idna/IdnaMappingTable.txt
+Compiled into: tr46 6.0.0 (lib/mappingTable.json and lib/regexes.js, MIT), which the page bundles
+Checked: 2026-10-04
+
+The mapping and validity data the converter uses comes from the Unicode Character Database file named above.
+The conformance file IdnaTestV2.txt 17.0.0 is test data only and is not shipped with the page; its licence copy is in
+test/fixtures/idna/LICENSE.txt.
+
+---
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright (c) 1991-2026 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
 ```
 
 ### Emscripten runtime (bundled into `tools/jq-playground`)

@@ -919,7 +919,13 @@
       "date calculator",
       "iso8601",
       "elapsed time",
-      "add days"
+      "add days",
+      "business days",
+      "working days",
+      "iso week number",
+      "week number",
+      "iso 8601 duration",
+      "duration builder"
     ]
   },
   "date-format": {
@@ -995,6 +1001,26 @@
       "validator",
       "devops",
       "containers"
+    ]
+  },
+  "docker-run-to-compose": {
+    "id": "docker-run-to-compose",
+    "name": "docker run to Compose Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "yaml": "2.9.1",
+      "ajv": "8.20.0"
+    },
+    "keywords": [
+      "docker",
+      "docker run",
+      "compose",
+      "docker-compose",
+      "yaml",
+      "container",
+      "devops",
+      "convert"
     ]
   },
   "dockerfile-lint": {
@@ -1259,6 +1285,26 @@
       "templates",
       "generator",
       "devops"
+    ]
+  },
+  "glob-tester": {
+    "id": "glob-tester",
+    "name": "Glob & .gitignore Pattern Tester",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "picomatch": "4.0.7",
+      "ignore": "7.0.8"
+    },
+    "keywords": [
+      "glob",
+      "gitignore",
+      "pattern",
+      "picomatch",
+      "ignore",
+      "pathspec",
+      "match",
+      "check-ignore"
     ]
   },
   "go-formatter": {
@@ -1585,6 +1631,26 @@
       "rfc",
       "reference",
       "registry"
+    ]
+  },
+  "idn-converter": {
+    "id": "idn-converter",
+    "name": "IDN & Punycode Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "tr46": "6.0.0"
+    },
+    "keywords": [
+      "idn",
+      "punycode",
+      "idna",
+      "uts 46",
+      "domain",
+      "xn--",
+      "unicode",
+      "tr46",
+      "internationalized domain name"
     ]
   },
   "ieee754": {
@@ -2102,6 +2168,27 @@
       "p256",
       "p384",
       "p521"
+    ]
+  },
+  "keyboard-event-viewer": {
+    "id": "keyboard-event-viewer",
+    "name": "Keyboard Event Viewer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "keyboard",
+      "key",
+      "keycode",
+      "event",
+      "keydown",
+      "keyup",
+      "keypress",
+      "code",
+      "location",
+      "composition",
+      "ime",
+      "which"
     ]
   },
   "link-builder": {
@@ -2834,7 +2921,15 @@
       "integer",
       "decimal",
       "crypto.getRandomValues",
-      "rejection sampling"
+      "rejection sampling",
+      "dice",
+      "dice roller",
+      "dice notation",
+      "2d6",
+      "coin flip",
+      "lottery",
+      "random picker",
+      "pick from a list"
     ]
   },
   "random-string": {
@@ -3049,6 +3144,27 @@
       "mark",
       "kbd",
       "markup generator"
+    ]
+  },
+  "semver-checker": {
+    "id": "semver-checker",
+    "name": "Semantic Version Range Checker & Sorter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "semver": "7.8.5"
+    },
+    "keywords": [
+      "semver",
+      "version",
+      "range",
+      "satisfies",
+      "caret",
+      "tilde",
+      "sort",
+      "pre-release",
+      "npm",
+      "precedence"
     ]
   },
   "shell-formatter": {
@@ -3587,7 +3703,31 @@
       "uuidv4",
       "uuidv7",
       "rfc9562",
-      "identifier"
+      "identifier",
+      "ulid",
+      "nanoid",
+      "ksuid",
+      "snowflake",
+      "objectid",
+      "mongodb"
+    ]
+  },
+  "web-manifest-builder": {
+    "id": "web-manifest-builder",
+    "name": "Web App Manifest Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "web app manifest",
+      "manifest.webmanifest",
+      "pwa",
+      "progressive web app",
+      "w3c",
+      "icons",
+      "theme color",
+      "start_url",
+      "scope"
     ]
   },
   "word-counter": {
