@@ -3,7 +3,7 @@ import {
   checkImageFile,
   codeRows,
   CodeReaderError,
-  MAX_HEADER_BYTES,
+  MAX_IMAGE_HEADER_BYTES,
   MAX_INPUT_BYTES,
   type CodeResult,
 } from '@fodt/qr-barcode-reader';
@@ -83,11 +83,12 @@ export default defineTool({
     const file = picked[0]!;
 
     try {
-      // A file over the size limit is refused from its reported size before a single byte of it is read.
+      // A file over the size limit is refused from its reported size before a single byte of it is read. The start of the
+      // file is read up to 2 MiB, since a photograph's frame header can lie behind a long profile.
       const header =
         file.size > MAX_INPUT_BYTES
           ? new Uint8Array(0)
-          : new Uint8Array(await file.slice(0, MAX_HEADER_BYTES).arrayBuffer());
+          : new Uint8Array(await file.slice(0, MAX_IMAGE_HEADER_BYTES).arrayBuffer());
       checkImageFile(header, file.size);
       const pixels = await imagePixelsFromFile(file);
       const results = await readCodesInWorker(pixels, ctx);

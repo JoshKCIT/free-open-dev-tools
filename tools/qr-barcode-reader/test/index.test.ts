@@ -6,7 +6,9 @@ import {
   checkImageFile,
   CodeReaderError,
   codeRows,
+  MAX_HEADER_BYTES,
   MAX_INPUT_BYTES,
+  MAX_IMAGE_HEADER_BYTES,
   MAX_INPUT_PIXELS,
   meta as toolMeta,
   prepareReader,
@@ -245,4 +247,71 @@ it('invisible format characters are shown as escapes: soft hyphen, zero width ma
     String.fromCodePoint(0xe0080),
   ];
   for (const text of kept) expect(visible(text)).toBe(text);
+});
+
+/** A JPEG header: the start marker, `appBytes` of application segments (an ICC profile, XMP and so on), then the frame header. */
+function jpegHeader(appBytes: number, width: number, height: number, withFrame = true): Uint8Array {
+  const parts: number[] = [0xff, 0xd8];
+  for (let left = appBytes; left > 0;) {
+    const payload = Math.min(left, 30_000);
+    parts.push(0xff, 0xe1, ((payload + 2) >> 8) & 0xff, (payload + 2) & 0xff);
+    for (let i = 0; i < payload; i++) parts.push(0);
+    left -= payload;
+  }
+  if (withFrame) {
+    parts.push(
+      0xff,
+      0xc0,
+      0,
+      11,
+      8,
+      (height >> 8) & 0xff,
+      height & 0xff,
+      (width >> 8) & 0xff,
+      width & 0xff,
+      1,
+      1,
+      0x11,
+      0,
+    );
+  }
+  parts.push(0xff, 0xd9);
+  return Uint8Array.from(parts);
+}
+
+it('a JPEG whose frame header lies beyond the first 64 KB is read, up to 2 MiB in, and not refused as not an image', () => {
+  expect(MAX_HEADER_BYTES).toBe(64 * 1024);
+  expect(MAX_IMAGE_HEADER_BYTES).toBe(2 * 1024 * 1024);
+  // 63 KB of segments are inside the first slice, 70 KB and 1 MiB are not.
+  for (const appBytes of [63_000, 70_000, 1024 * 1024]) {
+    const header = jpegHeader(appBytes, 4000, 3000);
+    expect(checkImageFile(header, header.length + 5_000_000)).toEqual({ kind: 'jpeg', width: 4000, height: 3000 });
+  }
+  // The size limits still apply to a size found this far in.
+  const huge = jpegHeader(70_000, 60_000, 60_000);
+  expect(() => checkImageFile(huge, huge.length)).toThrow(/50,000,000/);
+  const zero = jpegHeader(70_000, 0, 10);
+  expect(() => checkImageFile(zero, zero.length)).toThrow(/size of this image could not be read/);
+});
+
+it('a JPEG whose frame header cannot be found says plainly that the size could not be read from the file', () => {
+  const cases = [
+    // No frame header at all.
+    jpegHeader(10_000, 1, 1, false),
+    // Segments that run on past the 2 MiB that are read.
+    jpegHeader(MAX_IMAGE_HEADER_BYTES + 100_000, 10, 10),
+  ];
+  for (const bytes of cases) {
+    const header = bytes.subarray(0, MAX_IMAGE_HEADER_BYTES);
+    let message = '';
+    try {
+      checkImageFile(header, bytes.length);
+    } catch (err) {
+      expect(err).toBeInstanceOf(CodeReaderError);
+      message = (err as Error).message;
+    }
+    expect(message).toBe('The size of this image could not be read from the file.');
+  }
+  // A file that merely starts like something else is still not an image.
+  expect(() => checkImageFile(new TextEncoder().encode('plain text'), 10)).toThrow(/PNG, JPEG, GIF, WebP or BMP/);
 });
