@@ -1,13 +1,13 @@
 # Date & Duration Calculator
 
-Measure the gap between two moments and add or subtract durations.
+Measure the gap between two moments, add or subtract durations, count business days, find ISO week numbers and build ISO 8601 durations.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Measures the gap between two moments, both as an exact elapsed time and as a calendar breakdown of years, months and days, and adds or subtracts an ISO 8601 duration from a moment. Calendar-month arithmetic has no single right answer once you add a month to the 31st, so this tool states its choice plainly instead of hiding it in the result.
+Measures the gap between two moments, both as an exact elapsed time and as a calendar breakdown of years, months and days, and adds or subtracts an ISO 8601 duration from a moment. Calendar-month arithmetic has no single right answer once you add a month to the 31st, so this tool states its choice plainly instead of hiding it in the result. It also counts business days between two dates with the weekend days you choose and the holidays you paste, gives the ISO 8601 week number of every date in a pasted list, and reads and writes ISO 8601 durations, keeping every digit exactly as typed.
 
 ## Supported
 
@@ -17,24 +17,40 @@ Measures the gap between two moments, both as an exact elapsed time and as a cal
 - A calendar breakdown (years, months, days, hours, minutes, seconds) of the same gap
 - Adding or subtracting a duration from a moment, with calendar-month/year steps clamped to the last valid day of the target month
 - Years 0001 through 9999, with a year below 100 read exactly as written rather than shifted into the 1900s
+- Business days between two dates, with the weekend days you choose (Saturday and Sunday unless you say otherwise; any ISO weekday names or numbers, up to six days) and holidays pasted one per line
+- ISO 8601 week dates (week-numbering year, week and weekday written YYYY-Www-D) for a list of dates, with the Monday that starts each week and whether that year has 52 or 53 weeks
+- ISO 8601 durations in the PnYnMnWnDTnHnMnS form, with weeks combined with other parts and a decimal fraction (dot or comma) on the smallest part, read into their parts, written back canonically or built from number fields; a duration with no parts is written PT0S
 
 ## Limits
 
 - A moment with no UTC offset is read as UTC, not as any local time zone. The difference between two zone-less moments is real elapsed time only if both were meant to be read the same way.
 - Calendar leap seconds do not exist here; every day is treated as exactly 86,400 seconds.
 - Dates before 1582 are on the proleptic Gregorian calendar, which is not what was in use at the time.
-- Fractional seconds in a duration or a moment are not accepted.
+- In the difference, add and subtract modes, fractional seconds in a duration or a moment are not accepted.
+- Business days count from the start date to the end date, the start included and the end included only when chosen; weekend days and typed holidays are skipped and a holiday on a weekend day is skipped once.
+- Up to 5,000 holiday lines and 5,000 dates in the week mode; dates are YYYY-MM-DD from 0001 to 9999.
+- ISO week numbers follow ISO 8601: weeks start on Monday and week 1 holds the first Thursday of January, so early January can belong to the previous year's last week.
+- ISO 8601 durations may combine weeks with other parts and carry a decimal fraction on their smallest part only; a sign is not accepted.
+- Years, months, weeks and days are calendar units, so a duration's exact length depends on the date it starts from; only the time part's total is given in seconds.
 
 ## Ambiguous cases, and what this does about them
 
 - Adding a calendar month or year has no universally right answer once the result would land on a day that month does not have -- 2024-01-31 plus one month has no date that is both "the 31st" and a real day in February. This tool clamps to the last valid day of the target month (2024-01-31 + P1M = 2024-02-29; 2023-01-31 + P1M = 2023-02-28), the more common convention among mature date libraries, rather than overflowing into March.
 - The calendar breakdown between two moments is computed the same way: it counts whole years, then whole months (each step using the clamped-day rule above), then the exact remaining days, hours, minutes and seconds -- so it agrees with what adding that same breakdown back to the earlier moment would produce.
 - A moment with no stated UTC offset is read as UTC. This is a deliberate, stated choice, not a detection of your local time zone.
+- Counting business days has two common readings of the end. This page always counts the start day and counts the end day only when you choose Counted: from 2024-01-01 to 2024-01-08 with Saturday and Sunday off, the answer is 5 with the end not counted (Monday to Friday) and 6 with it counted.
+- When the end is before the start, the page counts the days of the range from the end to the start, with the end rule applied to the later date, and shows the count with a minus sign. When the start equals the end the count is 1 with the end counted on a business day, and 0 otherwise.
+- A holiday that falls on a weekend day is not taken off a second time: it is skipped once, as a weekend day, and the results say how many holidays fell on weekend days. A holiday typed twice counts once.
+- ISO 8601-1 allows a decimal fraction on the lowest order component of a duration, days included (P0,5D). The browser Temporal accepts a fraction only on hours, minutes and seconds, and also accepts a leading sign and lower case letters; this page reads P0,5D and refuses a sign and lower case letters, as RFC 3339 Appendix A has neither.
 
 ## Defined by
 
 - [RFC 3339 — Date and Time on the Internet: Timestamps](https://www.rfc-editor.org/rfc/rfc3339)
 - [ISO 8601-1:2019 — Date and time representations](https://www.iso.org/iso-8601-date-and-time-format.html)
+- [ISO week date — the week numbering rules, as openly described](https://en.wikipedia.org/wiki/ISO_week_date)
+- [ISO 8601 durations, as openly described](https://en.wikipedia.org/wiki/ISO_8601#Durations)
+- [RFC 3339 Appendix A — the duration grammar](https://www.rfc-editor.org/rfc/rfc3339#appendix-A)
+- [TC39 Temporal proposal — Duration, the browser second opinion](https://tc39.es/proposal-temporal/docs/duration.html)
 
 ## Use it on its own
 
@@ -66,9 +82,20 @@ diffMoments(a, b);
 
 addDuration(a, parseDuration('P1M'), 1);  // 2024-02-29, clamped
 formatIsoDuration({ years: 0, months: 1, days: 1, hours: 0, minutes: 0, seconds: 0 });  // 'P1M1D'
+
+import { parseCalendarDate, dayNumber, countBusinessDays, parseWeekend, isoWeekDate, parseIsoDuration, buildIsoDuration } from '@fodt/date-diff';
+
+const day = (text: string) => dayNumber(parseCalendarDate(text));
+countBusinessDays({ start: day('2024-01-01'), end: day('2024-01-08'), weekend: parseWeekend('Sat, Sun'), holidays: [], includeEnd: false });
+// { count: 5, sign: 1, calendarDays: 7, weekendDays: 2, holidaysSkipped: 0, holidaysOnWeekend: 0 }
+
+isoWeekDate(parseCalendarDate('2021-01-03'));  // { weekYear: 2020, week: 53, weekday: 7, text: '2020-W53-7' }
+
+parseIsoDuration('P1Y2M3W4DT5H6M7.5S');  // { years: '1', months: '2', weeks: '3', days: '4', hours: '5', minutes: '6', seconds: '7.5' }
+buildIsoDuration({ days: '10', minutes: '30' });  // 'P10DT30M'
 ```
 
-`parseMoment` and `addDuration` both work in plain epoch milliseconds (UTC); `parseMoment` throws `DateDiffError` for anything that is not a valid ISO 8601 date or date-time, and `parseDuration` throws the same error class for anything that is not a valid RFC 3339 Appendix A duration. `diffMoments` always computes its calendar breakdown from the earlier of the two moments forward, and reports which one came first in `sign`.
+`parseMoment` and `addDuration` both work in plain epoch milliseconds (UTC); `parseMoment` throws `DateDiffError` for anything that is not a valid ISO 8601 date or date-time, and `parseDuration` throws the same error class for anything that is not a valid RFC 3339 Appendix A duration. `diffMoments` always computes its calendar breakdown from the earlier of the two moments forward, and reports which one came first in `sign`. The business day, week and duration functions are separate from the older ones: `parseCalendarDate` reads only YYYY-MM-DD and throws `CalendarDateError` with a fixed sentence that never repeats the text; dates become whole day numbers (`dayNumber`, 1970-01-01 is day 0) and all the new arithmetic is on those integers, so no answer depends on the machine's time zone. `parseIsoDuration` and `buildIsoDuration` keep every part as decimal text (a part with no value is '0') and throw `IsoDurationError`; `timePartSeconds` gives the exact length of the time part only. The older `parseDuration` keeps its stricter grammar and still refuses a fraction.
 
 ## Dependencies
 
@@ -80,7 +107,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Tests cite RFC 3339 Appendix A's duration ABNF directly (fetched live) for what a duration string must look like, and RFC 3339's own note that this grammar is informational and may itself contain errors -- the combined PnYnMnDTnHnMnS form this tool accepts is the wider ISO 8601-1:2019 grammar, cited alongside RFC 3339 for that reason. The end-of-month clamping choice has no standard to test against, since none exists for calendar duration arithmetic (03-RESEARCH.md pitfall 4); the January-31 and February-29 cases are tested directly against the stated convention instead.
+Tests cite RFC 3339 Appendix A's duration ABNF directly (fetched live) for what a duration string must look like, and RFC 3339's own note that this grammar is informational and may itself contain errors -- the combined PnYnMnDTnHnMnS form this tool accepts is the wider ISO 8601-1:2019 grammar, cited alongside RFC 3339 for that reason. The end-of-month clamping choice has no standard to test against, since none exists for calendar duration arithmetic (03-RESEARCH.md pitfall 4); the January-31 and February-29 cases are tested directly against the stated convention instead. Business day counts, ISO week numbers and the week count and week 1 Monday of every year from 1900 to 2200 are compared with tables that Python recorded (test/fixtures/make-tables.py, a plain day-by-day loop and date.isocalendar(), with the Python version in the files' headers and README). The browser's own Temporal is the second opinion for ISO weeks and durations in the end-to-end tests: it is not available in Node 22, so the unit tests hold the Python tables and literals from the grammar. A duration with a fraction on days, weeks, months or years is read here by ISO 8601-1 section 5.5.2.4 and refused by Temporal; the tests that pin this name that rule.
 
 ## Licence
 

@@ -732,7 +732,7 @@
     "name": "Date & Duration Calculator",
     "category": "datetime",
     "tier": 1,
-    "summary": "Measure the gap between two moments and add or subtract durations."
+    "summary": "Measure the gap between two moments, add or subtract durations, count business days, find ISO week numbers and build ISO 8601 durations."
   },
   {
     "id": "cron-expression",

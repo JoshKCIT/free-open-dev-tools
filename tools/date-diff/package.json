@@ -1,7 +1,7 @@
 {
   "name": "@fodt/date-diff",
   "version": "1.0.0",
-  "description": "Measure the gap between two moments and add or subtract durations.",
+  "description": "Measure the gap between two moments, add or subtract durations, count business days, find ISO week numbers and build ISO 8601 durations.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,13 @@
     "date calculator",
     "iso8601",
     "elapsed time",
-    "add days"
+    "add days",
+    "business days",
+    "working days",
+    "iso week number",
+    "week number",
+    "iso 8601 duration",
+    "duration builder"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
