@@ -13,7 +13,7 @@
   ],
   "limits": [
     "Spinners stop moving when the visitor's system asks for reduced motion; the copied CSS carries that rule.",
-    "The preview and the copied CSS are the same text; size is clamped to 16 to 256 pixels and one turn to 0.2 to 5 seconds, with a warning.",
+    "The preview and the copied CSS are the same text; size is clamped to 16 to 256 pixels and one turn to 0.2 to 5 seconds, with a warning; a pulse is held to at least 0.4 seconds and a ripple to at least 0.7, so neither flashes more than three times a second.",
     "Add role=\"status\" and a label to the spinner element in your page so screen readers announce it; the copied markup does.",
     "Colours are hexadecimal; the track of a ring is the same colour at 20 percent opacity.",
     "Dots, bars and ripples are child elements with numbered classes, not pseudo-elements, so the copied markup must include them.",

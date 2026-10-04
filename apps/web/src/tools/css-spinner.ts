@@ -18,7 +18,7 @@ export default defineTool({
       min: 0.2,
       max: 5,
       step: 0.1,
-      help: 'Seconds for one turn or one beat.',
+      help: 'Seconds for one turn or one beat. A pulse takes at least 0.4 and a ripple at least 0.7, so they never flash more than three times a second.',
     },
     { name: 'colour', label: 'Colour', type: 'color', default: DEFAULT_COLOUR },
   ],

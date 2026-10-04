@@ -40,7 +40,10 @@ export interface GenerateSpinnerOptions {
   size?: number;
   /** A 3, 4, 6 or 8 digit hex colour. Default #1d4ed8. */
   colour?: string;
-  /** Seconds for one turn or one beat, clamped to 0.2 to 5. Default 1. */
+  /**
+   * Seconds for one turn or one beat, clamped to 0.2 to 5 (a pulse to 0.4 to 5 and a ripple to 0.7 to 5, so neither
+   * fades more than three times a second). Default 1.
+   */
   speed?: number;
 }
 
@@ -58,6 +61,15 @@ const DEFAULT_COLOUR = '#1d4ed8';
 const MIN_SIZE = 16;
 const MAX_SIZE = 256;
 const MIN_SPEED = 0.2;
+/**
+ * The shortest turn of the kinds that fade out and start again, so no kind flashes more than three times a second: a
+ * pulse fades once a turn (1 / 0.4 = 2.5 a second) and a ripple twice a turn, two rings half a turn apart (2 / 0.7 =
+ * 2.9 a second).
+ */
+const MIN_SPEED_FADING = new Map<string, number>([
+  ['pulse', 0.4],
+  ['ripple', 0.7],
+]);
 const MAX_SPEED = 5;
 
 type Declarations = [string, string][];
@@ -334,7 +346,13 @@ export function generateSpinner(options: GenerateSpinnerOptions): GenerateSpinne
   }
 
   const sizeResult = clampNumber('Size', options.size as number, MIN_SIZE, MAX_SIZE, 48);
-  const speedResult = clampNumber('Speed', options.speed as number, MIN_SPEED, MAX_SPEED, 1);
+  const speedResult = clampNumber(
+    'Speed',
+    options.speed as number,
+    MIN_SPEED_FADING.get(type) ?? MIN_SPEED,
+    MAX_SPEED,
+    1,
+  );
   if (options.size === undefined) sizeResult.warning = null;
   if (options.speed === undefined) speedResult.warning = null;
   if (sizeResult.warning) warnings.push(sizeResult.warning);

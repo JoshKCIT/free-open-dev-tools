@@ -158,7 +158,7 @@ it('dots and bars use numbered child classes with increasing delays', () => {
   expect(baseRules(ripple.css).get('.ring-1')).toEqual({ 'animation-delay': '0s' });
   expect(baseRules(ripple.css).get('.ring-2')).toEqual({ 'animation-delay': '0.5s' });
 
-  // Whatever the speed, the delays never go down.
+  // Whatever the speed, the delays never go down (a pulse or ripple faster than its minimum is held to the minimum).
   for (const speed of [0.2, 0.7, 1, 3.3, 5]) {
     for (const [type, selectors] of [
       ['dots', ['.dot-1', '.dot-2', '.dot-3']],
@@ -167,8 +167,11 @@ it('dots and bars use numbered child classes with increasing delays', () => {
     ] as const) {
       const sheet = baseRules(generateSpinner({ type, speed }).css);
       const delays = selectors.map((s) => seconds(sheet.get(s)!['animation-delay']));
+      const held = seconds(
+        sheet.get(type === 'ripple' ? '.ring' : type === 'dots' ? '.dot' : '.bar')!['animation-duration'],
+      );
       for (let i = 1; i < delays.length; i++) expect(delays[i]!, `${type} ${speed}`).toBeGreaterThan(delays[i - 1]!);
-      expect(delays[delays.length - 1]!, `${type} ${speed}`).toBeLessThan(speed);
+      expect(delays[delays.length - 1]!, `${type} ${speed}`).toBeLessThan(held);
     }
   }
 });
@@ -181,7 +184,7 @@ it('size and speed are written exactly and clamped with a warning outside their 
     'animation-duration': '2.5s',
   });
   expect(exact.warnings).toEqual([]);
-  const edges = generateSpinner({ type: 'pulse', size: 16, speed: 0.2 });
+  const edges = generateSpinner({ type: 'ring', size: 16, speed: 0.2 });
   expect(baseRules(edges.css).get('.spinner')).toMatchObject({
     width: '16px',
     height: '16px',
@@ -290,5 +293,39 @@ it('nothing is written to the console while generating spinners', () => {
     for (const spy of spies) expect(spy).not.toHaveBeenCalled();
   } finally {
     for (const spy of spies) spy.mockRestore();
+  }
+});
+
+it('a pulse or a ripple never flashes more than three times a second', () => {
+  // A pulse fades once a turn and a ripple has two rings half a turn apart, so it fades twice a turn.
+  const flashes: [string, string, number][] = [
+    ['pulse', '.spinner', 1],
+    ['ripple', '.ring', 2],
+  ];
+  for (const [type, selector, perTurn] of flashes) {
+    for (const speed of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9, 1, 5]) {
+      const result = generateSpinner({ type, speed });
+      const turn = seconds(baseRules(result.css).get(selector)!['animation-duration']);
+      expect(perTurn / turn, `${type} at ${speed}`).toBeLessThanOrEqual(3);
+      expect(turn, `${type} at ${speed}`).toBeGreaterThanOrEqual(Math.min(speed, 5));
+    }
+    // Held to the minimum, with a warning that names the number.
+    const fast = generateSpinner({ type, speed: 0.2 });
+    expect(fast.warnings).toHaveLength(1);
+    expect(fast.warnings[0]).toMatch(/^Speed was below its minimum of 0.[47], so 0.[47] was used.$/);
+    // A speed that is already slow enough is written as typed, without a warning.
+    expect(generateSpinner({ type, speed: 1 }).warnings).toEqual([]);
+  }
+  expect(baseRules(generateSpinner({ type: 'pulse', speed: 0.2 }).css).get('.spinner')).toMatchObject({
+    'animation-duration': '0.4s',
+  });
+  expect(baseRules(generateSpinner({ type: 'ripple', speed: 0.2 }).css).get('.ring')).toMatchObject({
+    'animation-duration': '0.7s',
+  });
+  // The kinds that do not fade keep the old minimum.
+  for (const type of ['ring', 'dual-ring', 'dots', 'bars']) {
+    const result = generateSpinner({ type, speed: 0.2 });
+    expect(result.warnings, type).toEqual([]);
+    expect(result.css, type).toContain('animation-duration: 0.2s;');
   }
 });
