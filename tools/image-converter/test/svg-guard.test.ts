@@ -198,6 +198,24 @@ const HOSTILE: Hostile[] = [
     at: 'attributeName',
   },
   {
+    name: 'animated link with a space before the name',
+    svg: wrap(`<a id="a" href="#x"><set attributeName=" href" to="https://example.invalid/${MARK}"/></a>`),
+    construct: 'an animated link address',
+    at: 'attributeName',
+  },
+  {
+    name: 'animated prefixed link with a space after the name',
+    svg: wrap(`<a id="a" href="#x"><animate attributeName="xlink:href " values="#x"/></a>`),
+    construct: 'an animated link address',
+    at: 'attributeName',
+  },
+  {
+    name: 'animated link with a character reference for a line break before the name',
+    svg: wrap(`<a id="a" href="#x"><set attributeName="&#10;href" to="#x"/></a>`),
+    construct: 'an animated link address',
+    at: 'attributeName',
+  },
+  {
     name: 'mask with an address',
     svg: wrap(`<rect width="4" height="4" mask="url(http://example.invalid/${MARK}.svg#m)"/>`),
     construct: LOADS,

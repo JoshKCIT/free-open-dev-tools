@@ -275,7 +275,7 @@ function checkAttribute(name: string, raw: string, position: number): void {
   if (local === 'href' && decoded.charCodeAt(0) !== 35) {
     throw new SvgGuardError('a link to something outside this SVG', position);
   }
-  if (local === 'attributename' && localName(decoded) === 'href') {
+  if (local === 'attributename' && localName(decoded.trim()) === 'href') {
     throw new SvgGuardError('an animated link address', position);
   }
   if (valueLoads(decoded)) throw new SvgGuardError(LOADS, position);
