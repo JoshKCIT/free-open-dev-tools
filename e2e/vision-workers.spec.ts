@@ -764,3 +764,38 @@ test('sass-less-compiler: an endless loop is stopped at the run limit and the pa
   await expect(outputArea(page)).toContainText(base.expectOutput, { timeout: 15_000 });
   expect((await page.evaluate(() => window.__FODT_VISION_WORKERS__!.addresses)).length).toBeGreaterThanOrEqual(2);
 });
+
+test('pdf-text-metadata: a PDF.js worker that fails to start in Text mode is reported at once as unable to start, not as too large after 20 seconds', async ({
+  page,
+}) => {
+  // In Text mode the first worker the page builds is PDF.js's own. Its first message is swallowed and the worker then
+  // raises an error event, as a worker whose module cannot be evaluated does. PDF.js attaches no error listener to a worker
+  // it is given as a port, so only the page's own listener can end the read; without it the read waits for the stall
+  // limit and blames the file.
+  await installWorkerWrapper(page, { swallowFirstJob: true, swallowReady: false, errorAfterSwallowedJob: true });
+  await openTool(page, 'pdf-text-metadata');
+  await setControls(page, { radios: { mode: 'text' } });
+  const c: EngineCase = {
+    id: 'pdf-text-metadata',
+    attach: [{ field: 'file', make: taggedPdf }],
+    valid: {},
+    pressRun: true,
+    expectOutput: '',
+    limitSeconds: 20,
+    limitMessage: '',
+  };
+  const started = Date.now();
+  await startRun(page, c);
+  await expect(outputArea(page).locator('.issue-list')).toContainText('The background task could not start.', {
+    timeout: 15_000,
+  });
+  // At once means well inside the 20 second stall limit, and the stall message is not what is shown.
+  expect(Date.now() - started).toBeLessThan(15_000);
+  await expect(outputArea(page)).not.toContainText('Stopped after 20 seconds');
+  await expect(outputArea(page)).not.toContainText('unusually large or complex');
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  // The failed worker has been ended, and the page is usable: the next run (a new worker) reads the file.
+  expect(await endedWorkers(page)).toEqual([0]);
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('--- Page 1 ---', { timeout: 30_000 });
+});

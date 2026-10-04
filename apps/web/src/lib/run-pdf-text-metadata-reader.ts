@@ -18,6 +18,9 @@
  * Before PDF.js sees a file, the sizes its streams decode to are counted without being kept (`checkExpansion`), and a file
  * that decodes to more than 64 MiB in one stream or 256 MiB in all is refused: a PDF under one megabyte can otherwise make
  * PDF.js hold more than a gigabyte when a page's content stream is read.
+ *
+ * A PDF.js worker that cannot start, or that fails while it runs, ends the read at once with its own sentence instead of
+ * waiting for the stall limit: PDF.js is handed the worker as a port and attaches no error listener of its own.
  */
 import PdfTextMetadataPdfJsWorker from './workers/pdf-text-metadata-pdfjs.worker.ts?worker&inline';
 import {
@@ -25,6 +28,7 @@ import {
   PDFWorker,
   PageRangeError,
   PasswordException,
+  MAX_PAGE_LIST_LENGTH,
   PdfToolError,
   checkExpansion,
   createRefusingBinaryDataFactory,
@@ -55,7 +59,11 @@ declare global {
   }
 }
 
-/** A read that did not finish for a reason the visitor can act on (the stall limit). Its message is fixed. */
+const NOT_STARTED_MESSAGE = 'The background task could not start.';
+
+const STOPPED_MESSAGE = 'The background task stopped unexpectedly.';
+
+/** A read that did not finish for a reason the visitor can act on (the stall limit, a failed worker). Its message is fixed. */
 export class PdfTextMetadataReadError extends Error {
   constructor(message: string) {
     super(message);
@@ -92,6 +100,8 @@ async function withPdf<T>(
   // read that is waiting on the worker rejects at once.
   const internal = new AbortController();
   let stalled = false;
+  let workerFailed = false;
+  let opened = false;
   let task: PDFDocumentLoadingTask | undefined;
   let worker: Worker | undefined;
   let pdfWorker: InstanceType<typeof PDFWorker> | undefined;
@@ -112,12 +122,29 @@ async function withPdf<T>(
   };
   touch();
 
+  // Rejects when the worker fails. PDF.js's own promises cannot be relied on for that: a worker that has failed answers
+  // nothing, so the loading task and every page request it was asked for stay pending, even after it is destroyed.
+  let rejectFailure: (error: Error) => void = () => undefined;
+  const failed = new Promise<never>((_resolve, reject) => {
+    rejectFailure = reject;
+  });
+  failed.catch(() => undefined);
+  const onWorkerFailure = () => {
+    workerFailed = true;
+    rejectFailure(new Error('The PDF.js worker failed.'));
+    stop();
+  };
+
   try {
     // Counting the decoded size comes first, so a file that would exhaust memory never reaches PDF.js. It reports
     // progress to the stall watchdog and stops when the run is cancelled or stalls.
     if (!options.skipExpansionCheck) await checkExpansion(bytes, { signal: internal.signal, onProgress: touch });
 
     worker = new PdfTextMetadataPdfJsWorker();
+    // PDF.js attaches no error listener to a worker it is given as a port, and a worker that fails to start would leave
+    // the read waiting for the stall limit. These end the read at once.
+    worker.addEventListener('error', onWorkerFailure);
+    worker.addEventListener('messageerror', onWorkerFailure);
     // The worker is told the verbosity here, not only through getDocument: a PDFWorker reads the global level when it is
     // built, which is before getDocument sets it, and a worker left at the default level prints a warning for every font
     // request that is refused.
@@ -135,27 +162,61 @@ async function withPdf<T>(
     });
     if (internal.signal.aborted) void task.destroy();
 
-    const doc = await task.promise;
-    return await work({ doc, signal: internal.signal, touch, characterMapAsked: () => characterMap });
+    const doc = await Promise.race([task.promise, failed]);
+    opened = true;
+    return await Promise.race([
+      work({ doc, signal: internal.signal, touch, characterMapAsked: () => characterMap }),
+      failed,
+    ]);
   } catch (err) {
     // An abort rejection is let through rather than swallowed: the runner's own cancel handling owns the cancel note.
     if (ctx.signal.aborted) throw err;
     if (stalled) throw new PdfTextMetadataReadError(PDF_TEXT_METADATA_STALL_MESSAGE);
+    if (workerFailed) throw new PdfTextMetadataReadError(opened ? STOPPED_MESSAGE : NOT_STARTED_MESSAGE);
     if (err instanceof PdfToolError || err instanceof PageRangeError) throw err;
     if (err instanceof PasswordException) throw new PdfToolError('password');
     throw new PdfToolError('damaged');
   } finally {
     clearTimeout(stallTimer);
     ctx.signal.removeEventListener('abort', stop);
+    // A worker that failed or stalled may never answer the loading task's destroy request, so it is not waited for: ending
+    // the worker below frees everything it held. Any other ending waits for the task to be freed first.
+    const answers = !workerFailed && !stalled;
     try {
-      if (task) await task.destroy();
+      if (task) {
+        if (answers) await task.destroy();
+        else void task.destroy().catch(() => undefined);
+      }
     } finally {
       try {
-        if (pdfWorker) await pdfWorker.destroy();
+        if (pdfWorker) {
+          if (answers) await pdfWorker.destroy();
+          else void Promise.resolve(pdfWorker.destroy()).catch(() => undefined);
+        }
       } finally {
-        worker?.terminate();
+        if (worker) {
+          worker.removeEventListener('error', onWorkerFailure);
+          worker.removeEventListener('messageerror', onWorkerFailure);
+          worker.terminate();
+        }
       }
     }
+  }
+}
+
+/** The refusals of `parsePageList` that do not depend on how many pages the document has. */
+const SYNTAX_REASONS = new Set(['empty-item', 'reversed-range', 'unrecognised']);
+
+/**
+ * Throws `PageRangeError` when a page list is written wrongly (an empty item, a reversed range, a character that is no
+ * part of a page or range). A page outside the document, or a list too long for it, can only be told once the page count
+ * is known, so those are left to the read.
+ */
+export function checkPageListSyntax(pagesText: string): void {
+  try {
+    parsePageList(pagesText, MAX_PAGE_LIST_LENGTH);
+  } catch (err) {
+    if (err instanceof PageRangeError && SYNTAX_REASONS.has(err.reason)) throw err;
   }
 }
 
@@ -171,6 +232,9 @@ export interface PdfTextRead extends ExtractResult {
  * `PageRangeError`), reporting progress after each page. The caller has already checked the file's size and header.
  */
 export async function readPdfText(file: File, pagesText: string, ctx: RunContext): Promise<PdfTextRead> {
+  // A page list that is not written correctly is reported first, before the file is read or opened: only the checks that
+  // need the document's page count have to wait for it.
+  checkPageListSyntax(pagesText);
   const bytes = new Uint8Array(await file.arrayBuffer());
   return withPdf(bytes, ctx, async ({ doc, signal, touch, characterMapAsked }) => {
     const pages = parsePageList(pagesText, doc.numPages);
