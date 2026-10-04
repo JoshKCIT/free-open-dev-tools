@@ -1433,5 +1433,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Paste a table and get a bar, line or pie chart as SVG or PNG with a text description for screen readers."
+  },
+  {
+    "id": "keyboard-event-viewer",
+    "name": "Keyboard Event Viewer",
+    "category": "code",
+    "tier": 3,
+    "summary": "Press keys and see the key, code, legacy key code, location, modifiers, repeat and composition state the browser reports."
   }
 ]
