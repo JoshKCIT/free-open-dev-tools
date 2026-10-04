@@ -47,6 +47,12 @@ function runButtonOf(page: Page) {
   return page.getByRole('button', { name: 'Run', exact: true });
 }
 
+/** Presses Run and waits until the run is over: the button says Working while the stylesheet is compiled and Run again after. */
+async function runAndWait(page: Page): Promise<void> {
+  await runButtonOf(page).click();
+  await expect(runButtonOf(page)).toBeVisible({ timeout: 60_000 });
+}
+
 /**
  * Installs a wrapper around the global Worker constructor, before any page script runs, so every construction,
  * every message in either direction and every terminate() call is recorded. With `swallowFirstJob`, the first worker
@@ -677,12 +683,13 @@ test('sass-less-compiler: an import of another file or address is refused in the
   page,
 }) => {
   // Each stylesheet names the local server in an import the compiler would have to fetch to honour: a Sass use, a Less
-  // import of an address, and a plain CSS import each compiler would copy into its output untouched.
+  // import of an address, and a plain CSS import each compiler would copy into its output untouched. Every case names
+  // its own target (x3.css, x4.css), so the message of one case can never stand in for the next case's.
   const cases: { language: string; source: (address: string) => string; target: (address: string) => string }[] = [
     { language: 'scss', source: (a) => `@use "${a}/x";`, target: (a) => `${a}/x` },
     { language: 'less', source: (a) => `@import (less) "${a}/x.less";`, target: (a) => `${a}/x.less` },
-    { language: 'scss', source: (a) => `@import url(${a}/x.css);`, target: (a) => `url(${a}/x.css)` },
-    { language: 'less', source: (a) => `@import url(${a}/x.css);`, target: (a) => `url(${a}/x.css)` },
+    { language: 'scss', source: (a) => `@import url(${a}/x3.css);`, target: (a) => `url(${a}/x3.css)` },
+    { language: 'less', source: (a) => `@import url(${a}/x4.css);`, target: (a) => `url(${a}/x4.css)` },
   ];
   const seen = await withRecordingServer(async (address) => {
     await openTool(page, 'sass-less-compiler');
@@ -692,7 +699,7 @@ test('sass-less-compiler: an import of another file or address is refused in the
     for (const c of cases) {
       await setControls(page, { radios: { language: c.language } });
       await fillFields(page, { source: c.source(address) });
-      await runButtonOf(page).click();
+      await runAndWait(page);
       const issues = outputArea(page).locator('.issue-list');
       await expect(issues).toContainText('Imports of other files and addresses are not supported here', {
         timeout: 30_000,
