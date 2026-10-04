@@ -113,9 +113,45 @@ export function buildManifest(fields: ManifestFields): Record<string, unknown> {
   return manifest;
 }
 
-/** The manifest as JSON text, written by JSON.stringify with two spaces of indentation. */
+/** A backslash and a letter u: how JSON spells a character by its code point. */
+const JSON_ESCAPE = String.fromCharCode(92) + 'u';
+
+/**
+ * True for the characters JSON.stringify leaves raw but that are better written as escapes: DEL and the C1 controls
+ * (U+007F to U+009F), the characters that change the direction of the text around them (U+061C, U+200E, U+200F, and
+ * U+202A to U+202E and U+2066 to U+2069, Unicode Standard Annex 9), which can make an address read as another one, the line
+ * and paragraph separators (U+2028, U+2029) and the byte order mark (U+FEFF).
+ */
+function writtenAsEscape(code: number): boolean {
+  return (
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0x61c ||
+    code === 0x200e ||
+    code === 0x200f ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069) ||
+    code === 0xfeff
+  );
+}
+
+/**
+ * The manifest as JSON text, written by JSON.stringify with two spaces of indentation, with the characters listed in
+ * `writtenAsEscape` written as JSON escapes (the text is still valid JSON and parses to the same strings). Such characters
+ * can only be inside a string, so an escape is always legal there.
+ */
 export function manifestToJson(manifest: Record<string, unknown>): string {
-  return JSON.stringify(manifest, null, 2);
+  const json = JSON.stringify(manifest, null, 2);
+  let out = '';
+  let from = 0;
+  for (let i = 0; i < json.length; i++) {
+    const code = json.charCodeAt(i);
+    if (!writtenAsEscape(code)) continue;
+    out += json.slice(from, i) + JSON_ESCAPE + code.toString(16).padStart(4, '0');
+    from = i + 1;
+  }
+  return from === 0 ? json : out + json.slice(from);
 }
 
 const ATTRIBUTE_ESCAPES: ReadonlyMap<string, string> = new Map([
