@@ -235,7 +235,7 @@
     "name": "Random Number Generator",
     "category": "generators",
     "tier": 1,
-    "summary": "Generate random integers or decimals in a range, optionally from the cryptographic source."
+    "summary": "Generate random integers or decimals, roll dice such as 2d6+3, flip coins, draw lottery numbers without repeats and pick items from a list."
   },
   {
     "id": "json-formatter",

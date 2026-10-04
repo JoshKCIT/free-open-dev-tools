@@ -1,7 +1,7 @@
 {
   "name": "@fodt/random-number",
   "version": "1.0.0",
-  "description": "Generate random integers or decimals in a range, optionally from the cryptographic source.",
+  "description": "Generate random integers or decimals, roll dice such as 2d6+3, flip coins, draw lottery numbers without repeats and pick items from a list.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,7 +27,15 @@
     "integer",
     "decimal",
     "crypto.getRandomValues",
-    "rejection sampling"
+    "rejection sampling",
+    "dice",
+    "dice roller",
+    "dice notation",
+    "2d6",
+    "coin flip",
+    "lottery",
+    "random picker",
+    "pick from a list"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
