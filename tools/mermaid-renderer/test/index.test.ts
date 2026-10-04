@@ -92,6 +92,67 @@ it('the pre-scan refuses directives, settings frontmatter, click and link lines,
   }
 });
 
+/** Every character JavaScript's own white space pattern matches, except the two line breaks the scan splits lines on. */
+function engineBlanks(): number[] {
+  const found: number[] = [];
+  for (let unit = 0; unit <= 0xffff; unit++) {
+    if (unit !== 0x0a && unit !== 0x0d && /\s/.test(String.fromCharCode(unit))) found.push(unit);
+  }
+  return found;
+}
+
+it('the pre-scan treats every character the engine reads as white space as blank, so a fence or click line led by one is still refused with its own message', () => {
+  const blanks = engineBlanks();
+  // The space, the vertical tab, the em space, the ideographic space and the line and paragraph separators are all there.
+  for (const unit of [0x20, 0x0b, 0x2003, 0x3000, 0x2028, 0x2029, 0x205f]) expect(blanks).toContain(unit);
+  const settings = 'config:\n  look: handDrawn\n  themeCSS: "x"';
+  for (const unit of blanks) {
+    const blank = String.fromCodePoint(unit);
+    const label = `U+${unit.toString(16).toUpperCase()}`;
+    const fence = refusalOf(`---${blank}\n${settings}\n---\nflowchart LR\n A-->B`);
+    expect(fence.message, label).toBe(`Line 2: ${FRONTMATTER}`);
+    expect(fence.line, label).toBe(2);
+    // A closing fence that ends in one of these characters still closes the frontmatter, as it does for the engine.
+    expect(prescanDiagram(`---\ntitle: One\n---${blank}\nflowchart LR\n A-->B`), label).toEqual({ title: 'One' });
+    for (const word of ['click', 'link', 'callback']) {
+      const click = refusalOf(`flowchart LR\n  A --> B\n${blank}${word} A href "http://evil.example/"`);
+      expect(click.message, `${label} ${word}`).toBe(`Line 3: ${LINKS}`);
+      const afterSemicolon = refusalOf(`flowchart LR\n  A --> B;${blank}${word}${blank}A href "x"`);
+      expect(afterSemicolon.message, `${label} ${word} after a semicolon`).toBe(`Line 2: ${LINKS}`);
+    }
+  }
+  // A line that is only these characters is still an empty line, and a title with them around it still reads.
+  const em = String.fromCodePoint(0x2003);
+  expect(prescanDiagram(`${em}\n---${em}\ntitle:${em}Spaced${em}\n---${em}\nflowchart LR\n  A --> B`)).toEqual({
+    title: 'Spaced',
+  });
+});
+
+it('the text handed to the engine is checked against the engine own frontmatter pattern and refused unless it is the title block written here', () => {
+  // The pre-scan reads the first two fences as an empty frontmatter and the rest as the diagram, but once those lines
+  // are dropped the diagram starts with a fence of its own, which the engine would read as settings.
+  const sneaky = '---\n---\n---\nconfig:\n  look: handDrawn\n---\nflowchart LR\n A-->B';
+  expect(() => prescanDiagram(sneaky)).not.toThrow();
+  try {
+    prepareDiagram(sneaky);
+    throw new Error('prepareDiagram was expected to refuse this diagram');
+  } catch (err) {
+    expect(err).toBeInstanceOf(MermaidError);
+    expect((err as MermaidError).message).toBe(`Line 3: ${FRONTMATTER}`);
+    expect((err as MermaidError).line).toBe(3);
+  }
+  // With a title the engine reads exactly the block this code wrote, which is fine.
+  expect(prepareDiagram('---\ntitle: One\n---\nflowchart LR\n A-->B').text).toMatch(/^---\ntitle: /);
+  // The same fence led by an em space is a fence for the engine too.
+  const em = String.fromCodePoint(0x2003);
+  expect(() => prepareDiagram(`---\n---\n---${em}\nconfig:\n  look: handDrawn\n---\nflowchart LR`)).toThrow(
+    MermaidError,
+  );
+  for (const [name, text] of Object.entries(SAMPLES)) {
+    expect(() => prepareDiagram(text), name).not.toThrow();
+  }
+});
+
 it('the pre-scan accepts a title-only frontmatter, accTitle and accDescr, text icons and all 22 sample diagrams', () => {
   expect(Object.keys(SAMPLES)).toHaveLength(22);
   for (const [name, text] of Object.entries(SAMPLES)) {

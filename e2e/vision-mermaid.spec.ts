@@ -408,6 +408,59 @@ test('mermaid-renderer: a diagram over the size caps is refused before any frame
   expect(await frameCount(page)).toBe(0);
 });
 
+test('mermaid-renderer: a fence or click line led by a blank the engine also reads is refused with its own message before any frame', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await countFrameRequests(page);
+  await observeFrames(page);
+  await openTool(page);
+  const issues = outputArea(page).locator('.issue-list');
+  // Built at run time: an em space, a vertical tab and an ideographic space are invisible in a source file.
+  const emSpace = String.fromCodePoint(0x2003);
+  const verticalTab = String.fromCodePoint(0x0b);
+  const ideographic = String.fromCodePoint(0x3000);
+  const settings = 'config:\n  look: handDrawn\n  themeCSS: "a"';
+  const cases: { name: string; text: string; message: RegExp }[] = [
+    {
+      name: 'a fence ending in an em space',
+      text: `---${emSpace}\n${settings}\n---\nflowchart LR\n  A --> B`,
+      message: /^Line 2: only a title is allowed in the frontmatter\.$/,
+    },
+    {
+      name: 'a fence ending in a vertical tab',
+      text: `---${verticalTab}\n${settings}\n---\nflowchart LR\n  A --> B`,
+      message: /^Line 2: only a title is allowed in the frontmatter\.$/,
+    },
+    {
+      name: 'a click line led by an ideographic space',
+      text: `flowchart LR\n  A --> B\n${ideographic}click A href "http://127.0.0.1:9/x"`,
+      message: /^Line 3: click and link lines are not supported here/,
+    },
+    {
+      name: 'a click line led by an em space',
+      text: `flowchart LR\n  A --> B\n${emSpace}click A href "http://127.0.0.1:9/x"`,
+      message: /^Line 3: click and link lines are not supported here/,
+    },
+    {
+      name: 'a click line led by a vertical tab',
+      text: `flowchart LR\n  A --> B\n${verticalTab}click A href "http://127.0.0.1:9/x"`,
+      message: /^Line 3: click and link lines are not supported here/,
+    },
+  ];
+  for (const c of cases) {
+    await fillAndHold(page, c.text);
+    await runAndWait(page);
+    await expect(issues, c.name).toContainText('.', { timeout: 30_000 });
+    expect((await issues.innerText()).trim(), c.name).toMatch(c.message);
+    expect(await outputArea(page).locator('img').count(), c.name).toBe(0);
+  }
+  // Every one was stopped by the check made before any frame exists, not by the scrub of a drawn picture.
+  expect(await page.evaluate(() => window.__FODT_MERMAID_CREATED__)).toBe(0);
+  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.added.length)).toBe(0);
+  expect(await frameCount(page)).toBe(0);
+});
+
 test('mermaid-renderer: each Run uses a fresh frame that is gone afterwards', async ({ page }) => {
   test.setTimeout(120_000);
   await observeFrames(page);

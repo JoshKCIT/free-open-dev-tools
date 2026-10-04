@@ -9,6 +9,9 @@ const LINK_REFUSED =
 const IMAGE_REFUSED = 'image shapes are not supported here.';
 const MATH_REFUSED = 'math is not supported here.';
 
+/** The pattern the engine uses to find a frontmatter block at the start of the text it draws, as the engine writes it. */
+const ENGINE_FRONTMATTER = /^-{3}\s*[\n\r](.*?)[\n\r]-{3}\s*[\n\r]+/s;
+
 /** Words that start a line that makes a diagram open an address or run a handler. Compared in lower case. */
 const LINK_KEYWORDS: ReadonlySet<string> = new Set(['click', 'link', 'links', 'callback']);
 
@@ -42,8 +45,27 @@ export function tooManyLinesMessage(count: number): string {
   return `This diagram has ${count} lines. The limit is ${MAX_DIAGRAM_LINES} because a large diagram can freeze this page while it is drawn.`;
 }
 
+/**
+ * True for every character that JavaScript's own white space pattern matches, which is what the engine reads as white
+ * space around a fence and before a statement: the tab, the vertical tab, the form feed, the space, the no-break
+ * space, the Ogham space mark, the spaces U+2000 to U+200A, the line and paragraph separators, the narrow no-break
+ * space, the medium mathematical space, the ideographic space and the byte order mark. The two line breaks (line feed
+ * and carriage return) are not told apart here because the scan splits lines on them first.
+ */
 function isBlankChar(unit: number): boolean {
-  return unit === 0x20 || unit === 0x09 || unit === 0x0c || unit === 0xa0 || unit === 0xfeff;
+  return (
+    (unit >= 0x09 && unit <= 0x0d) ||
+    unit === 0x20 ||
+    unit === 0xa0 ||
+    unit === 0x1680 ||
+    (unit >= 0x2000 && unit <= 0x200a) ||
+    unit === 0x2028 ||
+    unit === 0x2029 ||
+    unit === 0x202f ||
+    unit === 0x205f ||
+    unit === 0x3000 ||
+    unit === 0xfeff
+  );
 }
 
 function isWordChar(unit: number): boolean {
@@ -313,5 +335,13 @@ export function prepareDiagram(text: string): PreparedDiagram {
   }
   const body = lines.slice(first).map((line) => (isComment(line) ? '' : line));
   const heading = title === undefined ? '' : `---\ntitle: ${title}\n---\n`;
-  return { text: heading + body.join('\n'), lineOffset: first };
+  const prepared = heading + body.join('\n');
+  // The engine reads settings from any block at the start of the text that matches its own frontmatter pattern. Run
+  // that pattern on the text built here and refuse unless what it finds is the title block written above, so no
+  // reading of the pasted text that differs from the scan's can reach the engine as settings.
+  const found = ENGINE_FRONTMATTER.exec(prepared);
+  if (found !== null && found[0] !== heading) {
+    throw new MermaidError(`Line ${first + 1}: ${FRONTMATTER_REFUSED}`, first + 1);
+  }
+  return { text: prepared, lineOffset: first };
 }
