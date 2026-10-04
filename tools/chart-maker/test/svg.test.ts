@@ -671,3 +671,49 @@ it('the same table always gives the same SVG and the options change only what th
   expect(many.match(/<text\b/g)!.length).toBeLessThan(60);
   expect(many.match(/role="graphics-symbol"/g)).toHaveLength(200);
 });
+
+/** The circle or path marks of a pie, with the numbers a test needs (the two end points of a slice's arc). */
+function pieMarks(svg: string): { name: string; label: string; attrs: Record<string, string> }[] {
+  return symbolsOf(svg).map((s) => ({ name: s.name, label: s.attrs['aria-label']!, attrs: s.attrs }));
+}
+
+/** The rounded start and end points of a path slice, read from its `d` text. */
+function arcEnds(d: string): { from: string; to: string; large: string } {
+  const m = /^M [\d.-]+ [\d.-]+ L ([\d.-]+) ([\d.-]+) A [\d.-]+ [\d.-]+ 0 ([01]) 1 ([\d.-]+) ([\d.-]+) Z$/.exec(d);
+  expect(m).not.toBeNull();
+  return { from: `${m![1]} ${m![2]}`, to: `${m![4]} ${m![5]}`, large: m![3]! };
+}
+
+it('a pie slice of almost the whole pie is drawn as a full circle, and so is its value label', () => {
+  for (const big of [1_000_000, 300_000, 100_000]) {
+    const svg = chartSvg(tableOf(['big', 'small'], [['V', [big, 1]]]), opts('pie', { values: true }));
+    const marks = pieMarks(svg);
+    expect(marks).toHaveLength(2);
+    // The big slice is never a path whose two end points are the same point (a browser draws that as nothing).
+    const first = marks[0]!;
+    if (first.name === 'path') {
+      const ends = arcEnds(first.attrs['d']!);
+      expect(ends.from).not.toBe(ends.to);
+    } else {
+      expect(first.name).toBe('circle');
+    }
+  }
+  // From about 3e5 to 1 the two rounded end points are the same point: it must be the circle.
+  for (const big of [1_000_000, 300_000]) {
+    const svg = chartSvg(tableOf(['big', 'small'], [['V', [big, 1]]]), opts('pie', { values: true }));
+    const [first] = pieMarks(svg);
+    expect(first!.name).toBe('circle');
+    expect(first!.label).toBe(`big: ${big}`);
+    // Its value label sits at the middle of the circle, like a slice of the whole pie.
+    const cx = Number(first!.attrs['cx']);
+    const cy = Number(first!.attrs['cy']);
+    expect(svg).toContain(`<text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="12"`);
+  }
+  // No path in any of these has equal end points with a large arc.
+  const svg = chartSvg(tableOf(['big', 'small'], [['V', [1_000_000, 1]]]), opts('pie'));
+  for (const mark of pieMarks(svg)) {
+    if (mark.name !== 'path') continue;
+    const ends = arcEnds(mark.attrs['d']!);
+    expect(ends.large === '1' && ends.from === ends.to).toBe(false);
+  }
+});

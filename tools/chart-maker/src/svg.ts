@@ -426,21 +426,23 @@ function pie(drawn: ParsedTable, options: ChartSvgOptions, colours: readonly str
     const from = -Math.PI / 2 + 2 * Math.PI * (before / total);
     before += value;
     const to = -Math.PI / 2 + 2 * Math.PI * (before / total);
-    if (share >= 1) {
+    const [x0, y0] = point(from);
+    const [x1, y1] = point(to);
+    // An arc whose two end points are the same point is not drawn at all, so a slice that is almost the whole pie
+    // (its end points round to one point) is a full circle, and so is a slice of exactly the whole pie.
+    const whole = share > 1 - 1e-6 || (share > 0.5 && x0 === x1 && y0 === y1);
+    if (whole) {
       parts.push(
         `<circle role="graphics-symbol" aria-label="${label}" cx="${px(cx)}" cy="${px(cy)}" r="${px(radius)}" fill="${colour}" stroke="${OUTLINE}" stroke-width="1"/>`,
       );
     } else {
-      const [x0, y0] = point(from);
-      const [x1, y1] = point(to);
       parts.push(
         `<path role="graphics-symbol" aria-label="${label}" d="M ${px(cx)} ${px(cy)} L ${x0} ${y0} A ${px(radius)} ${px(radius)} 0 ${share > 0.5 ? 1 : 0} 1 ${x1} ${y1} Z" fill="${colour}" stroke="${OUTLINE}" stroke-width="1"/>`,
       );
     }
     if (options.values && share >= 0.04) {
       const middle = (from + to) / 2;
-      const spot =
-        share >= 1 ? [cx, cy] : [cx + radius * 0.62 * Math.cos(middle), cy + radius * 0.62 * Math.sin(middle)];
+      const spot = whole ? [cx, cy] : [cx + radius * 0.62 * Math.cos(middle), cy + radius * 0.62 * Math.sin(middle)];
       written.push(
         textElement(
           spot[0]!,
