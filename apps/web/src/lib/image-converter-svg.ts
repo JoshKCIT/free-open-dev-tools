@@ -11,8 +11,10 @@
  * Every canvas made here stays a local variable, never attached to the document, so the picked file is never shown.
  */
 import {
+  FILE_TOO_LARGE_MESSAGE,
   ImageConverterError,
   ImageEditError,
+  MAX_INPUT_BYTES,
   SvgGuardError,
   SvgSizeError,
   looksLikeSvg,
@@ -64,9 +66,12 @@ function contextOf(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 
 /**
  * The file's text when it is an SVG this page may read, or undefined when it is not one (so the ordinary refusal for a
- * file that is not a picture applies, unchanged). Refuses a file over 10 MiB that starts like an SVG.
+ * file that is not a picture applies, unchanged). Refuses a file over 100 MB at once, and a file over 10 MiB that starts
+ * like an SVG.
  */
 async function readSvgText(file: File): Promise<string | undefined> {
+  // The file's own reported size is checked before any of it is read: a file over 100 MB is refused whatever it holds.
+  if (file.size > MAX_INPUT_BYTES) throw new Error(FILE_TOO_LARGE_MESSAGE);
   const head = new Uint8Array(await file.slice(0, HEAD_BYTES).arrayBuffer());
   if (!looksLikeSvgStart(head)) return undefined;
   if (file.size > MAX_SVG_BYTES) throw new Error(SVG_TOO_LARGE);
@@ -158,7 +163,12 @@ export async function rasterizeSvgFile(
     ) {
       throw err;
     }
-    if (err instanceof Error && (err.message === SVG_DRAW_FAILURE || err.message === SVG_TOO_LARGE)) throw err;
+    if (
+      err instanceof Error &&
+      (err.message === SVG_DRAW_FAILURE || err.message === SVG_TOO_LARGE || err.message === FILE_TOO_LARGE_MESSAGE)
+    ) {
+      throw err;
+    }
     if (err instanceof Error && err.message.startsWith('This browser ')) throw err;
     throw new Error(SVG_DRAW_FAILURE);
   }

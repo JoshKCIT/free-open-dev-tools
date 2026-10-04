@@ -1,5 +1,5 @@
 import meta from './meta.json';
-import { assertFileKind, type FileKind } from './file-sniff';
+import { assertFileKind, type FileKind, type SniffResult } from './file-sniff';
 import { planSize, largestFittingSize, MAX_OUTPUT_PIXELS, type ResizeMode, type SizeSource } from './sizing';
 import { formatInfo, type OutputFormatId } from './capabilities';
 import { planEdits, planEditedSize, type EditPlan, type ImageEdits } from './edits';
@@ -28,6 +28,9 @@ export const MAX_INPUT_PIXELS = 100_000_000;
 /** The floor a quality fraction is clamped to. Never zero: a genuinely-zero quality argument is a degenerate encode request most encoders treat unpredictably. */
 const MIN_QUALITY_FRACTION = 0.01;
 const MAX_QUALITY_FRACTION = 1;
+
+/** What a file over the size limit is told. The same sentence is used by the page before it reads anything and by the check below. */
+export const FILE_TOO_LARGE_MESSAGE = 'This file is larger than 100 MB, the most this page accepts.';
 
 export class ImageConverterError extends Error {
   constructor(message: string) {
@@ -94,14 +97,32 @@ function clampQuality(raw: number, warnings: string[]): number {
 }
 
 /**
+ * Refuses a file that should not be read or decoded, before it is: one over 100 MB (judged from `byteLength`, the file's
+ * own reported size, whatever the first bytes say), an empty one, one that is not a PNG, JPEG, GIF, WebP or BMP picture,
+ * and one that declares more than 100,000,000 pixels. `header` is the first bytes of the file (at most MAX_HEADER_BYTES
+ * are looked at). The size refusal is an `ImageConverterError`; the others are the `FileSignatureError` this tool has
+ * always thrown, with the same words. Nothing in a message holds the file's own content or name.
+ */
+export function checkConverterFile(header: Uint8Array, byteLength: number): SniffResult {
+  if (byteLength > MAX_INPUT_BYTES) throw new ImageConverterError(FILE_TOO_LARGE_MESSAGE);
+  return assertFileKind(header, ACCEPTED_KINDS, { maxBytes: MAX_INPUT_BYTES, maxPixels: MAX_INPUT_PIXELS });
+}
+
+/**
  * Checks the file header, plans the output size and clamps every option,
  * without ever touching a canvas or a real image decoder -- that happens
- * only in the worker this package never imports. Throws `ImageConverterError`
+ * only in the worker this package never imports. `byteLength` is the whole file's size when `bytes` holds only its
+ * first part (the worker's case); left out, it is the length of `bytes`. Throws `ImageConverterError`
  * when the header check fails or the planned output would be too large for
  * this browser's own measured pixel ceiling to encode.
  */
-export function planConversion(bytes: Uint8Array, fileName: string, options: ConvertOptions): ConversionPlan {
-  const sniffed = assertFileKind(bytes, ACCEPTED_KINDS, { maxBytes: MAX_INPUT_BYTES, maxPixels: MAX_INPUT_PIXELS });
+export function planConversion(
+  bytes: Uint8Array,
+  fileName: string,
+  options: ConvertOptions,
+  byteLength: number = bytes.length,
+): ConversionPlan {
+  const sniffed = checkConverterFile(bytes, byteLength);
   if (sniffed.width === undefined || sniffed.height === undefined) {
     // Every kind in ACCEPTED_KINDS reports dimensions from its own header;
     // this only guards against a future accepted kind that does not.

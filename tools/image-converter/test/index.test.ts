@@ -1,5 +1,13 @@
 import { it, expect, vi } from 'vitest';
-import { planConversion, outputFileName, ImageConverterError, MAX_INPUT_BYTES, MAX_INPUT_PIXELS } from '../src/index';
+import {
+  checkConverterFile,
+  planConversion,
+  outputFileName,
+  FileSignatureError,
+  ImageConverterError,
+  MAX_INPUT_BYTES,
+  MAX_INPUT_PIXELS,
+} from '../src/index';
 import { planSize, largestFittingSize, MAX_OUTPUT_PIXELS } from '../src/sizing';
 import { interpretEncodeResult, writableFormats, OUTPUT_FORMATS } from '../src/capabilities';
 
@@ -192,4 +200,40 @@ it('nothing is written to the console while planning a conversion', () => {
 it('the input byte and pixel limits are set as documented', () => {
   expect(MAX_INPUT_BYTES).toBe(100 * 1024 * 1024);
   expect(MAX_INPUT_PIXELS).toBe(100_000_000);
+});
+
+it('a file over 100 MB is refused from its reported size, whatever its first bytes say', () => {
+  const sentence = 'This file is larger than 100 MB, the most this page accepts.';
+  const messageOf = (fn: () => unknown): string => {
+    try {
+      fn();
+    } catch (err) {
+      expect(err).toBeInstanceOf(ImageConverterError);
+      return (err as Error).message;
+    }
+    throw new Error('nothing was thrown');
+  };
+
+  // 100 MB exactly is accepted, one byte more is not, even when the first bytes are a good picture, empty or text.
+  expect(checkConverterFile(minimalPng(4, 4), MAX_INPUT_BYTES)).toMatchObject({ kind: 'png', width: 4, height: 4 });
+  expect(messageOf(() => checkConverterFile(minimalPng(4, 4), MAX_INPUT_BYTES + 1))).toBe(sentence);
+  expect(messageOf(() => checkConverterFile(new Uint8Array(0), MAX_INPUT_BYTES + 1))).toBe(sentence);
+  expect(messageOf(() => checkConverterFile(new TextEncoder().encode('plain text'), 3 * 1024 * 1024 * 1024))).toBe(
+    sentence,
+  );
+
+  // The old refusals are untouched: an empty file, a file that is not a picture and a picture over the pixel limit.
+  expect(() => checkConverterFile(new Uint8Array(0), 0)).toThrow(FileSignatureError);
+  expect(() => checkConverterFile(new TextEncoder().encode('just plain text, not an image'), 29)).toThrow(
+    'this is not PNG, JPEG, GIF, WebP or BMP',
+  );
+  expect(() => checkConverterFile(minimalPng(10_000, 10_001), 1000)).toThrow(FileSignatureError);
+  expect(checkConverterFile(minimalPng(10_000, 10_000), 1000)).toMatchObject({ width: 10_000, height: 10_000 });
+
+  // planConversion, which the worker calls with only the first bytes, is told the whole file's size and refuses on it.
+  const options = { format: 'png' as const, quality: 85, background: '#ffffff', resize: { mode: 'none' as const } };
+  expect(planConversion(minimalPng(4, 4), 'a.png', options, MAX_INPUT_BYTES).targetWidth).toBe(4);
+  expect(messageOf(() => planConversion(minimalPng(4, 4), 'a.png', options, MAX_INPUT_BYTES + 1))).toBe(sentence);
+  // Left out, the size is the length of the bytes given, as it always was.
+  expect(planConversion(minimalPng(4, 4), 'a.png', options).targetWidth).toBe(4);
 });

@@ -31,6 +31,8 @@ import {
   formatInfo,
   interpretEncodeResult,
   outputFileName,
+  FILE_TOO_LARGE_MESSAGE,
+  MAX_INPUT_BYTES,
   OUTPUT_FORMATS,
   planEdits,
   type ConvertOptions,
@@ -373,6 +375,10 @@ export function convertImageInWorker(
 ): Promise<ConvertImageResult> {
   if (ctx.signal.aborted) {
     return Promise.reject(new Error('The run was cancelled before it started.'));
+  }
+  // The file's own reported size is checked before anything is read, so a huge file is never copied into memory.
+  if (file.size > MAX_INPUT_BYTES) {
+    return Promise.reject(new Error(FILE_TOO_LARGE_MESSAGE));
   }
 
   return new Promise<ConvertImageResult>((resolve, reject) => {

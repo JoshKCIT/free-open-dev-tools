@@ -8,7 +8,9 @@ import {
   type TestInfo,
 } from '@playwright/test';
 import { crc32, deflateSync, inflateSync } from 'node:zlib';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { buildFixtureFile, writePng } from './fixture-files';
@@ -2350,6 +2352,90 @@ test('image-converter: the recording server sees a plain page request, so its si
     );
   });
   expect(new Set(image)).toEqual(new Set(['GET /control-image.svg']));
+});
+
+/** The sentence every file over 100 MB is told, by any page that reads a picked file by its reported size. */
+const OVER_100_MB = 'This file is larger than 100 MB, the most this page accepts.';
+
+test('image-converter: a file over 100 MB is refused from its reported size, as a picture and as an SVG, before it is read', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+
+  // One byte over 100 MB, made as a file that is only ever extended to its size (nothing is written into it), so no
+  // 100 MB buffer is built or sent. The page must refuse it from the size the browser reports.
+  const scratch = mkdtempSync(join(tmpdir(), 'fodt-big-'));
+  try {
+    const over = 100 * 1024 * 1024 + 1;
+    const made: Record<string, string> = {};
+    for (const name of ['big.png', 'big.svg']) {
+      made[name] = join(scratch, name);
+      writeFileSync(made[name]!, '');
+      truncateSync(made[name]!, over);
+    }
+    // The file with the picture name starts like nothing at all (zero bytes), and the page still says the size sentence,
+    // not "not a picture": the size is judged first.
+    for (const [name, ticked] of [
+      ['big.png', false],
+      ['big.svg', true],
+    ] as const) {
+      await resetPage(page);
+      if (ticked) await page.locator('#f-allowSvg').check();
+      await expect(async () => {
+        await page.locator('#f-file').setInputFiles(made[name]!);
+        await expect(page.locator('.field-help', { hasText: name })).toBeVisible({ timeout: 500 });
+      }).toPass({ timeout: 10_000 });
+      await runButtonOf(page).click();
+      await expect(outputArea(page).locator('.issue-list')).toContainText(
+        `Could not convert '${name}': ${OVER_100_MB}`,
+        { timeout: 30_000 },
+      );
+      expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+    }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+
+  // The check comes before any read: a file that reports 100 MB and one byte and throws if it is read from is refused with
+  // the sentence and none of its reading methods is called.
+  const outcome = await page.evaluate(async () => {
+    const hooks = (
+      window as unknown as {
+        __FODT_IMAGE_CONVERTER_TEST_HOOKS__?: {
+          convertImageInWorker: (file: File, options: unknown, ctx: unknown) => Promise<unknown>;
+        };
+      }
+    ).__FODT_IMAGE_CONVERTER_TEST_HOOKS__;
+    if (!hooks) return { message: 'the test hook is missing', reads: [] as string[] };
+    const reads: string[] = [];
+    const file = new File([new Uint8Array(8)], 'huge.png', { type: 'image/png' });
+    Object.defineProperty(file, 'size', { value: 100 * 1024 * 1024 + 1 });
+    for (const method of ['arrayBuffer', 'slice', 'stream', 'text']) {
+      Object.defineProperty(file, method, {
+        value: () => {
+          reads.push(method);
+          throw new Error(`${method} was called`);
+        },
+      });
+    }
+    const options = {
+      format: 'png',
+      quality: 85,
+      background: '#ffffff',
+      resize: { mode: 'none' },
+    };
+    try {
+      await hooks.convertImageInWorker(file, options, { signal: new AbortController().signal });
+      return { message: 'it was converted', reads };
+    } catch (err) {
+      return { message: err instanceof Error ? err.message : String(err), reads };
+    }
+  });
+  expect(outcome).toEqual({ message: OVER_100_MB, reads: [] });
+
+  expect(offending(requests)).toEqual([]);
 });
 
 // --- CSS spinner and CSS pattern (plan 15-08) ---------------------------------------------------------------------------

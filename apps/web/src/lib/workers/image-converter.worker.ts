@@ -232,7 +232,8 @@ async function handleJob(job: ImageConverterJobMessage): Promise<void> {
   const stepDelay = job.testStepDelayMs;
   try {
     const headerBytes = new Uint8Array(job.bytes, 0, Math.min(job.bytes.byteLength, MAX_HEADER_BYTES));
-    const plan = planConversion(headerBytes, job.fileName, job.options);
+    // Only the first bytes are looked at, but the whole file's size is what the 100 MB limit is judged on.
+    const plan = planConversion(headerBytes, job.fileName, job.options, job.bytes.byteLength);
 
     const blob = new Blob([job.bytes], { type: MEDIA_TYPES[plan.sourceKind] ?? '' });
     bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
