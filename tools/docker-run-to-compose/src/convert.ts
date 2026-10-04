@@ -110,6 +110,23 @@ function refuse(read: ParsedOption, message: string): DockerRunError {
   return new DockerRunError(message, read.line, read.column);
 }
 
+/** The options whose values are `KEY=value` text that may hold a secret: the table shows the key and hides the value. */
+const MASKED_VALUE_OPTIONS = new Set(['env', 'env-file', 'label']);
+
+/**
+ * The value of an option as the options table shows it: cut and escaped, and for --env, --env-file and --label only up to
+ * the first equals sign, then `=...`. The YAML keeps the whole value (it has to), but a table that is copied or screenshot
+ * need not.
+ */
+function shownValue(canonical: string, value: string | null): string {
+  if (value === null) return 'true';
+  if (MASKED_VALUE_OPTIONS.has(canonical)) {
+    const equals = value.indexOf('=');
+    if (equals >= 0) return `${visible(value.slice(0, equals))}=...`;
+  }
+  return visible(value);
+}
+
 /** A Compose volume name: what docker accepts for a named volume. At least two characters, so a drive letter is never one. */
 function isVolumeName(text: string): boolean {
   if (text.length < 2) return false;
@@ -297,6 +314,8 @@ class Conversion {
   private skippedNetwork = false;
   /** A volume source held a variable, so Compose cannot know it is a named volume that must be declared. */
   private variableVolume = false;
+  /** An environment value (KEY=value) was written into the file. */
+  private environmentValues = false;
 
   constructor(image: string) {
     this.service = { image };
@@ -306,7 +325,8 @@ class Conversion {
   apply(read: ParsedOption): void {
     const option = read.option;
     const canonical = option.alias ?? option.name;
-    const row = { option: `--${option.name}`, value: read.value === null ? 'true' : visible(read.value), key: '' };
+    const row = { option: `--${option.name}`, value: shownValue(canonical, read.value), key: '' };
+    if (canonical === 'env' && read.value !== null && read.value.includes('=')) this.environmentValues = true;
     this.rows.push(row);
     const index = this.rows.length - 1;
     row.key = this.handle(canonical, read, index);
@@ -953,6 +973,11 @@ class Conversion {
     if (interpolated) {
       hints.push(
         `Variables such as ${String.fromCharCode(36)}NAME are left for Compose to fill in from its environment or a .env file next to the Compose file.`,
+      );
+    }
+    if (this.environmentValues) {
+      hints.push(
+        'The environment values you typed are written into the YAML as they are. If any of them is a secret, keep it out of the Compose file: put it in an env file next to the Compose file and name that file under env_file (the same file docker run reads with --env-file), and keep that file out of version control.',
       );
     }
     if (Object.keys(this.topVolumes).length > 0) {

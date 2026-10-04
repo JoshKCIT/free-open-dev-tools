@@ -744,11 +744,11 @@ it('unknown options are listed with the closest name and a hint, and repeated op
 
 it('rows show every option read, with values cut at 40 characters and escaped', () => {
   const result = convertDockerRun(
-    `docker run -e K=${'v'.repeat(100)} -e 'B=${String.fromCharCode(7)}' -p 80:80 --rm nginx`,
+    `docker run -w K=${'v'.repeat(100)} -u 'B=${String.fromCharCode(7)}' -p 80:80 --rm nginx`,
   );
   expect(result.rows.map((r) => [r.option, r.key])).toEqual([
-    ['--env', 'environment'],
-    ['--env', 'environment'],
+    ['--workdir', 'working_dir'],
+    ['--user', 'user'],
     ['--publish', 'ports'],
     ['--rm', 'no Compose equivalent'],
   ]);
