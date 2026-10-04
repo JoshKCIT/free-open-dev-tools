@@ -21,8 +21,8 @@ Converts a pasted document between XML and JSON, with a chosen prefix for attrib
 
 ## Limits
 
-- Comments, processing instructions and the XML declaration are read and dropped; converting JSON back to XML never restores them
-- CDATA sections become plain text; the distinction between a CDATA section and ordinary text is not kept
+- The XML declaration and each processing instruction become keys named ?xml, ?xml-stylesheet, ?pi and so on; data written as name="value" pairs, as in the declaration, is read as attributes, and any other data in a processing instruction is lost, leaving its key with an empty value; comments are dropped. Converting JSON back to XML refuses a ?xml key, because it is not a valid XML 1.0 element name.
+- CDATA sections become plain text, and entities written inside them are decoded (&amp; becomes &), which XML itself does not do; the difference between a CDATA section and ordinary text is not kept.
 - Mixed content (text interleaved with child elements) keeps its element order only when the order option is on; otherwise text and elements are grouped separately
 - Without the always-array option, one child element and several children of the same name produce different JSON shapes
 - A namespace prefix stays part of the element or attribute name; no namespace resolution is performed
@@ -32,6 +32,7 @@ Converts a pasted document between XML and JSON, with a chosen prefix for attrib
 ## Ambiguous cases, and what this does about them
 
 - A single child element and an array of one look identical unless the always-array option is on; this tool cannot tell which the input intended
+- A document that starts with an XML declaration gives JSON with a ?xml key, and that JSON cannot be converted straight back to XML: remove the ?xml key first. Converting JSON to XML writes its own declaration unless that option is switched off.
 
 ## Defined by
 
@@ -77,7 +78,7 @@ xmlToJson('<book id="1"><title>Moby Dick</title></book>', { attributePrefix: '@_
 npm test
 ```
 
-A billion-laughs DOCTYPE and an external-entity DOCTYPE are each checked to be refused before parsing, and the configured parser is also called directly with a DOCTYPE document to prove entity expansion stays off even if the earlier refusal were bypassed. The XML 1.0 Name production is checked from the fetched specification's own grammar.
+A billion-laughs DOCTYPE and an external-entity DOCTYPE are each checked to be refused before parsing, and the configured parser is also called directly with a DOCTYPE document to prove entity expansion stays off even if the earlier refusal were bypassed. The XML 1.0 Name production is checked from the fetched specification's own grammar. What the converter does with the XML declaration, processing instructions, comments and CDATA sections is pinned by tests whose expected values were recorded from its own output, each naming the XML 1.0 section it departs from.
 
 ## Licence
 
