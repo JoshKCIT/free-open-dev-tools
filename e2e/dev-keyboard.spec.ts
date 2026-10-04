@@ -52,6 +52,8 @@ declare global {
     __FODT_KEY_BOX__?: Element | null;
     /** How many key downs reached the document, counted by the test's own listener. */
     __FODT_DOCUMENT_KEYS__?: number;
+    /** What the capture-phase listener of the test saw, before the capture box's own listeners: key and defaultPrevented. */
+    __FODT_KEY_BEFORE__?: { key: string; defaultPrevented: boolean }[];
     /** The capture box and the history table body as they were before the visitor left the tool. */
     __FODT_KEY_OLD__?: { box: HTMLTextAreaElement; body: HTMLElement };
   }
@@ -197,6 +199,9 @@ test('keyboard-event-viewer: a key pressed in the capture box shows exactly what
   expect(events.find((e) => e.code === 'ShiftRight')).toMatchObject({ key: 'Shift', location: 2 });
   expect(events.filter((e) => e.code === 'F5').map((e) => e.type)).toEqual(['keydown', 'keyup']);
 });
+
+/** What the defaultPrevented cell says for a key whose default the browser left alone and this page then prevented. */
+const PREVENTED_BY_PAGE = 'false (then prevented by this page)';
 
 /** The display name of a checkbox option of the page. */
 function option(page: Page, name: string | RegExp): Locator {
@@ -396,10 +401,20 @@ test('keyboard-event-viewer: Tab and Shift+Tab leave the capture box even when o
     await page.keyboard.press('a');
     await expect
       .poll(async () => (await historyRows(page)).find((cells) => cells[0] === 'keydown')?.[10], { timeout: 1000 })
-      .toBe('true');
+      .toBe(PREVENTED_BY_PAGE);
   }).toPass();
   await clearButton(page).click();
   await installReference(page);
+  // A listener on the document in the capture phase runs before the capture box's own listeners, so it sees the value
+  // the browser reported before this page did anything.
+  await page.evaluate(() => {
+    window.__FODT_KEY_BEFORE__ = [];
+    document.addEventListener(
+      'keydown',
+      (event) => window.__FODT_KEY_BEFORE__!.push({ key: event.key, defaultPrevented: event.defaultPrevented }),
+      true,
+    );
+  });
   await box.focus();
 
   await page.keyboard.press('a');
@@ -418,17 +433,41 @@ test('keyboard-event-viewer: Tab and Shift+Tab leave the capture box even when o
 
   const events = await reference(page);
   const down = (key: string) => events.find((e) => e.type === 'keydown' && e.key === key);
+  // The test's own listener comes after the page's, so it sees the default as prevented by the page.
   expect(down('a')?.defaultPrevented).toBe(true);
+  // A prevented key down sends no key press (the legacy event never follows a prevented key down).
+  expect(events.filter((e) => e.type === 'keypress' && e.key === 'a')).toEqual([]);
   expect(down('Escape')?.defaultPrevented).toBe(false);
   expect(down('Tab')?.defaultPrevented).toBe(false);
   expect(events.filter((e) => e.key === 'Tab' && e.type === 'keydown').every((e) => !e.defaultPrevented)).toBe(true);
   const rows = await historyRows(page);
-  expect(rows.find((cells) => cells[0] === 'keydown' && cells[1] === 'a')?.[10]).toBe('true');
+  // The row keeps what the browser reported before this page acted (the capture-phase listener saw false), and says
+  // that this page then prevented it.
+  const before = await page.evaluate(() => window.__FODT_KEY_BEFORE__ ?? []);
+  expect(before.find((e) => e.key === 'a')).toEqual({ key: 'a', defaultPrevented: false });
+  expect(rows.find((cells) => cells[0] === 'keydown' && cells[1] === 'a')?.[10]).toBe(PREVENTED_BY_PAGE);
   expect(rows.find((cells) => cells[0] === 'keydown' && cells[1] === 'Escape')?.[10]).toBe('false');
   expect(rows.filter((cells) => cells[0] === 'keydown' && cells[1] === 'Tab').map((cells) => cells[10])).toEqual([
     'false',
     'false',
   ]);
+
+  // The keys of an input method are exempt as well: a key named Process, a key code of 229, or a key pressed while
+  // composing is never prevented, and an ordinary key is.
+  await box.focus();
+  const notPrevented = await box.evaluate((element) => {
+    const send = (init: KeyboardEventInit & { keyCode?: number }) => {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      // dispatchEvent returns false when a listener prevented the default.
+      return element.dispatchEvent(event);
+    };
+    return {
+      process: send({ key: 'Process', code: 'KeyK' }),
+      composing: send({ key: 'k', code: 'KeyK', isComposing: true }),
+      ordinary: send({ key: 'k', code: 'KeyK' }),
+    };
+  });
+  expect(notPrevented).toEqual({ process: true, composing: true, ordinary: false });
 });
 
 test('keyboard-event-viewer: the history is a real table and the live region is its wrapper', async ({ page }) => {

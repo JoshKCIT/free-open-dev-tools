@@ -22,7 +22,10 @@ export interface KeyEventRecord {
   metaKey: boolean;
   repeat: boolean;
   isComposing: boolean;
+  /** What the browser reported, before the page that shows the event did anything to it. */
   defaultPrevented: boolean;
+  /** True when the page itself prevented the default after the browser reported it as not prevented. */
+  preventedByPage?: boolean;
   data: string;
 }
 
@@ -138,6 +141,12 @@ function shownText(text: string): string {
   return v.truncated ? v.shown + ELLIPSIS : v.shown;
 }
 
+/** The defaultPrevented cell: as the browser reported it, and a note when the page then prevented the default itself. */
+function defaultPreventedText(r: KeyEventRecord): string {
+  if (r.defaultPrevented) return 'true';
+  return r.preventedByPage ? 'false (then prevented by this page)' : 'false';
+}
+
 /** The cells of one table row, in the order of `KEY_COLUMNS`. */
 export function recordRow(r: KeyEventRecord): string[] {
   return [
@@ -151,7 +160,7 @@ export function recordRow(r: KeyEventRecord): string[] {
     modifierText(r),
     r.repeat ? 'true' : 'false',
     r.isComposing ? 'true' : 'false',
-    r.defaultPrevented ? 'true' : 'false',
+    defaultPreventedText(r),
     shownText(r.data),
   ];
 }

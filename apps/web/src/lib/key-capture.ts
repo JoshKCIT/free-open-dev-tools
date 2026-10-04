@@ -139,7 +139,7 @@ function mayPrevent(event: KeyboardEvent): boolean {
   return true;
 }
 
-function keyRecord(event: KeyboardEvent): KeyEventRecord {
+function keyRecord(event: KeyboardEvent, reportedPrevented: boolean, preventedByPage: boolean): KeyEventRecord {
   return {
     type: event.type as KeyEventType,
     key: event.key,
@@ -154,7 +154,9 @@ function keyRecord(event: KeyboardEvent): KeyEventRecord {
     metaKey: event.metaKey,
     repeat: event.repeat,
     isComposing: event.isComposing,
-    defaultPrevented: event.defaultPrevented,
+    // As the browser reported it, before this page's own preventDefault call below.
+    defaultPrevented: reportedPrevented,
+    preventedByPage,
     data: '',
   };
 }
@@ -182,10 +184,14 @@ function compositionRecord(event: CompositionEvent): KeyEventRecord {
 
 function onKey(event: Event): void {
   if (!(event instanceof KeyboardEvent)) return;
+  // Read before this page does anything to the event, so the table shows what the browser reported.
+  const reportedPrevented = event.defaultPrevented;
+  let preventedByPage = false;
   if (options.preventOther && (event.type === 'keydown' || event.type === 'keypress') && mayPrevent(event)) {
     event.preventDefault();
+    preventedByPage = event.defaultPrevented && !reportedPrevented;
   }
-  const record = keyRecord(event);
+  const record = keyRecord(event, reportedPrevented, preventedByPage);
   history.add(record);
   append(record);
 }

@@ -8,6 +8,7 @@ import {
   droppedNotice,
   locationLegendRows,
   modifierText,
+  meta as toolMeta,
   recordRow,
   visible,
   type KeyEventRecord,
@@ -327,4 +328,21 @@ it('the notice for dropped events says nothing when none were dropped and counts
   expect(droppedNotice(history.dropped)).toBe('415 older events dropped');
   history.clear();
   expect(droppedNotice(history.dropped)).toBe('');
+});
+
+it('the defaultPrevented cell keeps what the browser reported and says when the page prevented the default itself', () => {
+  const cell = (overrides: Partial<KeyEventRecord>): string => recordRow(record(overrides))[10] as string;
+  // As the browser reported it, before this page did anything.
+  expect(cell({ defaultPrevented: false })).toBe('false');
+  expect(cell({ defaultPrevented: true })).toBe('true');
+  // The page prevented the default after the browser reported false: the cell says both.
+  expect(cell({ defaultPrevented: false, preventedByPage: true })).toBe('false (then prevented by this page)');
+  // The browser had already reported true: nothing more to say.
+  expect(cell({ defaultPrevented: true, preventedByPage: true })).toBe('true');
+  expect(cell({ defaultPrevented: false, preventedByPage: false })).toBe('false');
+  // The meta text documents the exemptions: Tab, Escape and the keys of an input method, and that no keypress follows.
+  const supports = toolMeta.supports.join('\n');
+  expect(supports).toMatch(/Tab, Escape and the keys of an input method/);
+  expect(supports).toMatch(/Process/);
+  expect(supports).toMatch(/keypress/);
 });

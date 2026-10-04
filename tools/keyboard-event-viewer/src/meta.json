@@ -8,7 +8,7 @@
     "For each event: key, code, keyCode, which, charCode (key press only), location in words, the four modifiers (Ctrl, Shift, Alt, Meta), repeat, isComposing and defaultPrevented",
     "Composition text (the data of a composition event), shown escaped",
     "Choosing which event types are shown; this changes only what is displayed, never what is kept",
-    "An option to prevent the browser's default action for every key except Tab and Escape, so you can see keys such as Space or F5 without the page scrolling or reloading",
+    "An option to prevent the browser's default action for every key except Tab, Escape and the keys of an input method (the key Process, key code 229 or isComposing), so you can see keys such as Space or F5 without the page scrolling or reloading; a prevented key down sends no keypress, and the defaultPrevented column keeps what the browser reported and adds when this page then prevented the default",
     "Left, right and numpad variants of a key through the location value, and held keys through repeat"
   ],
   "limits": [

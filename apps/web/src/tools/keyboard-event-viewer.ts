@@ -15,7 +15,7 @@ export default defineTool({
       label: 'Prevent the browser default for keys other than Tab and Escape',
       type: 'checkbox',
       default: false,
-      help: 'Stops keys such as Space or F5 from scrolling or reloading while you look at them. Tab and Escape always keep working, so you can leave the capture box.',
+      help: 'Stops keys such as Space or F5 from scrolling or reloading while you look at them. Tab and Escape always keep working, so you can leave the capture box, and the keys of an input method (the key Process, key code 229, or any key pressed while composing) are never prevented either. Preventing a key down also stops the browser from sending the legacy key press for it. The defaultPrevented column shows what the browser reported before this page acted, and says when this page then prevented the default.',
     },
   ],
   examples: [
