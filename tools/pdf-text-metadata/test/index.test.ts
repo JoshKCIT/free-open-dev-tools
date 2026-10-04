@@ -588,3 +588,17 @@ it('invisible format characters are shown as escapes: soft hyphen, zero width ma
   ];
   for (const text of kept) expect(visible(text)).toBe(text);
 });
+
+it('the copy name strips only a final .pdf, so a name with a dot in it keeps what follows the dot', () => {
+  expect(cleanCopyName('Q3.2025 results')).toBe('Q3.2025 results-clean.pdf');
+  expect(cleanCopyName('v1.2.final')).toBe('v1.2.final-clean.pdf');
+  expect(cleanCopyName('Q3.2025 results.pdf')).toBe('Q3.2025 results-clean.pdf');
+  expect(cleanCopyName('Report.Pdf')).toBe('Report-clean.pdf');
+  expect(cleanCopyName('report.pdf.pdf')).toBe('report.pdf-clean.pdf');
+  expect(cleanCopyName('notes.pdfx')).toBe('notes.pdfx-clean.pdf');
+});
+
+it('a name that ends in the letters pdf without a dot before them keeps them', () => {
+  expect(cleanCopyName('mypdf')).toBe('mypdf-clean.pdf');
+  expect(cleanCopyName('XPDF')).toBe('XPDF-clean.pdf');
+});

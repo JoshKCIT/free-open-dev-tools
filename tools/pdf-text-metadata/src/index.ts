@@ -62,8 +62,8 @@ function isDropped(unit: number): boolean {
 }
 
 /**
- * The name of the copy: the picked file's base name (no folder, no final extension, no control or direction-changing
- * character), at most 100 characters, then `-clean.pdf`. A name with nothing left is `document`.
+ * The name of the copy: the picked file's base name (no folder, no final `.pdf` in any letter case, no control or
+ * direction-changing character), at most 100 characters, then `-clean.pdf`. A name with nothing left is `document`.
  */
 export function cleanCopyName(fileName: string): string {
   const cut = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf(String.fromCharCode(92)));
@@ -72,8 +72,8 @@ export function cleanCopyName(fileName: string): string {
     if (!isDropped(char.codePointAt(0)!)) kept += char;
   }
   kept = kept.trim();
-  const dot = kept.lastIndexOf('.');
-  if (dot >= 0) kept = kept.slice(0, dot);
+  // Only a final `.pdf` is the extension: a name such as `Q3.2025 results` has a dot in it and no extension.
+  if (/\.pdf$/i.test(kept)) kept = kept.slice(0, -4);
   const base = Array.from(kept).slice(0, 100).join('').trim();
   return `${base === '' ? 'document' : base}-clean.pdf`;
 }
