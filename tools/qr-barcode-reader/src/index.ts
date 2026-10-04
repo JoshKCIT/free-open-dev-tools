@@ -106,6 +106,19 @@ function isBmpStart(header: Uint8Array): boolean {
 }
 
 /**
+ * Refuses a picture that decoded to more than 50,000,000 pixels, or to nothing. The header of a file says how big a picture
+ * is, but a browser decides how big it decodes: a GIF whose screen is 1 by 1 and whose first frame is 65535 wide can come
+ * back as a very large bitmap. Called with the size of the decoded bitmap, before any canvas is made for it, so a picture
+ * the header check let through still cannot make the page allocate a canvas and a pixel buffer of hundreds of megabytes.
+ */
+export function checkDecodedSize(width: number, height: number): void {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
+    throw new CodeReaderError('This browser could not decode this image.');
+  }
+  if (width * height > MAX_INPUT_PIXELS) throw new CodeReaderError(TOO_MANY_PIXELS);
+}
+
+/**
  * Refuses a file that should not be decoded, before it is decoded: one over 50 MB (from its reported size, whatever
  * the header says), an empty one, one that is not a PNG, JPEG, GIF, WebP or BMP image, and one that declares more than
  * 50,000,000 pixels. `header` is the first bytes of the file, up to MAX_IMAGE_HEADER_BYTES of them: the kind of a file is

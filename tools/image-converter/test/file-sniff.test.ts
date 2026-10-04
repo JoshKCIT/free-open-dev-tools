@@ -326,3 +326,87 @@ it('an image that declares a width or height below 1 is refused in every format 
   expect(() => assertFileKind(minimalPng(0, 5), ['png'], { maxBytes: 1024 })).toThrow(FileSignatureError);
   expect(assertFileKind(minimalPng(1, 1), ['png'], { maxBytes: 1024 })).toEqual({ kind: 'png', width: 1, height: 1 });
 });
+
+/**
+ * GIF89a section 18 (Logical Screen Descriptor), 19 (Global Color Table), 20 (Image Descriptor, `0x2C`, then the left and top
+ * position, the width and the height as 16-bit little-endian numbers and a packed byte), 23 (Graphic Control Extension) and
+ * 24 (Comment Extension): blocks follow the screen descriptor in order, and extensions are sub-blocks ended by a zero.
+ */
+function gifWithFrame(
+  screen: [number, number],
+  frame: { left?: number; top?: number; width: number; height: number } | null,
+  options: { globalColors?: number; extension?: boolean } = {},
+): Uint8Array {
+  const bytes: number[] = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, ...u16le(screen[0]), ...u16le(screen[1])];
+  const tableSizeCode = options.globalColors === undefined ? -1 : Math.log2(options.globalColors) - 1;
+  bytes.push(tableSizeCode >= 0 ? 0x80 | tableSizeCode : 0, 0, 0);
+  if (options.globalColors !== undefined) for (let i = 0; i < options.globalColors * 3; i++) bytes.push(i & 0xff);
+  if (options.extension) {
+    // A graphic control extension (4 bytes) and a comment extension (two sub-blocks), both before the first image.
+    bytes.push(0x21, 0xf9, 4, 0, 0, 0, 0, 0);
+    bytes.push(0x21, 0xfe, 3, 0x61, 0x62, 0x63, 2, 0x64, 0x65, 0);
+  }
+  if (frame) {
+    bytes.push(
+      0x2c,
+      ...u16le(frame.left ?? 0),
+      ...u16le(frame.top ?? 0),
+      ...u16le(frame.width),
+      ...u16le(frame.height),
+      0,
+    );
+  }
+  return Uint8Array.from(bytes);
+}
+
+it('a GIF whose first image is larger than its logical screen is reported at the larger size, and a normal one is not changed', () => {
+  // A one pixel screen and a first frame of 65535 by 65535: a browser may grow the picture to the frame.
+  expect(sniffFile(gifWithFrame([1, 1], { width: 65535, height: 65535 }))).toEqual({
+    kind: 'gif',
+    width: 65535,
+    height: 65535,
+  });
+  // The frame is placed at an offset: the picture reaches the frame's far edge.
+  expect(sniffFile(gifWithFrame([10, 10], { left: 100, top: 50, width: 20, height: 30 }))).toEqual({
+    kind: 'gif',
+    width: 120,
+    height: 80,
+  });
+  // Only one side larger.
+  expect(sniffFile(gifWithFrame([100, 5], { width: 7, height: 9 }))).toEqual({ kind: 'gif', width: 100, height: 9 });
+  // A frame inside the screen, behind a global colour table and two extensions, changes nothing.
+  expect(
+    sniffFile(gifWithFrame([12, 6], { left: 2, top: 1, width: 5, height: 4 }, { globalColors: 8, extension: true })),
+  ).toEqual({
+    kind: 'gif',
+    width: 12,
+    height: 6,
+  });
+  // No image yet (header and screen only, a table cut off, the trailer, junk): the screen is all there is to report.
+  expect(sniffFile(gifWithFrame([12, 6], null))).toEqual({ kind: 'gif', width: 12, height: 6 });
+  expect(sniffFile(gifWithFrame([12, 6], null, { globalColors: 256 }).slice(0, 40))).toEqual({
+    kind: 'gif',
+    width: 12,
+    height: 6,
+  });
+  const trailer = Uint8Array.from([...gifWithFrame([12, 6], null), 0x3b]);
+  expect(sniffFile(trailer)).toEqual({ kind: 'gif', width: 12, height: 6 });
+  const junk = Uint8Array.from([...gifWithFrame([12, 6], null), 0x99, 0x01, 0x02]);
+  expect(sniffFile(junk)).toEqual({ kind: 'gif', width: 12, height: 6 });
+});
+
+it('a GIF that grows past its screen is refused by the pixel limit, though its screen alone would pass', () => {
+  const grows = gifWithFrame([1, 1], { width: 65535, height: 65535 });
+  expect(() => assertFileKind(grows, ['gif'], { maxBytes: 1024, maxPixels: 50_000_000 })).toThrow(FileSignatureError);
+  try {
+    assertFileKind(grows, ['gif'], { maxBytes: 1024, maxPixels: 50_000_000 });
+  } catch (err) {
+    expect((err as FileSignatureError).reason).toBe('too-many-pixels');
+  }
+  const fine = gifWithFrame([200, 100], { width: 200, height: 100 });
+  expect(assertFileKind(fine, ['gif'], { maxBytes: 1024, maxPixels: 50_000_000 })).toEqual({
+    kind: 'gif',
+    width: 200,
+    height: 100,
+  });
+});

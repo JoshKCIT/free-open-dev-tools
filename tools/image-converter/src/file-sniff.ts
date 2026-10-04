@@ -31,7 +31,10 @@
  * (the fixed signature "GIF" plus a 3-byte version) and section 18
  * "Logical Screen Descriptor" (a 2-byte width then a 2-byte height,
  * "Unless otherwise stated, multi-byte numeric fields are ordered with
- * the Least Significant Byte first").
+ * the Least Significant Byte first"); section 19 "Global Color Table",
+ * section 20 "Image Descriptor" (a left and top position then a width and
+ * a height, the far edge of which the size reported also covers) and
+ * sections 23 and 24 (extensions, skipped to reach the first image).
  *
  * RFC 9649 (the WebP container format) section 2.4 (the WebP header:
  * "RIFF", a 4-byte size, "WEBP"), and sections 2.5-2.7 for the VP8, VP8L
@@ -199,7 +202,44 @@ function sniffGif(bytes: Uint8Array): SniffResult | null {
   const version = String.fromCharCode(bytes[3]!, bytes[4]!, bytes[5]!);
   if (version !== '87a' && version !== '89a') return null;
   if (!need(bytes, 10)) return null;
-  return { kind: 'gif', width: readUint16LE(bytes, 6), height: readUint16LE(bytes, 8) };
+  let width = readUint16LE(bytes, 6);
+  let height = readUint16LE(bytes, 8);
+  // Some decoders grow the picture to the first image's rectangle when it reaches past the logical screen, so the size
+  // reported is the larger of the two: the screen, and the far edge of the first image descriptor.
+  const frame = firstGifFrameExtent(bytes);
+  if (frame) {
+    width = Math.max(width, frame.width);
+    height = Math.max(height, frame.height);
+  }
+  return { kind: 'gif', width, height };
+}
+
+/**
+ * The far edge (left plus width, top plus height) of the first image descriptor of a GIF, found by walking the blocks that
+ * follow the logical screen descriptor: the global colour table when the packed byte says there is one (section 19), then
+ * extensions (`0x21`, a label and sub-blocks each starting with its length, ended by a zero length) until the image
+ * descriptor (`0x2C`, section 20). Null when the bytes end first, a trailer (`0x3B`) comes first or a byte is not a block.
+ */
+function firstGifFrameExtent(bytes: Uint8Array): { width: number; height: number } | null {
+  if (!need(bytes, 13)) return null;
+  const packed = bytes[10]!;
+  let at = 13;
+  if ((packed & 0x80) !== 0) at += 3 * (1 << ((packed & 0x07) + 1));
+  while (at < bytes.length) {
+    const introducer = bytes[at]!;
+    if (introducer === 0x2c) {
+      if (!need(bytes, at + 9)) return null;
+      return {
+        width: readUint16LE(bytes, at + 1) + readUint16LE(bytes, at + 5),
+        height: readUint16LE(bytes, at + 3) + readUint16LE(bytes, at + 7),
+      };
+    }
+    if (introducer !== 0x21) return null;
+    at += 2; // the introducer and the label
+    while (at < bytes.length && bytes[at] !== 0) at += bytes[at]! + 1;
+    at += 1; // the zero length that ends the extension
+  }
+  return null;
 }
 
 function sniffWebp(bytes: Uint8Array): SniffResult | null {

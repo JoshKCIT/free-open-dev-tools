@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { beforeAll, expect, it, vi } from 'vitest';
 import QRCode from 'qrcode';
 import {
+  checkDecodedSize,
   checkImageFile,
   CodeReaderError,
   codeRows,
@@ -314,4 +315,21 @@ it('a JPEG whose frame header cannot be found says plainly that the size could n
   }
   // A file that merely starts like something else is still not an image.
   expect(() => checkImageFile(new TextEncoder().encode('plain text'), 10)).toThrow(/PNG, JPEG, GIF, WebP or BMP/);
+});
+
+it('a decoded picture over the pixel limit is refused after decoding too, whatever its header said', () => {
+  // A GIF header that declares a 1 by 1 screen can still decode to its first frame's rectangle in some engines.
+  expect(() => checkDecodedSize(10_000, 5_001)).toThrow(CodeReaderError);
+  expect(() => checkDecodedSize(10_000, 5_001)).toThrow(/50,000,000/);
+  expect(() => checkDecodedSize(65_535, 65_535)).toThrow(/50,000,000/);
+  expect(() => checkDecodedSize(10_000, 5_000)).not.toThrow();
+  expect(() => checkDecodedSize(1, 1)).not.toThrow();
+  for (const [width, height] of [
+    [0, 5],
+    [5, 0],
+    [-1, 5],
+    [Number.NaN, 5],
+  ] as const) {
+    expect(() => checkDecodedSize(width, height)).toThrow(/could not decode/);
+  }
 });

@@ -29,7 +29,7 @@
  */
 import QrBarcodeReaderWorker from './workers/qr-barcode-reader.worker.ts?worker&inline';
 import type { QrBarcodeReaderWorkerMessage } from './workers/qr-barcode-reader.worker';
-import type { CodeResult, ImagePixels } from '@fodt/qr-barcode-reader';
+import { CodeReaderError, checkDecodedSize, type CodeResult, type ImagePixels } from '@fodt/qr-barcode-reader';
 import type { RunContext } from './tool-ui';
 
 export const QR_BARCODE_READER_TIME_LIMIT_MS = 20000;
@@ -58,7 +58,8 @@ export class QrBarcodeReaderRunError extends Error {
 /**
  * Decodes an image file to RGBA pixels on the page thread. The canvas used is a local variable never appended to the
  * document, so the picked image is never shown. `createImageBitmap` is asked to apply the image's own orientation. A
- * `maxWidth` scales a wider picture down, keeping its shape. The caller has already checked the file's size and header.
+ * `maxWidth` scales a wider picture down, keeping its shape. The caller has already checked the file's size and header,
+ * but a browser decides what size a picture decodes to, so the decoded size is checked again before any canvas is made.
  */
 export async function imagePixelsFromFile(file: File, maxWidth?: number): Promise<ImagePixels> {
   let bitmap: ImageBitmap;
@@ -68,6 +69,7 @@ export async function imagePixelsFromFile(file: File, maxWidth?: number): Promis
     throw new QrBarcodeReaderRunError(DECODE_FAILED_MESSAGE);
   }
   try {
+    checkDecodedSize(bitmap.width, bitmap.height);
     let width = bitmap.width;
     let height = bitmap.height;
     if (maxWidth !== undefined && width > maxWidth) {
@@ -83,7 +85,7 @@ export async function imagePixelsFromFile(file: File, maxWidth?: number): Promis
     context.drawImage(bitmap, 0, 0, width, height);
     return { data: context.getImageData(0, 0, width, height).data, width, height };
   } catch (err) {
-    if (err instanceof QrBarcodeReaderRunError) throw err;
+    if (err instanceof QrBarcodeReaderRunError || err instanceof CodeReaderError) throw err;
     throw new QrBarcodeReaderRunError(DECODE_FAILED_MESSAGE);
   } finally {
     bitmap.close();
