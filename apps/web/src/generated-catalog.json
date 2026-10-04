@@ -1284,7 +1284,7 @@
       "category": "media",
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
-      "summary": "Convert, resize and re-encode images entirely in the browser canvas.",
+      "summary": "Convert, resize, crop, rotate and flip images, and turn SVG into a raster image, entirely in the browser canvas.",
       "implemented": true
     },
     {
@@ -1726,6 +1726,123 @@
       "categoryLabel": "Hashing, secrets and tokens",
       "tier": 2,
       "summary": "Paste a hash or password hash string and see the algorithms it could come from, ranked, with the reason for each.",
+      "implemented": true
+    },
+    {
+      "id": "qr-barcode-reader",
+      "name": "QR Code & Barcode Reader",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Read QR codes and common barcodes from an image file or your camera, entirely in the browser.",
+      "implemented": true
+    },
+    {
+      "id": "sass-less-compiler",
+      "name": "SCSS & Less Compiler",
+      "category": "css",
+      "categoryLabel": "CSS and layout",
+      "tier": 3,
+      "summary": "Compile SCSS, indented Sass or Less to CSS in the browser, with errors shown at their line and column.",
+      "implemented": true
+    },
+    {
+      "id": "mermaid-renderer",
+      "name": "Mermaid Diagram Renderer",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 3,
+      "summary": "Render a Mermaid diagram description to SVG or PNG with syntax errors shown and nothing fetched.",
+      "implemented": true
+    },
+    {
+      "id": "pdf-text-metadata",
+      "name": "PDF Text Extractor & Metadata Remover",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Extract a PDF's text page by page, view its metadata and download a copy with the metadata removed.",
+      "implemented": true
+    },
+    {
+      "id": "image-compare",
+      "name": "Image Diff & Compare",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Compare two images pixel by pixel and see the differences highlighted with the share of pixels that differ.",
+      "implemented": true
+    },
+    {
+      "id": "sprite-sheet",
+      "name": "Sprite Sheet Generator",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Pack several images into one sprite sheet PNG with the CSS rules that show each image.",
+      "implemented": true
+    },
+    {
+      "id": "image-splitter",
+      "name": "Image Splitter (Grid Tiles to ZIP)",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Cut an image into a grid of tiles by rows and columns or by tile size and download them as a ZIP.",
+      "implemented": true
+    },
+    {
+      "id": "css-shapes",
+      "name": "CSS Shape Generator (Triangles, Ribbons, Speech Bubbles)",
+      "category": "css",
+      "categoryLabel": "CSS and layout",
+      "tier": 3,
+      "summary": "Draw triangles, ribbons, speech bubbles and tooltip arrows in pure CSS with a live preview.",
+      "implemented": true
+    },
+    {
+      "id": "css-spinner",
+      "name": "CSS Loading Spinner Generator",
+      "category": "css",
+      "categoryLabel": "CSS and layout",
+      "tier": 3,
+      "summary": "Make pure-CSS loading spinners in a chosen size, colour and speed that stop for reduced motion.",
+      "implemented": true
+    },
+    {
+      "id": "css-pattern",
+      "name": "CSS Background Pattern Generator",
+      "category": "css",
+      "categoryLabel": "CSS and layout",
+      "tier": 3,
+      "summary": "Build repeating stripes, checks, dots and grids as CSS gradients or an inline SVG, with a live preview.",
+      "implemented": true
+    },
+    {
+      "id": "form-control-styler",
+      "name": "Form Control Styler (Buttons, Switches, Checkboxes, Radios, Sliders)",
+      "category": "css",
+      "categoryLabel": "CSS and layout",
+      "tier": 3,
+      "summary": "Style buttons, switches, checkboxes, radio buttons and range sliders while keeping the native controls.",
+      "implemented": true
+    },
+    {
+      "id": "cubic-bezier",
+      "name": "Cubic Bezier Easing Editor",
+      "category": "css",
+      "categoryLabel": "CSS and layout",
+      "tier": 3,
+      "summary": "Shape a cubic-bezier easing curve by dragging its handles or picking a preset, and preview the motion.",
+      "implemented": true
+    },
+    {
+      "id": "chart-maker",
+      "name": "Chart Maker (Bar, Line, Pie)",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Paste a table and get a bar, line or pie chart as SVG or PNG with a text description for screen readers.",
       "implemented": true
     }
   ]
