@@ -3880,3 +3880,34 @@ test('chart-maker: a first row that looks like data is noted, and a lone row say
   await expect(outputArea(page)).not.toContainText('looks like data');
   expect(offending(requests)).toEqual([]);
 });
+
+test('chart-maker: a pie of 1,000,000 against 1 is drawn as a full circle in the browser', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'chart-maker');
+  const requests = recordRequests(page);
+  await fillField(page, 'data', 'Part,Size\nbig,1000000\nsmall,1');
+  await page.locator('input[name="type"][value="pie"]').check();
+  await expect(outputArea(page).locator('pre.output').first()).toContainText('big: 1000000', { timeout: 10_000 });
+  const svg = await downloadChartSvg(page);
+  const blank = await inlineChart(page, svg);
+  try {
+    // The browser's own geometry: points all the way round the big slice's circle are inside its shape.
+    const inside = await blank.evaluate(() => {
+      const big = document.querySelector('[role="graphics-symbol"][aria-label="big: 1000000"]') as SVGGeometryElement;
+      const circle = big as unknown as SVGCircleElement;
+      const cx = circle.cx.baseVal.value;
+      const cy = circle.cy.baseVal.value;
+      const r = circle.r.baseVal.value;
+      let hit = 0;
+      for (let step = 0; step < 360; step++) {
+        const angle = (step * Math.PI) / 180;
+        if (big.isPointInFill(new DOMPoint(cx + r * 0.7 * Math.cos(angle), cy + r * 0.7 * Math.sin(angle)))) hit++;
+      }
+      return { tag: big.tagName.toLowerCase(), hit };
+    });
+    expect(inside).toEqual({ tag: 'circle', hit: 360 });
+  } finally {
+    await blank.close();
+  }
+  expect(offending(requests)).toEqual([]);
+});
