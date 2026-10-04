@@ -1,0 +1,231 @@
+{
+  "gitVersion": "git version 2.53.0.windows.1",
+  "recordedAt": "2026-10-04",
+  "config": {
+    "core.ignorecase": "false"
+  },
+  "commands": [
+    "git ls-files -z -- \":(glob)<pattern>\" (every file is in the index of a repository with nothing on disk)"
+  ],
+  "files": [
+    "a.txt",
+    "b.log",
+    "a.js",
+    "ab.js",
+    "b.js",
+    "foo",
+    "foo.txt",
+    "bar/foo",
+    "bar/baz.txt",
+    "bar/baz/foo",
+    "a/b/c.txt",
+    "a/b/foo",
+    "a/foo",
+    "a/x/foo",
+    "a/b/c/foo",
+    "src/main.js",
+    "src/main.ts",
+    "src/lib/util.js",
+    "src/lib/deep/x.js",
+    "src/.hidden/x.js",
+    "src/a",
+    "docs/guide.md",
+    "docs/api/index.md",
+    "docs/a/b/c.md",
+    "README.md",
+    ".hidden",
+    ".config/app.json",
+    ".eslintrc.js",
+    "node_modules/x/index.js",
+    "a b.txt",
+    "\u00fcber.txt",
+    "\u00fc/x.txt",
+    "caf\u00e9/menu.txt",
+    "ber.txt",
+    "A.txt",
+    "NOTES.TXT",
+    "a*b.txt",
+    "1.txt",
+    "x",
+    "ab",
+    "ab.log",
+    "a.log",
+    "a/b/b",
+    "a/q",
+    "a/x/b",
+    "a/b/x/b",
+    "logs/a.txt",
+    "a.l g",
+    "docs/x.md",
+    "doc1/x",
+    "doc2/y/z",
+    "build/sub/out.js",
+    "a_b.txt",
+    "z.ts",
+    "lib/z.js",
+    "src/lib/z.ts",
+    "\u65e5\u672c/\u8a9e.txt"
+  ],
+  "patterns": [
+    {
+      "pattern": "*.js",
+      "matches": "2,3,4,27"
+    },
+    {
+      "pattern": "src/*.js",
+      "matches": "15"
+    },
+    {
+      "pattern": "**/*.js",
+      "matches": "2,3,4,15,17,18,19,27,28,51,54"
+    },
+    {
+      "pattern": "src/**",
+      "matches": "15,16,17,18,19,20,55"
+    },
+    {
+      "pattern": "src/**/util.js",
+      "matches": "17"
+    },
+    {
+      "pattern": "**/lib/**",
+      "matches": "17,18,54,55"
+    },
+    {
+      "pattern": "a?.js",
+      "matches": "3"
+    },
+    {
+      "pattern": "[ab].txt",
+      "matches": "0"
+    },
+    {
+      "pattern": "[a-c]*",
+      "matches": "0,1,2,3,4,29,33,36,39,40,41,47,52"
+    },
+    {
+      "pattern": "[^a]*",
+      "matches": "1,4,5,6,24,25,27,30,33,34,35,37,38,53"
+    },
+    {
+      "pattern": "[!a]*",
+      "matches": "1,4,5,6,24,25,27,30,33,34,35,37,38,53"
+    },
+    {
+      "pattern": "**/foo",
+      "matches": "5,7,9,11,12,13,14"
+    },
+    {
+      "pattern": "foo/**",
+      "matches": ""
+    },
+    {
+      "pattern": "**",
+      "matches": "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56"
+    },
+    {
+      "pattern": "*",
+      "matches": "0,1,2,3,4,5,6,24,25,27,29,30,33,34,35,36,37,38,39,40,41,47,52,53"
+    },
+    {
+      "pattern": "a/**/b",
+      "matches": "42,44,45"
+    },
+    {
+      "pattern": "a*b",
+      "matches": "39"
+    },
+    {
+      "pattern": "?",
+      "matches": "38"
+    },
+    {
+      "pattern": "??.txt",
+      "matches": ""
+    },
+    {
+      "pattern": ".*",
+      "matches": "25,27"
+    },
+    {
+      "pattern": "*/foo",
+      "matches": "7,12"
+    },
+    {
+      "pattern": "docs/**/*.md",
+      "matches": "21,22,23,48"
+    },
+    {
+      "pattern": "?ber.txt",
+      "matches": ""
+    },
+    {
+      "pattern": "??ber.txt",
+      "matches": "30"
+    },
+    {
+      "pattern": "[\u00fc]ber.txt",
+      "matches": ""
+    },
+    {
+      "pattern": "*.TXT",
+      "matches": "35"
+    },
+    {
+      "pattern": "src/**/*",
+      "matches": "15,16,17,18,19,20,55"
+    },
+    {
+      "pattern": "**/.hidden/**",
+      "matches": "19"
+    },
+    {
+      "pattern": "src/l*",
+      "matches": ""
+    },
+    {
+      "pattern": "src/?ib/*.js",
+      "matches": "17"
+    },
+    {
+      "pattern": "a/*/foo",
+      "matches": "11,13"
+    },
+    {
+      "pattern": "*/*/*.js",
+      "matches": "17,19,28,51"
+    },
+    {
+      "pattern": "[[:alpha:]]*",
+      "matches": "0,1,2,3,4,5,6,24,29,33,34,35,36,38,39,40,41,47,52,53"
+    },
+    {
+      "pattern": "a/**/foo",
+      "matches": "11,12,13,14"
+    },
+    {
+      "pattern": "**/*.md",
+      "matches": "21,22,23,24,48"
+    },
+    {
+      "pattern": "*.l?g",
+      "matches": "1,40,41,47"
+    },
+    {
+      "pattern": "doc?/**",
+      "matches": "21,22,23,48,49,50"
+    },
+    {
+      "pattern": "[0-9].txt",
+      "matches": "37"
+    },
+    {
+      "pattern": "*.[jt]s",
+      "matches": "2,3,4,27,53"
+    },
+    {
+      "pattern": "**/deep/*",
+      "matches": "18"
+    }
+  ]
+}

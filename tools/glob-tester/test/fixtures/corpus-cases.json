@@ -1,0 +1,532 @@
+{
+  "note": "Hand-written inputs for record-git-corpus.mjs. A path ending in / is a directory. Special characters are stored as JSON escapes.",
+  "gitignoreCases": [
+    {
+      "id": "plain-name",
+      "text": "foo"
+    },
+    {
+      "id": "dir-only",
+      "text": "foo/"
+    },
+    {
+      "id": "anchored-name",
+      "text": "/foo"
+    },
+    {
+      "id": "anchored-dir",
+      "text": "/foo/"
+    },
+    {
+      "id": "middle-slash",
+      "text": "a/b"
+    },
+    {
+      "id": "middle-slash-dir",
+      "text": "a/b/"
+    },
+    {
+      "id": "star-ext",
+      "text": "*.log"
+    },
+    {
+      "id": "negate-after",
+      "text": "*.log\n!keep.log"
+    },
+    {
+      "id": "negate-then-relist",
+      "text": "*.log\n!keep.log\nkeep.log"
+    },
+    {
+      "id": "question",
+      "text": "?.txt"
+    },
+    {
+      "id": "range",
+      "text": "[a-c]*"
+    },
+    {
+      "id": "bracket-bang",
+      "text": "[!a]*"
+    },
+    {
+      "id": "bracket-caret",
+      "text": "[^a]*"
+    },
+    {
+      "id": "posix-alpha",
+      "text": "[[:alpha:]].txt"
+    },
+    {
+      "id": "posix-digit",
+      "text": "[[:digit:]]*"
+    },
+    {
+      "id": "posix-unknown",
+      "text": "[[:nosuch:]]*"
+    },
+    {
+      "id": "posix-malformed",
+      "text": "[[:alpha:]*"
+    },
+    {
+      "id": "bracket-close-first",
+      "text": "[]a]*"
+    },
+    {
+      "id": "bracket-unterminated",
+      "text": "[a*"
+    },
+    {
+      "id": "starstar-leading",
+      "text": "**/foo"
+    },
+    {
+      "id": "starstar-trailing",
+      "text": "foo/**"
+    },
+    {
+      "id": "starstar-middle",
+      "text": "a/**/foo"
+    },
+    {
+      "id": "starstar-alone",
+      "text": "**"
+    },
+    {
+      "id": "starstar-glued",
+      "text": "a**"
+    },
+    {
+      "id": "three-stars",
+      "text": "***"
+    },
+    {
+      "id": "three-stars-slash",
+      "text": "***/foo"
+    },
+    {
+      "id": "starstar-file",
+      "text": "**/baz.txt"
+    },
+    {
+      "id": "dir-star",
+      "text": "foo/*"
+    },
+    {
+      "id": "a-star",
+      "text": "a/*"
+    },
+    {
+      "id": "a-star-foo",
+      "text": "a/*/foo"
+    },
+    {
+      "id": "star-slash-foo",
+      "text": "*/foo"
+    },
+    {
+      "id": "escaped-star",
+      "text": "a\\*b.txt"
+    },
+    {
+      "id": "escaped-hash",
+      "text": "\\#notes.txt"
+    },
+    {
+      "id": "escaped-bang",
+      "text": "\\!important.txt"
+    },
+    {
+      "id": "bang-nothing-before",
+      "text": "!important.txt"
+    },
+    {
+      "id": "comment-then-rule",
+      "text": "#comment\nfoo"
+    },
+    {
+      "id": "trailing-spaces",
+      "text": "foo   "
+    },
+    {
+      "id": "escaped-trailing-space",
+      "text": "foo\\ "
+    },
+    {
+      "id": "trailing-backslash",
+      "text": "foo\\"
+    },
+    {
+      "id": "leading-spaces",
+      "text": "   foo"
+    },
+    {
+      "id": "tab-in-name",
+      "text": "tab\tname"
+    },
+    {
+      "id": "double-slash",
+      "text": "a//b"
+    },
+    {
+      "id": "dot-slash",
+      "text": "./foo"
+    },
+    {
+      "id": "dot-dot-slash",
+      "text": "../foo"
+    },
+    {
+      "id": "crlf",
+      "text": "foo\r\n*.log\r\n"
+    },
+    {
+      "id": "bom",
+      "text": "\ufeff*.log"
+    },
+    {
+      "id": "blank-and-comments",
+      "text": "\n\n# c\n*.log\n\n"
+    },
+    {
+      "id": "case-upper-name",
+      "text": "FOO"
+    },
+    {
+      "id": "case-upper-ext",
+      "text": "*.TXT"
+    },
+    {
+      "id": "unicode-name",
+      "text": "\u00fcber.txt"
+    },
+    {
+      "id": "question-before-umlaut",
+      "text": "?ber.txt"
+    },
+    {
+      "id": "two-questions-before-umlaut",
+      "text": "??ber.txt"
+    },
+    {
+      "id": "unicode-dir",
+      "text": "caf\u00e9/"
+    },
+    {
+      "id": "bracket-umlaut",
+      "text": "[\u00fc]ber.txt"
+    },
+    {
+      "id": "unicode-cjk-dir",
+      "text": "\u65e5\u672c/"
+    },
+    {
+      "id": "all-then-reinclude-dirs",
+      "text": "*\n!*/\n!*.txt"
+    },
+    {
+      "id": "parent-excluded-cannot-reinclude",
+      "text": "build/\n!build/keep.txt"
+    },
+    {
+      "id": "contents-excluded-then-reinclude",
+      "text": "build/*\n!build/out.js"
+    },
+    {
+      "id": "star-star-then-negate-dir",
+      "text": "build/**\n!build/sub/"
+    },
+    {
+      "id": "root-star-reinclude-src",
+      "text": "/*\n!/src\n!/src/**"
+    },
+    {
+      "id": "name-then-negate-dir",
+      "text": "logs\n!logs/"
+    },
+    {
+      "id": "js-then-negate-dir",
+      "text": "*.js\n!src/"
+    },
+    {
+      "id": "node-modules",
+      "text": "node_modules"
+    },
+    {
+      "id": "dot-star",
+      "text": ".*"
+    },
+    {
+      "id": "dot-hidden",
+      "text": ".hidden"
+    },
+    {
+      "id": "src-dot-hidden",
+      "text": "src/.hidden"
+    },
+    {
+      "id": "anchored-nested",
+      "text": "/src/lib"
+    },
+    {
+      "id": "src-star-star-js",
+      "text": "src/**/*.js"
+    },
+    {
+      "id": "lib-both-sides",
+      "text": "**/lib/**"
+    },
+    {
+      "id": "docs-md-except-api",
+      "text": "docs/**/*.md\n!docs/api/*.md"
+    },
+    {
+      "id": "duplicates",
+      "text": "*.log\n*.log"
+    },
+    {
+      "id": "flip-flop",
+      "text": "foo\n!foo\nfoo"
+    },
+    {
+      "id": "space-in-pattern",
+      "text": "a b.txt"
+    },
+    {
+      "id": "space-star",
+      "text": "file name*"
+    },
+    {
+      "id": "negate-only",
+      "text": "!*.log"
+    },
+    {
+      "id": "md-readme-reorder",
+      "text": "*.md\n!README.md\nREADME.md"
+    },
+    {
+      "id": "empty-text",
+      "text": ""
+    },
+    {
+      "id": "only-comment",
+      "text": "# only a comment"
+    },
+    {
+      "id": "lone-bang",
+      "text": "!"
+    },
+    {
+      "id": "lone-slash",
+      "text": "/"
+    },
+    {
+      "id": "two-rules-same-path",
+      "text": "*.log\ndebug.log"
+    },
+    {
+      "id": "later-rule-wins-file",
+      "text": "bar/foo\n!bar/foo\nbar/*"
+    },
+    {
+      "id": "dir-pattern-vs-file-named-like-dir",
+      "text": "logs/"
+    },
+    {
+      "id": "star-dir-slash",
+      "text": "*/"
+    },
+    {
+      "id": "deep-anchor",
+      "text": "/a/b/c"
+    },
+    {
+      "id": "hash-in-middle",
+      "text": "a#b.txt"
+    },
+    {
+      "id": "star-in-middle-dir",
+      "text": "src/*/util.js"
+    },
+    {
+      "id": "question-dir",
+      "text": "a/?/foo"
+    }
+  ],
+  "gitignorePaths": [
+    "a.txt",
+    "b.log",
+    "debug.log",
+    "keep.log",
+    "foo",
+    "foo.txt",
+    "bar/foo",
+    "bar/baz.txt",
+    "bar/baz/foo",
+    "a/b/c.txt",
+    "a/b/foo",
+    "a/foo",
+    "src/main.js",
+    "src/lib/util.js",
+    "src/lib/deep/x.js",
+    "build/out.js",
+    "build/keep.txt",
+    "build/sub/out.js",
+    "logs/a.txt",
+    "logs/old/b.txt",
+    "logs",
+    "docs/guide.md",
+    "docs/api/index.md",
+    "README.md",
+    "readme.md",
+    ".hidden",
+    ".config/app.json",
+    "src/.hidden/x.js",
+    "node_modules/x/index.js",
+    "a b.txt",
+    "file name with space.txt",
+    "tab\tname",
+    "\u00fcber.txt",
+    "\u00fc/x.txt",
+    "caf\u00e9/menu.txt",
+    "\u65e5\u672c/\u8a9e.txt",
+    "FOO",
+    "Foo.txt",
+    "NOTES.TXT",
+    "a#b.txt",
+    "!important.txt",
+    "#notes.txt",
+    "a*b.txt",
+    "a/x/foo",
+    "a/b/c/foo",
+    "1.txt",
+    "z/",
+    "foo/",
+    "bar/",
+    "bar/foo/",
+    "bar/baz/",
+    "a/",
+    "a/b/",
+    "a/b/c/",
+    "a/x/",
+    "a/b/foo/",
+    "src/",
+    "src/lib/",
+    "src/lib/deep/",
+    "src/.hidden/",
+    "build/",
+    "build/sub/",
+    "logs/",
+    "logs/old/",
+    "docs/",
+    "docs/api/",
+    "node_modules/",
+    "node_modules/x/",
+    ".config/",
+    "\u00fc/",
+    "caf\u00e9/",
+    "\u65e5\u672c/"
+  ],
+  "globPatterns": [
+    "*.js",
+    "src/*.js",
+    "**/*.js",
+    "src/**",
+    "src/**/util.js",
+    "**/lib/**",
+    "a?.js",
+    "[ab].txt",
+    "[a-c]*",
+    "[^a]*",
+    "[!a]*",
+    "**/foo",
+    "foo/**",
+    "**",
+    "*",
+    "a/**/b",
+    "a*b",
+    "?",
+    "??.txt",
+    ".*",
+    "*/foo",
+    "docs/**/*.md",
+    "?ber.txt",
+    "??ber.txt",
+    "[\u00fc]ber.txt",
+    "*.TXT",
+    "src/**/*",
+    "**/.hidden/**",
+    "src/l*",
+    "src/?ib/*.js",
+    "a/*/foo",
+    "*/*/*.js",
+    "[[:alpha:]]*",
+    "a/**/foo",
+    "**/*.md",
+    "*.l?g",
+    "doc?/**",
+    "[0-9].txt",
+    "*.[jt]s",
+    "**/deep/*"
+  ],
+  "globPaths": [
+    "a.txt",
+    "b.log",
+    "a.js",
+    "ab.js",
+    "b.js",
+    "foo",
+    "foo.txt",
+    "bar/foo",
+    "bar/baz.txt",
+    "bar/baz/foo",
+    "a/b/c.txt",
+    "a/b/foo",
+    "a/foo",
+    "a/x/foo",
+    "a/b/c/foo",
+    "src/main.js",
+    "src/main.ts",
+    "src/lib/util.js",
+    "src/lib/deep/x.js",
+    "src/.hidden/x.js",
+    "src/a",
+    "docs/guide.md",
+    "docs/api/index.md",
+    "docs/a/b/c.md",
+    "README.md",
+    ".hidden",
+    ".config/app.json",
+    ".eslintrc.js",
+    "node_modules/x/index.js",
+    "a b.txt",
+    "\u00fcber.txt",
+    "\u00fc/x.txt",
+    "caf\u00e9/menu.txt",
+    "ber.txt",
+    "A.txt",
+    "NOTES.TXT",
+    "a*b.txt",
+    "1.txt",
+    "x",
+    "ab",
+    "ab.log",
+    "a.log",
+    "a/b/b",
+    "a/q",
+    "a/x/b",
+    "a/b/x/b",
+    "logs/a.txt",
+    "a.l g",
+    "docs/x.md",
+    "doc1/x",
+    "doc2/y/z",
+    "build/sub/out.js",
+    "a_b.txt",
+    "z.ts",
+    "lib/z.js",
+    "src/lib/z.ts",
+    "\u65e5\u672c/\u8a9e.txt"
+  ]
+}

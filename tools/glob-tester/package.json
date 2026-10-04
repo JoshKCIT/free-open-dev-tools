@@ -1,0 +1,51 @@
+{
+  "name": "@fodt/glob-tester",
+  "version": "1.0.0",
+  "description": "Test glob patterns and .gitignore rules against a list of paths and see which rule decided each one.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "glob",
+    "gitignore",
+    "pattern",
+    "picomatch",
+    "ignore",
+    "pathspec",
+    "match",
+    "check-ignore"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "picomatch": "4.0.7",
+    "ignore": "7.0.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/glob-tester"
+  }
+}

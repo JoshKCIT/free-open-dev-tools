@@ -1,0 +1,244 @@
+import { it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { gitignoreRows, type GitignoreRow } from '../src/gitignore';
+import { meta as toolMeta } from '../src/index';
+import { gitCase, gitCorpus, gitDecision, pathIndex, type GitCase } from './corpus';
+
+// Expected values are git's own answers, recorded with `git check-ignore -v -n -z --no-index --stdin` (see
+// fixtures/README.md for the git version, the date and the two-repository method): whether each path is ignored and the
+// line git printed. The tool is the `ignore` package 7.0.8 with ignorecase false; the differences between the two are
+// listed below, each with the class that meta.json `limits` states, and a listed pair must really differ.
+
+let spies: { log: ReturnType<typeof makeSpy>; warn: ReturnType<typeof makeSpy>; error: ReturnType<typeof makeSpy> };
+
+function makeSpy(method: 'log' | 'warn' | 'error') {
+  return vi.spyOn(console, method).mockImplementation(() => undefined);
+}
+
+beforeEach(() => {
+  spies = { log: makeSpy('log'), warn: makeSpy('warn'), error: makeSpy('error') };
+});
+
+afterEach(() => {
+  expect(spies.log).not.toHaveBeenCalled();
+  expect(spies.warn).not.toHaveBeenCalled();
+  expect(spies.error).not.toHaveBeenCalled();
+  spies.log.mockRestore();
+  spies.warn.mockRestore();
+  spies.error.mockRestore();
+});
+
+const UMLAUT = String.fromCodePoint(0xfc);
+const NIHON = String.fromCodePoint(0x65e5, 0x672c);
+const GO = String.fromCodePoint(0x8a9e);
+
+/** `ignored`: the two disagree on whether the path is ignored. `line`: they agree, but the deciding line differs. */
+interface KnownDifference {
+  caseId: string;
+  path: string;
+  kind: 'ignored' | 'line';
+  diffClass: 'three-asterisks' | 'utf8-bytes' | 'lone-bang';
+}
+
+const KNOWN_DIFFERENCES: KnownDifference[] = [
+  // Git reads three or more asterisks before a slash like **/ ; the package does not match any of these paths.
+  ...['foo', 'bar/baz/foo', 'a/b/foo', 'a/x/foo', 'a/b/c/foo', 'foo/', 'a/b/foo/'].map((path): KnownDifference => ({
+    caseId: 'three-stars-slash',
+    path,
+    kind: 'ignored',
+    diffClass: 'three-asterisks',
+  })),
+  // Git compares UTF-8 bytes, so ? stands for one byte and a bracket holds one byte; the package compares characters.
+  { caseId: 'question', path: NIHON + '/' + GO + '.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
+  { caseId: 'question-before-umlaut', path: UMLAUT + 'ber.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
+  { caseId: 'two-questions-before-umlaut', path: UMLAUT + 'ber.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
+  { caseId: 'bracket-umlaut', path: UMLAUT + 'ber.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
+  // A line holding only ! matches nothing in git; the package reads it as a negation that matches every path, so it
+  // agrees that nothing is ignored but names line 1 as the rule that decided.
+  ...gitCorpus.paths.map((path): KnownDifference => ({
+    caseId: 'lone-bang',
+    path,
+    kind: 'line',
+    diffClass: 'lone-bang',
+  })),
+];
+
+/** What meta.json `limits` must say for each class of difference. */
+const CLASS_STATED_IN_LIMITS: Record<KnownDifference['diffClass'], RegExp> = {
+  'three-asterisks': /three or more asterisks/i,
+  'utf8-bytes': /UTF-8/,
+  'lone-bang': /only a !/i,
+};
+
+function rowsFor(c: GitCase): GitignoreRow[] {
+  return gitignoreRows(c.text, gitCorpus.paths.join('\n'));
+}
+
+function lineOf(row: GitignoreRow): number {
+  return row.decidedBy.kind === 'rule' || row.decidedBy.kind === 'parent' ? row.decidedBy.line : 0;
+}
+
+it('.gitignore mode agrees with git check-ignore on the recorded corpus except the listed differences, each named in limits', () => {
+  expect(gitCorpus.gitVersion).toMatch(/^git version \d+\.\d+/);
+  expect(gitCorpus.config['core.ignorecase']).toBe('false');
+
+  const found: string[] = [];
+  let pairs = 0;
+  for (const c of gitCorpus.cases) {
+    const rows = rowsFor(c);
+    expect(rows).toHaveLength(gitCorpus.paths.length);
+    rows.forEach((row, index) => {
+      pairs += 1;
+      const path = gitCorpus.paths[index] as string;
+      expect(row.path + (row.isDirectory ? '/' : '')).toBe(path);
+      const git = gitDecision(c, index);
+      if (row.ignored !== git.ignored) found.push(`${c.id} | ${path} | ignored`);
+      else if (lineOf(row) !== git.line) found.push(`${c.id} | ${path} | line`);
+    });
+  }
+
+  const listed = KNOWN_DIFFERENCES.map((d) => `${d.caseId} | ${d.path} | ${d.kind}`);
+  // Nothing outside the list differs, and nothing in the list agrees (no stale entries).
+  expect(found.slice().sort()).toEqual(listed.slice().sort());
+  expect(pairs).toBe(gitCorpus.cases.length * gitCorpus.paths.length);
+  expect(gitCorpus.cases.length).toBeGreaterThanOrEqual(60);
+  expect(gitCorpus.paths.length).toBeGreaterThanOrEqual(60);
+
+  const limits = toolMeta.limits.join('\n');
+  for (const diffClass of new Set(KNOWN_DIFFERENCES.map((d) => d.diffClass))) {
+    expect(limits, `limits must state the class ${diffClass}`).toMatch(CLASS_STATED_IN_LIMITS[diffClass]);
+  }
+});
+
+it('the deciding rule is the line number of the last matching pattern, a negation included, or the excluded parent directory', () => {
+  // Git printed .gitignore:1:*.log and .gitignore:2:!keep.log for these paths.
+  const reinclude = gitCase('negate-after');
+  expect(reinclude.printed).toEqual({ '1': '*.log', '2': '!keep.log' });
+  const rows = rowsFor(reinclude);
+  const debug = rows[pathIndex('debug.log')] as GitignoreRow;
+  expect(debug.ignored).toBe(true);
+  expect(debug.decidedBy).toEqual({ kind: 'rule', line: 1, pattern: '*.log', negated: false });
+  const keep = rows[pathIndex('keep.log')] as GitignoreRow;
+  expect(keep.ignored).toBe(false);
+  expect(keep.decidedBy).toEqual({ kind: 'rule', line: 2, pattern: '!keep.log', negated: true });
+
+  // A file under an excluded directory is decided by the directory's rule, and git cannot re-include it (line 1).
+  const parent = gitCase('parent-excluded-cannot-reinclude');
+  expect(parent.printed['1']).toBe('build/');
+  const parentRows = rowsFor(parent);
+  const keepTxt = parentRows[pathIndex('build/keep.txt')] as GitignoreRow;
+  expect(gitDecision(parent, pathIndex('build/keep.txt'))).toMatchObject({ ignored: true, line: 1 });
+  expect(keepTxt.ignored).toBe(true);
+  expect(keepTxt.decidedBy).toEqual({ kind: 'parent', directory: 'build/', line: 1, pattern: 'build/' });
+  const deeper = parentRows[pathIndex('build/sub/out.js')] as GitignoreRow;
+  expect(deeper.decidedBy).toEqual({ kind: 'parent', directory: 'build/', line: 1, pattern: 'build/' });
+  const dir = parentRows[pathIndex('build/')] as GitignoreRow;
+  expect(dir.isDirectory).toBe(true);
+  expect(dir.decidedBy).toEqual({ kind: 'rule', line: 1, pattern: 'build/', negated: false });
+
+  // When a rule excludes the contents and a negation names one file, the file keeps its own rule (git: line 2).
+  const contents = gitCase('contents-excluded-then-reinclude');
+  const contentRows = rowsFor(contents);
+  const reincluded = contentRows[pathIndex('build/out.js')] as GitignoreRow;
+  expect(gitDecision(contents, pathIndex('build/out.js'))).toMatchObject({
+    ignored: false,
+    line: 2,
+    pattern: '!build/out.js',
+  });
+  expect(reincluded.ignored).toBe(false);
+  expect(reincluded.decidedBy).toEqual({ kind: 'rule', line: 2, pattern: '!build/out.js', negated: true });
+
+  // No rule matched: git printed nothing for the path.
+  const plain = gitCase('plain-name');
+  const plainRow = rowsFor(plain)[pathIndex('a.txt')] as GitignoreRow;
+  expect(gitDecision(plain, pathIndex('a.txt')).matched).toBe(false);
+  expect(plainRow.ignored).toBe(false);
+  expect(plainRow.decidedBy).toEqual({ kind: 'none' });
+});
+
+it('blank lines, comments, a byte order mark and CRLF line ends are read as git reads them', () => {
+  // The recorded text of each case holds the real characters (CR before LF, U+FEFF first).
+  expect(gitCase('crlf').text).toContain('\r\n');
+  expect(gitCase('bom').text.charCodeAt(0)).toBe(0xfeff);
+
+  const crlf = gitCase('crlf');
+  const crlfRows = rowsFor(crlf);
+  const crlfDebug = crlfRows[pathIndex('debug.log')] as GitignoreRow;
+  // Git printed line 2 and the pattern without its CR.
+  expect(gitDecision(crlf, pathIndex('debug.log'))).toMatchObject({ ignored: true, line: 2, pattern: '*.log' });
+  expect(crlfDebug.decidedBy).toEqual({ kind: 'rule', line: 2, pattern: '*.log', negated: false });
+
+  const bom = gitCase('bom');
+  const bomDebug = rowsFor(bom)[pathIndex('debug.log')] as GitignoreRow;
+  expect(gitDecision(bom, pathIndex('debug.log'))).toMatchObject({ ignored: true, line: 1, pattern: '*.log' });
+  expect(bomDebug.decidedBy).toEqual({ kind: 'rule', line: 1, pattern: '*.log', negated: false });
+
+  // Blank lines and a comment before the rule still count as lines: git printed line 4.
+  const blanks = gitCase('blank-and-comments');
+  const blankDebug = rowsFor(blanks)[pathIndex('debug.log')] as GitignoreRow;
+  expect(gitDecision(blanks, pathIndex('debug.log'))).toMatchObject({ ignored: true, line: 4, pattern: '*.log' });
+  expect(blankDebug.decidedBy).toEqual({ kind: 'rule', line: 4, pattern: '*.log', negated: false });
+
+  // A comment, an empty text and a text of only a comment match nothing, as in git.
+  for (const id of ['only-comment', 'empty-text']) {
+    const c = gitCase(id);
+    for (const row of rowsFor(c)) {
+      expect(row.ignored).toBe(false);
+      expect(row.decidedBy).toEqual({ kind: 'none' });
+    }
+    expect(c.r.split(',').every((v) => v === '0')).toBe(true);
+  }
+
+  // An escaped hash names a file that starts with a hash, and an escaped bang a file that starts with a bang.
+  const hash = gitCase('escaped-hash');
+  expect(gitDecision(hash, pathIndex('#notes.txt'))).toMatchObject({ ignored: true, line: 1 });
+  expect((rowsFor(hash)[pathIndex('#notes.txt')] as GitignoreRow).ignored).toBe(true);
+  const bang = gitCase('escaped-bang');
+  expect(gitDecision(bang, pathIndex('!important.txt'))).toMatchObject({ ignored: true, line: 1 });
+  expect((rowsFor(bang)[pathIndex('!important.txt')] as GitignoreRow).ignored).toBe(true);
+});
+
+it('a later line that matches the same path decides it and logs/ matches only the directory', () => {
+  // Git names the last matching line: line 2 for debug.log, and line 3 when the rule is written again after a negation.
+  const twice = gitCase('two-rules-same-path');
+  const twiceRows = rowsFor(twice);
+  expect(gitDecision(twice, pathIndex('debug.log'))).toMatchObject({ ignored: true, line: 2, pattern: 'debug.log' });
+  expect((twiceRows[pathIndex('debug.log')] as GitignoreRow).decidedBy).toEqual({
+    kind: 'rule',
+    line: 2,
+    pattern: 'debug.log',
+    negated: false,
+  });
+  expect((twiceRows[pathIndex('keep.log')] as GitignoreRow).decidedBy).toEqual({
+    kind: 'rule',
+    line: 1,
+    pattern: '*.log',
+    negated: false,
+  });
+
+  const relist = gitCase('negate-then-relist');
+  expect(gitDecision(relist, pathIndex('keep.log'))).toMatchObject({ ignored: true, line: 3, pattern: 'keep.log' });
+  expect((rowsFor(relist)[pathIndex('keep.log')] as GitignoreRow).decidedBy).toEqual({
+    kind: 'rule',
+    line: 3,
+    pattern: 'keep.log',
+    negated: false,
+  });
+
+  // logs/ is the directory logs and what is under it, never a file named logs.
+  const logs = gitCase('dir-pattern-vs-file-named-like-dir');
+  expect(logs.text).toBe('logs/');
+  const logRows = rowsFor(logs);
+  const directory = logRows[pathIndex('logs/')] as GitignoreRow;
+  const inside = logRows[pathIndex('logs/a.txt')] as GitignoreRow;
+  const file = logRows[pathIndex('logs')] as GitignoreRow;
+  expect(gitDecision(logs, pathIndex('logs/')).ignored).toBe(true);
+  expect(gitDecision(logs, pathIndex('logs/a.txt')).ignored).toBe(true);
+  expect(gitDecision(logs, pathIndex('logs')).matched).toBe(false);
+  expect(directory.ignored).toBe(true);
+  expect(directory.isDirectory).toBe(true);
+  expect(inside.ignored).toBe(true);
+  expect(inside.decidedBy).toEqual({ kind: 'parent', directory: 'logs/', line: 1, pattern: 'logs/' });
+  expect(file.isDirectory).toBe(false);
+  expect(file.ignored).toBe(false);
+  expect(file.decidedBy).toEqual({ kind: 'none' });
+});
