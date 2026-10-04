@@ -43,8 +43,12 @@ export const PALETTES: ReadonlyMap<string, readonly string[]> = new Map<string, 
 
 const DEFAULT_COLOURS = PALETTES.get('default')!;
 
-const WIDTH = 800;
-const HEIGHT = 480;
+/** The width of every chart, in pixels. */
+export const CHART_WIDTH = 800;
+/** The height of every chart, in pixels. */
+export const CHART_HEIGHT = 480;
+const WIDTH = CHART_WIDTH;
+const HEIGHT = CHART_HEIGHT;
 const FONT = "system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const INK = '#111827';
 const SOFT_INK = '#374151';

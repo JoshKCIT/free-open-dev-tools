@@ -1,0 +1,9 @@
+{
+  "id": "chart-maker",
+  "label": "WAI-ARIA Graphics Module: a bar chart is a graphics-document whose bars are graphics-symbols",
+  "steps": [
+    { "action": "fill", "field": "data", "value": "Fruit,Count\nApples,3\nPears,5" },
+    { "action": "radio", "field": "type", "value": "bar" }
+  ],
+  "expect": ["graphics-document", "Pears: 5"]
+}

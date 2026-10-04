@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "type", "value": "bar" },
+    "values": { "data": "Month,Count\nJan,3\nFODT-PRIVACY-CHART,5", "title": "FODT-PRIVACY-TITLE" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "format", "value": "png" },
+    "values": { "data": "Share,Value\nA,1\nB,3" },
+    "attachesFile": false
+  }
+]
