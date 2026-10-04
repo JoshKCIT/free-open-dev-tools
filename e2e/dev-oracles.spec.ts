@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
+import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
+import type { AddressInfo } from 'node:net';
 
 /**
  * Behavioural proof, for the developer tools of phase 16, that the page gives the same answers as an independent
@@ -201,4 +203,276 @@ test('semver-checker: a range and an include pre-releases tick left in check mod
   const afterLeftovers = await sortedOutput(true);
   expect(afterLeftovers).toBe(fresh);
   expect(fresh).not.toContain('not a valid range');
+});
+
+/**
+ * The ten recorded docker run commands of the docker run to Compose Converter and the YAML each one becomes. They are
+ * the same literals tools/docker-run-to-compose/test/convert.test.ts asserts, and docker compose config accepted every
+ * one of them offline (tools/docker-run-to-compose/test/fixtures/acceptance.json). The oracle here is that record: the
+ * page, running in each browser, must write exactly this text.
+ */
+const DOCKER_RECORDED: { command: string; yaml: string }[] = [
+  {
+    command: 'docker run --rm -p 8080:80 nginx',
+    yaml: ['services:', '  nginx:', '    image: "nginx"', '    ports:', '      - "8080:80"'].join('\n') + '\n',
+  },
+  {
+    command:
+      'docker run -d --name web -p 8080:80 -v $(pwd):/usr/share/nginx/html:ro --restart unless-stopped nginx:1.27',
+    yaml:
+      [
+        'services:',
+        '  web:',
+        '    image: "nginx:1.27"',
+        '    container_name: "web"',
+        '    ports:',
+        '      - "8080:80"',
+        '    volumes:',
+        '      - ".:/usr/share/nginx/html:ro"',
+        '    restart: "unless-stopped"',
+      ].join('\n') + '\n',
+  },
+  {
+    command:
+      'docker run -d --name db -e POSTGRES_PASSWORD=example -e POSTGRES_DB=app -v pgdata:/var/lib/postgresql/data -p 127.0.0.1:5432:5432 postgres:16',
+    yaml:
+      [
+        'services:',
+        '  db:',
+        '    image: "postgres:16"',
+        '    container_name: "db"',
+        '    environment:',
+        '      - "POSTGRES_PASSWORD=example"',
+        '      - "POSTGRES_DB=app"',
+        '    volumes:',
+        '      - "pgdata:/var/lib/postgresql/data"',
+        '    ports:',
+        '      - "127.0.0.1:5432:5432"',
+        'volumes:',
+        '  pgdata: {}',
+      ].join('\n') + '\n',
+  },
+  {
+    command: 'docker run --network appnet --network-alias api -e API_KEY=$API_KEY -p 3000:3000 ghcr.io/example/api:2.1',
+    yaml:
+      [
+        'services:',
+        '  api:',
+        '    image: "ghcr.io/example/api:2.1"',
+        '    environment:',
+        '      - "API_KEY=$API_KEY"',
+        '    ports:',
+        '      - "3000:3000"',
+        '    networks:',
+        '      appnet:',
+        '        aliases:',
+        '          - "api"',
+        'networks:',
+        '  appnet:',
+        '    external: true',
+      ].join('\n') + '\n',
+  },
+  {
+    command: 'docker run -m 512m --cpus 1.5 --pids-limit 100 --memory-swap 1g --name worker busybox sleep 3600',
+    yaml:
+      [
+        'services:',
+        '  worker:',
+        '    image: "busybox"',
+        '    mem_limit: "512m"',
+        '    cpus: 1.5',
+        '    pids_limit: 100',
+        '    memswap_limit: "1g"',
+        '    container_name: "worker"',
+        '    command:',
+        '      - "sleep"',
+        '      - "3600"',
+      ].join('\n') + '\n',
+  },
+  {
+    command:
+      "docker run --name web --health-cmd 'curl -f http://localhost/ || exit 1' --health-interval 30s --health-timeout 5s --health-retries 3 nginx",
+    yaml:
+      [
+        'services:',
+        '  web:',
+        '    image: "nginx"',
+        '    container_name: "web"',
+        '    healthcheck:',
+        '      test:',
+        '        - "CMD-SHELL"',
+        '        - "curl -f http://localhost/ || exit 1"',
+        '      interval: "30s"',
+        '      timeout: "5s"',
+        '      retries: 3',
+      ].join('\n') + '\n',
+  },
+  {
+    command:
+      'docker run -d \\\n  --name cache \\\n  --restart=always \\\n  -p 6379:6379 \\\n  -v redis-data:/data \\\n  redis:7 redis-server --appendonly yes',
+    yaml:
+      [
+        'services:',
+        '  cache:',
+        '    image: "redis:7"',
+        '    container_name: "cache"',
+        '    restart: "always"',
+        '    ports:',
+        '      - "6379:6379"',
+        '    volumes:',
+        '      - "redis-data:/data"',
+        '    command:',
+        '      - "redis-server"',
+        '      - "--appendonly"',
+        '      - "yes"',
+        'volumes:',
+        '  redis-data: {}',
+      ].join('\n') + '\n',
+  },
+  {
+    command:
+      'docker run --ulimit nofile=1024:2048 --ulimit nproc=65535 --sysctl net.core.somaxconn=1024 --storage-opt size=1G --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 alpine',
+    yaml:
+      [
+        'services:',
+        '  alpine:',
+        '    image: "alpine"',
+        '    ulimits:',
+        '      nofile:',
+        '        soft: 1024',
+        '        hard: 2048',
+        '      nproc: 65535',
+        '    sysctls:',
+        '      - "net.core.somaxconn=1024"',
+        '    storage_opt:',
+        '      size: "1G"',
+        '    logging:',
+        '      driver: "json-file"',
+        '      options:',
+        '        max-size: "10m"',
+        '        max-file: "3"',
+      ].join('\n') + '\n',
+  },
+  {
+    command:
+      'docker run --mount type=volume,source=data,target=/data,volume-nocopy --mount type=bind,source=$(pwd)/conf,target=/etc/app,readonly --tmpfs /run alpine',
+    yaml:
+      [
+        'services:',
+        '  alpine:',
+        '    image: "alpine"',
+        '    volumes:',
+        '      - type: "volume"',
+        '        source: "data"',
+        '        target: "/data"',
+        '        volume:',
+        '          nocopy: true',
+        '      - type: "bind"',
+        '        source: "./conf"',
+        '        target: "/etc/app"',
+        '        read_only: true',
+        '    tmpfs:',
+        '      - "/run"',
+        'volumes:',
+        '  data: {}',
+      ].join('\n') + '\n',
+  },
+  {
+    command:
+      "docker run -it --entrypoint /bin/sh --workdir /work -u 1000:1000 -e MODE=production -e 'GREETING=hello world' alpine -c 'echo $HOME'",
+    yaml:
+      [
+        'services:',
+        '  alpine:',
+        '    image: "alpine"',
+        '    stdin_open: true',
+        '    tty: true',
+        '    working_dir: "/work"',
+        '    user: "1000:1000"',
+        '    environment:',
+        '      - "MODE=production"',
+        '      - "GREETING=hello world"',
+        '    entrypoint:',
+        '      - "/bin/sh"',
+        '    command:',
+        '      - "-c"',
+        '      - "echo $$HOME"',
+      ].join('\n') + '\n',
+  },
+];
+
+/** The YAML the page shows: the text of the first code block of the output, exactly as written. */
+async function readYaml(page: Page): Promise<string> {
+  return outputArea(page)
+    .locator('pre.output')
+    .first()
+    .evaluate((element) => element.textContent ?? '');
+}
+
+test('docker-run-to-compose: the page output for the recorded commands equals the unit-tested YAML in every browser', async ({
+  page,
+}) => {
+  expect(DOCKER_RECORDED).toHaveLength(10);
+  await openTool(page, 'docker-run-to-compose');
+
+  for (const recorded of DOCKER_RECORDED) {
+    await fillAndHold(page, 'command', recorded.command);
+    // The page answers a moment after the last change, so the YAML is read again until it is the recorded one.
+    await expect(async () => {
+      expect(await readYaml(page), recorded.command).toBe(recorded.yaml);
+    }).toPass({ timeout: 10_000 });
+    await expect(outputArea(page).locator('.note-success')).toHaveText(
+      'The service is valid against the Compose Specification schema.',
+    );
+  }
+});
+
+test('docker-run-to-compose: an image, an address or a command named in the paste is never requested or run', async ({
+  page,
+}) => {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(request.url ?? '');
+    response.statusCode = 204;
+    response.end();
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const named = `127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    const requested: string[] = [];
+    page.on('request', (request) => requested.push(request.url()));
+    await openTool(page, 'docker-run-to-compose');
+
+    // Everything a visitor can make the page name: an image on a registry that is this server, a variable value, an env
+    // file, a label file, a mount source and the words of the command itself.
+    const command = [
+      'docker run -d',
+      `-e CALLBACK=http://${named}/env`,
+      `--env-file http://${named}/envfile`,
+      `--label-file http://${named}/labels`,
+      `-v http://${named}/volume:/data`,
+      `${named}/team/app:1`,
+      `curl http://${named}/command`,
+    ].join(' ');
+    await fillAndHold(page, 'command', command);
+    await expect(async () => {
+      expect(await readYaml(page)).toContain(`image: "${named}/team/app:1"`);
+    }).toPass({ timeout: 10_000 });
+
+    // A substitution that would fetch the same address is refused, never run.
+    await fillAndHold(page, 'command', `docker run -e A=$(curl http://${named}/substitution) nginx`);
+    await expect(outputArea(page)).toContainText('A $( starts a command substitution, which is never run here.');
+    await fillAndHold(page, 'command', `docker run nginx | curl http://${named}/pipe`);
+    await expect(outputArea(page)).toContainText('is a shell operator, so the command was refused.');
+
+    // Give any request that was going to happen time to arrive, then count.
+    await page.waitForTimeout(1_500);
+    expect(seen, 'the recording server saw no request').toEqual([]);
+    expect(
+      requested.filter((url) => url.includes(named)),
+      'the page requested nothing the paste named',
+    ).toEqual([]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 });
