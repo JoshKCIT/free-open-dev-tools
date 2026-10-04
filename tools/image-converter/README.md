@@ -29,9 +29,11 @@ Decodes a picked PNG, JPEG, GIF, WebP or BMP image (or, when you allow it, an SV
 - A transparent source written to JPEG is composited on the chosen background colour, since JPEG has no transparency.
 - AVIF, HEIC and TIFF are not accepted as input.
 - Resampling quality is whatever this browser's own canvas scaling provides; it is not a dedicated resampling algorithm.
-- Crop, rotate and flip apply in that order before resizing; a crop is measured in pixels of the upright image.
+- Crop, rotate and flip apply in that order before resizing; a crop is measured in pixels of the upright image. The cropped, rotated or flipped picture is drawn once at its full size before it is resized, so it is refused when it is over 40,000,000 pixels, however small the resize.
 - Rotation is by quarter turns only (0, 90, 180 or 270 degrees).
-- SVG input is read only when Allow SVG input is ticked; an SVG that refers to anything outside itself (scripts, other files or addresses, embedded pages) is refused, and one declaring more than 40,000,000 pixels is refused.
+- SVG input is read only when Allow SVG input is ticked; an SVG that refers to anything outside itself (scripts, other files or addresses, embedded pages) is refused.
+- An SVG is refused when it declares more than 16,777,216 pixels, or when it would be drawn at more than that (its output size, when it is not cropped, rotated or flipped), when it holds more than 1,000 use elements, and when a use element reuses an element that holds another use element. Filters are allowed.
+- An SVG is drawn on the page itself, not in the background, because a background task cannot draw one; drawing an SVG cannot be cancelled once it starts, and a heavy filter in an allowed SVG can make the page wait.
 - An SVG is drawn by this browser at the output size, so text in it uses this browser's fonts.
 - An SVG file over 10 MiB is refused.
 
@@ -39,7 +41,7 @@ Decodes a picked PNG, JPEG, GIF, WebP or BMP image (or, when you allow it, an SV
 
 - The quality field is a 1 to 100 number in the page, converted to the 0 to 1 fraction the HTML Standard's own canvas encode calls take; an out-of-range value is clamped rather than passed straight through to let the browser fall back to its own default, so the visitor's request stays as close to what they asked for as the standard allows.
 - Whether a source is genuinely animated (rather than simply a GIF or WebP file that happens to hold one frame) is not checked before warning that only the first frame is kept, since detecting that reliably would need decoding the whole file rather than reading its header.
-- An SVG with no width, height or viewBox is 300 by 150 pixels, as browsers draw it; a width or height in percent, em or ex is treated as missing and the viewBox size is used.
+- An SVG with no width, height or viewBox is 300 by 150 pixels, as browsers draw it; a width or height in percent is treated as missing and the viewBox size is used. A width or height in em is read at 16 pixels to the em and one in ex at 8 pixels to the ex (the browser's initial font size), whatever font size the SVG itself sets.
 - An SVG that is cropped, rotated or flipped is drawn at its own declared size first, so the crop is exact, and then resized; an SVG with none of those is drawn directly at the output size.
 - The SVG check refuses any attribute value or style text that hides an address behind a character reference or a backslash, since a browser would decode it before using it.
 
@@ -91,7 +93,7 @@ const edit = planEdits(bitmap.width, bitmap.height, { crop: { x: 2, y: 2, width:
 if (looksLikeSvg(bytes)) { const text = new TextDecoder().decode(bytes); scanSvg(text); const size = svgSize(text); }
 ```
 
-This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Deciding the output pixel size, checking the file header and clamping options all happen here; decoding, drawing and encoding the actual pixels happen only in the worker this package never imports. The crop, rotate and flip plan (planEdits) and the SVG checks (scanSvg, svgSize, looksLikeSvg) follow the same rule: text and numbers in, plans and refusals out, no drawing.
+This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Deciding the output pixel size, checking the file header and clamping options all happen here; decoding, drawing and encoding the actual pixels happen only in the worker this package never imports. The crop, rotate and flip plan (planEdits) and the SVG checks (scanSvg, svgSize, looksLikeSvg) follow the same rule: text and numbers in, plans and refusals out, no drawing. `checkConverterFile(header, byteLength)` refuses a file over 100 MB from its reported size before anything is read, and `replanForDecoded` makes the plan again against the picture as it was really decoded (replacing the size warnings rather than adding to them).
 
 ## Dependencies
 

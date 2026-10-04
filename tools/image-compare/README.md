@@ -27,6 +27,7 @@ Compares two pictures pixel by pixel in a background worker inside your browser,
 - Padding may not make a picture of more than 16,000,000 pixels either: a very wide thin picture against a very tall thin one is refused, with the size padding would need named.
 - The difference image is previewed on the page up to 2 MB; a larger one is offered only as the diff.png download.
 - An animated GIF or WebP is compared as the browser draws it, normally its first frame; nothing is compared across frames.
+- Browser privacy protections against fingerprinting can change the pixels a page reads back from a canvas, so a result can differ slightly from the picture's own pixels.
 
 ## Ambiguous cases, and what this does about them
 

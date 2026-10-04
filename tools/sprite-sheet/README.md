@@ -27,6 +27,7 @@ Packs several pictures into one sprite sheet PNG on a canvas inside your browser
 - An animated GIF or WebP is packed as the browser draws it, normally its first frame.
 - The sheet preview on the page is shown up to 2 MB; a larger sheet is offered only as the sprite.png download.
 - Packing can be cancelled at any time; a cancelled run offers no sheet.
+- Browser privacy protections against fingerprinting can change the pixels a page reads back from a canvas, so a result can differ slightly from the picture's own pixels.
 
 ## Ambiguous cases, and what this does about them
 

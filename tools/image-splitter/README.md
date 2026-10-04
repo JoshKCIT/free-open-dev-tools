@@ -28,6 +28,7 @@ Cuts one picture into a grid of tiles inside your browser, either by a number of
 - The ZIP holds at most 1 GB of tiles; it does not compress them again, because PNG and JPEG are already compressed.
 - Pictures are cut as this browser decodes them, with photo orientation applied; an animated GIF or WebP is cut as the browser draws it, normally its first frame.
 - Tile names are made from the row and column numbers only, never from the picked file's name.
+- Browser privacy protections against fingerprinting can change the pixels a page reads back from a canvas, so a result can differ slightly from the picture's own pixels.
 
 ## Ambiguous cases, and what this does about them
 
@@ -73,7 +74,7 @@ const zip = zipTiles(tiles.map((t) => ({ name: t.name, bytes: new Uint8Array([1,
 console.log(zip.length);
 ```
 
-`planTiles(width, height, mode, format)` returns the tile rectangles in row-major order, where mode is `{ kind: 'grid', rows, columns }` or `{ kind: 'size', tileWidth, tileHeight }` and format is 'png' or 'jpeg'; it refuses a size that is not a whole positive number, rows or columns over 100 or more than the picture has pixels, a tile size over 40,000, and more than 400 tiles, throwing `ImageSplitterError` with a plain sentence. `tileName(row, column, rows, columns, format)` gives the zero-padded name. `zipTiles(entries)` writes a ZIP that stores each entry without compression, with a fixed modification time so the same tiles always give the same bytes; it refuses names that are not plain generated file names. `plainPng(bytes)` removes colour profile tags from a PNG. `checkSplitFile(header, byteLength)` refuses an over-size, unsupported or over-large picture before any decoding.
+`planTiles(width, height, mode, format)` returns the tile rectangles in row-major order, where mode is `{ kind: 'grid', rows, columns }` or `{ kind: 'size', tileWidth, tileHeight }` and format is 'png' or 'jpeg'; it refuses a size that is not a whole positive number, rows or columns over 100 or more than the picture has pixels, a tile size over 40,000, and more than 400 tiles, throwing `ImageSplitterError` with a plain sentence. `tileName(row, column, rows, columns, format)` gives the zero-padded name. `zipTiles(entries)` writes a ZIP that stores each entry without compression, with a fixed modification time so the same tiles always give the same bytes; it refuses names that are not plain generated file names. `plainPng(bytes)` removes colour profile tags from a PNG. `checkSplitFile(header, byteLength)` refuses an over-size, unsupported or over-large picture before any decoding. `checkTileCountBeforeDecode(width, height, mode)` is the check for a JPEG, whose header size may be the sideways size of the picture: it refuses only what no way up could cut.
 
 ## Dependencies
 
