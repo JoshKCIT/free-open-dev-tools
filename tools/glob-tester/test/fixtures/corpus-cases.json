@@ -416,6 +416,38 @@
     {
       "id": "spaces-only-line",
       "text": "*.log\n   \n!keep.log"
+    },
+    {
+      "id": "lone-bang-after-rule",
+      "text": "*.log\n!"
+    },
+    {
+      "id": "lone-bang-spaces",
+      "text": "! "
+    },
+    {
+      "id": "lone-bang-spaces-after-rule",
+      "text": "*.log\n!  "
+    },
+    {
+      "id": "lone-bang-between-rules",
+      "text": "*.log\n!\n!keep.log"
+    },
+    {
+      "id": "lone-bang-before-rule",
+      "text": "!\n*.log"
+    },
+    {
+      "id": "lone-bang-after-dir-rule",
+      "text": "build/\n!"
+    },
+    {
+      "id": "lone-bang-crlf",
+      "text": "*.log\r\n!\r\n!keep.log\r\n"
+    },
+    {
+      "id": "bang-and-space-name",
+      "text": "! a"
     }
   ],
   "gitignorePaths": [

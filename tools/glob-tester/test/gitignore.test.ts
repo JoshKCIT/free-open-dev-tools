@@ -36,7 +36,7 @@ interface KnownDifference {
   caseId: string;
   path: string;
   kind: 'ignored' | 'line';
-  diffClass: 'three-asterisks' | 'utf8-bytes' | 'lone-bang';
+  diffClass: 'three-asterisks' | 'utf8-bytes';
 }
 
 const KNOWN_DIFFERENCES: KnownDifference[] = [
@@ -52,21 +52,12 @@ const KNOWN_DIFFERENCES: KnownDifference[] = [
   { caseId: 'question-before-umlaut', path: UMLAUT + 'ber.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
   { caseId: 'two-questions-before-umlaut', path: UMLAUT + 'ber.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
   { caseId: 'bracket-umlaut', path: UMLAUT + 'ber.txt', kind: 'ignored', diffClass: 'utf8-bytes' },
-  // A line holding only ! matches nothing in git; the package reads it as a negation that matches every path, so it
-  // agrees that nothing is ignored but names line 1 as the rule that decided.
-  ...gitCorpus.paths.map((path): KnownDifference => ({
-    caseId: 'lone-bang',
-    path,
-    kind: 'line',
-    diffClass: 'lone-bang',
-  })),
 ];
 
 /** What meta.json `limits` must say for each class of difference. */
 const CLASS_STATED_IN_LIMITS: Record<KnownDifference['diffClass'], RegExp> = {
   'three-asterisks': /three or more asterisks/i,
   'utf8-bytes': /UTF-8/,
-  'lone-bang': /only a !/i,
 };
 
 function rowsFor(c: GitCase): GitignoreRow[] {
@@ -364,4 +355,39 @@ it('unquoted trailing spaces are dropped before a rule is read and a quoted spac
     decidedBy: { kind: 'parent', directory: 'src/build/', line: 2, pattern: 'build/   ' },
   });
   expect(second[1]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 2, pattern: 'build/   ' } });
+});
+
+it('a line holding only a ! matches nothing and still counts in the line numbers, as in git', () => {
+  // The review's case: *.log then a lone !. Git ignores a.log by line 1; the ! is not a negation of every path.
+  const after = gitCase('lone-bang-after-rule');
+  expect(after.text).toBe('*.log\n!');
+  expect(gitDecision(after, pathIndex('debug.log'))).toMatchObject({ ignored: true, line: 1, pattern: '*.log' });
+  const row = rowsFor(after)[pathIndex('debug.log')] as GitignoreRow;
+  expect(row.ignored).toBe(true);
+  expect(row.decidedBy).toEqual({ kind: 'rule', line: 1, pattern: '*.log', negated: false });
+  // With trailing spaces the line is still only a !, and a rule after it is still named by its pasted line number.
+  const between = gitCase('lone-bang-between-rules');
+  expect(gitDecision(between, pathIndex('keep.log'))).toMatchObject({ ignored: false, line: 3, pattern: '!keep.log' });
+  expect((rowsFor(between)[pathIndex('keep.log')] as GitignoreRow).decidedBy).toEqual({
+    kind: 'rule',
+    line: 3,
+    pattern: '!keep.log',
+    negated: true,
+  });
+  const spaces = gitCase('lone-bang-spaces-after-rule');
+  expect((rowsFor(spaces)[pathIndex('debug.log')] as GitignoreRow).decidedBy).toEqual({
+    kind: 'rule',
+    line: 1,
+    pattern: '*.log',
+    negated: false,
+  });
+  // Nothing but a lone ! matches no path at all.
+  for (const id of ['lone-bang', 'lone-bang-spaces']) {
+    for (const r of rowsFor(gitCase(id))) {
+      expect(r.ignored).toBe(false);
+      expect(r.decidedBy).toEqual({ kind: 'none' });
+    }
+  }
+  // The limits no longer say the answers differ.
+  expect(toolMeta.limits.join('\n')).not.toMatch(/only a !/i);
 });

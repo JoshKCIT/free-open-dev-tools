@@ -82,6 +82,9 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
   forEachLine(text, (lineText, line) => {
     if (isBlank(lineText)) return;
     const pattern = withoutTrailingSpaces(lineText);
+    // A line holding only a ! names no pattern, and git matches nothing with it. The line still counts in the line
+    // numbers (they come from the pasted text), but it is given to no engine, as a comment is given to none.
+    if (pattern === '!') return;
     rules.push({ line, text: lineText, pattern });
     full.add({ pattern, mark: String(line) });
   });
