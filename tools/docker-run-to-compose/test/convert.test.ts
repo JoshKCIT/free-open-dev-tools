@@ -6,7 +6,9 @@ import {
   DOCKER_RUN_OPTIONS,
   DockerRunError,
   convertDockerRun,
+  hasInterpolation,
   optionByName,
+  readCsvRecord,
   toComposeYaml,
   validateComposeDocument,
 } from '../src/index';
@@ -334,6 +336,8 @@ it('named volumes and user networks are declared at the top level and storage op
   // A Windows drive letter is a path, not a volume name.
   const drive = convertDockerRun(`docker run -v C:${BS}${BS}data:/data -v C:/data:/d2 nginx`);
   expect(Object.hasOwn(drive.document, 'volumes')).toBe(false);
+  // A one-letter source is not a volume name (docker's names have at least two characters).
+  expect(Object.hasOwn(convertDockerRun('docker run -v x:data nginx').document, 'volumes')).toBe(false);
   // A source with a variable cannot be told from a name, so it is not declared.
   expect(Object.hasOwn(convertDockerRun(`docker run -v ${D}DATA:/data nginx`).document, 'volumes')).toBe(false);
 
@@ -534,6 +538,10 @@ it('network options in the long form and the gpu, ulimit and healthcheck forms a
   expect(long.validation.valid).toBe(true);
 
   expect(at(convertDockerRun('docker run --gpus all nginx').document, 'services.nginx.gpus')).toBe('all');
+  // With no count and no device, docker uses one GPU, so the count is written.
+  expect(at(convertDockerRun('docker run --gpus capabilities=utility nginx').document, 'services.nginx.gpus')).toEqual([
+    { capabilities: ['utility', 'gpu'], count: 1 },
+  ]);
   expect(at(convertDockerRun('docker run --gpus 2 nginx').document, 'services.nginx.gpus')).toEqual([
     { capabilities: ['gpu'], count: 2 },
   ]);
@@ -813,4 +821,34 @@ it('the schema check lists where a document is wrong and never repeats a value',
     false,
   );
   expect(validateComposeDocument({ services: { web: { image: 'nginx', links: 5 } } }).valid).toBe(false);
+
+  // A document with many problems lists the first 20 only, each different from the others.
+  const many: Record<string, number> = {};
+  for (let i = 0; i < 30; i++) many['bogus' + i] = i;
+  const flooded = validateComposeDocument({ services: { web: { image: 'nginx', ...many } } });
+  expect(flooded.valid).toBe(false);
+  expect(flooded.errors).toHaveLength(20);
+  expect(new Set(flooded.errors.map((e) => e.path + e.message)).size).toBe(20);
+});
+
+it('comma-separated values are read the way docker reads them', () => {
+  expect(readCsvRecord('a,b')).toEqual(['a', 'b']);
+  expect(readCsvRecord('')).toEqual(['']);
+  expect(readCsvRecord('a,')).toEqual(['a', '']);
+  expect(readCsvRecord('"a,b",c')).toEqual(['a,b', 'c']);
+  expect(readCsvRecord('a,"b""c"')).toEqual(['a', 'b"c']);
+  expect(readCsvRecord('x="1"')).toBeNull();
+  for (const malformed of ['a"b', '"a', '"a"b', ' "a"', 'a,"b']) {
+    expect(readCsvRecord(malformed), malformed).toBeNull();
+  }
+});
+
+it('a doubled dollar sign is text and a variable is left for Compose to fill in', () => {
+  const D2 = D + D;
+  for (const text of [D + 'HOME', D + '{HOME}', 'a' + D2 + ' ' + D + 'B', D2 + D + 'X', D + '_x']) {
+    expect(hasInterpolation(text), text).toBe(true);
+  }
+  for (const text of ['', 'plain', D, D2, D2 + 'HOME', D2 + D2 + 'x', D + '1', D + ' x', 'a' + D2 + '{X}']) {
+    expect(hasInterpolation(text), text).toBe(false);
+  }
 });

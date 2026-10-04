@@ -339,6 +339,9 @@ it('unknown options are refused with the closest known name and no long pasted t
   expect(closestOption('detatch')).toBe('--detach');
   expect(closestOption('nonexistent')).toBeNull();
   expect(closestOption('x')).toBeNull();
+  // Two changes away is the most that still gets a suggestion.
+  expect(closestOption('publishxx')).toBe('--publish');
+  expect(closestOption('xpublishxx')).toBeNull();
   expect(closestOption('')).toBeNull();
 
   // A long unknown name is cut at 40 characters, with control characters written out.
