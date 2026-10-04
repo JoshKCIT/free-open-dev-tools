@@ -26,11 +26,20 @@ import type { YamlFormatterJobMessage, YamlFormatterWorkerMessage } from './work
 import type { FormatYamlResult } from '@fodt/yaml-formatter';
 import type { RunContext } from './tool-ui';
 
-/** The exact value this file enforces, same register as the regex, jsonpath and ts-to-js workers' own 1.5 second limit. */
-export const YAML_FORMATTER_TIME_LIMIT_MS = 1500;
+/**
+ * The exact value this file enforces, same register as the other formatter
+ * pages' own 10 second limit. It was 1.5 seconds until the 2026-10-03
+ * nightly full run showed a loaded runner pushing a realistic job in
+ * another worker-backed page past 1.5 seconds in WebKit. A realistic
+ * nested document here parses in about 0.3 seconds in WebKit on an idle
+ * machine, but with the CPU oversubscribed 2x it crossed 1.5 seconds in 1
+ * of 5 runs. An 80,000-key flat mapping, the runaway case this limit exists
+ * for, takes about 34 seconds in Node, so 10 seconds still stops it.
+ */
+export const YAML_FORMATTER_TIME_LIMIT_MS = 10000;
 
 export const YAML_FORMATTER_TIME_LIMIT_MESSAGE =
-  'Stopped after 1.5 seconds: this document took too long to check for duplicate keys. Try a smaller document.';
+  'Stopped after 10 seconds: this document took too long to check for duplicate keys. Try a smaller document.';
 
 export class YamlFormatterRunError extends Error {
   readonly line?: number;

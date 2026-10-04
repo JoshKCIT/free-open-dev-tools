@@ -5,7 +5,7 @@ import { defineTool, str, num, type OutputBlock, type ToolResult } from '../lib/
 export default defineTool({
   id: 'yaml-formatter',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
-  // Parsing runs in a background worker with a 1.5 second time limit
+  // Parsing runs in a background worker with a 10 second time limit
   // (checking duplicate mapping keys grows quadratically with a flat
   // mapping's key count), so the run can be cancelled.
   cancellable: true,
