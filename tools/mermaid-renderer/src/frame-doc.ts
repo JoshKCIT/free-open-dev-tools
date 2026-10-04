@@ -38,9 +38,10 @@ export function mermaidConfig(theme: string) {
 /**
  * The script that runs in the frame after the Mermaid bundle. It tells its parent it is ready, and for each
  * `{ kind: 'render', id, text, theme }` message from its parent (and only from its parent) draws the diagram and
- * posts `{ kind: 'done', id, svg }`, or `{ kind: 'error', id, line, expecting, unknownType }` with the line of the
- * parser's own location, the clause of its message that lists what it expected, and whether the diagram type was not
- * recognised. It never posts the diagram text.
+ * posts `{ kind: 'done', id, svg }`, or `{ kind: 'error', id, line, expecting, unknownType, tooComplex }` with the line of the
+ * parser's own location, the clause of its message that lists what it expected, whether the diagram type was not
+ * recognised and whether the engine ran out of stack (a RangeError, or the engine's own words for it). It never posts
+ * the diagram text.
  */
 function bootScript(): string {
   const base = mermaidConfig('default');
@@ -50,6 +51,10 @@ function bootScript(): string {
     `  var THEMES = ${JSON.stringify(THEME_NAMES)};`,
     '  function send(message) { parent.postMessage(message, "*"); }',
     '  function messageOf(error) { return String((error && error.message) || ""); }',
+    '  function isStackOverflow(error, message) {',
+    '    if (error && error.name === "RangeError") return true;',
+    '    return message.indexOf("call stack size") >= 0 || message.indexOf("too much recursion") >= 0;',
+    '  }',
     '  function expectingOf(message) {',
     '    var at = -1;',
     '    var stop;',
@@ -100,6 +105,7 @@ function bootScript(): string {
     '            line: lineOf(error, message),',
     '            expecting: expectingOf(message),',
     '            unknownType: Boolean(error && error.name === "UnknownDiagramError"),',
+    '            tooComplex: isStackOverflow(error, message),',
     '          });',
     '        }',
     '      );',

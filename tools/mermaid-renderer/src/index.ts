@@ -4,10 +4,17 @@ import { MAX_PNG_PIXELS, MAX_PNG_SIDE, PNG_SCALES } from './limits';
 import { svgSize } from './scrub';
 
 export { meta };
-export { MermaidError, parserMessage, MAX_PARSER_MESSAGE_CHARS, UNKNOWN_TYPE_MESSAGE } from './errors';
+export {
+  MermaidError,
+  parserMessage,
+  MAX_PARSER_MESSAGE_CHARS,
+  TOO_COMPLEX_MESSAGE,
+  UNKNOWN_TYPE_MESSAGE,
+} from './errors';
 export {
   MAX_DIAGRAM_CHARS,
   MAX_DIAGRAM_LINES,
+  MAX_LINE_CHARS,
   MAX_SVG_BYTES,
   MAX_PNG_PIXELS,
   MAX_PNG_SIDE,
@@ -17,6 +24,7 @@ export {
   prepareDiagram,
   prescanDiagram,
   scanConstructs,
+  tooLongLineMessage,
   tooManyCharactersMessage,
   tooManyLinesMessage,
   type PreparedDiagram,

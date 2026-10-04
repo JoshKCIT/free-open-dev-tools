@@ -5,8 +5,10 @@ import {
   FRAME_CSP,
   MAX_DIAGRAM_CHARS,
   MAX_DIAGRAM_LINES,
+  MAX_LINE_CHARS,
   MERMAID_THEMES,
   MermaidError,
+  TOO_COMPLEX_MESSAGE,
   UNKNOWN_TYPE_MESSAGE,
   buildFrameDocument,
   mermaidConfig,
@@ -180,7 +182,10 @@ it('a diagram over 20000 characters or 300 lines is refused before rendering', (
     'This diagram is 20001 characters. The limit is 20,000 because a large diagram can freeze this page while it is drawn.',
   );
   expect(refusalOf(long).line).toBeUndefined();
-  expect(() => prescanDiagram('a'.repeat(20_000))).not.toThrow();
+  // Exactly 20000 characters is accepted when no line is over the 2000 character line limit (one 20000 character line is not).
+  const exactly = `${'a'.repeat(1_999)}\n`.repeat(10);
+  expect(exactly).toHaveLength(20_000);
+  expect(() => prescanDiagram(exactly)).not.toThrow();
 
   const lines301 = Array.from({ length: 301 }, () => 'A-->B').join('\n');
   expect(refusalOf(lines301).message).toBe(
@@ -194,6 +199,68 @@ it('a diagram over 20000 characters or 300 lines is refused before rendering', (
   // The size is checked before anything else: a directive in a diagram that is too long is not what is reported.
   const directiveAndLong = `%%{init: {}}%%\n${'a'.repeat(20_001)}`;
   expect(refusalOf(directiveAndLong).message).toContain(`${directiveAndLong.length} characters`);
+});
+
+it('one line of more than 2000 characters is refused with its line number, because a long line of words overflows the engine stack', () => {
+  expect(MAX_LINE_CHARS).toBe(2000);
+  // 3000 words on one line: about 15000 characters, under both whole-diagram caps, and enough to crash a browser's stack.
+  const words = Array.from({ length: 3000 }, () => 'word').join(' ');
+  const text = `flowchart TD\n A["${words}"]-->B`;
+  expect(text.length).toBeLessThan(MAX_DIAGRAM_CHARS);
+  const err = refusalOf(text);
+  expect(err.line).toBe(2);
+  expect(err.message).toBe(
+    `Line 2: this line is ${(text.split('\n')[1] ?? '').length} characters. The limit is 2,000 characters on one line because a very long line can overflow the drawing engine; split it over several lines.`,
+  );
+  expect(err.message).not.toContain('word');
+  // The line is counted as pasted, with carriage returns and blank lines, and the first long line is the one named.
+  const crlf = `flowchart TD\r\n\r\n A-->B\r\n C[${'x'.repeat(2000)}]-->D\r\n E[${'y'.repeat(3000)}]`;
+  expect(refusalOf(crlf).line).toBe(4);
+  // Exactly 2000 characters is accepted, 2001 is not, and the cut-off is on a line and not on the whole diagram.
+  const line = (length: number): string => ' A[' + 'x'.repeat(length - 4) + ']';
+  expect(line(2000)).toHaveLength(2000);
+  expect(() => prescanDiagram(`flowchart TD\n${line(2000)}`)).not.toThrow();
+  expect(refusalOf(`flowchart TD\n${line(2001)}`).message).toContain('this line is 2001 characters');
+  const nine = Array.from({ length: 9 }, () => line(2000)).join('\n');
+  expect(() => prescanDiagram(`flowchart TD\n${nine}`)).not.toThrow();
+  // The same words over many short lines are accepted.
+  const ten = Array.from({ length: 10 }, () => 'word').join(' ');
+  const short = Array.from({ length: 290 }, () => ` A["${ten}"]`).join('\n');
+  expect(() => prescanDiagram(`flowchart TD\n${short}`)).not.toThrow();
+});
+
+it('the frame tells a stack overflow apart from a parse error and posts that the diagram is too complex', async () => {
+  expect(TOO_COMPLEX_MESSAGE).toBe('This diagram is too complex for this page.');
+  // The error is made in this test's own realm and the boot script runs in another, so only its name can be compared.
+  const overflow = (
+    await runBootScript(() => {
+      throw new RangeError('Maximum call stack size exceeded');
+    })
+  ).posts[1] as { kind: string; tooComplex?: boolean; line?: number; expecting?: string };
+  expect(overflow.kind).toBe('error');
+  expect(overflow.tooComplex).toBe(true);
+  expect(overflow.line).toBeUndefined();
+  expect(overflow.expecting).toBeUndefined();
+  const recursion = (
+    await runBootScript(() => {
+      throw Object.assign(new Error('too much recursion'), { name: 'InternalError' });
+    })
+  ).posts[1] as { tooComplex?: boolean };
+  expect(recursion.tooComplex).toBe(true);
+  // An ordinary failure is not reported as too complex.
+  const ordinary = (
+    await runBootScript(() => {
+      throw new Error('Invalid date:2024');
+    })
+  ).posts[1] as { tooComplex?: boolean };
+  expect(ordinary.tooComplex).toBeFalsy();
+  const parse = (
+    await runBootScript(() => {
+      throw Object.assign(new Error('Parse error on line 2'), { hash: { loc: { first_line: 2 } } });
+    })
+  ).posts[1] as { tooComplex?: boolean; line?: number };
+  expect(parse.tooComplex).toBeFalsy();
+  expect(parse.line).toBe(2);
 });
 
 it('a parser error becomes the parser line and the expecting clause, capped at 160 characters, never the diagram text', async () => {

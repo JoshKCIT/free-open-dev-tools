@@ -2,6 +2,7 @@ import {
   meta,
   MermaidError,
   PNG_SCALES,
+  TOO_COMPLEX_MESSAGE,
   UNKNOWN_TYPE_MESSAGE,
   cutWithEllipsis,
   parserMessage,
@@ -66,7 +67,7 @@ export default defineTool({
       type: 'textarea',
       rows: 16,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
-      help: 'Up to 20,000 characters and 300 lines. Settings lines, click and link lines and image shapes are refused.',
+      help: 'Up to 20,000 characters and 300 lines, and 2,000 characters on a line. Settings lines, click and link lines and image shapes are refused.',
     },
     {
       name: 'theme',
@@ -181,6 +182,7 @@ function issueOf(err: unknown, lineOffset: number): ToolIssue {
   if (err instanceof MermaidFrameError) {
     const detail = err.detail;
     if (detail === undefined) return { message: err.message };
+    if (detail.tooComplex) return { message: TOO_COMPLEX_MESSAGE };
     if (detail.unknownType) return { message: UNKNOWN_TYPE_MESSAGE };
     const line = detail.line === undefined ? undefined : detail.line + lineOffset;
     return { message: parserMessage(line, detail.expecting) };

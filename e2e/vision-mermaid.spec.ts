@@ -461,6 +461,29 @@ test('mermaid-renderer: a fence or click line led by a blank the engine also rea
   expect(await frameCount(page)).toBe(0);
 });
 
+test('mermaid-renderer: one very long line of words is refused by the check made before any frame, naming the line', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await countFrameRequests(page);
+  await observeFrames(page);
+  await openTool(page);
+  const issues = outputArea(page).locator('.issue-list');
+  // About 3,000 words on one line (15,000 characters) is under both whole-diagram caps but overflows the engine's stack
+  // in Chromium. The line cap refuses it here, so no frame is ever asked to draw it.
+  const words = Array.from({ length: 3000 }, () => 'word').join(' ');
+  await fillAndHold(page, `flowchart TD\n  A["${words}"] --> B`);
+  await runAndWait(page);
+  await expect(issues).toContainText('.', { timeout: 30_000 });
+  const message = (await issues.innerText()).trim();
+  expect(message).toMatch(/^Line 2: this line is \d+ characters\. The limit is 2,000 characters on one line because/);
+  expect(message).not.toContain('word');
+  expect(await outputArea(page).locator('img').count()).toBe(0);
+  expect(await page.evaluate(() => window.__FODT_MERMAID_CREATED__)).toBe(0);
+  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.added.length)).toBe(0);
+  expect(await frameCount(page)).toBe(0);
+});
+
 test('mermaid-renderer: each Run uses a fresh frame that is gone afterwards', async ({ page }) => {
   test.setTimeout(120_000);
   await observeFrames(page);

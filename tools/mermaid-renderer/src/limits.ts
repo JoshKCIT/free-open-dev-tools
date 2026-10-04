@@ -10,6 +10,13 @@ export const MAX_DIAGRAM_CHARS = 20_000;
 /** A diagram with more lines than this is refused before anything runs. */
 export const MAX_DIAGRAM_LINES = 300;
 
+/**
+ * A diagram with a line longer than this many characters is refused before anything runs. The engine reads a line of
+ * words with a recursive step, so one very long line (about 3,000 words on one line) overflows the stack of a browser
+ * and no drawing comes back, while the same words over many lines draw in a few seconds.
+ */
+export const MAX_LINE_CHARS = 2_000;
+
 /** A drawn SVG larger than this many UTF-8 bytes is refused. */
 export const MAX_SVG_BYTES = 5 * 1024 * 1024;
 

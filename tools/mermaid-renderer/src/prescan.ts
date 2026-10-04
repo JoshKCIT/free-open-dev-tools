@@ -1,5 +1,5 @@
 import { MermaidError } from './errors';
-import { MAX_DIAGRAM_CHARS, MAX_DIAGRAM_LINES } from './limits';
+import { MAX_DIAGRAM_CHARS, MAX_DIAGRAM_LINES, MAX_LINE_CHARS } from './limits';
 
 /** The messages of the refusals, each started with `Line N: ` by the scan. */
 const DIRECTIVE_REFUSED = 'settings directives are not supported here.';
@@ -52,6 +52,11 @@ export function tooManyLinesMessage(count: number): string {
  * space, the medium mathematical space, the ideographic space and the byte order mark. The two line breaks (line feed
  * and carriage return) are not told apart here because the scan splits lines on them first.
  */
+/** The sentence for a line with more characters than the limit, naming the line and its length. */
+export function tooLongLineMessage(line: number, count: number): string {
+  return `Line ${line}: this line is ${count} characters. The limit is ${MAX_LINE_CHARS.toLocaleString('en-US')} characters on one line because a very long line can overflow the drawing engine; split it over several lines.`;
+}
+
 function isBlankChar(unit: number): boolean {
   return (
     (unit >= 0x09 && unit <= 0x0d) ||
@@ -269,14 +274,22 @@ function colonAfterKey(line: string, from: number): boolean {
 }
 
 /**
- * The check made before any frame exists. Refuses a diagram over 20,000 characters or 300 lines, then reads it once
- * for the constructs `scanConstructs` names. Throws a `MermaidError` with the line number where there is one; returns
+ * The check made before any frame exists. Refuses a diagram over 20,000 characters or 300 lines or with a line over
+ * 2,000 characters (the first such line is named), then reads it once for the constructs `scanConstructs` names. Throws a `MermaidError` with the line number where there is one; returns
  * the frontmatter title when the diagram has one.
  */
 export function prescanDiagram(text: string): { title?: string } {
   if (text.length > MAX_DIAGRAM_CHARS) throw new MermaidError(tooManyCharactersMessage(text.length));
   const lines = countLines(text);
   if (lines > MAX_DIAGRAM_LINES) throw new MermaidError(tooManyLinesMessage(lines));
+  let lineNumber = 0;
+  for (let pos = 0; pos < text.length;) {
+    const end = lineEnd(text, pos);
+    lineNumber++;
+    if (end - pos > MAX_LINE_CHARS) throw new MermaidError(tooLongLineMessage(lineNumber, end - pos), lineNumber);
+    if (end >= text.length) break;
+    pos = text.charCodeAt(end) === 13 && text.charCodeAt(end + 1) === 10 ? end + 2 : end + 1;
+  }
   return scanConstructs(text);
 }
 

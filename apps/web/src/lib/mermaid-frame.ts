@@ -35,11 +35,15 @@ const READY_MESSAGE = 'The diagram engine did not start within 10 seconds. Reloa
 const REPLY_MESSAGE = 'The diagram engine did not answer. Reload the page and try again.';
 const PNG_MESSAGE = 'This diagram could not be turned into a PNG.';
 
-/** What the engine said about a diagram it could not draw: the parser's line, what it expected, an unknown type. */
+/**
+ * What the engine said about a diagram it could not draw: the parser's line, what it expected, an unknown type, or that
+ * it ran out of stack (`tooComplex`).
+ */
 export interface EngineDetail {
   line?: number;
   expecting?: string;
   unknownType?: boolean;
+  tooComplex?: boolean;
 }
 
 /** Why a diagram was not drawn by the frame: a fixed sentence, or the engine's own refusal in `detail`. */
@@ -56,7 +60,17 @@ export class MermaidFrameError extends Error {
 /** The shape of a message from the frame, checked before any field is read. */
 function readMessage(
   data: unknown,
-): { kind: string; id?: number; svg?: string; line?: number; expecting?: string; unknownType?: boolean } | undefined {
+):
+  | {
+      kind: string;
+      id?: number;
+      svg?: string;
+      line?: number;
+      expecting?: string;
+      unknownType?: boolean;
+      tooComplex?: boolean;
+    }
+  | undefined {
   if (typeof data !== 'object' || data === null) return undefined;
   const record = data as Record<string, unknown>;
   if (typeof record.kind !== 'string') return undefined;
@@ -67,6 +81,7 @@ function readMessage(
     line: typeof record.line === 'number' ? record.line : undefined,
     expecting: typeof record.expecting === 'string' ? record.expecting : undefined,
     unknownType: record.unknownType === true,
+    tooComplex: record.tooComplex === true,
   };
 }
 
@@ -131,6 +146,7 @@ export function renderInFrame(text: string, theme: string, ctx: RunContext): Pro
         if (message.line !== undefined) detail.line = message.line;
         if (message.expecting !== undefined) detail.expecting = message.expecting;
         if (message.unknownType) detail.unknownType = true;
+        if (message.tooComplex) detail.tooComplex = true;
         finish(() => reject(new MermaidFrameError('The diagram could not be drawn.', detail)));
       }
     };

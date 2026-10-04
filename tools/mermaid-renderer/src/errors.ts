@@ -15,6 +15,9 @@ export class MermaidError extends Error {
 export const UNKNOWN_TYPE_MESSAGE =
   'The first line does not name a diagram type this page can draw, such as flowchart, sequenceDiagram, classDiagram or pie.';
 
+/** What the page shows when the engine ran out of stack drawing a diagram that passed the checks made before it. */
+export const TOO_COMPLEX_MESSAGE = 'This diagram is too complex for this page.';
+
 /** A parser message is cut to this many characters. */
 export const MAX_PARSER_MESSAGE_CHARS = 160;
 
