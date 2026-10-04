@@ -5,6 +5,7 @@ import {
   LOCATION_NAMES,
   MAX_HISTORY_ROWS,
   MAX_SHOWN_CHARACTERS,
+  droppedNotice,
   locationLegendRows,
   modifierText,
   recordRow,
@@ -313,4 +314,17 @@ it('characters that show nothing in a key or composition text are shown as escap
   );
   expect(row[1]).toBe(open + 'A0}');
   expect(row[11]).toBe('x' + open + '200B}');
+});
+
+it('the notice for dropped events says nothing when none were dropped and counts the dropped ones otherwise', () => {
+  expect(droppedNotice(0)).toBe('');
+  expect(droppedNotice(1)).toBe('1 older event dropped');
+  expect(droppedNotice(2)).toBe('2 older events dropped');
+  expect(droppedNotice(415)).toBe('415 older events dropped');
+  // It follows the history: 205 key presses are 615 events, 415 of them past the 200 kept.
+  const history = new KeyHistory();
+  for (let i = 0; i < 615; i++) history.add(record({ keyCode: i }));
+  expect(droppedNotice(history.dropped)).toBe('415 older events dropped');
+  history.clear();
+  expect(droppedNotice(history.dropped)).toBe('');
 });

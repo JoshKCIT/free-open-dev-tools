@@ -1,6 +1,7 @@
 import {
   KEY_COLUMNS,
   KeyHistory,
+  droppedNotice,
   recordRow,
   type KeyEventRecord,
   type KeyEventType,
@@ -44,6 +45,8 @@ interface Area {
   container: HTMLElement;
   box: HTMLTextAreaElement;
   scroller: HTMLElement;
+  /** Says how many older events no longer fit in the history; empty while none were dropped. */
+  notice: HTMLElement;
   body: HTMLTableSectionElement;
   emptyRow: HTMLTableRowElement;
   dataRows: number;
@@ -103,6 +106,14 @@ function render(): void {
   for (const record of rows) a.body.append(dataRow(record));
   a.dataRows = rows.length;
   if (rows.length === 0) a.body.append(a.emptyRow);
+  showNotice(a);
+}
+
+/** Writes the count of dropped events above the table, and hides the line while there is nothing to say. */
+function showNotice(a: Area): void {
+  const text = droppedNotice(history.dropped);
+  a.notice.textContent = text;
+  a.notice.hidden = text === '';
 }
 
 /** Adds the row of one new event and drops the rows the history has dropped. */
@@ -118,6 +129,7 @@ function append(record: KeyEventRecord): void {
     a.dataRows--;
   }
   a.scroller.scrollTop = a.scroller.scrollHeight;
+  showNotice(a);
 }
 
 /** The keys whose default action is never prevented: Tab and Escape (no keyboard trap) and an input method's keys. */
@@ -242,6 +254,13 @@ function build(): Area {
   clear.type = 'button';
   clear.textContent = 'Clear history';
 
+  const notice = styled(document.createElement('p'), {
+    margin: '0',
+    fontSize: '0.8rem',
+    color: 'var(--text-muted)',
+  });
+  notice.hidden = true;
+
   const scroller = styled(document.createElement('div'), {
     maxHeight: '320px',
     overflow: 'auto',
@@ -280,7 +299,7 @@ function build(): Area {
     render();
   });
 
-  container.append(heading, warning, box, clear, scroller);
+  container.append(heading, warning, box, clear, notice, scroller);
 
   // Forget everything the moment the area is no longer on the page: clear the history, empty the box and the table the
   // area still holds, drop the area and stop watching. The visitor leaving the tool through the site's own links removes
@@ -297,7 +316,7 @@ function build(): Area {
   });
   watcher.observe(document.body, { childList: true, subtree: true });
 
-  return { container, box, scroller, body, emptyRow, dataRows: 0 };
+  return { container, box, scroller, notice, body, emptyRow, dataRows: 0 };
 }
 
 /**

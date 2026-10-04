@@ -11,6 +11,12 @@ export interface ShownTypes {
   composition: boolean;
 }
 
+/** What to tell the visitor about the events that no longer fit: nothing when none were dropped, else how many. */
+export function droppedNotice(dropped: number): string {
+  if (dropped <= 0) return '';
+  return String(dropped) + (dropped === 1 ? ' older event dropped' : ' older events dropped');
+}
+
 /** A bounded, in-memory list of key events, newest last. */
 export class KeyHistory {
   private items: KeyEventRecord[] = [];

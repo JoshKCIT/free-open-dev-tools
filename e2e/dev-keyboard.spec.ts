@@ -510,16 +510,22 @@ test('keyboard-event-viewer: the history keeps the latest 200 rows and Clear emp
   };
   const shownTypeAndKey = async () => (await historyRows(page)).map((cells) => [cells[0] ?? '', cells[1] ?? '']);
 
+  // The notice about dropped events, above the table; it is absent while nothing has been dropped.
+  const notice = page.locator('#fodt-key-capture').getByText(/older events? dropped/);
+
   // 66 presses are 198 events: all kept.
   for (let i = 0; i < 66; i++) await press(i);
   await expect.poll(async () => (await historyRows(page)).length).toBe(198);
   expect(await shownTypeAndKey()).toEqual(events);
+  await expect(notice).toHaveCount(0);
 
   // The 67th press brings the 199th, 200th and 201st event: the 201st row arrives and the oldest row is the one dropped.
   await press(66);
   await expect.poll(async () => (await historyRows(page)).length).toBe(200);
   expect(await shownTypeAndKey()).toEqual(events.slice(1));
   expect((await historyRows(page))[0]?.slice(0, 2)).toEqual(['keypress', 'a']);
+  // One event has been dropped (the key down of the first a).
+  await expect(notice).toHaveText('1 older event dropped');
 
   // 205 presses in all: the rows are the last 200 events, in the order of the presses, newest last.
   for (let i = 67; i < 205; i++) await press(i);
@@ -527,6 +533,8 @@ test('keyboard-event-viewer: the history keeps the latest 200 rows and Clear emp
   expect(events).toHaveLength(615);
   expect(await shownTypeAndKey()).toEqual(events.slice(-200));
   await expect(box).toHaveValue(Array.from({ length: 205 }, (_, i) => letters[i % 26]).join(''));
+  // 615 events were typed and 200 are kept.
+  await expect(notice).toHaveText('415 older events dropped');
 
   // Hiding event types changes only what is shown: the 200 kept events hold 66 key downs and a part of another.
   await option(page, 'keypress (legacy)').uncheck();
@@ -541,6 +549,8 @@ test('keyboard-event-viewer: the history keeps the latest 200 rows and Clear emp
   await clearButton(page).click();
   expect(await historyRows(page)).toEqual([['No key events yet.']]);
   await expect(box).toHaveValue('');
+  // Clear forgets the count as well.
+  await expect(notice).toHaveCount(0);
   // Clear on an empty history changes nothing.
   await clearButton(page).click();
   expect(await historyRows(page)).toEqual([['No key events yet.']]);
