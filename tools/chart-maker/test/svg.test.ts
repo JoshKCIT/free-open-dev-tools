@@ -1,5 +1,15 @@
 import { it, expect } from 'vitest';
-import { PALETTES, chartSvg, escapeXml, formatValue, niceTicks, type ChartType, type ParsedTable } from '../src/index';
+import {
+  PALETTES,
+  chartSvg,
+  escapeXml,
+  exactValue,
+  formatValue,
+  markValue,
+  niceTicks,
+  type ChartType,
+  type ParsedTable,
+} from '../src/index';
 
 const NUL = String.fromCharCode(0);
 const BEL = String.fromCharCode(7);
@@ -786,4 +796,35 @@ it('axis ticks never repeat when the spread is tiny next to the size of the numb
   const rising = chartSvg(tableOf(['a', 'b'], [['V', [1e12, 1e12 + 1]]]), opts('line'));
   const [first, second] = symbolsOf(rising).map((s) => Number(s.attrs['cy']));
   expect(first! - second!).toBeGreaterThan(100); // the larger value is clearly higher up
+});
+
+it('exactValue writes a number as it was read and markValue shortens only what is longer than 12 characters', () => {
+  const exact: [number, string][] = [
+    [0, '0'],
+    [-0, '0'],
+    [1234567, '1234567'],
+    [123456789, '123456789'],
+    [-1234567.25, '-1234567.25'],
+    [0.1 + 0.2, '0.30000000000000004'],
+    [1 / 3, '0.3333333333333333'],
+    [1e-7, '0.0000001'],
+    [-2.5e-7, '-0.00000025'],
+    [1.5e-20, '0.000000000000000000015'],
+    [1.5e-21, '1.5e-21'],
+    [123456789012345680000, '123456789012345680000'],
+    [1e21, '1e+21'],
+    [1e100, '1e+100'],
+    [Number.NaN, '0'],
+  ];
+  for (const [n, text] of exact) expect(exactValue(n)).toBe(text);
+  const short: [number, string][] = [
+    [1234567, '1234567'],
+    [123456789012, '123456789012'],
+    [1234567890123, '1234570000000'],
+    [0.1 + 0.2, '0.3'],
+    [0.1, '0.1'],
+    [-12345.6789, '-12345.6789'],
+    [1 / 3, '0.333333'],
+  ];
+  for (const [n, text] of short) expect(markValue(n)).toBe(text);
 });

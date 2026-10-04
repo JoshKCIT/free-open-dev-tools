@@ -334,11 +334,11 @@ it('labels are cut at 40 code points with an ellipsis and control and bidirectio
   expect(hostile.svg).not.toContain(bel);
   expect(hostile.svg).toContain('&#x202E;');
 
-  // The table never changes a number's digits beyond six significant digits.
+  // The table shows each number exactly as it was read, not rounded to six digits.
   const digits = must('A,1234567\nB,0.1234567\nC,-0.5', { ...BAR, header: false });
   expect(digits.table.rows).toEqual([
-    ['A', '1234570'],
-    ['B', '0.123457'],
+    ['A', '1234567'],
+    ['B', '0.1234567'],
     ['C', '-0.5'],
   ]);
   expect(tableRows({ headers: ['L', 'V'], labels: ['x'], series: [{ name: 'V', values: [2] }], notes: [] })).toEqual({
@@ -530,4 +530,42 @@ it('a ticked header row whose number columns all hold numbers gets a note that t
   expect(must('Jan,12\nFeb,19', { type: 'pie' }).notes).toEqual([note]);
   // A header row alone has no chart; the page says what to do (its own message), and the package gives nothing.
   expect(makeChart('Jan,12', BAR)).toBeNull();
+});
+
+it('the data table, the written description and the alt text show each number exactly as it was read', () => {
+  const chart = must('Label,Size\nA,1234567\nB,123456789\nC,0.1', BAR);
+  expect(chart.table.rows).toEqual([
+    ['A', '1234567'],
+    ['B', '123456789'],
+    ['C', '0.1'],
+  ]);
+  expect(chart.alt).toContain('Largest value 123456789 (B)');
+  expect(chart.alt).toContain('Smallest value 0.1 (C)');
+  expect(chart.description.join(' ')).toContain('from 0.1 (C) to 123456789 (B)');
+  // Another reader of the same numbers: the marks are named with the same exact numbers.
+  expect(chart.svg).toContain('aria-label="A: 1234567"');
+  expect(chart.svg).toContain('aria-label="B: 123456789"');
+  // A pie says each slice's exact value; its total and shares are worked out, so they stay at six digits.
+  const pie = must('Label,Size\nA,1234567\nB,2', { type: 'pie' });
+  expect(pie.description[0]).toContain('A at 1234567 (99.9998%)');
+  expect(pie.description[0]).toContain('adding up to 1234570');
+  // A single value, an exponent in the paste and a long decimal.
+  expect(must('Label,V\nA,1.5e3', BAR).table.rows).toEqual([['A', '1500']]);
+  expect(must('Label,V\nA,0.30000000000000004', BAR).table.rows).toEqual([['A', '0.30000000000000004']]);
+  expect(must('Label,V\nA,1e-7', BAR).table.rows).toEqual([['A', '0.0000001']]);
+  expect(must('Label,V\nA,1e30', BAR).table.rows).toEqual([['A', '1e+30']]);
+  expect(must('Label,V\nA,-0', BAR).table.rows).toEqual([['A', '0']]);
+});
+
+it('value labels on the marks show the exact number up to 12 characters and six digits beyond that', () => {
+  const svg = must('Label,V\nA,1234567\nB,123456789\nC,0.1\nD,0.30000000000000004', { ...BAR, values: true }).svg;
+  const written = [...svg.matchAll(/<text\b[^>]*font-size="11"[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  expect(written).toEqual(['1234567', '123456789', '0.1', '0.3']);
+  // The numbers on the value axis keep the short form.
+  const axis = [...svg.matchAll(/<text\b[^>]*text-anchor="end"[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+  expect(axis.every((t) => t === String(Number(t)))).toBe(true);
+  // A pie legend and its slice labels follow the same rule.
+  const pie = must('Label,V\nA,1234567\nB,0.30000000000000004', { type: 'pie', values: true }).svg;
+  expect(pie).toContain('>A: 1234567<');
+  expect(pie).toContain('>B: 0.3<');
 });

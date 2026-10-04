@@ -1,9 +1,10 @@
 /**
  * The words that go with a chart: the one-line description of the picture, the written description, and the data as
- * text. Every number goes through `formatValue`; every piece of typed text is cut at a fixed length and shown with its
+ * text. A number that was read is written exactly (`exactValue`) and a worked-out figure (an average, a total, a share) at
+ * six significant digits (`formatValue`); every piece of typed text is cut at a fixed length and shown with its
  * control and direction characters written out. Pure: no DOM, no clock, nothing logged.
  */
-import { formatValue } from './scale';
+import { exactValue, formatValue } from './scale';
 import type { ParsedTable } from './parse';
 
 export type ChartType = 'bar' | 'line' | 'pie';
@@ -117,8 +118,8 @@ export function altText(table: ParsedTable, type: ChartType, title: string): str
   text += '.';
   const found = extremes(drawn);
   if (found !== null) {
-    text += ` Largest value ${formatValue(found.largest.value)} (${reference(found.largest, several)}).`;
-    text += ` Smallest value ${formatValue(found.smallest.value)} (${reference(found.smallest, several)}).`;
+    text += ` Largest value ${exactValue(found.largest.value)} (${reference(found.largest, several)}).`;
+    text += ` Smallest value ${exactValue(found.smallest.value)} (${reference(found.smallest, several)}).`;
   }
   return text;
 }
@@ -130,15 +131,15 @@ function seriesSentence(table: ParsedTable, series: ParsedTable['series'][number
   const only: ParsedTable = { ...table, series: [series] };
   const found = extremes(only);
   if (found === null) return `${name}: no values.`;
-  if (count === 1) return `${name}: 1 value, ${formatValue(found.largest.value)} (${shown(found.largest.label)}).`;
+  if (count === 1) return `${name}: 1 value, ${exactValue(found.largest.value)} (${shown(found.largest.label)}).`;
   if (found.largest.value === found.smallest.value) {
-    return `${name}: ${count} values, all equal to ${formatValue(found.largest.value)}.`;
+    return `${name}: ${count} values, all equal to ${exactValue(found.largest.value)}.`;
   }
   let sum = 0;
   for (const value of series.values) sum += value;
   return (
-    `${name}: ${count} values, from ${formatValue(found.smallest.value)} (${shown(found.smallest.label)}) ` +
-    `to ${formatValue(found.largest.value)} (${shown(found.largest.label)}), averaging ${formatValue(sum / count)}.`
+    `${name}: ${count} values, from ${exactValue(found.smallest.value)} (${shown(found.smallest.label)}) ` +
+    `to ${exactValue(found.largest.value)} (${shown(found.largest.label)}), averaging ${formatValue(sum / count)}.`
   );
 }
 
@@ -153,12 +154,12 @@ function pieSentence(table: ParsedTable): string {
   if (found === null) return `${name}: no slices.`;
   const percent = (value: number): string => `${formatValue(total === 0 ? 0 : (value / total) * 100)}%`;
   if (count === 1) {
-    return `${name}: 1 slice, ${shown(found.largest.label)} at ${formatValue(found.largest.value)} (${percent(found.largest.value)}).`;
+    return `${name}: 1 slice, ${shown(found.largest.label)} at ${exactValue(found.largest.value)} (${percent(found.largest.value)}).`;
   }
   return (
     `${name}: ${count} slices adding up to ${formatValue(total)}. ` +
-    `The largest is ${shown(found.largest.label)} at ${formatValue(found.largest.value)} (${percent(found.largest.value)}), ` +
-    `the smallest is ${shown(found.smallest.label)} at ${formatValue(found.smallest.value)} (${percent(found.smallest.value)}).`
+    `The largest is ${shown(found.largest.label)} at ${exactValue(found.largest.value)} (${percent(found.largest.value)}), ` +
+    `the smallest is ${shown(found.smallest.label)} at ${exactValue(found.smallest.value)} (${percent(found.smallest.value)}).`
   );
 }
 
@@ -185,13 +186,13 @@ export function describeChart(
   return sentences;
 }
 
-/** The data as text: the headers, then each row's label and values, labels cut and escaped, numbers by `formatValue`. */
+/** The data as text: the headers, then each row's label and values, labels cut and escaped, each number exactly as read. */
 export function tableRows(table: ParsedTable): { headers: string[]; rows: string[][] } {
   return {
     headers: table.headers.map(shown),
     rows: table.labels.map((label, i) => [
       shown(label),
-      ...table.series.map((series) => (i < series.values.length ? formatValue(series.values[i]!) : '')),
+      ...table.series.map((series) => (i < series.values.length ? exactValue(series.values[i]!) : '')),
     ]),
   };
 }

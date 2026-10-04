@@ -1,6 +1,6 @@
 /**
  * Draws a bar, line or pie chart as one SVG file, by this package's own code. Every element is a fixed template; every
- * piece of typed text goes through `escapeXml`; every shown number goes through `formatValue`. The file holds no link, no
+ * piece of typed text goes through `escapeXml`; every number on a mark goes through `markValue` (exact up to 12 characters) and every axis number through `formatValue`. The file holds no link, no
  * style element, no script, no foreign object and no address: only shapes, text in system fonts and the WAI-ARIA
  * Graphics Module roles (the root is a graphics-document with a title and a description, each series is a
  * graphics-object, and each bar, point and slice is a graphics-symbol with an accessible name). Pure: no DOM, no clock,
@@ -18,7 +18,7 @@ import {
   type ChartType,
 } from './describe';
 import { MAX_MAGNITUDE, MAX_POINTS, MAX_SERIES, MAX_SLICES, type ParsedTable } from './parse';
-import { formatValue, niceTicks } from './scale';
+import { formatValue, markValue, niceTicks } from './scale';
 
 export interface ChartSvgOptions {
   type: ChartType;
@@ -336,7 +336,7 @@ function cartesian(
         const top0 = value >= 0 ? edge : baseline;
         const height = value >= 0 ? baseline - edge : edge - baseline;
         parts.push(
-          `<rect role="graphics-symbol" aria-label="${escapeXml(`${name(i, s)}: ${formatValue(value)}`)}" x="${px(x)}" y="${px(top0)}" width="${px(barWidth)}" height="${px(height)}" fill="${colour}" stroke="${OUTLINE}" stroke-width="1"/>`,
+          `<rect role="graphics-symbol" aria-label="${escapeXml(`${name(i, s)}: ${markValue(value)}`)}" x="${px(x)}" y="${px(top0)}" width="${px(barWidth)}" height="${px(height)}" fill="${colour}" stroke="${OUTLINE}" stroke-width="1"/>`,
         );
         if (options.values) {
           written.push(
@@ -344,13 +344,13 @@ function cartesian(
               ? textElement(
                   x + barWidth / 2,
                   top0 - 4,
-                  formatValue(value),
+                  markValue(value),
                   `text-anchor="middle" font-size="11" fill="${INK}"`,
                 )
               : textElement(
                   x + barWidth / 2,
                   top0 + height + 12,
-                  formatValue(value),
+                  markValue(value),
                   `text-anchor="middle" font-size="11" fill="${INK}"`,
                 ),
           );
@@ -365,16 +365,11 @@ function cartesian(
       }
       series.values.forEach((value, i) => {
         parts.push(
-          `<circle role="graphics-symbol" aria-label="${escapeXml(`${name(i, s)}: ${formatValue(value)}`)}" cx="${px(centre(i))}" cy="${px(y(value))}" r="4" fill="${colour}" stroke="${OUTLINE}" stroke-width="1"/>`,
+          `<circle role="graphics-symbol" aria-label="${escapeXml(`${name(i, s)}: ${markValue(value)}`)}" cx="${px(centre(i))}" cy="${px(y(value))}" r="4" fill="${colour}" stroke="${OUTLINE}" stroke-width="1"/>`,
         );
         if (options.values) {
           written.push(
-            textElement(
-              centre(i),
-              y(value) - 8,
-              formatValue(value),
-              `text-anchor="middle" font-size="11" fill="${INK}"`,
-            ),
+            textElement(centre(i), y(value) - 8, markValue(value), `text-anchor="middle" font-size="11" fill="${INK}"`),
           );
         }
       });
@@ -423,7 +418,7 @@ function pie(drawn: ParsedTable, options: ChartSvgOptions, colours: readonly str
     // A slice of value 0 has no width: it draws no path (it is still in the legend, the table and the description).
     if (value === 0) return;
     const colour = ringColour(colours, i, count);
-    const label = escapeXml(`${shortLabel(drawn.labels[i]!)}: ${formatValue(value)}`);
+    const label = escapeXml(`${shortLabel(drawn.labels[i]!)}: ${markValue(value)}`);
     const share = value / total;
     const from = -Math.PI / 2 + 2 * Math.PI * (before / total);
     before += value;
@@ -449,7 +444,7 @@ function pie(drawn: ParsedTable, options: ChartSvgOptions, colours: readonly str
         textElement(
           spot[0]!,
           spot[1]! + 4,
-          formatValue(value),
+          markValue(value),
           `text-anchor="middle" font-size="12" fill="${inkOn(colour)}"`,
         ),
       );
@@ -462,7 +457,7 @@ function pie(drawn: ParsedTable, options: ChartSvgOptions, colours: readonly str
       ...legendElements(
         values.map((value, i) => ({
           colour: ringColour(colours, i, count),
-          text: `${cutText(shortLabel(drawn.labels[i]!), 20)}: ${formatValue(value)}`,
+          text: `${cutText(shortLabel(drawn.labels[i]!), 20)}: ${markValue(value)}`,
         })),
         top,
       ),

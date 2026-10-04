@@ -47,7 +47,39 @@ export function niceTicks(min: number, max: number, count: number): number[] {
 }
 
 /**
- * The text of a number as a reader sees it: at most six significant digits, written without an exponent for every size
+ * The text of a number exactly as it was read: JavaScript's shortest form that gives the same number back, written
+ * without an exponent when that takes at most 21 digits (so 0.0000001 stays 0.0000001 and 1234567 stays 1234567), and
+ * never a negative zero. A number that is not finite reads as 0.
+ */
+export function exactValue(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return '0';
+  const text = String(n);
+  const at = text.indexOf('e');
+  if (at < 0) return text;
+  const exponent = Number(text.slice(at + 1));
+  // A large number keeps its exponent: written out it would have more than 21 digits.
+  if (exponent >= 0) return text;
+  const mantissa = text.slice(0, at);
+  const digits = mantissa.replace('-', '').replace('.', '');
+  const zeros = -exponent - 1;
+  if (zeros + digits.length > 21) return text;
+  return (n < 0 ? '-' : '') + '0.' + '0'.repeat(zeros) + digits;
+}
+
+/** The longest exact number a mark or a legend writes; a longer one is written at six significant digits instead. */
+const MARK_LIMIT = 12;
+
+/**
+ * A number as it is written on a mark, in a mark's accessible name and in a pie legend: exact when that is at most 12
+ * characters, otherwise the six-digit form of `formatValue`, so a long decimal cannot crowd the chart.
+ */
+export function markValue(n: number): string {
+  const exact = exactValue(n);
+  return exact.length <= MARK_LIMIT ? exact : formatValue(n);
+}
+
+/**
+ * The text of a number as a reader sees it on an axis or in a worked-out figure (an average, a total, a share): at most six significant digits, written without an exponent for every size
  * from 1e-20 up to 1e21 (so 0.0000001 stays 0.0000001), and never a negative zero. A number that is not finite reads as
  * 0 (the reader of this package never lets one through).
  */

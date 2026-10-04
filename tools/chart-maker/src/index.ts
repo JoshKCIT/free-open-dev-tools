@@ -8,7 +8,7 @@ export { meta, ChartError };
 export type { ChartType, ParsedTable };
 export { MAX_MAGNITUDE, MAX_PASTE_BYTES, MAX_POINTS, MAX_SERIES, MAX_SLICES, parseTable, readRows } from './parse';
 export type { ParsedSeries } from './parse';
-export { formatValue, niceTicks } from './scale';
+export { exactValue, formatValue, markValue, niceTicks } from './scale';
 export { CHART_HEIGHT, CHART_WIDTH, PALETTES, chartSvg, checkChartable, escapeXml } from './svg';
 export { altText, cutText, describeChart, shortLabel, tableRows, visible } from './describe';
 
