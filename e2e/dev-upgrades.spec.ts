@@ -468,6 +468,8 @@ async function businessAnswer(
 test('date-diff: business days, ISO weeks and durations show their results and the old modes answer as before', async ({
   page,
 }) => {
+  // About 40 seconds on a quiet machine across seven modes, so the 45 second default is too close; CI is slower.
+  test.setTimeout(180_000);
   await openTool(page, 'date-diff');
 
   // First paint: the difference mode, the two moment fields, and none of the new fields on screen.
