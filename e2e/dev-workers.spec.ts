@@ -576,34 +576,54 @@ test('glob-tester: the platform the browser reports never changes a glob result'
 });
 
 test('glob-tester: the dot and ignore-case boxes never change what .gitignore mode shows', async ({ page }) => {
-  // The two boxes belong to glob mode. They are ticked in glob mode, where they work, and then the mode is switched to
-  // .gitignore: the boxes disappear, keep their ticks, and the .gitignore answer stays case-sensitive and dotfile-blind
-  // as git reads a .gitignore file, so a.log is not matched by *.LOG while A.LOG is.
+  // The two boxes belong to glob mode. They are ticked in glob mode, where they work, then the mode is switched to
+  // .gitignore (the boxes disappear and keep their ticks) and the answer is read; then they are unticked and the
+  // answer is read again. A .gitignore answer is case-sensitive and does not care about a leading dot, as git reads a
+  // .gitignore file: a.log is not matched by *.LOG, A.LOG is, and so are the dotfile .hidden.LOG and a.LOG inside the
+  // dot folder .cache, whether or not the dot box was ticked. (A dotfile that *.LOG does not match anyway, such as
+  // .hidden.log, would not show a difference, so the dotfiles named here are ones the rule does match.)
   await openTool(page, 'glob-tester');
   await setControls(page, { radios: { mode: 'glob' } });
   await page.locator('#f-dot').check();
   await page.locator('#f-nocase').check();
-  await fillFields(page, { patterns: '*.LOG', paths: 'a.log\nA.LOG\n.hidden.log' });
+  await fillFields(page, { patterns: '*.LOG', paths: 'a.log\nA.LOG\n.hidden.log\n.hidden.LOG\n.cache/a.LOG' });
   const globTable = outputArea(page).locator('table');
   await expect(globTable).toContainText('.hidden.log', { timeout: 15_000 });
-  // In glob mode the two options are in force: the star reaches the dotfile, and case is ignored.
+  // In glob mode the two options are in force: the star reaches the dotfiles, and case is ignored. (*.LOG does not
+  // reach into a folder, so the last path is not matched.)
   const globRows = (await globTable.locator('tbody tr').allInnerTexts()).map((row) => row.replace(/\s+/g, ' '));
-  expect(globRows.every((row) => row.includes('matched') && !row.includes('not matched'))).toBe(true);
+  expect(globRows).toHaveLength(5);
+  expect(globRows.slice(0, 4).every((row) => row.includes('matched') && !row.includes('not matched'))).toBe(true);
+  expect(globRows[4]).toContain('not matched');
 
-  await setControls(page, { radios: { mode: 'gitignore' } });
-  await expect(page.locator('#f-dot')).toHaveCount(0);
-  await expect(page.locator('#f-nocase')).toHaveCount(0);
-  await expect(outputArea(page).locator('table thead')).toContainText('Decided by', { timeout: 15_000 });
-  const rows = (await outputArea(page).locator('table tbody tr').allInnerTexts()).map((row) =>
-    row.replace(/\s+/g, ' '),
-  );
-  expect(rows).toHaveLength(3);
-  expect(rows[0]).toContain('a.log not ignored no rule matched');
-  expect(rows[1]).toContain('A.LOG ignored line 1: *.LOG');
-  expect(rows[2]).toContain('.hidden.log not ignored no rule matched');
+  const gitignoreRows = async (): Promise<string[]> => {
+    await setControls(page, { radios: { mode: 'gitignore' } });
+    await expect(page.locator('#f-dot')).toHaveCount(0);
+    await expect(page.locator('#f-nocase')).toHaveCount(0);
+    await expect(outputArea(page).locator('table thead')).toContainText('Decided by', { timeout: 15_000 });
+    return (await outputArea(page).locator('table tbody tr').allInnerTexts()).map((row) => row.replace(/\s+/g, ' '));
+  };
+  const expectRows = (rows: string[]): void => {
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toContain('a.log not ignored no rule matched');
+    expect(rows[1]).toContain('A.LOG ignored line 1: *.LOG');
+    expect(rows[2]).toContain('.hidden.log not ignored no rule matched');
+    expect(rows[3]).toContain('.hidden.LOG ignored line 1: *.LOG');
+    expect(rows[4]).toContain('.cache/a.LOG ignored line 1: *.LOG');
+  };
 
-  // Back in glob mode the ticks were kept.
+  // Both boxes ticked.
+  const ticked = await gitignoreRows();
+  expectRows(ticked);
+  // The ticks were kept while the boxes were hidden.
   await setControls(page, { radios: { mode: 'glob' } });
   await expect(page.locator('#f-dot')).toBeChecked();
   await expect(page.locator('#f-nocase')).toBeChecked();
+
+  // Both boxes unticked: the same answer.
+  await page.locator('#f-dot').uncheck();
+  await page.locator('#f-nocase').uncheck();
+  const unticked = await gitignoreRows();
+  expectRows(unticked);
+  expect(unticked).toEqual(ticked);
 });
