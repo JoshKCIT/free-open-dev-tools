@@ -141,3 +141,28 @@ export function planTiles(width: number, height: number, mode: TileMode, format:
   }
   return tiles;
 }
+
+/**
+ * The check made on a JPEG's header size before the picture is decoded. A JPEG may be stored turned a quarter and shown
+ * upright by its own orientation tag, so the header's size can be the sideways size of the picture that will be cut.
+ * Only what does not depend on the way up is decided here: the rows, columns and tile sizes are in range, and the
+ * number of tiles is within the limit in at least one of the two ways up (so a picture that could be cut is never
+ * refused). The plan made after decoding, from the real size, decides everything else.
+ */
+export function checkTileCountBeforeDecode(width: number, height: number, mode: TileMode): void {
+  if (!isWhole(width) || !isWhole(height) || width < 1 || height < 1) {
+    throw new ImageSplitterError('The image has no usable size.');
+  }
+  if (mode.kind === 'grid') {
+    checkRange(mode.rows, 'Rows', MAX_GRID_SIDE);
+    checkRange(mode.columns, 'Columns', MAX_GRID_SIDE);
+    if (mode.rows * mode.columns > MAX_TILES) refuseCount(mode.rows * mode.columns);
+    return;
+  }
+  checkRange(mode.tileWidth, 'Tile width', MAX_TILE_SIDE);
+  checkRange(mode.tileHeight, 'Tile height', MAX_TILE_SIDE);
+  const sideways = Math.ceil(width / mode.tileWidth) * Math.ceil(height / mode.tileHeight);
+  const upright = Math.ceil(height / mode.tileWidth) * Math.ceil(width / mode.tileHeight);
+  const fewest = Math.min(sideways, upright);
+  if (fewest > MAX_TILES) refuseCount(fewest);
+}

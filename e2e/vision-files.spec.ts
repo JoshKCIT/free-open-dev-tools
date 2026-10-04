@@ -1747,6 +1747,119 @@ test('image-splitter: every tile in the ZIP decodes to exactly the matching part
   expect(offending(requests)).toEqual([]);
 });
 
+/**
+ * A JPEG made by the browser under test (left half red, right half blue as stored) with an EXIF orientation note spliced
+ * in right after its start. An orientation of 6 or 8 shows the picture turned a quarter, so it is upright at the stored
+ * height by the stored width, which is what a camera photo held sideways looks like to a page.
+ */
+async function orientedJpeg(
+  page: Page,
+  name: string,
+  width: number,
+  height: number,
+  orientation: number,
+): Promise<PickedFile> {
+  const bytes: number[] = await page.evaluate(
+    async ([w, h, o]) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w!;
+      canvas.height = h!;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#ff0000';
+      context.fillRect(0, 0, w! / 2, h!);
+      context.fillStyle = '#0000ff';
+      context.fillRect(w! / 2, 0, w! / 2, h!);
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.95));
+      const raw = new Uint8Array(await blob.arrayBuffer());
+      // APP1: marker, length, "Exif" and two zero bytes, then a TIFF header (little-endian, first directory at 8) with
+      // one entry: tag 0x0112 (orientation), type SHORT, count 1, the value.
+      const app1 = new Uint8Array([
+        0xff,
+        0xe1,
+        0x00,
+        0x22,
+        0x45,
+        0x78,
+        0x69,
+        0x66,
+        0x00,
+        0x00,
+        0x49,
+        0x49,
+        0x2a,
+        0x00,
+        0x08,
+        0x00,
+        0x00,
+        0x00,
+        0x01,
+        0x00,
+        0x12,
+        0x01,
+        0x03,
+        0x00,
+        0x01,
+        0x00,
+        0x00,
+        0x00,
+        o!,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+      ]);
+      const spliced = new Uint8Array(2 + app1.length + (raw.length - 2));
+      spliced.set(raw.subarray(0, 2), 0);
+      spliced.set(app1, 2);
+      spliced.set(raw.subarray(2), 2 + app1.length);
+      return Array.from(spliced);
+    },
+    [width, height, orientation],
+  );
+  return { name, mimeType: 'image/jpeg', buffer: Buffer.from(bytes) };
+}
+
+test('image-splitter: a JPEG stored sideways is cut by its upright size, not refused from its header', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'image-splitter');
+  const requests = recordRequests(page);
+
+  // Stored 60 by 4000 with a quarter turn, so the picture is 4000 by 60. One row of 80 columns is 80 tiles of 50 by 60;
+  // judged from the header's 60 by 4000 it would be refused as "60 pixels wide, so it cannot be cut into 80 columns".
+  await attachImage(page, 'file', await orientedJpeg(page, 'sideways.jpg', 60, 4000, 6));
+  await fillField(page, 'rows', '1');
+  await fillField(page, 'columns', '80');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'tiles.zip' })).toBeVisible({ timeout: 60_000 });
+  await expect(outputArea(page).locator('dl.kv')).toContainText('4000 by 60 pixels');
+  const rows = await spriteRows(page);
+  expect(rows).toHaveLength(80);
+  expect(rows[0]![0]).toBe('tile-r01-c01.png');
+  expect(readStoredZip(await downloadNamed(page, 'tiles.zip'))).toHaveLength(80);
+
+  // A picture that is not turned keeps its own limits: the same JPEG stored upright is 60 wide and 80 columns is refused.
+  await attachImage(page, 'file', await orientedJpeg(page, 'upright.jpg', 60, 4000, 1));
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'The image is 60 pixels wide, so it cannot be cut into 80 columns.',
+    { timeout: 30_000 },
+  );
+
+  // The count limit is still refused before decoding, whichever way up.
+  await fillField(page, 'rows', '21');
+  await fillField(page, 'columns', '20');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('That would make 420 tiles.', {
+    timeout: 30_000,
+  });
+  expect(offending(requests)).toEqual([]);
+});
+
 declare global {
   interface Window {
     __FODT_TOBLOB_DELAY_MS__?: number;

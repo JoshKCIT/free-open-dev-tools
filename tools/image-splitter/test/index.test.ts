@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { unzipSync } from 'fflate';
 import {
   checkSplitFile,
+  checkTileCountBeforeDecode,
   checkZipTotal,
   ImageSplitterError,
   MAX_INPUT_BYTES,
@@ -642,4 +643,53 @@ it('nothing is written to the console while planning tiles or writing the ZIP', 
     }
   }
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
+});
+
+it('a JPEG header size is checked before decoding for the tile count only, in whichever way up the picture turns out to be', () => {
+  // A JPEG whose header says 60 by 4000 may be a 4000 by 60 picture turned a quarter by its orientation tag. Cut into
+  // 1 row and 80 columns, the header's own size would be refused ("60 pixels wide, so it cannot be cut into 80 columns"),
+  // yet the upright picture makes 80 tiles of 50 by 60.
+  const grid = { kind: 'grid' as const, rows: 1, columns: 80 };
+  expect(messageOf(() => planTiles(60, 4000, grid, 'png'))).toBe(
+    'The image is 60 pixels wide, so it cannot be cut into 80 columns.',
+  );
+  expect(() => checkTileCountBeforeDecode(60, 4000, grid)).not.toThrow();
+  const upright = planTiles(4000, 60, grid, 'png');
+  expect(upright).toHaveLength(80);
+  expect(upright[0]).toMatchObject({ x: 0, y: 0, width: 50, height: 60, name: 'tile-r01-c01.png' });
+
+  expect(() => checkTileCountBeforeDecode(4000, 60, grid)).not.toThrow();
+
+  // The count limit still refuses before decoding: rows times columns does not depend on the way up.
+  expect(messageOf(() => checkTileCountBeforeDecode(4000, 4000, { kind: 'grid', rows: 21, columns: 20 }))).toBe(
+    'That would make 420 tiles. The most is 400 tiles, so use fewer rows and columns or larger tiles.',
+  );
+  expect(() => checkTileCountBeforeDecode(4000, 4000, { kind: 'grid', rows: 20, columns: 20 })).not.toThrow();
+
+  // Tile size mode counts differently the two ways up: 60 by 4000 in tiles of 100 by 10 makes 1 x 400 = 400 one way
+  // and 40 x 6 = 240 the other. Refused only when both ways are over the limit, never when the picture might fit.
+  const sized = (tileWidth: number, tileHeight: number) => ({ kind: 'size' as const, tileWidth, tileHeight });
+  expect(() => checkTileCountBeforeDecode(60, 4000, sized(100, 10))).not.toThrow();
+  expect(() => checkTileCountBeforeDecode(60, 4000, sized(10, 100))).not.toThrow();
+  expect(() => checkTileCountBeforeDecode(60, 4000, sized(100, 9))).not.toThrow(); // 1 x 445 one way, 40 x 7 = 280 the other
+  expect(messageOf(() => checkTileCountBeforeDecode(4000, 4000, sized(10, 10)))).toBe(
+    'That would make 160,000 tiles. The most is 400 tiles, so use fewer rows and columns or larger tiles.',
+  );
+  // When the two ways give different counts, the smaller count is the one named.
+  // (60 by 40000 in tiles of 1 by 1000: 60 x 40 = 2,400 one way, 40,000 x 1 the other.)
+  expect(messageOf(() => checkTileCountBeforeDecode(60, 40_000, sized(1, 1000)))).toBe(
+    'That would make 2,400 tiles. The most is 400 tiles, so use fewer rows and columns or larger tiles.',
+  );
+
+  // What does not depend on the way up is still refused: a row or column count or a tile size out of range, and no size.
+  expect(messageOf(() => checkTileCountBeforeDecode(60, 4000, { kind: 'grid', rows: 0, columns: 4 }))).toBe(
+    'Rows must be a whole number from 1 to 100.',
+  );
+  expect(messageOf(() => checkTileCountBeforeDecode(60, 4000, { kind: 'grid', rows: 4, columns: 101 }))).toBe(
+    'Columns must be a whole number from 1 to 100.',
+  );
+  expect(messageOf(() => checkTileCountBeforeDecode(60, 4000, sized(40_001, 5)))).toBe(
+    'Tile width must be a whole number from 1 to 40000.',
+  );
+  expect(messageOf(() => checkTileCountBeforeDecode(0, 4000, grid))).toBe('The image has no usable size.');
 });

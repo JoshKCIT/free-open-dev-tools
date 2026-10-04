@@ -9,11 +9,13 @@
  * and a cancelled or failed run returns nothing: the ZIP is built only after the last tile.
  *
  * Every limit is refused before any canvas exists: the file's size and header are checked first and the tile plan (which
- * counts the tiles before building any) is made from the header's size before the picture is decoded. A bitmap is closed
+ * counts the tiles before building any) is made from the header's size before the picture is decoded (for a JPEG, which
+ * may be stored turned, only the count limit). A bitmap is closed
  * whatever happens. Nothing is fetched, stored, logged or turned into an address here.
  */
 import {
   checkSplitFile,
+  checkTileCountBeforeDecode,
   checkZipTotal,
   ImageSplitterError,
   MAX_HEADER_BYTES,
@@ -74,8 +76,11 @@ export async function splitImage(
       ? new Uint8Array(0)
       : new Uint8Array(await file.slice(0, MAX_HEADER_BYTES).arrayBuffer());
   const declared = checkSplitFile(header, file.size);
-  // The tiles are counted from the header's size, so a mode that would make too many is refused before decoding.
-  planTiles(declared.width, declared.height, mode, format);
+  // The tiles are counted from the header's size, so a mode that would make too many is refused before decoding. A JPEG
+  // may be stored turned a quarter and shown upright by its orientation tag, so for a JPEG only the limits that do not
+  // depend on the way up are checked here and the plan made after decoding decides the rest.
+  if (declared.kind === 'jpeg') checkTileCountBeforeDecode(declared.width, declared.height, mode);
+  else planTiles(declared.width, declared.height, mode, format);
   throwIfCancelled(ctx);
 
   let bitmap: ImageBitmap;

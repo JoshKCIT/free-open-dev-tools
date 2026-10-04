@@ -4,7 +4,15 @@ import { ImageSplitterError } from './tiles';
 
 export { meta };
 export { MAX_HEADER_BYTES };
-export { ImageSplitterError, MAX_GRID_SIDE, MAX_TILES, MAX_TILE_SIDE, planTiles, tileName } from './tiles';
+export {
+  checkTileCountBeforeDecode,
+  ImageSplitterError,
+  MAX_GRID_SIDE,
+  MAX_TILES,
+  MAX_TILE_SIDE,
+  planTiles,
+  tileName,
+} from './tiles';
 export type { TileFormat, TileMode, TileRect } from './tiles';
 export { checkZipTotal, MAX_ZIP_BYTES, zipTiles } from './zip';
 export type { ZipEntry } from './zip';
