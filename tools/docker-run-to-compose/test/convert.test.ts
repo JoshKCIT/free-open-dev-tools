@@ -879,3 +879,44 @@ it('--umask is listed with a reason that says it is only in newer Docker release
   expect(result.noEquivalent[0]?.reason).toContain('only in newer Docker releases');
   expect(result.noEquivalent[0]?.reason).toContain('no key');
 });
+
+it('whole numbers beyond 2^53 stay text in the YAML instead of becoming a rounded float', () => {
+  const big = '99999999999999999999';
+  const memory = convertDockerRun(`docker run --memory ${big} nginx`);
+  expect(at(memory.document, 'services.nginx.mem_limit')).toBe(big);
+  expect(memory.yaml).toContain(`mem_limit: "${big}"`);
+  expect(memory.yaml).not.toContain('e+');
+  expect(memory.validation.valid).toBe(true);
+  // The largest whole number JavaScript holds exactly is still a number; the next one is text.
+  expect(at(convertDockerRun('docker run --memory 9007199254740991 nginx').document, 'services.nginx.mem_limit')).toBe(
+    9007199254740991,
+  );
+  expect(at(convertDockerRun('docker run --memory 9007199254740992 nginx').document, 'services.nginx.mem_limit')).toBe(
+    '9007199254740992',
+  );
+  expect(at(convertDockerRun('docker run --memory -9007199254740993 nginx').document, 'services.nginx.mem_limit')).toBe(
+    '-9007199254740993',
+  );
+  // The same in every place a size or a limit is read as a whole number.
+  const ulimit = convertDockerRun(`docker run --ulimit nofile=${big}:${big} --ulimit nproc=${big} nginx`);
+  expect(at(ulimit.document, 'services.nginx.ulimits.nofile')).toEqual({ soft: big, hard: big });
+  expect(at(ulimit.document, 'services.nginx.ulimits.nproc')).toBe(big);
+  expect(ulimit.yaml).not.toContain('e+');
+  const rate = convertDockerRun(`docker run --device-read-bps /dev/sda:${big} nginx`);
+  expect(at(rate.document, 'services.nginx.blkio_config.device_read_bps')).toEqual([{ path: '/dev/sda', rate: big }]);
+  const tmpfs = convertDockerRun(`docker run --mount type=tmpfs,target=/t,tmpfs-size=${big} nginx`);
+  expect(at(tmpfs.document, 'services.nginx.volumes')).toEqual([{ type: 'tmpfs', target: '/t', tmpfs: { size: big } }]);
+  const gpus = convertDockerRun(`docker run --gpus count=${big} nginx`);
+  expect(at(gpus.document, 'services.nginx.gpus')).toEqual([{ capabilities: ['gpu'], count: big }]);
+  expect(gpus.yaml).not.toContain('e+');
+  // A gateway priority is a number in the schema, so one that cannot be held exactly is refused instead of rounded.
+  expect(() => convertDockerRun(`docker run --network name=n,gw-priority=${big} nginx`)).toThrow(
+    /must be a whole number that is not larger than 9,007,199,254,740,991/,
+  );
+  expect(
+    at(
+      convertDockerRun('docker run --network name=n,gw-priority=1000 nginx').document,
+      'services.nginx.networks.n.gw_priority',
+    ),
+  ).toBe(1000);
+});

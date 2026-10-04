@@ -85,9 +85,14 @@ function cpusOrText(text: string): number | string {
   return parseCpuCount(text) ?? text;
 }
 
-/** A whole number when the text is one, otherwise the text (a size such as 512m). */
+/**
+ * A whole number when the text is one that a JavaScript number holds exactly, otherwise the text (a size such as 512m, or a
+ * whole number beyond 2^53, which would be rounded and written as 1e+20 if it were turned into a number).
+ */
 function wholeOrText(text: string): number | string {
-  return isWhole(text) ? Number(text) : text;
+  if (!isWhole(text)) return text;
+  const value = Number(text);
+  return Number.isSafeInteger(value) ? value : text;
 }
 
 /** True or false for the words docker reads as a boolean; anything else (a variable) stays the text. */
@@ -689,7 +694,7 @@ class Conversion {
       switch (named) {
         case 'count':
           if (text === 'all') count = 'all';
-          else if (isWhole(text)) count = Number(text);
+          else if (isWhole(text)) count = wholeOrText(text);
           else throw refuse(read, `${where} must be all or a whole number.`);
           break;
         case 'driver':
@@ -794,7 +799,9 @@ class Conversion {
             break;
           }
           case 'gw-priority':
-            if (!isWhole(given)) throw refuse(read, `${where} must be a whole number.`);
+            if (!isWhole(given) || !Number.isSafeInteger(Number(given))) {
+              throw refuse(read, `${where} must be a whole number that is not larger than 9,007,199,254,740,991.`);
+            }
             use.priority = Number(given);
             attributes = true;
             break;
