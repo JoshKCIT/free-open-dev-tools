@@ -221,7 +221,7 @@
     "name": "UUID Generator & Parser",
     "category": "generators",
     "tier": 1,
-    "summary": "Generate UUID v1, v3, v4, v5 and v7, and parse any UUID back into its fields."
+    "summary": "Generate and decode UUIDs (v1, v3, v4, v5 and v7), ULIDs, NanoIDs, KSUIDs, Snowflake IDs and ObjectIds, with the times they carry."
   },
   {
     "id": "random-string",

@@ -1,7 +1,7 @@
 {
   "name": "@fodt/uuid",
   "version": "1.0.0",
-  "description": "Generate UUID v1, v3, v4, v5 and v7, and parse any UUID back into its fields.",
+  "description": "Generate and decode UUIDs (v1, v3, v4, v5 and v7), ULIDs, NanoIDs, KSUIDs, Snowflake IDs and ObjectIds, with the times they carry.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,13 @@
     "uuidv4",
     "uuidv7",
     "rfc9562",
-    "identifier"
+    "identifier",
+    "ulid",
+    "nanoid",
+    "ksuid",
+    "snowflake",
+    "objectid",
+    "mongodb"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
