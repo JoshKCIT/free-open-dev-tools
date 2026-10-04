@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
@@ -859,5 +860,224 @@ test('web-manifest-builder: icon and shortcut addresses are never requested', as
     ).toEqual([]);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+/**
+ * The IDN & Punycode Converter: the oracle is Unicode's own conformance data, IdnaTestV2.txt 17.0.0, vendored under
+ * tools/idn-converter/test/fixtures/idna (see UPSTREAM.md there). Sixty of its rows, chosen by a fixed seed, are typed on
+ * the page in batches of twenty, once going to ASCII (the file's toAsciiN column) and once going to Unicode (its toUnicode
+ * column), with the strict profile. For each row the page must show the file's expected form, or say the name is not valid
+ * when the file lists a status code. The file is read here by a small reader of its own (columns, escapes, the blank rules).
+ */
+const IDNA_FILE = new URL('../tools/idn-converter/test/fixtures/idna/IdnaTestV2.txt', import.meta.url);
+const IDNA_BACKSLASH = String.fromCharCode(92);
+
+interface IdnaRow {
+  line: number;
+  source: string;
+  toUnicode: string;
+  toUnicodeError: boolean;
+  toAsciiN: string;
+  toAsciiNError: boolean;
+  /** The status codes of the toAsciiN column, as the file lists them. */
+  toAsciiNCodes: string[];
+}
+
+function idnaUnescape(text: string): string {
+  if (text === '""') return '';
+  let out = '';
+  for (let i = 0; i < text.length;) {
+    if (text[i] === IDNA_BACKSLASH && text[i + 1] === 'u') {
+      out += String.fromCharCode(parseInt(text.slice(i + 2, i + 6), 16));
+      i += 6;
+    } else if (text[i] === IDNA_BACKSLASH && text[i + 1] === 'x' && text[i + 2] === '{') {
+      const close = text.indexOf('}', i);
+      out += String.fromCodePoint(parseInt(text.slice(i + 3, close), 16));
+      i = close + 1;
+    } else {
+      out += text[i];
+      i += 1;
+    }
+  }
+  return out;
+}
+
+/** Rows of the file: a blank toUnicode column is the source, a blank toAsciiN column is the toUnicode value, and a blank status inherits as the file's header says. */
+function readIdnaRows(): IdnaRow[] {
+  const rows: IdnaRow[] = [];
+  const lines = readFileSync(IDNA_FILE, 'utf8').split('\n');
+  lines.forEach((raw, index) => {
+    const hash = raw.indexOf('#');
+    const line = hash >= 0 ? raw.slice(0, hash) : raw;
+    if (line.trim() === '') return;
+    const columns = line.split(';').map((column) => column.replace(/^[ \t]+/, '').replace(/[ \t]+$/, ''));
+    while (columns.length < 7) columns.push('');
+    const source = idnaUnescape(columns[0] ?? '');
+    const toUnicode = columns[1] === '' ? source : idnaUnescape(columns[1] ?? '');
+    const unicodeStatus = columns[2] === '' || columns[2] === '[]' ? '' : (columns[2] ?? '');
+    const asciiStatus = columns[4] === '' ? unicodeStatus : columns[4] === '[]' ? '' : (columns[4] ?? '');
+    rows.push({
+      line: index + 1,
+      source,
+      toUnicode,
+      toUnicodeError: unicodeStatus !== '',
+      toAsciiN: columns[3] === '' ? toUnicode : idnaUnescape(columns[3] ?? ''),
+      toAsciiNError: asciiStatus !== '',
+      toAsciiNCodes: asciiStatus
+        .slice(1, -1)
+        .split(',')
+        .map((code) => code.trim())
+        .filter((code) => code !== ''),
+    });
+  });
+  return rows;
+}
+
+function idnaSeeded(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** How the page shows a name or a result: hidden and direction-changing characters as an escape (the page's own rule, written again here from the page's description). */
+function idnaShown(text: string): string {
+  const hidden: [number, number][] = [
+    [0x0, 0x1f],
+    [0x7f, 0x9f],
+    [0xa0, 0xa0],
+    [0xad, 0xad],
+    [0x34f, 0x34f],
+    [0x61c, 0x61c],
+    [0x115f, 0x1160],
+    [0x1680, 0x1680],
+    [0x17b4, 0x17b5],
+    [0x180b, 0x180f],
+    [0x2000, 0x200f],
+    [0x2028, 0x202f],
+    [0x205f, 0x206f],
+    [0x3000, 0x3000],
+    [0x3164, 0x3164],
+    [0xd800, 0xdfff],
+    [0xfe00, 0xfe0f],
+    [0xfeff, 0xfeff],
+    [0xffa0, 0xffa0],
+    [0xfff9, 0xfffb],
+    [0xfffe, 0xffff],
+    [0x1d173, 0x1d17a],
+    [0xe0000, 0xe0fff],
+  ];
+  let shown = '';
+  for (const ch of text) {
+    const point = ch.codePointAt(0) ?? 0;
+    shown += hidden.some(([low, high]) => point >= low && point <= high)
+      ? `${IDNA_BACKSLASH}u{${point.toString(16).toUpperCase()}}`
+      : ch;
+  }
+  return shown;
+}
+
+const IDNA_REASONS = ['processing', 'hyphen', 'std3', 'length', 'bidi', 'joiner'];
+
+/** The one kind of reason a row's status codes give, or a mix: V2 and V3 hyphens, U1 STD3, A4 length, B bidi, C joiners, anything else processing. */
+function idnaReason(codes: string[]): string {
+  const kinds = new Set(
+    codes.map((code) =>
+      code === 'V2' || code === 'V3'
+        ? 'hyphen'
+        : code === 'U1'
+          ? 'std3'
+          : code === 'A4_1' || code === 'A4_2'
+            ? 'length'
+            : code.startsWith('B')
+              ? 'bidi'
+              : code.startsWith('C')
+                ? 'joiner'
+                : 'processing',
+    ),
+  );
+  if (kinds.has('processing')) return 'processing';
+  return kinds.size === 1 ? ([...kinds][0] ?? '') : 'mixed';
+}
+
+/** Sixty rows, chosen by a fixed seed, from those that can be typed as one line of the page and shown whole in a table cell. */
+function idnaTypeable(text: string): boolean {
+  const characters = Array.from(text);
+  if (characters.length > 80) return false;
+  return characters.every((ch) => {
+    const point = ch.codePointAt(0) ?? 0;
+    return point !== 0 && point !== 10 && point !== 13 && !(point >= 0xd800 && point <= 0xdfff);
+  });
+}
+
+function idnaChosenRows(): IdnaRow[] {
+  const eligible = readIdnaRows().filter(
+    (row) =>
+      row.source !== '' &&
+      row.source === row.source.trim() &&
+      idnaTypeable(row.source) &&
+      idnaTypeable(row.toUnicode) &&
+      idnaTypeable(row.toAsciiN),
+  );
+  const random = idnaSeeded(20261004);
+  for (let i = eligible.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    const held = eligible[i];
+    eligible[i] = eligible[j] as IdnaRow;
+    eligible[j] = held as IdnaRow;
+  }
+  // Thirty rows the file accepts, and thirty it refuses: five for each kind of reason it gives (a name that cannot be
+  // processed, only hyphens, only STD3 characters, only length, only bidirectional rules, only joiners), because most of the
+  // file's refusals combine several reasons and would hide a missing check. Taken in turn so every batch has both.
+  const accepted = eligible.filter((row) => !row.toAsciiNError).slice(0, 30);
+  const refused = IDNA_REASONS.flatMap((reason) =>
+    eligible.filter((row) => row.toAsciiNError && idnaReason(row.toAsciiNCodes) === reason).slice(0, 5),
+  );
+  return accepted.flatMap((row, index) => [row, refused[index] as IdnaRow]);
+}
+
+test('idn-converter: the page converts IdnaTestV2 rows the same way in every browser', async ({ page }) => {
+  const rows = idnaChosenRows();
+  expect(rows).toHaveLength(60);
+  // Not vacuous: the sixty rows hold names the file accepts and names it refuses, in both directions.
+  expect(rows.filter((row) => !row.toAsciiNError).length).toBe(30);
+  expect(rows.filter((row) => row.toAsciiNError).length).toBe(30);
+  expect(rows.filter((row) => !row.toUnicodeError).length).toBeGreaterThanOrEqual(20);
+  expect(rows.filter((row) => row.toUnicodeError).length).toBeGreaterThanOrEqual(20);
+
+  await openTool(page, 'idn-converter');
+  for (const direction of ['to-ascii', 'to-unicode'] as const) {
+    await page.locator(`input[name="direction"][value="${direction}"]`).click();
+    for (let start = 0; start < rows.length; start += 20) {
+      const batch = rows.slice(start, start + 20);
+      await fillAndHold(page, 'names', batch.map((row) => row.source).join('\n'));
+      // The page answers a moment after the last change, so the whole table is read again until it is the file's.
+      await expect(async () => {
+        const shown = await outputArea(page)
+          .locator('table tbody tr')
+          .evaluateAll((trs) => trs.map((tr) => Array.from(tr.children).map((cell) => cell.textContent ?? '')));
+        expect(shown, `${direction}, rows ${start + 1} to ${start + 20}`).toHaveLength(batch.length);
+        batch.forEach((row, index) => {
+          const cells = shown[index] ?? [];
+          const refused = direction === 'to-ascii' ? row.toAsciiNError : row.toUnicodeError;
+          const wanted = direction === 'to-ascii' ? row.toAsciiN : row.toUnicode;
+          const where = `${direction}, line ${row.line} of the file: ${idnaShown(row.source)}`;
+          expect(cells[0], where).toBe(String(index + 1));
+          expect(cells[1], where).toBe(idnaShown(row.source));
+          if (refused) {
+            expect(cells[direction === 'to-ascii' ? 2 : 3], where).toBe('not converted');
+            expect(cells[4], where).toMatch(/^not valid: [1-9]/);
+          } else {
+            expect(cells[direction === 'to-ascii' ? 2 : 3], where).toBe(idnaShown(wanted));
+            expect(cells[4], where).toBe('valid');
+          }
+        });
+      }).toPass({ timeout: 15_000 });
+    }
   }
 });
