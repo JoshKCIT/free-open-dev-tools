@@ -32,7 +32,7 @@
   "ambiguities": [
     "The quality field is a 1 to 100 number in the page, converted to the 0 to 1 fraction the HTML Standard's own canvas encode calls take; an out-of-range value is clamped rather than passed straight through to let the browser fall back to its own default, so the visitor's request stays as close to what they asked for as the standard allows.",
     "Whether a source is genuinely animated (rather than simply a GIF or WebP file that happens to hold one frame) is not checked before warning that only the first frame is kept, since detecting that reliably would need decoding the whole file rather than reading its header.",
-    "An SVG with no width, height or viewBox is 300 by 150 pixels, as browsers draw it; a width or height in percent, em or ex is treated as missing and the viewBox size is used.",
+    "An SVG with no width, height or viewBox is 300 by 150 pixels, as browsers draw it; a width or height in percent is treated as missing and the viewBox size is used. A width or height in em is read at 16 pixels to the em and one in ex at 8 pixels to the ex (the browser's initial font size), whatever font size the SVG itself sets.",
     "An SVG that is cropped, rotated or flipped is drawn at its own declared size first, so the crop is exact, and then resized; an SVG with none of those is drawn directly at the output size.",
     "The SVG check refuses any attribute value or style text that hides an address behind a character reference or a backslash, since a browser would decode it before using it."
   ],

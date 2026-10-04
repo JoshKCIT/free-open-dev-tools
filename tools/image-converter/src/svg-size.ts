@@ -6,8 +6,10 @@
  * Only the first element's own attributes count. Lengths are read as CSS
  * lengths: a number with no unit is pixels, and the absolute units px, pt,
  * pc, mm, cm and in are converted at 96 pixels to the inch (CSS Values and
- * Units Level 4). A percentage, em, ex or anything unreadable counts as
- * missing. Pure text work: nothing is drawn here.
+ * Units Level 4). The font-relative units em and ex are read at the CSS
+ * initial font size: 1em is 16 pixels and 1ex is 8 pixels, as a browser
+ * draws an SVG shown as a picture. A percentage or anything unreadable
+ * counts as missing. Pure text work: nothing is drawn here.
  */
 import { readRootElement, SvgGuardError } from './svg-guard';
 
@@ -35,6 +37,9 @@ const UNIT_PIXELS: ReadonlyMap<string, number> = new Map([
   ['mm', 96 / 25.4],
   ['cm', 96 / 2.54],
   ['in', 96],
+  // Font-relative: the initial font size of 16 pixels, and half of it for the height of a lower-case x.
+  ['em', 16],
+  ['ex', 8],
 ]);
 
 const NUMBER_SHAPE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;

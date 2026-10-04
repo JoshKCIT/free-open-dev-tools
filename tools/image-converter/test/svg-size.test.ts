@@ -35,9 +35,8 @@ it('SVG size comes from width and height in CSS absolute units, then the viewBox
   expect(size('width="10mm" height="10mm"')).toEqual([38, 38]); // 37.795 rounds to 38
   expect(size('width="2IN" height="1In"')).toEqual([192, 96]); // units are not case sensitive
 
-  // Percentages, relative units and junk are missing values: the viewBox size, then 300 by 150.
+  // Percentages, other relative units and junk are missing values: the viewBox size, then 300 by 150.
   expect(size('width="100%" height="100%" viewBox="0 0 40 20"')).toEqual([40, 20]);
-  expect(size('width="2em" height="3ex" viewBox="0 0 40 20"')).toEqual([40, 20]);
   expect(size('viewBox="0 0 40 20"')).toEqual([40, 20]);
   expect(size('viewBox="-5,-5,60,30"')).toEqual([60, 30]);
   expect(size('viewBox="0 0 12.4 7.6"')).toEqual([12, 8]);
@@ -93,4 +92,32 @@ it('SVG size comes from width and height in CSS absolute units, then the viewBox
   expect(() => svgSize('<html width="10" height="10"/>')).toThrow(SvgSizeError);
   expect(() => svgSize('')).toThrow(SvgSizeError);
   expect(() => svgSize('<svg width="10"')).toThrow(SvgSizeError);
+});
+
+it('SVG size reads em at 16 pixels and ex at 8 pixels, the initial font size a browser uses', () => {
+  const size = (attrs: string): [number, number] => {
+    const s = svgSize(svg(attrs));
+    return [s.width, s.height];
+  };
+  // 1em is 16 pixels and 1ex is half of that, so a browser draws width="10em" height="10em" at 160 by 160 (and the
+  // page, which used to call these sizes missing, drew it stretched to 300 by 150).
+  expect(size('width="10em" height="10em"')).toEqual([160, 160]);
+  expect(size('width="10ex" height="5ex"')).toEqual([80, 40]);
+  expect(size('width="2.5em" height="1em"')).toEqual([40, 16]);
+  expect(size('width="0.5EM" height="1Ex"')).toEqual([8, 8]);
+  expect(size('width="2em" height="3ex" viewBox="0 0 40 20"')).toEqual([32, 24]);
+  // One side given: the other follows the viewBox ratio, or falls back to the default side.
+  expect(size('width="10em" viewBox="0 0 40 20"')).toEqual([160, 80]);
+  expect(size('height="10ex" viewBox="0 0 40 20"')).toEqual([160, 80]);
+  expect(size('width="10em"')).toEqual([160, 150]);
+  // Mixed with the absolute units.
+  expect(size('width="1em" height="12pt"')).toEqual([16, 16]);
+  // Other relative units and words that only end like these are still missing values.
+  expect(size('width="10rem" height="10rem"')).toEqual([300, 150]);
+  expect(size('width="10vw" height="10vh" viewBox="0 0 8 4"')).toEqual([8, 4]);
+  expect(size('width="1xem" height="1 em"')).toEqual([300, 150]);
+  expect(size('width="-3em" height="0em"')).toEqual([300, 150]);
+  // The size limit applies to the converted size: 1100em is 17,600 pixels, and 17,600 by 1,000 is over the limit.
+  expect(() => svgSize(svg('width="1100em" height="62.5em"'))).toThrow(SvgSizeError);
+  expect(svgSize(svg('width="256em" height="256em"'))).toEqual({ width: 4096, height: 4096 });
 });

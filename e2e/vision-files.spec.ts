@@ -2400,6 +2400,38 @@ test('image-converter: an SVG with a filter and a few uses converts, and reuse t
   expect(offending(requests)).toEqual([]);
 });
 
+test('image-converter: an SVG sized in em and ex is drawn at 16 and 8 pixels to the unit, not stretched', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+  await page.locator('#f-allowSvg').check();
+  await expect(page.locator('#f-allowSvg')).toBeChecked();
+
+  // 10em by 5em is 160 by 80; left half red, right half blue, so a stretched drawing would move the edge.
+  const halves = (width: string, height: string): string =>
+    `<svg ${SVG_NS} width="${width}" height="${height}" viewBox="0 0 2 1" preserveAspectRatio="none">` +
+    '<rect x="0" width="1" height="1" fill="#ff0000"/><rect x="1" width="1" height="1" fill="#0000ff"/></svg>';
+  for (const [name, width, height, expected] of [
+    ['em.svg', '10em', '5em', [160, 80]],
+    ['ex.svg', '20ex', '10ex', [160, 80]],
+  ] as const) {
+    await attachImage(page, 'file', svgFile(name, halves(width, height)));
+    await runButtonOf(page).click();
+    const png = name.replace('.svg', '.png');
+    await expect(outputArea(page).locator('li', { hasText: png })).toBeVisible({ timeout: 30_000 });
+    await expect(outputArea(page)).toContainText(`${expected[0]} × ${expected[1]}`);
+    const decoded = decodePngBytes(await downloadNamed(page, png));
+    expect([decoded.width, decoded.height], name).toEqual([...expected]);
+    expect(
+      [pixelOf(decoded, 2, 40), pixelOf(decoded, 79, 40), pixelOf(decoded, 80, 40), pixelOf(decoded, 157, 40)],
+      name,
+    ).toEqual(['255,0,0,255', '255,0,0,255', '0,0,255,255', '0,0,255,255']);
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
 /** The sentence every file over 100 MB is told, by any page that reads a picked file by its reported size. */
 const OVER_100_MB = 'This file is larger than 100 MB, the most this page accepts.';
 
