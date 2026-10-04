@@ -16,7 +16,7 @@
  * run limit starts when the job is posted, not when the worker is created, so a slow start is never counted against the
  * visitor's patterns.
  *
- * The run limit is 5 seconds. Matching 1,000 patterns against 5,000 paths took about 2 seconds in the slowest measured
+ * The run limit is 5 seconds. Matching 1,000 patterns against 5,000 paths took about 2 to 3 seconds in the slowest measured
  * case, while `*a*a*a*a*a*a*a*a*b` against 40 letters a and a c takes about 6 seconds in picomatch, so 5 seconds is
  * well above any realistic paste and stops exactly the patterns that backtrack. The page owns the limit because the
  * worker is stuck inside one synchronous call when it matters, and terminate() is the only real way to stop it.
@@ -32,7 +32,7 @@ import type { RunContext } from './tool-ui';
 export const GLOB_TESTER_TIME_LIMIT_MS = 5000;
 
 export const GLOB_TESTER_TIME_LIMIT_MESSAGE =
-  'Stopped after 5 seconds: a pattern took too long on one of the paths. Shorten the pattern or the path.';
+  'Stopped after 5 seconds: a pattern took too long on one of the paths. Shorten the pattern or the path. A very large .gitignore paste can also take this long: try fewer rules or fewer paths.';
 
 export const GLOB_TESTER_START_LIMIT_MS = 10000;
 

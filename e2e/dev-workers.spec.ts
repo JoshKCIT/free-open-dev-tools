@@ -529,6 +529,8 @@ test('glob-tester: a backtracking pattern stops after 5 seconds with a plain mes
   expect(message).toContain(
     'Stopped after 5 seconds: a pattern took too long on one of the paths. Shorten the pattern or the path.',
   );
+  // The second sentence is for a large .gitignore paste, where the cause can be the size and not one pattern.
+  expect(message).toContain('A very large .gitignore paste can also take this long: try fewer rules or fewer paths.');
   // The message holds no part of the pattern or the path.
   expect(message).not.toContain('*a');
   expect(message).not.toContain('aaaa');

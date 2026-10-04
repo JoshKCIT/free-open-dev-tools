@@ -23,6 +23,9 @@ export interface GitignoreRow {
 
 type Engine = ReturnType<typeof ignore>;
 
+/** What the package reported for a target: the line of the first rule of the last run of matching rules, when it says. */
+type Hint = number | undefined;
+
 interface Rule {
   line: number;
   /** The line as pasted, for showing. */
@@ -73,11 +76,18 @@ const BLOCK_SIZE = 32;
  * costs little. A group answers for its own rules alone only when no directory above the path was matched by any rule
  * (a rule that excludes a directory that a later negation re-includes would otherwise make every group look like a
  * match); when one was, the search runs over engines holding every rule from j to the very end, which is always exact.
+ * That search starts from what the package itself reported for the path: when the path is ignored, the package names
+ * the first rule of the last run of matching rules, the deciding line is that one or a later one, and a single question
+ * to the engine holding every rule after it says which, so a path costs about the number of rules after the line that
+ * decides it, not a search over all of them. An answer is kept for every distinct target, so paths that sit under the
+ * same excluded directory share the work.
  *
  * A directory path ends in `/`, as the package expects.
  */
 export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
   const rules: Rule[] = [];
+  /** The index in `rules` of each rule, by its pasted line number. */
+  const indexOfLine = new Map<number, number>();
   const full = ignore({ ignorecase: false });
   forEachLine(text, (lineText, line) => {
     if (isBlank(lineText)) return;
@@ -85,6 +95,7 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
     // A line holding only a ! names no pattern, and git matches nothing with it. The line still counts in the line
     // numbers (they come from the pasted text), but it is given to no engine, as a comment is given to none.
     if (pattern === '!') return;
+    indexOfLine.set(line, rules.length);
     rules.push({ line, text: lineText, pattern });
     full.add({ pattern, mark: String(line) });
   });
@@ -119,6 +130,11 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
     return chain;
   };
 
+  const hintOf = (answer: { ignored: boolean; rule?: { mark?: string } }): Hint => {
+    const mark = answer.ignored ? answer.rule?.mark : undefined;
+    return mark === undefined ? undefined : Number(mark);
+  };
+
   const matches = (engine: Engine, target: string): boolean => {
     const answer = engine.test(target);
     return answer.ignored || answer.unignored;
@@ -126,9 +142,25 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
 
   // The index of the last rule that matches `target` (a path, or a directory ending in `/`), or -1. `exact` is true
   // when some directory above the target was matched by a rule, which is the one case a group cannot answer alone.
-  const lastMatching = (target: string, exact: boolean): number => {
+  const lastMatching = (target: string, exact: boolean, hint: Hint): number => {
+    const remembered = known.get(target);
+    if (remembered !== undefined) return remembered;
+    const found = findLast(target, exact, hint);
+    known.set(target, found);
+    return found;
+  };
+
+  const known = new Map<string, number>();
+
+  const findLast = (target: string, exact: boolean, hint: Hint): number => {
     if (exact) {
       everything ??= buildChain(0, rules.length - 1);
+      const first = hint === undefined ? undefined : indexOfLine.get(hint);
+      if (first !== undefined) {
+        // The rule the package named matches the target, and the last matching rule is that one or a later one.
+        if (first + 1 >= rules.length || !matches(everything[first + 1] as Engine, target)) return first;
+        return searchChain(everything, 0, target, first + 1);
+      }
       return searchChain(everything, 0, target);
     }
     for (let b = blockCount - 1; b >= 0; b--) {
@@ -138,9 +170,10 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
     return -1;
   };
 
-  // The largest i for which chain[i] matches the target (chain[0] is known to), as an index into the rules.
-  const searchChain = (chain: Engine[], offset: number, target: string): number => {
-    let low = 0;
+  // The largest i for which chain[i] matches the target (chain[0] is known to, and so is chain[from]), as an index into the
+  // rules.
+  const searchChain = (chain: Engine[], offset: number, target: string, from = 0): number => {
+    let low = from;
     let high = chain.length - 1;
     let found = -1;
     while (low <= high) {
@@ -172,6 +205,7 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
       row = { path, isDirectory, ignored: answer.ignored, decidedBy: { kind: 'text' } };
       // The first excluded directory above the path decides it: nothing below it can be re-included.
       let excluded = '';
+      let excludedHint: Hint;
       let touched = false;
       let slash = path.indexOf('/');
       while (slash >= 0) {
@@ -179,19 +213,20 @@ export function gitignoreRows(text: string, paths: string): GitignoreRow[] {
         const above = full.test(directory);
         if (above.ignored) {
           excluded = directory;
+          excludedHint = hintOf(above);
           break;
         }
         if (above.unignored) touched = true;
         slash = path.indexOf('/', slash + 1);
       }
       if (excluded !== '') {
-        const index = lastMatching(excluded, touched);
+        const index = lastMatching(excluded, touched, excludedHint);
         const rule = index < 0 ? undefined : (rules[index] as Rule);
         if (rule !== undefined && !rule.pattern.startsWith('!')) {
           row.decidedBy = { kind: 'parent', directory: excluded, line: rule.line, pattern: rule.text };
         }
       } else {
-        const index = lastMatching(key, touched);
+        const index = lastMatching(key, touched, hintOf(answer));
         const rule = index < 0 ? undefined : (rules[index] as Rule);
         // The named rule must agree with the package's answer: a rule that is not a negation ignores the path.
         if (rule !== undefined && rule.pattern.startsWith('!') === !answer.ignored) {

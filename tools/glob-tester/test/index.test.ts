@@ -277,6 +277,43 @@ it('1,000 rules against 5,000 paths finish in under 10 seconds', () => {
   }
 }, 60_000);
 
+it('1,000 rules against 5,000 paths under a re-included directory name each deciding line in well under the 5 second limit of the page', () => {
+  // Everything at the top is excluded (line 1), the src directory is re-included (line 2), and 998 more lines name an
+  // extension or a directory under src. Every path is five folders deep under src and ends in one of the 499 extensions
+  // that a rule names, so each path is decided by one named line, and every one of the 5,000 paths lies under the
+  // re-included directory, which is the case that makes a deciding-line search expensive.
+  const count = 1_000;
+  const rules: string[] = ['/*', '!/src/'];
+  for (let i = 0; i < count - 2; i++) rules.push(i % 2 === 1 ? `*.ext${i}` : `/src/gen${i}/`);
+  const paths: string[] = [];
+  const expectedLine: number[] = [];
+  for (let i = 0; i < 5_000; i++) {
+    const segments = ['src'];
+    for (let k = 0; k < 5; k++) segments.push('s' + ((i * 7919 + k * 13) % 97));
+    const extension = 2 * (i % ((count - 2) >> 1)) + 1;
+    paths.push(`${segments.join('/')}/f${i}.ext${extension}`);
+    expectedLine.push(extension + 3);
+  }
+  const input = job('gitignore', rules.join('\n'), paths.join('\n'));
+  // Only the code under test is timed: the input is built above and checked below.
+  const before = performance.now();
+  const result = testPatterns(input);
+  const elapsed = performance.now() - before;
+  expect(result.mode).toBe('gitignore');
+  const rows = result.rows as GitignoreRow[];
+  expect(rows).toHaveLength(5_000);
+  expect(elapsed, `took ${Math.round(elapsed)} ms`).toBeLessThan(3_500);
+  for (const [index, row] of rows.entries()) {
+    expect(row.ignored).toBe(true);
+    expect(row.decidedBy).toEqual({
+      kind: 'rule',
+      line: expectedLine[index],
+      pattern: `*.ext${(expectedLine[index] as number) - 3}`,
+      negated: false,
+    });
+  }
+}, 60_000);
+
 it('nothing is written to the console while matching', () => {
   testPatterns(job('gitignore', '*.log\n!keep.log\nbuild/', 'debug.log\nkeep.log\nbuild/x.js\n'));
   testPatterns(job('glob', 'src/**/*.ts\n!(a).txt', 'src/a.ts\nb.txt\n'));
