@@ -321,6 +321,12 @@ class DockerTokenizer {
       this.readAnsiCQuoted();
       return;
     }
+    if (next === '"' && !inDouble) {
+      // Bash reads $"text" as a locale-translated string, which is the text itself here: the dollar sign is dropped.
+      this.advance();
+      this.readDoubleQuoted();
+      return;
+    }
     if (next === '(') {
       this.readSubstitution(line, column);
       return;

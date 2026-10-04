@@ -247,3 +247,50 @@ it('nothing is written to the console while reading a command', () => {
   }
   for (const spy of spies) expect(spy).not.toHaveBeenCalled();
 });
+
+it('a dollar sign straight before a double quote is dropped, as Bash reads a locale-translated string', () => {
+  const Q2 = String.fromCharCode(34);
+  expect(tokenizeDockerCommand(`docker run -e ${D}${Q2}A=b c${Q2} nginx`)).toEqual([
+    'docker',
+    'run',
+    '-e',
+    'A=b c',
+    'nginx',
+  ]);
+  expect(tokenizeDockerCommand(`docker run --name ${D}${Q2}web${Q2}x nginx`)).toEqual([
+    'docker',
+    'run',
+    '--name',
+    'webx',
+    'nginx',
+  ]);
+  // Variables inside still stay for Compose, and an escaped dollar sign is still doubled.
+  expect(tokenizeDockerCommand(`docker run -e ${D}${Q2}A=${D}B${Q2} nginx`)).toEqual([
+    'docker',
+    'run',
+    '-e',
+    `A=${D}B`,
+    'nginx',
+  ]);
+  expect(tokenizeDockerCommand(`docker run -e ${D}${Q2}A=${BS}${D}${Q2} nginx`)).toEqual([
+    'docker',
+    'run',
+    '-e',
+    `A=${D}${D}`,
+    'nginx',
+  ]);
+  // A dollar sign inside double quotes, even before the closing quote, is still a plain dollar sign.
+  expect(tokenizeDockerCommand(`docker run -e ${Q2}A=${D}${Q2} nginx`)).toEqual([
+    'docker',
+    'run',
+    '-e',
+    `A=${D}${D}`,
+    'nginx',
+  ]);
+  // The position of a refusal inside the string is still right.
+  expect(refusal(`docker run -e ${D}${Q2}A=${D}(whoami)${Q2} nginx`).column).toBe(19);
+  // A string that never closes is refused at its opening quote.
+  const open = refusal(`docker run -e ${D}${Q2}A=b nginx`);
+  expect(open.message).toBe('This double-quoted string is never closed.');
+  expect(open.column).toBe(16);
+});
