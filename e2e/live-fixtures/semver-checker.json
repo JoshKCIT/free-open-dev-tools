@@ -1,0 +1,10 @@
+{
+  "id": "semver-checker",
+  "label": "node-semver 7.8.5 normalises ^1.2.3 to >=1.2.3 <2.0.0-0 and 2.0.0 does not satisfy it",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "check" },
+    { "action": "fill", "field": "range", "value": "^1.2.3" },
+    { "action": "fill", "field": "versions", "value": "1.9.9\n2.0.0" }
+  ],
+  "expect": [">=1.2.3 <2.0.0-0", "does not satisfy"]
+}

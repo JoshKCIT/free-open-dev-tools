@@ -1,0 +1,17 @@
+[
+  {
+    "mode": { "field": "mode", "value": "check" },
+    "values": { "range": "^1.2.3 || >=4.0.0 <5.0.0", "versions": "1.2.2\n1.9.9\n2.0.0\n4.5.6" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "sort" },
+    "values": { "versions": "2.0.0\n1.0.0\n1.0.0-rc.1\n1.0.0+build.5" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "explain" },
+    "values": { "range": "^1.2.3 || >=4.0.0 <5.0.0" },
+    "attachesFile": false
+  }
+]
