@@ -24,11 +24,23 @@ import type { JsFormatterJobMessage, JsFormatterWorkerMessage } from './workers/
 import type { FormatJsResult } from '@fodt/js-formatter';
 import type { RunContext } from './tool-ui';
 
-/** The exact value this file enforces, same register as the jsonpath and ts-to-js workers' own 1.5 second limit. */
-export const JS_FORMATTER_TIME_LIMIT_MS = 1500;
+/**
+ * The exact value this file enforces, same register as the other formatter
+ * pages' own 10 second limit. It was 1.5 seconds until the 2026-10-03
+ * nightly full run: a 200 KB realistic TypeScript file minifies in about
+ * 0.65 seconds in WebKit on an idle machine, but a loaded runner (or a slow
+ * visitor machine) took it past 1.5 seconds and the page showed the
+ * time-limit message for a perfectly ordinary file. Measured with the CPU
+ * oversubscribed 2x, the same job ran for over 3 seconds. 10 seconds is
+ * several times that, and still short enough that nobody waits on a stuck
+ * tab: in Node a 60,000-term string-concatenation chain, the runaway case
+ * this limit exists for, takes about 29 seconds (WebKit is faster, and
+ * overflows its call stack somewhere between 50,000 and 60,000 terms).
+ */
+export const JS_FORMATTER_TIME_LIMIT_MS = 10000;
 
 export const JS_FORMATTER_TIME_LIMIT_MESSAGE =
-  'Stopped after 1.5 seconds: this input took too long to compile. Try a smaller file.';
+  'Stopped after 10 seconds: this input took too long to compile. Try a smaller file.';
 
 export class JsFormatterRunError extends Error {
   readonly line?: number;
