@@ -11,7 +11,8 @@ function clean(n: number): number {
  * Round tick values for a value axis that has to cover `min` to `max`, with about `count` gaps between them. The gap is
  * 1, 2 or 5 times a power of ten, the first tick is at or below `min`, the last at or above `max`, and zero is a tick
  * whenever the range crosses it. A range of no width (one value, or all values equal) is widened to reach zero, so the
- * axis always has two or more ticks.
+ * axis always has two or more ticks. When the numbers are so large next to the gap that the rounded ticks run together
+ * (1e12 to 1e12 + 1), the ticks are the two ends of the range.
  */
 export function niceTicks(min: number, max: number, count: number): number[] {
   let low = Math.min(min, max);
@@ -33,7 +34,15 @@ export function niceTicks(min: number, max: number, count: number): number[] {
   const first = Math.floor(low / step + 1e-9);
   const last = Math.ceil(high / step - 1e-9);
   const ticks: number[] = [];
-  for (let k = first; k <= last && ticks.length < 64; k++) ticks.push(clean(k * step));
+  for (let k = first; k <= last && ticks.length < 64; k++) {
+    const tick = clean(k * step);
+    // Twelve digits cannot tell 1e12 from 1e12 + 1, so neighbouring ticks can round to one number: keep each once.
+    if (ticks.length === 0 || tick > ticks[ticks.length - 1]!) ticks.push(tick);
+  }
+  // With fewer than two different ticks, or ticks that rounding moved inside the range, the two ends of the range are
+  // the axis (its span is high - low), so no point is drawn outside the plot.
+  const slack = step * 1e-6;
+  if (ticks.length < 2 || ticks[0]! > low + slack || ticks[ticks.length - 1]! < high - slack) return [low, high];
   return ticks;
 }
 

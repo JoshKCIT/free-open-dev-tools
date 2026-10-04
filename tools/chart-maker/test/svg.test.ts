@@ -730,3 +730,60 @@ it('a pie slice of value 0 draws no path and a pie of one value between two zero
   expect(svg).toMatch(/>a: 0</);
   expect(svg).toMatch(/>c: 0</);
 });
+
+it('axis ticks never repeat when the spread is tiny next to the size of the numbers', () => {
+  // 12 significant digits cannot tell 1e12 from 1e12 + 1, so the ticks fall back to the two ends of the range.
+  expect(niceTicks(1e12, 1e12 + 1, 5)).toEqual([1e12, 1e12 + 1]);
+  expect(niceTicks(1e12 + 1, 1e12, 5)).toEqual([1e12, 1e12 + 1]);
+  expect(niceTicks(1e12, 1e12 + 3, 5)).toEqual([1e12, 1e12 + 3]);
+  expect(niceTicks(-1e12 - 1, -1e12, 5)).toEqual([-1e12 - 1, -1e12]);
+  // Whatever the range, the ticks are all different, rise, and number at least two.
+  for (const [low, high] of [
+    [1e12, 1e12 + 10],
+    [1e12 + 4, 1e12 + 14], // rounding would move the last tick below the range
+    [1e12 + 5, 1e12 + 25],
+    [1e12, 1e12 + 2],
+    [1e14, 1e14 + 7],
+    [123456789012345, 123456789012349],
+    [1e15, 1e15 + 1],
+    [5, 5],
+    [1e12, 1e12],
+    [0, 0],
+  ] as [number, number][]) {
+    const ticks = niceTicks(low, high, 5);
+    expect(ticks.length, `${low} to ${high}`).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < ticks.length; i++) expect(ticks[i]!, `${low} to ${high}`).toBeGreaterThan(ticks[i - 1]!);
+    expect(ticks[0]!).toBeLessThanOrEqual(low);
+    expect(ticks[ticks.length - 1]!).toBeGreaterThanOrEqual(high);
+  }
+
+  // A line chart of 1e12 and 1e12 + 1 draws two different gridlines and both points inside the plot.
+  for (const values of [
+    [1e12, 1e12 + 1],
+    [1e12 + 1, 1e12],
+    [1e12, 1e12, 1e12],
+    [7, 7],
+  ]) {
+    const svg = chartSvg(
+      tableOf(
+        values.map((_, i) => `p${i}`),
+        [['V', values]],
+      ),
+      opts('line'),
+    );
+    const cys = symbolsOf(svg).map((s) => Number(s.attrs['cy']));
+    expect(cys).toHaveLength(values.length);
+    for (const cy of cys) {
+      expect(Number.isFinite(cy)).toBe(true);
+      expect(cy).toBeGreaterThanOrEqual(20);
+      expect(cy).toBeLessThanOrEqual(480 - 20);
+    }
+    const gridYs = tagsOf(svg, 'line')
+      .filter((l) => l['x1'] !== l['x2'])
+      .map((l) => Number(l['y1']));
+    expect(new Set(gridYs).size, 'no two gridlines on one line').toBe(gridYs.length);
+  }
+  const rising = chartSvg(tableOf(['a', 'b'], [['V', [1e12, 1e12 + 1]]]), opts('line'));
+  const [first, second] = symbolsOf(rising).map((s) => Number(s.attrs['cy']));
+  expect(first! - second!).toBeGreaterThan(100); // the larger value is clearly higher up
+});
