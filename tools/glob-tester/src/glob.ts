@@ -5,7 +5,7 @@ import { forEachLine, isBlank, parsePaths } from './lines';
 
 /** One path's answer in glob mode. */
 export interface GlobRow {
-  /** The path as pasted, without the `/` that marks a directory. */
+  /** The path as pasted, with the `/` that marks a directory: a directory pattern such as `src/` matches `src/`. */
   path: string;
   matched: boolean;
   /** The first pattern line that matched, counting every pasted line; null when none did. */
@@ -69,7 +69,10 @@ export function globRows(
   const parsed = parsePaths(paths);
   const answers = new Map<string, Omit<GlobRow, 'path'>>();
   const rows: GlobRow[] = [];
-  for (const { path } of parsed) {
+  for (const { path: name, isDirectory } of parsed) {
+    // The path is matched and shown as pasted, with the slash that marks a directory: picomatch reads `src/` as the
+    // directory and `src` as a file, and `src/*/` only matches a path that ends in a slash.
+    const path = isDirectory ? name + '/' : name;
     let answer = answers.get(path);
     if (answer === undefined) {
       let first: Compiled | undefined;

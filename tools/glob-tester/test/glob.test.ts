@@ -290,3 +290,34 @@ it('picomatch differences from Bash for [!a] and extglobs are what limits says',
   expect(limits).toMatch(/@\(\*\.js\|\*\.ts\)/);
   expect(limits).toMatch(/Bash/);
 });
+
+it('glob mode matches and shows a path with the trailing slash it was pasted with, so directory patterns can match', () => {
+  // The review's three patterns and three paths. picomatch 4.0.7 reads src/ as the directory, src as a file, and src/*/
+  // as a directory one level down, and each only matches a path written the same way.
+  const patterns = ['src/', 'src/*/', 'src'];
+  const paths = ['src/', 'src/lib/', 'src'];
+  const { rows } = globRows(patterns.join('\n'), paths.join('\n'), { dot: false, nocase: false });
+  expect(rows.map((row) => row.path)).toEqual(['src/', 'src/lib/', 'src']);
+  expect(rows.map((row) => [row.matched, row.line, row.pattern, row.also])).toEqual([
+    [true, 1, 'src/', []],
+    [true, 2, 'src/*/', []],
+    [true, 3, 'src', []],
+  ]);
+  // A path pasted with and without its slash are two different paths, and a duplicate still gives two rows.
+  const again = globRows('src/', 'src\nsrc/\nsrc/', { dot: false, nocase: false }).rows;
+  expect(again.map((row) => [row.path, row.matched])).toEqual([
+    ['src', false],
+    ['src/', true],
+    ['src/', true],
+  ]);
+  // The same answers as picomatch itself gives for the strings as pasted.
+  for (const pattern of patterns) {
+    for (const path of paths) {
+      const row = globRows(pattern, path, { dot: false, nocase: false }).rows[0];
+      expect(row?.matched, `${pattern} against ${path}`).toBe(picomatch(pattern, { windows: false })(path));
+    }
+  }
+  // A directory pattern is not matched by a file path of the same name, and a file pattern not by the directory.
+  expect(globRows('src/', 'src', { dot: false, nocase: false }).rows[0]?.matched).toBe(false);
+  expect(globRows('src', 'src/', { dot: false, nocase: false }).rows[0]?.matched).toBe(false);
+});

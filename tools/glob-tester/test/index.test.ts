@@ -209,8 +209,9 @@ it('rows follow the pasted path order, keep duplicates and skip blank lines', ()
   const gl = testPatterns(job('glob', '*.log\n\n!a.log', paths));
   expect(gl.mode).toBe('glob');
   const glRows = gl.rows as GlobRow[];
-  expect(glRows.map((r) => r.path)).toEqual(['b.log', 'a.log', 'b.log', 'logs']);
-  // *.log is line 1; !a.log (line 3) matches every path except a.log, so the directory name logs matches it too.
+  // Glob mode shows a directory with the slash it was pasted with (and matches it with the slash kept).
+  expect(glRows.map((r) => r.path)).toEqual(['b.log', 'a.log', 'b.log', 'logs/']);
+  // *.log is line 1; !a.log (line 3) matches every path except a.log, so the directory logs/ matches it too.
   expect(glRows.map((r) => r.matched)).toEqual([true, true, true, true]);
   expect(glRows.map((r) => r.line)).toEqual([1, 1, 1, 3]);
 

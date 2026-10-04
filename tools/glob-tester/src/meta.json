@@ -24,6 +24,7 @@
     "A path ending in / is a directory; the same name without it is a file. logs/ in a .gitignore matches the directory logs and everything under it, never a file named logs.",
     "When two .gitignore lines match one path the last one decides and is the one named, so a later !keep.log re-includes keep.log. In glob mode the first matching line is named and the other matching lines are listed.",
     "A file under an excluded directory cannot be re-included; the row names the excluded directory and its line.",
+    "In glob mode a path ending in / is matched with its slash, as picomatch reads it: the pattern src/ matches the path src/ and not src, and src matches the path src and not src/. In .gitignore mode the slash only marks a directory.",
     "Line numbers count every pasted line, blank lines and comments included."
   ],
   "standards": [
