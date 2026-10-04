@@ -569,3 +569,20 @@ it('value labels on the marks show the exact number up to 12 characters and six 
   expect(pie).toContain('>A: 1234567<');
   expect(pie).toContain('>B: 0.3<');
 });
+
+it('a pie of equal slices says all slices are equal instead of naming a largest and a smallest', () => {
+  const equal = must('Label,Share\nA,3\nB,3\nC,3', { type: 'pie' });
+  expect(equal.description).toEqual(['Share: 3 slices adding up to 9. All slices are equal, 3 each (33.3333%).']);
+  expect(equal.description[0]).not.toMatch(/largest|smallest/);
+  // Unequal slices keep the largest and smallest sentence.
+  const unequal = must('Label,Share\nA,3\nB,4', { type: 'pie' });
+  expect(unequal.description[0]).toContain('The largest is B at 4');
+  expect(unequal.description[0]).toContain('the smallest is A at 3');
+  // Two equal slices, and a zero slice that makes the slices unequal.
+  expect(must('Label,Share\nA,2\nB,2', { type: 'pie' }).description[0]).toContain(
+    'All slices are equal, 2 each (50%).',
+  );
+  expect(must('Label,Share\nA,2\nB,0', { type: 'pie' }).description[0]).toContain('The largest is A');
+  // One slice is still its own sentence.
+  expect(must('Label,Share\nA,2', { type: 'pie' }).description[0]).toBe('Share: 1 slice, A at 2 (100%).');
+});

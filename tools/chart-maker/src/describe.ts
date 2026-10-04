@@ -156,6 +156,9 @@ function pieSentence(table: ParsedTable): string {
   if (count === 1) {
     return `${name}: 1 slice, ${shown(found.largest.label)} at ${exactValue(found.largest.value)} (${percent(found.largest.value)}).`;
   }
+  if (found.largest.value === found.smallest.value) {
+    return `${name}: ${count} slices adding up to ${formatValue(total)}. All slices are equal, ${exactValue(found.largest.value)} each (${percent(found.largest.value)}).`;
+  }
   return (
     `${name}: ${count} slices adding up to ${formatValue(total)}. ` +
     `The largest is ${shown(found.largest.label)} at ${exactValue(found.largest.value)} (${percent(found.largest.value)}), ` +
