@@ -15,13 +15,13 @@ Click in the key capture box at the top of the output and press keys: every key 
 - For each event: key, code, keyCode, which, charCode (key press only), location in words, the four modifiers (Ctrl, Shift, Alt, Meta), repeat, isComposing and defaultPrevented
 - Composition text (the data of a composition event), shown escaped
 - Choosing which event types are shown; this changes only what is displayed, never what is kept
-- An option to prevent the browser's default action for every key except Tab and Escape, so you can see keys such as Space or F5 without the page scrolling or reloading
+- An option to prevent the browser's default action for every key except Tab, Escape and the keys of an input method (the key Process, key code 229 or isComposing), so you can see keys such as Space or F5 without the page scrolling or reloading; a prevented key down sends no keypress, and the defaultPrevented column keeps what the browser reported and adds when this page then prevented the default
 - Left, right and numpad variants of a key through the location value, and held keys through repeat
 
 ## Limits
 
-- The history keeps the latest 200 events in this page's memory only, whether or not their type is shown, and it is forgotten when you leave the page; Clear history empties it.
-- Key names and composition text are shown with control and direction-changing characters escaped and cut at 64 characters.
+- The history keeps the latest 200 events in this page's memory only, whether or not their type is shown, and it is forgotten as soon as you leave the page; a line above the table says how many older events were dropped; Clear history empties it.
+- Key names and composition text are shown with control, invisible (a zero width space, a no-break space, the Braille blank and similar) and direction-changing characters escaped and cut at 64 characters.
 - This page shows every key you type while the capture box has focus, so do not type passwords or other secrets into it.
 - Your browser and operating system keep some key combinations for themselves (for example switching tabs or windows, or an input method switch), so those never reach the page.
 - Composition events appear only with an input method; the legacy keyCode, which and charCode values are whatever this browser reports, because the UI Events specification does not define them.
@@ -76,7 +76,7 @@ visible('\u202e');                             // { shown: '\\u{202E}', truncate
 locationLegendRows();                         // [['0', 'standard', 'DOM_KEY_LOCATION_STANDARD'], ...]
 ```
 
-Everything here is pure: no document, clock, console or storage is touched, so the escaping, the column text and the bounded history can be tested in Node. `recordRow` turns one record into the table cells (numbers as decimal text, charCode only on a key press, location as number and name). `visible` escapes control characters and the characters that change text direction as `\u{XX}` and cuts at 64 code points. `KeyHistory` keeps at most `MAX_HISTORY_ROWS` (200) records and drops the oldest first; `rows(shown)` filters for display only. `LOCATION_NAMES` is a Map, so a key such as `__proto__` is never looked up as a property. Reading real key events is done by the page's own capture box, not by this package.
+Everything here is pure: no document, clock, console or storage is touched, so the escaping, the column text and the bounded history can be tested in Node. `recordRow` turns one record into the table cells (numbers as decimal text, charCode only on a key press, location as number and name). `visible` escapes control characters, invisible characters (a zero width space, a no-break space, the Braille blank and similar) and the characters that change text direction as `\u{XX}` and cuts at 64 code points. `KeyHistory` keeps at most `MAX_HISTORY_ROWS` (200) records, drops the oldest first and counts what it dropped in `dropped` (`droppedNotice(dropped)` words it for the page); `rows(shown)` filters for display only. `LOCATION_NAMES` is a Map, so a key such as `__proto__` is never looked up as a property. Reading real key events is done by the page's own capture box, not by this package.
 
 ## Dependencies
 
