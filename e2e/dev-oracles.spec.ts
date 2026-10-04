@@ -476,3 +476,388 @@ test('docker-run-to-compose: an image, an address or a command named in the past
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+/**
+ * The Web App Manifest Builder. The oracle for what a browser makes of a manifest is Chromium's own processed manifest
+ * (Page.getAppManifest over a DevTools protocol session, Chromium as launched by this Playwright), and for the language
+ * tags it is each engine's own Intl.getCanonicalLocales. The manifests are built on the page the way a visitor builds
+ * them, served from a Node server this test starts, linked from a second page and read back; Chromium's own messages are
+ * never copied. Chromium does not expose the purposes of an icon, so a purpose is compared by whether the icon is kept,
+ * and the purposes themselves are asserted against the literals of the W3C draft's rules.
+ */
+interface ManifestCase {
+  name: string;
+  /** Text fields to fill, by field name; everything else keeps the page default. */
+  fields: Record<string, string>;
+  theme?: string;
+  background?: string;
+  display?: string;
+  icons?: string[][];
+  shortcuts?: string[][];
+}
+
+/** A grid field: adds or removes rows to match, then types every cell (empty cells clear the defaults). */
+async function setGrid(page: Page, label: string, rows: string[][], columns: number): Promise<void> {
+  const group = page.getByRole('group', { name: label, exact: true });
+  const body = group.locator('tbody tr');
+  while ((await body.count()) < rows.length) await group.getByRole('button', { name: 'Add row', exact: true }).click();
+  while ((await body.count()) > rows.length) {
+    await group.getByRole('button', { name: 'Remove last row', exact: true }).click();
+  }
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < columns; c++) {
+      const cell = body.nth(r).locator('input').nth(c);
+      const value = rows[r]?.[c] ?? '';
+      await expect(async () => {
+        await cell.fill(value);
+        await expect(cell).toHaveValue(value, { timeout: 500 });
+      }).toPass({ timeout: 10_000 });
+    }
+  }
+}
+
+interface ManifestRow {
+  written: string;
+  processed: string;
+  status: string;
+}
+
+/** The table "How a browser reads it" as a list of rows keyed by member (icons[1], shortcuts[2], and so on). */
+async function readManifestRows(page: Page): Promise<Map<string, ManifestRow>> {
+  const rows = await outputArea(page)
+    .locator('table tbody tr')
+    .evaluateAll((trs) => trs.map((tr) => Array.from(tr.children).map((cell) => cell.textContent ?? '')));
+  const byMember = new Map<string, ManifestRow>();
+  for (const [member = '', written = '', processed = '', status = ''] of rows) {
+    byMember.set(member, { written, processed, status });
+  }
+  return byMember;
+}
+
+/** The JSON the page offers, as text: the first code block of the output. */
+async function readManifestJson(page: Page): Promise<string> {
+  return outputArea(page)
+    .locator('pre.output')
+    .first()
+    .evaluate((element) => element.textContent ?? '');
+}
+
+/** Builds one manifest on the page and waits until the output belongs to it (the name is filled last, and is unique). */
+async function buildOnPage(page: Page, id: string, spec: ManifestCase, manifestUrl: string, pageUrl: string) {
+  await openTool(page, id);
+  await fillAndHold(page, 'manifestUrl', manifestUrl);
+  await fillAndHold(page, 'pageUrl', pageUrl);
+  for (const [field, value] of Object.entries(spec.fields)) await fillAndHold(page, field, value);
+  if (spec.display !== undefined) await page.locator('#f-display').selectOption(spec.display);
+  for (const [label, value] of [
+    ['Theme colour value', spec.theme],
+    ['Background colour value', spec.background],
+  ] as const) {
+    if (value === undefined) continue;
+    const box = page.getByLabel(label, { exact: true });
+    await expect(async () => {
+      await box.fill(value);
+      await expect(box).toHaveValue(value, { timeout: 500 });
+    }).toPass({ timeout: 10_000 });
+  }
+  if (spec.icons) await setGrid(page, 'Icons', spec.icons, 4);
+  if (spec.shortcuts) await setGrid(page, 'Shortcuts', spec.shortcuts, 2);
+  await fillAndHold(page, 'name', spec.name);
+  await expect(async () => {
+    expect((JSON.parse(await readManifestJson(page)) as { name?: string }).name).toBe(spec.name);
+  }).toPass({ timeout: 10_000 });
+  return { json: await readManifestJson(page), rows: await readManifestRows(page) };
+}
+
+/** What Chromium reports for a colour as `rgba(r,g,b,a)`, as red, green, blue and alpha to three decimals. */
+function chromiumColour(css: string | undefined): number[] | null {
+  if (css === undefined) return null;
+  const match = /^rgba\((\d+),(\d+),(\d+),([0-9.]+)\)$/.exec(css);
+  if (!match) throw new Error('unexpected colour from Chromium');
+  return [Number(match[1]), Number(match[2]), Number(match[3]), Number(Number(match[4]).toFixed(3))];
+}
+
+/** What the page shows for a colour member: `rgba(r, g, b, a)` as the same four numbers, or null when none was kept. */
+function pageColour(row: ManifestRow | undefined): number[] | null {
+  const match = /^rgba\((\d+), (\d+), (\d+), ([0-9.]+)\)$/.exec(row?.processed ?? '');
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3]), Number(match[4])] : null;
+}
+
+/** Chromium's enumeration names (kStandalone, kMinimalUi) as the manifest's own words. */
+function fromChromiumEnum(name: string): string {
+  return name
+    .replace(/^k/, '')
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .toLowerCase();
+}
+
+interface ChromiumManifest {
+  startUrl?: string;
+  scope?: string;
+  id?: string;
+  themeColor?: string;
+  backgroundColor?: string;
+  display?: string;
+  displayOverrides?: string[];
+  icons?: { url: string; sizes: string; type: string }[];
+  shortcuts?: { name: string; url: string }[];
+}
+
+/** The nine manifests: inputs only. Every expected answer comes from Chromium, except the purposes (the draft's rules). */
+function manifestCases(): ManifestCase[] {
+  const png = (src: string, sizes: string, purpose = ''): string[] => [src, sizes, 'image/png', purpose];
+  return [
+    {
+      name: 'Case 1 basic',
+      fields: { startUrl: '/app/start.html', scope: '/app/', id: 'x', shortName: 'R' },
+      display: 'fullscreen',
+      theme: 'aliceblue',
+      background: '#FFF',
+    },
+    {
+      name: 'Case 2 start address on another origin and a colour that is not one',
+      fields: { startUrl: 'https://evil.example/', scope: '/' },
+      theme: 'not-a-color',
+    },
+    { name: 'Case 3 scope that does not contain the start address', fields: { startUrl: '/a/b.html', scope: '/c/' } },
+    { name: 'Case 4 id with a query and a fragment', fields: { startUrl: '/my-app/start', id: 'foo?x=y#frag' } },
+    {
+      name: 'Case 5 icon sizes and purposes',
+      fields: {},
+      icons: [
+        png('a.png', '48x48 96x96', 'maskable any'),
+        ['b.png', 'any', '', ''],
+        ['c.png', '048x048', '', ''],
+        ['d.png', '', '', 'fizzbuzz'],
+        ['e.png', '', '', 'monochrome fizzbuzz'],
+        ['', '', '', ''],
+        ['f.png', '10x10x10', '', ''],
+      ],
+    },
+    {
+      name: 'Case 6 display_override with an unknown token',
+      fields: { displayOverride: 'window-controls-overlay, minimal-ui, bogus' },
+      display: 'standalone',
+    },
+    { name: 'Case 7 modern colour syntax', fields: {}, theme: 'rgb(1 2 3 / 50%)', background: 'hsl(120deg 100% 50%)' },
+    { name: 'Case 8 named and short hex colours', fields: {}, theme: 'rebeccapurple', background: '#abcd' },
+    {
+      name: 'Case 9 shortcuts',
+      fields: { startUrl: '/', scope: '/' },
+      shortcuts: [
+        ['Play', '/play'],
+        ['Far', 'https://x.example/'],
+        ['', '/noname'],
+        ['Subscriptions', '/subscriptions?sort=desc'],
+      ],
+    },
+  ];
+}
+
+test('web-manifest-builder: Chromium processes the built manifest to the same start URL, scope, id, colours and icons', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'only Chromium exposes its processed manifest through CDP');
+  test.setTimeout(240_000);
+  const cases = manifestCases();
+  expect(cases).toHaveLength(9);
+
+  let current = '{}';
+  const server = createServer((request, response) => {
+    if ((request.url ?? '').startsWith('/app/manifest.webmanifest')) {
+      response.setHeader('content-type', 'application/manifest+json');
+      response.end(current);
+    } else {
+      response.setHeader('content-type', 'text/html');
+      response.end('<!doctype html><title>t</title><link rel="manifest" href="manifest.webmanifest">');
+    }
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    for (const spec of cases) {
+      const built = await buildOnPage(
+        page,
+        'web-manifest-builder',
+        spec,
+        `${origin}/app/manifest.webmanifest`,
+        `${origin}/app/start.html`,
+      );
+      // The manifest the visitor would download is what Chromium is given.
+      current = built.json;
+      const second = await page.context().newPage();
+      try {
+        const cdp = await page.context().newCDPSession(second);
+        await cdp.send('Page.enable');
+        await second.goto(`${origin}/app/start.html`);
+        const answer = (await cdp.send('Page.getAppManifest')) as unknown as { manifest: ChromiumManifest };
+        const chromium = answer.manifest;
+        const rows = built.rows;
+        const label = spec.name;
+
+        expect(rows.get('start_url')?.processed, `${label}: start URL`).toBe(chromium.startUrl);
+        expect(rows.get('scope')?.processed, `${label}: scope`).toBe(chromium.scope);
+        expect(rows.get('id')?.processed, `${label}: id`).toBe(chromium.id);
+        expect(pageColour(rows.get('theme_color')), `${label}: theme colour`).toEqual(
+          chromiumColour(chromium.themeColor),
+        );
+        expect(pageColour(rows.get('background_color')), `${label}: background colour`).toEqual(
+          chromiumColour(chromium.backgroundColor),
+        );
+        // display: Chromium says kUndefined when the member is not set; the draft's default is browser.
+        const chromiumDisplay = fromChromiumEnum(chromium.display ?? 'kUndefined');
+        expect(rows.get('display')?.processed.split(' ')[0], `${label}: display`).toBe(
+          chromiumDisplay === 'undefined' ? 'browser' : chromiumDisplay,
+        );
+        if (chromium.displayOverrides) {
+          expect(rows.get('display_override')?.processed, `${label}: display_override`).toBe(
+            chromium.displayOverrides.map(fromChromiumEnum).join(', '),
+          );
+        }
+
+        // Icons: the same icons survive, in the same order, with the same sizes and types. Chromium writes any as 0x0.
+        const pageIcons = Array.from(rows.entries())
+          .filter(([member, row]) => member.startsWith('icons[') && row.status === 'read')
+          .map(([, row]) => {
+            const match = /^(\S+) \(sizes: (.*); type: (.*); purpose: (.*)\)$/.exec(row.processed);
+            if (!match) throw new Error(`unexpected icon row: ${row.processed}`);
+            const sizes = match[2] === 'none' ? '' : (match[2] ?? '').replace(/\bany\b/, '0x0');
+            return { url: match[1], sizes, type: match[3] === 'none' ? '' : match[3], purpose: match[4] };
+          });
+        expect(
+          pageIcons.map(({ url, sizes, type }) => ({ url, sizes, type })),
+          `${label}: icons`,
+        ).toEqual(chromium.icons ?? []);
+        if (spec.name.startsWith('Case 5')) {
+          // The draft's purpose rules: maskable any stays both, any is the default, an unknown keyword is dropped, and
+          // an icon whose purpose holds nothing known is not kept (d.png is absent from both lists).
+          expect(pageIcons.map((icon) => [icon.url?.split('/').pop(), icon.purpose])).toEqual([
+            ['a.png', 'maskable any'],
+            ['b.png', 'any'],
+            ['c.png', 'any'],
+            ['e.png', 'monochrome'],
+            ['f.png', 'any'],
+          ]);
+        }
+
+        const pageShortcuts = Array.from(rows.entries())
+          .filter(([member, row]) => member.startsWith('shortcuts[') && row.status === 'read')
+          .map(([, row]) => ({ name: row.written, url: row.processed }));
+        expect(pageShortcuts, `${label}: shortcuts`).toEqual(chromium.shortcuts ?? []);
+      } finally {
+        await second.close();
+      }
+    }
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+/** Twenty language tags: well formed, ill formed, written in other cases, and ones the RFC and ECMAScript see differently. */
+const LANGUAGE_TAGS = [
+  'en-us',
+  'EN-latn-us',
+  'zh-hans-cn',
+  'de',
+  'fr',
+  'ja',
+  'sr-Latn',
+  'es-419',
+  'en',
+  'e_',
+  'e',
+  'en_US',
+  'de-419-DE',
+  'a-DE',
+  'ar-a-aaa-b-bbb-a-ccc',
+  'i-enochian',
+  'zh-cmn-Hans-CN',
+  'x-whatever',
+  'sl-rozaj-biske',
+  'az-Arab-x-AZE-derbend',
+];
+
+test('web-manifest-builder: the BCP 47 check agrees with this browser Intl.getCanonicalLocales', async ({ page }) => {
+  expect(LANGUAGE_TAGS).toHaveLength(20);
+  await openTool(page, 'web-manifest-builder');
+  let refused = 0;
+  let canonicalised = 0;
+  for (const tag of LANGUAGE_TAGS) {
+    // The engine's own answer, from inside the same browser: the canonical form, or null when it throws.
+    const expected = await page.evaluate((text) => {
+      try {
+        return Intl.getCanonicalLocales(text)[0] ?? null;
+      } catch {
+        return null;
+      }
+    }, tag);
+    await fillAndHold(page, 'lang', tag);
+    await expect(async () => {
+      const rows = await readManifestRows(page);
+      const lang = rows.get('lang');
+      expect(lang?.written, tag).toBe(tag);
+      if (expected === null) {
+        expect(lang?.status, `${tag} is refused by this engine`).toBe('ignored');
+      } else {
+        expect(lang?.processed, `${tag} in canonical form`).toBe(expected);
+        expect(lang?.status).toBe('read');
+      }
+    }).toPass({ timeout: 10_000 });
+    if (expected === null) refused++;
+    else if (expected !== tag) canonicalised++;
+  }
+  // The list holds both kinds, so the comparison is not vacuous in any engine.
+  expect(refused).toBeGreaterThanOrEqual(8);
+  expect(canonicalised).toBeGreaterThanOrEqual(3);
+});
+
+test('web-manifest-builder: icon and shortcut addresses are never requested', async ({ page }) => {
+  const seen: string[] = [];
+  const server = createServer((request, response) => {
+    seen.push(request.url ?? '');
+    response.statusCode = 204;
+    response.end();
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const named = `127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    const requested: string[] = [];
+    page.on('request', (request) => requested.push(request.url()));
+    // Every address a visitor can type: the manifest, the page, the start address, the id, the scope, each icon and each shortcut.
+    const spec: ManifestCase = {
+      name: 'Case recording',
+      fields: {
+        startUrl: `http://${named}/app/start.html`,
+        id: `http://${named}/app/id`,
+        scope: `http://${named}/app/`,
+      },
+      icons: [
+        [`http://${named}/icons/icon-192.png`, '192x192', 'image/png', ''],
+        [`http://${named}/icons/icon.svg`, 'any', 'image/svg+xml', ''],
+      ],
+      shortcuts: [['Play', `http://${named}/app/play`]],
+    };
+    const built = await buildOnPage(
+      page,
+      'web-manifest-builder',
+      spec,
+      `http://${named}/app/manifest.webmanifest`,
+      `http://${named}/app/start.html`,
+    );
+    // The page really processed the addresses it was given.
+    expect(built.rows.get('icons[1]')?.processed).toContain(`http://${named}/icons/icon-192.png`);
+    expect(built.rows.get('shortcuts[1]')?.processed).toBe(`http://${named}/app/play`);
+    expect(built.rows.get('start_url')?.status).toBe('read');
+
+    // Give any request that was going to happen time to arrive, then count.
+    await page.waitForTimeout(1_500);
+    expect(seen, 'the recording server saw no request').toEqual([]);
+    expect(
+      requested.filter((url) => url.includes(named)),
+      'the page requested nothing a field named',
+    ).toEqual([]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
