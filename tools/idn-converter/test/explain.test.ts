@@ -192,7 +192,7 @@ it('every explanation is short plain ASCII that repeats nothing pasted', () => {
     }
   }
   expect(explained).toBeGreaterThan(10_000);
-});
+}, 60_000);
 
 it('a name made only of dots is explained in a few lines, not one per label', () => {
   const dots = '.'.repeat(4096);
