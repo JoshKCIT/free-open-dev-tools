@@ -1454,5 +1454,12 @@
     "category": "devops",
     "tier": 3,
     "summary": "Check versions against a semantic version range, read the range in plain words and sort a list of versions."
+  },
+  {
+    "id": "docker-run-to-compose",
+    "name": "docker run to Compose Converter",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Turn a docker run command into a Compose service, with every option that has no Compose equivalent listed."
   }
 ]
