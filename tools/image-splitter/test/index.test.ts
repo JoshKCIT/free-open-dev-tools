@@ -693,3 +693,9 @@ it('a JPEG header size is checked before decoding for the tile count only, in wh
   );
   expect(messageOf(() => checkTileCountBeforeDecode(0, 4000, grid))).toBe('The image has no usable size.');
 });
+
+it('the limits say that fingerprinting protections can change the pixels a page reads back', () => {
+  expect(toolMeta.limits).toContain(
+    "Browser privacy protections against fingerprinting can change the pixels a page reads back from a canvas, so a result can differ slightly from the picture's own pixels.",
+  );
+});

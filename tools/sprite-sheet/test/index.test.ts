@@ -694,3 +694,9 @@ it('nothing is written to the console while planning a sheet', () => {
   }
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
+
+it('the limits say that fingerprinting protections can change the pixels a page reads back', () => {
+  expect(toolMeta.limits).toContain(
+    "Browser privacy protections against fingerprinting can change the pixels a page reads back from a canvas, so a result can differ slightly from the picture's own pixels.",
+  );
+});

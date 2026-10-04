@@ -19,7 +19,8 @@
     "A browser can refuse to draw a very large tile or to encode it; the page then says so, and smaller tiles work.",
     "The ZIP holds at most 1 GB of tiles; it does not compress them again, because PNG and JPEG are already compressed.",
     "Pictures are cut as this browser decodes them, with photo orientation applied; an animated GIF or WebP is cut as the browser draws it, normally its first frame.",
-    "Tile names are made from the row and column numbers only, never from the picked file's name."
+    "Tile names are made from the row and column numbers only, never from the picked file's name.",
+    "Browser privacy protections against fingerprinting can change the pixels a page reads back from a canvas, so a result can differ slightly from the picture's own pixels."
   ],
   "ambiguities": [
     "In rows and columns mode a column starts at the whole number below its exact share of the width, so an image 10 pixels wide in 4 columns has columns 2, 3, 2 and 3 pixels wide, not 2.5 each",
