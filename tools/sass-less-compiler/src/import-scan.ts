@@ -109,6 +109,32 @@ function skipString(text: string, start: number, quote: number): number {
   return text.length;
 }
 
+/** True when `url(` starts at `at`, is not the end of a longer name, and is followed (past white space) by something that is not a quote. */
+function startsUnquotedUrl(text: string, at: number): boolean {
+  if (text.slice(at, at + 4).toLowerCase() !== 'url(') return false;
+  if (at > 0 && (isNameUnit(text.charCodeAt(at - 1)) || text.charCodeAt(at - 1) === 92)) return false;
+  let i = at + 4;
+  while (i < text.length && (text.charCodeAt(i) === 32 || text.charCodeAt(i) === 9 || isLineBreak(text.charCodeAt(i))))
+    i++;
+  const next = text.charCodeAt(i);
+  return i < text.length && next !== 34 && next !== 39;
+}
+
+/** The offset of the bracket that closes an unquoted url token whose contents start at `from`, or -1 when there is none. */
+function urlTokenEnd(text: string, from: number): number {
+  let i = from;
+  while (i < text.length) {
+    const unit = text.charCodeAt(i);
+    if (unit === 92) {
+      i += 2;
+      continue;
+    }
+    if (unit === 41) return i;
+    i++;
+  }
+  return -1;
+}
+
 /**
  * The first at-rule outside comments and strings whose name is one of `names` (lower case). With `lineComments`, a
  * double slash starts a comment that runs to the end of its line, as it does in the Less and SCSS source languages;
@@ -117,6 +143,9 @@ function skipString(text: string, start: number, quote: number): number {
 export function scanAtRule(text: string, names: readonly string[], lineComments: boolean): AtRuleMatch | null {
   const length = text.length;
   let i = 0;
+  // Set once a url token had no closing bracket to the end of the text: no later one is looked for (each would read to the
+  // end again, and many of them would make the scan quadratic), so what follows is scanned as ordinary text.
+  let urlsUnclosed = false;
   while (i < length) {
     const unit = text.charCodeAt(i);
     if (unit === 47) {
@@ -139,6 +168,15 @@ export function scanAtRule(text: string, names: readonly string[], lineComments:
     if (unit === 34 || unit === 39) {
       i = skipString(text, i, unit);
       continue;
+    }
+    if (!urlsUnclosed && (unit === 117 || unit === 85) && startsUnquotedUrl(text, i)) {
+      // An unquoted url token runs to its closing bracket, so what is inside it is not an at-rule.
+      const close = urlTokenEnd(text, i + 4);
+      if (close >= 0) {
+        i = close + 1;
+        continue;
+      }
+      urlsUnclosed = true;
     }
     if (unit === 64) {
       const read = readName(text, i + 1);

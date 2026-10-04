@@ -469,3 +469,32 @@ it('a stack overflow and a failure inside the Less compiler are limits, not synt
   expect(mistake.kind).toBe('syntax');
   expect(mistake.message).toMatch(/\(line 1, column \d+\)\.$/);
 });
+
+it('an unquoted url token is skipped by the import scan, so a url holding the text @import compiles', async () => {
+  for (const language of ['scss', 'less'] as const) {
+    const fine = await compileStylesheet('a{b:url(x@import.css)}', { language, style: 'expanded' });
+    expect(fine.css, language).toContain('url(x@import.css)');
+    // A real import after the url is still found, and so is one inside a quoted url.
+    const after = await failureOf('a{b:url(x@import.css)}\n@import "y.css";', language);
+    expect(after.kind, language).toBe('import');
+    expect(after.message, language).toContain('"y.css"');
+    const quoted = await failureOf('a{b:url("x")}\n@import "y.css";', language);
+    expect(quoted.kind, language).toBe('import');
+  }
+  // The scan itself: an unquoted url run ends at its closing bracket, an escaped bracket does not end it, and a run
+  // with no closing bracket does not hide anything after it.
+  expect(findCssImport('a{b:url(x@import.css)}')).toBeNull();
+  expect(findCssImport('a{b:URL(x@import.css)}')).toBeNull();
+  expect(findCssImport('a{b:url(x@import.css)}\n@import "z";')).toEqual({ line: 2, column: 1 });
+  expect(findCssImport(`a{b:url(x${BS})@import.css)}`)).toBeNull();
+  expect(findCssImport('a{b:url(x @import "z";')).toEqual({ line: 1, column: 11 });
+  expect(findCssImport('a{b:myurl(x@import.css)}')).toEqual({ line: 1, column: 12 });
+  expect(findCssImport('a{b:url("x@import.css")}')).toBeNull();
+  // Many url tokens that never close cost time in proportion to the text, not its square.
+  const hostile = `${'url(x'.repeat(100_000)}\n@import "z";`;
+  const start = performance.now();
+  const found = findCssImport(hostile);
+  const elapsed = performance.now() - start;
+  expect(found).toEqual({ line: 2, column: 1 });
+  expect(elapsed).toBeLessThan(2_000);
+});
