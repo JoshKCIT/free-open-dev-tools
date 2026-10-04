@@ -2,6 +2,7 @@ import { it, expect, vi } from 'vitest';
 import {
   checkConverterFile,
   planConversion,
+  replanForDecoded,
   outputFileName,
   FileSignatureError,
   ImageConverterError,
@@ -236,4 +237,65 @@ it('a file over 100 MB is refused from its reported size, whatever its first byt
   expect(messageOf(() => planConversion(minimalPng(4, 4), 'a.png', options, MAX_INPUT_BYTES + 1))).toBe(sentence);
   // Left out, the size is the length of the bytes given, as it always was.
   expect(planConversion(minimalPng(4, 4), 'a.png', options).targetWidth).toBe(4);
+});
+
+it('a replan against the decoded picture replaces the size warnings, so a clamped percent is told once', () => {
+  const options = {
+    format: 'png' as const,
+    quality: 85,
+    background: '#ffffff',
+    resize: { mode: 'percent' as const, percent: 0 },
+  };
+  const clamp = "'percent' must be greater than zero; it was clamped to 1.";
+  const count = (warnings: string[], text: string): number => warnings.filter((w) => w === text).length;
+
+  // The plan from the header already carries the warning once.
+  const plan = planConversion(minimalPng(100, 50), 'a.png', options);
+  expect(count(plan.warnings, clamp)).toBe(1);
+
+  // Nothing changed once decoded: the plan's own warnings are returned as they are.
+  const same = replanForDecoded(plan, 'a.png', { width: 100, height: 50 }, options);
+  expect(same.warnings).toEqual(plan.warnings);
+  expect([same.targetWidth, same.targetHeight]).toEqual([1, 1]);
+  expect(same.edits).toBeUndefined();
+
+  // The decoded picture is turned a quarter (a JPEG with an orientation tag): planned again, and still told once.
+  const turned = replanForDecoded(plan, 'a.png', { width: 50, height: 100 }, options);
+  expect([turned.sourceWidth, turned.sourceHeight, turned.targetWidth, turned.targetHeight]).toEqual([50, 100, 1, 1]);
+  expect(count(turned.warnings, clamp)).toBe(1);
+
+  // Edits change what is planned again, and the warning is still told once.
+  const edited = { ...options, edits: { rotate: 90 as const, flip: 'none' as const } };
+  const editedPlan = planConversion(minimalPng(100, 50), 'a.png', edited);
+  expect(count(editedPlan.warnings, clamp)).toBe(1);
+  const replanned = replanForDecoded(editedPlan, 'a.png', { width: 100, height: 50 }, edited);
+  expect(count(replanned.warnings, clamp)).toBe(1);
+  expect(replanned.edits?.width).toBe(50);
+
+  // Every other warning of the plan is kept, once each and in the plan's order after the size warnings.
+  expect(replanned.warnings).toEqual(editedPlan.warnings);
+  expect(replanned.warnings.filter((w) => w.startsWith('Re-encoding drops embedded metadata')).length).toBe(1);
+
+  // A change in the decoded size that gives a different size warning replaces the old one, never adds to it.
+  const jpegPlan = planConversion(minimalPng(100, 50), 'a.png', { ...options, quality: 150, format: 'jpeg' });
+  const quality = jpegPlan.warnings.filter((w) => w.includes("'quality'")).length;
+  const again = replanForDecoded(jpegPlan, 'a.png', { width: 50, height: 100 }, { ...options, format: 'jpeg' });
+  expect(again.warnings.filter((w) => w.includes("'quality'")).length).toBe(quality);
+  expect(count(again.warnings, clamp)).toBe(1);
+});
+
+it('a replan against the decoded picture refuses a target over the pixel limit with the same words as the plan', () => {
+  const options = {
+    format: 'png' as const,
+    quality: 85,
+    background: '#ffffff',
+    resize: { mode: 'none' as const },
+  };
+  const plan = planConversion(minimalPng(100, 50), 'big.png', options);
+  const side = Math.ceil(Math.sqrt(MAX_OUTPUT_PIXELS)) + 10;
+  expect(() => replanForDecoded(plan, 'big.png', { width: side, height: side }, options)).toThrow(ImageConverterError);
+  const expected = largestFittingSize(side, side, MAX_OUTPUT_PIXELS);
+  expect(() => replanForDecoded(plan, 'big.png', { width: side, height: side }, options)).toThrow(
+    `the requested output is ${side} by ${side} pixels, above this browser's own 40,000,000-pixel limit. The largest size that fits is ${expected.width} by ${expected.height}.`,
+  );
 });

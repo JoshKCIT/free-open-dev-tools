@@ -69,10 +69,23 @@ export interface ConversionPlan {
   /** The 0 to 1 fraction actually passed to convertToBlob/toBlob. Meaningless for PNG, which has no quality argument. */
   qualityFraction: number;
   background: string;
+  /** Every warning, the size warnings first. */
   warnings: string[];
+  /** How many of the first `warnings` are about the requested size (and so are replaced when the plan is made again). */
+  sizeWarningCount: number;
 }
 
 const HEX_COLOUR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/** The refusal for an output over the pixel limit, naming the largest size of the same shape that fits. */
+function tooLargeMessage(fileName: string, width: number, height: number): string {
+  const largest = largestFittingSize(width, height, MAX_OUTPUT_PIXELS);
+  return (
+    `Could not convert '${fileName}': the requested output is ${width} by ${height} pixels, ` +
+    `above this browser's own ${MAX_OUTPUT_PIXELS.toLocaleString('en-US')}-pixel limit. The largest size that ` +
+    `fits is ${largest.width} by ${largest.height}.`
+  );
+}
 
 /** '#rgb' or '#rrggbb' only; anything else falls back to '#ffffff' with a warning naming the field. */
 function parseBackground(raw: string, warnings: string[]): string {
@@ -139,12 +152,7 @@ export function planConversion(
   const warnings = [...sizePlan.warnings];
 
   if (sizePlan.width * sizePlan.height > MAX_OUTPUT_PIXELS) {
-    const largest = largestFittingSize(sizePlan.width, sizePlan.height, MAX_OUTPUT_PIXELS);
-    throw new ImageConverterError(
-      `Could not convert '${fileName}': the requested output is ${sizePlan.width} by ${sizePlan.height} pixels, ` +
-        `above this browser's own ${MAX_OUTPUT_PIXELS.toLocaleString('en-US')}-pixel limit. The largest size that ` +
-        `fits is ${largest.width} by ${largest.height}.`,
-    );
+    throw new ImageConverterError(tooLargeMessage(fileName, sizePlan.width, sizePlan.height));
   }
 
   const qualityFraction = clampQuality(options.quality, warnings);
@@ -173,6 +181,59 @@ export function planConversion(
     qualityFraction,
     background,
     warnings,
+    sizeWarningCount: sizePlan.warnings.length,
+  };
+}
+
+export interface DecodedReplan {
+  sourceWidth: number;
+  sourceHeight: number;
+  targetWidth: number;
+  targetHeight: number;
+  /** The plan's warnings with the size warnings made again for the decoded size (never both the old and the new). */
+  warnings: string[];
+  /** Crop, rotate and flip planned on the decoded picture; absent when there are none or they change nothing. */
+  edits?: EditPlan;
+}
+
+/**
+ * Plans the size again against the picture as it was really decoded. The header's size can differ from it (a JPEG
+ * stored turned a quarter and shown upright by its orientation tag), and crop, rotate and flip are measured on the
+ * decoded picture. When nothing differs the plan is returned as it is. Otherwise the size warnings of the first plan are
+ * replaced by those of the new one, so a warning such as a clamped percent is told once, and the output size is held to
+ * the same pixel limit with the same words as `planConversion`.
+ */
+export function replanForDecoded(
+  plan: ConversionPlan,
+  fileName: string,
+  decoded: { width: number; height: number },
+  options: ConvertOptions,
+): DecodedReplan {
+  let edits: EditPlan | undefined = options.edits ? planEdits(decoded.width, decoded.height, options.edits) : undefined;
+  if (edits?.identity) edits = undefined;
+  if (!edits && decoded.width === plan.sourceWidth && decoded.height === plan.sourceHeight) {
+    return {
+      sourceWidth: plan.sourceWidth,
+      sourceHeight: plan.sourceHeight,
+      targetWidth: plan.targetWidth,
+      targetHeight: plan.targetHeight,
+      warnings: plan.warnings,
+    };
+  }
+  const resized = planSize(
+    { width: edits?.width ?? decoded.width, height: edits?.height ?? decoded.height },
+    options.resize,
+  );
+  if (resized.width * resized.height > MAX_OUTPUT_PIXELS) {
+    throw new ImageConverterError(tooLargeMessage(fileName, resized.width, resized.height));
+  }
+  return {
+    sourceWidth: decoded.width,
+    sourceHeight: decoded.height,
+    targetWidth: resized.width,
+    targetHeight: resized.height,
+    warnings: [...resized.warnings, ...plan.warnings.slice(plan.sizeWarningCount)],
+    ...(edits ? { edits } : {}),
   };
 }
 
@@ -221,12 +282,7 @@ export function planSvgConversion(
   const sizePlan = planSize(edited, options.resize);
   const warnings = [...sizePlan.warnings];
   if (sizePlan.width * sizePlan.height > MAX_OUTPUT_PIXELS) {
-    const largest = largestFittingSize(sizePlan.width, sizePlan.height, MAX_OUTPUT_PIXELS);
-    throw new ImageConverterError(
-      `Could not convert '${fileName}': the requested output is ${sizePlan.width} by ${sizePlan.height} pixels, ` +
-        `above this browser's own ${MAX_OUTPUT_PIXELS.toLocaleString('en-US')}-pixel limit. The largest size that ` +
-        `fits is ${largest.width} by ${largest.height}.`,
-    );
+    throw new ImageConverterError(tooLargeMessage(fileName, sizePlan.width, sizePlan.height));
   }
 
   const qualityFraction = clampQuality(options.quality, warnings);

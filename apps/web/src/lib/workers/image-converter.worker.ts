@@ -31,10 +31,7 @@ import {
   ImageConverterError,
   FileSignatureError,
   MAX_HEADER_BYTES,
-  planSize,
-  largestFittingSize,
-  MAX_OUTPUT_PIXELS,
-  planEdits,
+  replanForDecoded,
   type ConvertOptions,
   type EditPlan,
   type FileKind,
@@ -247,37 +244,13 @@ async function handleJob(job: ImageConverterJobMessage): Promise<void> {
     // degrees (EXIF values 5 to 8). When that happened, the plan's own
     // target size (computed from the un-rotated header dimensions) is
     // wrong, so it is replanned here against the bitmap's own real,
-    // already-corrected size before anything is drawn.
-    let sourceWidth = plan.sourceWidth;
-    let sourceHeight = plan.sourceHeight;
-    let targetWidth = plan.targetWidth;
-    let targetHeight = plan.targetHeight;
-    let warnings = plan.warnings;
-    // Crop, rotate and flip are planned on the decoded picture's real, upright size (crop is in pixels of that
-    // picture); an edit that changes nothing leaves this path exactly as it was.
-    let editPlan: EditPlan | undefined = job.options.edits
-      ? planEdits(bitmap.width, bitmap.height, job.options.edits)
-      : undefined;
-    if (editPlan?.identity) editPlan = undefined;
-    if (editPlan || bitmap.width !== plan.sourceWidth || bitmap.height !== plan.sourceHeight) {
-      sourceWidth = bitmap.width;
-      sourceHeight = bitmap.height;
-      const resized = planSize(
-        { width: editPlan?.width ?? sourceWidth, height: editPlan?.height ?? sourceHeight },
-        job.options.resize,
-      );
-      targetWidth = resized.width;
-      targetHeight = resized.height;
-      warnings = [...warnings, ...resized.warnings];
-      if (targetWidth * targetHeight > MAX_OUTPUT_PIXELS) {
-        const largest = largestFittingSize(targetWidth, targetHeight, MAX_OUTPUT_PIXELS);
-        throw new ImageConverterError(
-          `Could not convert '${job.fileName}': the requested output is ${targetWidth} by ${targetHeight} pixels, ` +
-            `above this browser's own ${MAX_OUTPUT_PIXELS.toLocaleString('en-US')}-pixel limit. The largest size ` +
-            `that fits is ${largest.width} by ${largest.height}.`,
-        );
-      }
-    }
+    // already-corrected size before anything is drawn. Crop, rotate and
+    // flip are planned on that same decoded size (crop is in pixels of the
+    // upright picture); the size warnings are made again, not added twice.
+    // An edit that changes nothing leaves this path exactly as it was.
+    const replan = replanForDecoded(plan, job.fileName, bitmap, job.options);
+    const { sourceWidth, sourceHeight, targetWidth, targetHeight, warnings } = replan;
+    const editPlan: EditPlan | undefined = replan.edits;
 
     if (!hasOffscreenCanvas()) {
       const forThePage = bitmap;
