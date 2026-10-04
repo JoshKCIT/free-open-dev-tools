@@ -196,7 +196,11 @@ export const DOCKER_RUN_OPTIONS: readonly DockerRunOption[] = [
   mapped('tmpfs', 'list', 'tmpfs'),
   mapped('tty', 'none', 'tty', { short: 't' }),
   mapped('ulimit', 'list', 'ulimits'),
-  unmapped('umask', 'string', 'The umask option is newer than the Compose Specification, which has no key for it.'),
+  unmapped(
+    'umask',
+    'string',
+    'The umask option is only in newer Docker releases, and the Compose Specification has no key for it.',
+  ),
   mapped('use-api-socket', 'none', 'use_api_socket'),
   mapped('user', 'string', 'user', { short: 'u' }),
   mapped('userns', 'string', 'userns_mode'),

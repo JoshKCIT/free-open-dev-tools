@@ -871,3 +871,11 @@ it('a doubled dollar sign is text and a variable is left for Compose to fill in'
     expect(hasInterpolation(text), text).toBe(false);
   }
 });
+
+it('--umask is listed with a reason that says it is only in newer Docker releases', () => {
+  const result = convertDockerRun('docker run --umask 022 nginx');
+  expect(result.noEquivalent).toHaveLength(1);
+  expect(result.noEquivalent[0]?.option).toBe('--umask');
+  expect(result.noEquivalent[0]?.reason).toContain('only in newer Docker releases');
+  expect(result.noEquivalent[0]?.reason).toContain('no key');
+});
