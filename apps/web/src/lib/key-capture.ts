@@ -252,9 +252,11 @@ function build(): Area {
     fontSize: '0.8rem',
     width: '100%',
   });
-  table.setAttribute('role', 'log');
-  table.setAttribute('aria-live', 'off');
-  table.setAttribute('aria-label', 'Key event history');
+  // The table keeps its own semantics (table, rows, column headers); the log role sits on the wrapper around it. The
+  // region is not live: a screen reader announcing every key pressed would drown the page.
+  scroller.setAttribute('role', 'log');
+  scroller.setAttribute('aria-live', 'off');
+  scroller.setAttribute('aria-label', 'Key event history');
   const head = document.createElement('thead');
   const headRow = document.createElement('tr');
   for (const column of KEY_COLUMNS) headRow.append(cell('th', column, false));

@@ -107,7 +107,7 @@ async function reference(page: Page): Promise<ReferenceEvent[]> {
 /** The cells of every row of the history table, the empty-state row included. */
 async function historyRows(page: Page): Promise<string[][]> {
   return page.evaluate(() =>
-    [...document.querySelectorAll('table[role="log"] tbody tr')].map((row) =>
+    [...document.querySelectorAll('[role="log"] table tbody tr')].map((row) =>
       [...row.children].map((cell) => cell.textContent ?? ''),
     ),
   );
@@ -378,7 +378,7 @@ test('keyboard-event-viewer: composition text with control and bidirectional cha
   expect(rows[1]?.[1]).toBe(`${escaped(0x202e)}k${escaped(0x1b)}`);
   expect(rows[1]?.[9]).toBe('true');
   expect(rows[2]?.[1]).toBe('<b>k</b>&amp;');
-  expect(await page.locator('table[role="log"] b').count()).toBe(0);
+  expect(await page.locator('[role="log"] table b').count()).toBe(0);
   // No raw direction-changing or control character is left in the table.
   const shown = rows.flat().join('');
   for (const point of Object.values(points)) expect(shown.includes(String.fromCodePoint(point))).toBe(false);
@@ -429,6 +429,37 @@ test('keyboard-event-viewer: Tab and Shift+Tab leave the capture box even when o
     'false',
     'false',
   ]);
+});
+
+test('keyboard-event-viewer: the history is a real table and the live region is its wrapper', async ({ page }) => {
+  await openViewer(page);
+  await page.keyboard.press('a');
+  await expect.poll(async () => (await historyRows(page)).length).toBe(3);
+  // The table keeps its own semantics (table, row group, rows, column headers); the log role is on the wrapper around it.
+  const shape = await page.evaluate(() => {
+    const log = document.querySelector('#fodt-key-capture [role="log"]');
+    const table = log?.querySelector('table');
+    return {
+      logTag: log?.tagName ?? '',
+      logLabel: log?.getAttribute('aria-label') ?? '',
+      live: log?.getAttribute('aria-live') ?? '',
+      tableRole: table?.getAttribute('role') ?? null,
+      tableLive: table?.getAttribute('aria-live') ?? null,
+      headers: [...(table?.querySelectorAll('thead th') ?? [])].map((cell) => cell.textContent),
+      logsInArea: document.querySelectorAll('#fodt-key-capture [role="log"]').length,
+    };
+  });
+  expect(shape.logTag).toBe('DIV');
+  expect(shape.logLabel).toBe('Key event history');
+  expect(shape.live).toBe('off');
+  expect(shape.tableRole).toBeNull();
+  expect(shape.tableLive).toBeNull();
+  expect(shape.headers).toContain('defaultPrevented');
+  expect(shape.logsInArea).toBe(1);
+  // Assistive technology finds the table by its role, with rows and column headers.
+  await expect(page.locator('#fodt-key-capture').getByRole('table')).toHaveCount(1);
+  await expect(page.locator('#fodt-key-capture').getByRole('columnheader', { name: 'keyCode' })).toBeVisible();
+  expect(await page.locator('#fodt-key-capture').getByRole('row').count()).toBeGreaterThanOrEqual(4);
 });
 
 test('keyboard-event-viewer: keys pressed while the capture box does not have focus are not read', async ({ page }) => {
