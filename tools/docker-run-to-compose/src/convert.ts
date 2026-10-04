@@ -263,6 +263,14 @@ const NETWORK_MODES = new Set(['host', 'none', 'bridge', 'default']);
 const MOUNT_TYPES = new Set(['bind', 'volume', 'tmpfs', 'cluster', 'npipe', 'image']);
 const NOT_WRITTEN_NEEDS_NETWORK = 'not written, needs a user-defined network';
 const NOT_WRITTEN_NEEDS_SERVICE = 'not written, needs another service';
+const NOT_WRITTEN_NAME_HAS_DOLLAR = 'not written, the name holds a dollar sign';
+const NAME_HAS_DOLLAR_REASON =
+  'Compose fills in variables in values but not in names, so a name that holds a dollar sign cannot be written as a key. Add it to the file by hand once you know the name.';
+
+/** True when a name that would become a YAML key holds a dollar sign, a variable or a literal one. */
+function holdsDollar(text: string): boolean {
+  return text.includes(String.fromCharCode(36));
+}
 
 class Conversion {
   private readonly service: Bag;
@@ -280,6 +288,10 @@ class Conversion {
   private typedName: string | null = null;
   private removeAfterRun = false;
   private detach = false;
+  /** A network name held a dollar sign and was not written, so network settings cannot be matched to a network with certainty. */
+  private skippedNetwork = false;
+  /** A volume source held a variable, so Compose cannot know it is a named volume that must be declared. */
+  private variableVolume = false;
 
   constructor(image: string) {
     this.service = { image };
@@ -358,9 +370,9 @@ class Conversion {
         this.needs.push({ option: '--volumes-from', key: 'volumes_from', reason: option.reason ?? '' });
         return NOT_WRITTEN_NEEDS_SERVICE;
       case 'log-opt':
-        return this.mapEntry(['logging', 'options'], value);
+        return this.mapEntry(['logging', 'options'], value, read);
       case 'storage-opt':
-        return this.mapEntry(['storage_opt'], value);
+        return this.mapEntry(['storage_opt'], value, read);
       case 'ulimit':
         return this.ulimit(read);
       case 'mount':
@@ -442,8 +454,9 @@ class Conversion {
   }
 
   /** Puts `key=value` into a map the command builds one entry at a time (log options, storage options). */
-  private mapEntry(path: string[], text: string): string {
+  private mapEntry(path: string[], text: string, read: ParsedOption): string {
     const [key, value] = cut(text);
+    if (holdsDollar(key)) return this.nameHoldsDollar(read, path.join('.'));
     let target = this.service;
     for (const part of path.slice(0, -1)) {
       const existing = target[part];
@@ -462,6 +475,12 @@ class Conversion {
     }
     map[key] = value ?? '';
     return path.join('.');
+  }
+
+  /** Lists an option whose name would have to be a YAML key but holds a dollar sign; nothing of it is written. */
+  private nameHoldsDollar(read: ParsedOption, key: string): string {
+    this.needs.push({ option: `--${read.option.name}`, key, reason: NAME_HAS_DOLLAR_REASON });
+    return NOT_WRITTEN_NAME_HAS_DOLLAR;
   }
 
   private splitDevice(read: ParsedOption): [string, string] {
@@ -488,6 +507,7 @@ class Conversion {
         'The value given to --ulimit must be a name, an equals sign and a limit, such as nofile=1024:2048.',
       );
     }
+    if (holdsDollar(name)) return this.nameHoldsDollar(read, 'ulimits');
     const colon = limits.indexOf(':');
     let entry: unknown;
     if (colon < 0) {
@@ -509,6 +529,7 @@ class Conversion {
     const colon = value.indexOf(':');
     if (colon > 0) {
       const source = value.slice(0, colon);
+      if (hasInterpolation(source)) this.variableVolume = true;
       const isDrive = source.length === 1 && (value[colon + 1] === '\\' || value[colon + 1] === '/');
       if (!isDrive && isVolumeName(source)) this.topVolumes[source] = {};
     }
@@ -631,6 +652,7 @@ class Conversion {
     if (Object.keys(tmpfs).length > 0) entry['tmpfs'] = tmpfs;
     if (Object.keys(image).length > 0) entry['image'] = image;
     this.push('volumes', entry);
+    if (type === 'volume' && source !== null && hasInterpolation(source)) this.variableVolume = true;
     if (type === 'volume' && source !== null && isVolumeName(source)) this.topVolumes[source] = {};
     for (const key of lost) {
       this.noEquivalent.push({
@@ -644,12 +666,8 @@ class Conversion {
 
   private gpuOption(read: ParsedOption): string {
     const value = read.value ?? '';
-    if (this.gpus === null) {
-      this.gpus = [];
-      this.service['gpus'] = this.gpus;
-    }
     if (value === 'all') {
-      this.gpus.push('all');
+      this.pushGpu('all');
       return 'gpus';
     }
     const fields = readCsvRecord(value);
@@ -660,6 +678,7 @@ class Conversion {
     let devices: string[] | null = null;
     let capabilities: string[] | null = null;
     const seen = new Set<string>();
+    let dollarKey = false;
     fields.forEach((field, i) => {
       const [key, given] = cut(field);
       const where = `Field ${i + 1} of the --gpus value`;
@@ -688,6 +707,7 @@ class Conversion {
           const options: Bag = bag();
           for (const optionField of optionFields) {
             const [optionKey, optionValue] = cut(optionField);
+            if (holdsDollar(optionKey)) dollarKey = true;
             options[optionKey] = optionValue ?? '';
           }
           entry['options'] = options;
@@ -697,13 +717,23 @@ class Conversion {
           throw refuse(read, `${where} is not an option this page reads for --gpus.`);
       }
     });
+    if (dollarKey) return this.nameHoldsDollar(read, 'gpus.options');
     const result: Bag = { capabilities: [...(capabilities ?? []), 'gpu'] };
     if (count !== null) result['count'] = count;
     else if (devices === null) result['count'] = 1;
     if (devices !== null) result['device_ids'] = devices;
     for (const key of Object.keys(entry)) result[key] = entry[key];
-    this.gpus.push(result);
+    this.pushGpu(result);
     return 'gpus';
+  }
+
+  /** Adds one entry to the gpus list, which is created (and put in the service) when the first one arrives. */
+  private pushGpu(entry: string | Bag): void {
+    if (this.gpus === null) {
+      this.gpus = [];
+      this.service['gpus'] = this.gpus;
+    }
+    this.gpus.push(entry);
   }
 
   private network(read: ParsedOption): string {
@@ -750,6 +780,14 @@ class Conversion {
           case 'driver-opt': {
             const [optionKey, optionValue] = cut(given);
             if (optionValue === null) throw refuse(read, `${where} must be a driver option written as key=value.`);
+            if (holdsDollar(optionKey)) {
+              this.needs.push({
+                option: '--network driver-opt',
+                key: 'networks.driver_opts',
+                reason: NAME_HAS_DOLLAR_REASON,
+              });
+              break;
+            }
             use.driverOpts ??= bag();
             use.driverOpts[optionKey] = optionValue;
             attributes = true;
@@ -783,6 +821,11 @@ class Conversion {
         'A network mode (host, none, bridge, default or container:) cannot be combined with another --network.',
       );
     }
+    if (holdsDollar(target)) {
+      this.skippedNetwork = true;
+      this.needs.push({ option: '--network', key: 'networks', reason: NAME_HAS_DOLLAR_REASON });
+      return NOT_WRITTEN_NAME_HAS_DOLLAR;
+    }
     use.name = target;
     const same = this.userNetworks.find((n) => n.name === target);
     if (same === undefined) {
@@ -807,7 +850,10 @@ class Conversion {
     unknown: number,
     interpolated: boolean,
   ): { document: ComposeDocument; hints: string[] } {
-    const network = this.userNetworks.length === 1 && this.networkMode === null ? this.userNetworks[0]! : null;
+    const network =
+      this.userNetworks.length === 1 && this.networkMode === null && !this.skippedNetwork
+        ? this.userNetworks[0]!
+        : null;
     for (const pending of this.pendingNetwork) {
       const option = pending.read.option;
       const canonical = option.alias ?? option.name;
@@ -817,9 +863,11 @@ class Conversion {
         const why =
           this.networkMode !== null
             ? 'A network mode such as host has no per-network settings, so this is listed instead of written.'
-            : this.userNetworks.length > 1
-              ? 'Several networks are named, so it is not clear which one this belongs to; it is listed instead of written.'
-              : (option.reason ?? '');
+            : this.skippedNetwork
+              ? 'A network was named with a dollar sign in its name and is not written, so it is not clear which network this belongs to; it is listed instead of written.'
+              : this.userNetworks.length > 1
+                ? 'Several networks are named, so it is not clear which one this belongs to; it is listed instead of written.'
+                : (option.reason ?? '');
         this.needs.push({ option: `--${option.name}`, key: option.compose ?? '', reason: why });
         row.key = NOT_WRITTEN_NEEDS_NETWORK;
         continue;
@@ -898,6 +946,11 @@ class Conversion {
     if (interpolated) {
       hints.push(
         `Variables such as ${String.fromCharCode(36)}NAME are left for Compose to fill in from its environment or a .env file next to the Compose file.`,
+      );
+    }
+    if (this.variableVolume) {
+      hints.push(
+        `A volume source that holds a variable such as ${String.fromCharCode(36)}VOL is written as it is. If the variable holds a volume name, declare that volume under the top-level volumes key by hand: Compose cannot declare a volume from a variable, and refuses the file when a volume is used but not declared.`,
       );
     }
     if (this.entrypointWithSpaces) {
