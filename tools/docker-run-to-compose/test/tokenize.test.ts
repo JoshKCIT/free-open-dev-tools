@@ -198,7 +198,7 @@ it('messages never repeat a marker placed inside a refused construct', () => {
     `docker run nginx | grep ${marker}`,
     `docker run nginx ; echo ${marker}`,
     `docker run -e A=${BT}echo ${marker}${BT} nginx`,
-    `docker run -e A=${D}{${marker}%x} nginx`,
+    `docker run -e A=${D}{#${marker}} nginx`,
     `docker run -e A=${D}{X:-${BT}${marker}${BT}} nginx`,
     `docker run -e A=${D}{X:-"${marker}"} nginx`,
     `docker run -e '${marker} nginx`,

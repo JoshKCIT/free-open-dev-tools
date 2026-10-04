@@ -323,13 +323,14 @@ it('only docker run commands with an image and well-formed values are read', () 
 });
 
 it('unknown options are refused with the closest known name and no long pasted text', () => {
-  const read = parseDockerCommand('docker run --nam web --nonexistent -z --memry=1g nginx');
+  const read = parseDockerCommand('docker run --nam=web --nonexistent -z --memry=1g nginx');
   expect(read.unknown.map((u) => [u.name, u.closest])).toEqual([
     ['--nam', '--name'],
     ['--nonexistent', null],
     ['-z', null],
     ['--memry', '--memory'],
   ]);
+  expect(read.image).toBe('nginx');
   // Unknown options are reported, never turned into table entries.
   expect(read.options).toEqual([]);
 
