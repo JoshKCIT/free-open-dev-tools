@@ -196,9 +196,9 @@ it('glob mode matches each path as picomatch 4.0.7 does with windows false whate
       ).toEqual(c.expected);
       expect(regexes[0]?.source, `${platform}: regular expression of ${c.pattern}`).toBe(posix[index]);
     });
-    // Every call picomatch received, for the matcher and for the regular expression, pinned the platform to posix.
+    // Every call picomatch received, for the matcher and for the regular expression, pinned the platform to posix. The
+    // regular expression shown comes from the matcher itself, so there is one call per pattern.
     expect(picomatchCalls.matcher.length).toBe(cases.length);
-    expect(picomatchCalls.makeRe.length).toBe(cases.length);
     for (const options of [...picomatchCalls.matcher, ...picomatchCalls.makeRe]) {
       expect((options as { windows?: boolean }).windows, platform).toBe(false);
     }

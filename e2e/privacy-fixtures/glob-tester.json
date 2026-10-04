@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "gitignore" },
+    "values": { "patterns": "*.log\n!keep.log\nbuild/", "paths": "debug.log\nkeep.log\nbuild/out.js" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "glob" },
+    "values": { "patterns": "src/**/*.ts\n*.md", "paths": "src/a.ts\nREADME.md\nsrc/lib/b.js" },
+    "attachesFile": false
+  }
+]

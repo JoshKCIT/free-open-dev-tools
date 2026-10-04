@@ -1,0 +1,10 @@
+{
+  "id": "glob-tester",
+  "label": "git check-ignore -v ignores debug.log by line 1 and re-includes keep.log by line 2",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "gitignore" },
+    { "action": "fill", "field": "patterns", "value": "*.log\n!keep.log" },
+    { "action": "fill", "field": "paths", "value": "debug.log\nkeep.log" }
+  ],
+  "expect": ["line 1: *.log", "line 2: !keep.log", "not ignored"]
+}

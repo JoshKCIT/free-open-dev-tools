@@ -14,8 +14,17 @@ declare module 'picomatch' {
     nocase?: boolean;
   }
 
-  /** The function picomatch returns for one glob: true when the path matches. */
-  export type Matcher = (input: string) => boolean;
+  /** What a matcher gives back when asked for details: whether the path matched and the regular expression it used. */
+  export interface MatchDetails {
+    isMatch: boolean;
+    regex: RegExp;
+  }
+
+  /** The function picomatch returns for one glob: true when the path matches, or the details when asked for them. */
+  export interface Matcher {
+    (input: string): boolean;
+    (input: string, returnObject: true): MatchDetails;
+  }
 
   export interface Picomatch {
     (glob: string, options?: PicomatchOptions): Matcher;

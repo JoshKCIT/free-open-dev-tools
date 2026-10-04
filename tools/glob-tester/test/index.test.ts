@@ -6,8 +6,11 @@ import {
   MAX_PATTERN_CHARACTERS,
   MAX_PATTERN_LINES,
   MAX_PATTERN_LINE_CHARACTERS,
+  MAX_SHOWN_PATH,
+  MAX_SHOWN_PATTERN,
   checkInput,
   testPatterns,
+  visible,
   type TestJob,
 } from '../src/index';
 import type { GitignoreRow } from '../src/gitignore';
@@ -282,4 +285,32 @@ it('nothing is written to the console while matching', () => {
   expect(spies.log).not.toHaveBeenCalled();
   expect(spies.warn).not.toHaveBeenCalled();
   expect(spies.error).not.toHaveBeenCalled();
+});
+
+it('shown patterns and paths have control and direction-changing characters escaped and long ones cut', () => {
+  // The characters are built at run time. The set is the Unicode Standard Annex 9 direction controls (U+061C, U+200E,
+  // U+200F, U+202A to U+202E, U+2066 to U+2069) and the C0 and C1 controls; the written form is a backslash, u, braces
+  // and the code point in capital hex.
+  const open = String.fromCodePoint(92) + 'u{';
+  expect(visible(String.fromCodePoint(0x202e), 10)).toBe(open + '202E}');
+  expect(visible(String.fromCodePoint(0x0), 10)).toBe(open + '0}');
+  expect(visible(String.fromCodePoint(0x1b), 10)).toBe(open + '1B}');
+  expect(visible(String.fromCodePoint(0x7f), 10)).toBe(open + '7F}');
+  expect(visible(String.fromCodePoint(0x85), 10)).toBe(open + '85}');
+  expect(visible(String.fromCodePoint(0x61c), 10)).toBe(open + '61C}');
+  expect(visible(String.fromCodePoint(0x200e), 10)).toBe(open + '200E}');
+  expect(visible(String.fromCodePoint(0x2066), 10)).toBe(open + '2066}');
+  expect(visible(String.fromCodePoint(0x2069), 10)).toBe(open + '2069}');
+  expect(visible('a' + String.fromCodePoint(0x202a) + 'b', 10)).toBe('a' + open + '202A}b');
+  // Ordinary text, a space and a character outside the basic plane are shown as they are.
+  expect(visible('src/a b' + String.fromCodePoint(0x1f600), 20)).toBe('src/a b' + String.fromCodePoint(0x1f600));
+  // Only the first characters are kept, counted as characters rather than UTF-16 units, with an ellipsis.
+  expect(MAX_SHOWN_PATTERN).toBe(40);
+  expect(MAX_SHOWN_PATH).toBe(200);
+  const long = 'x'.repeat(MAX_SHOWN_PATTERN + 5);
+  expect(visible(long, MAX_SHOWN_PATTERN)).toBe('x'.repeat(MAX_SHOWN_PATTERN) + String.fromCodePoint(0x2026));
+  expect(visible('x'.repeat(MAX_SHOWN_PATTERN), MAX_SHOWN_PATTERN)).toBe('x'.repeat(MAX_SHOWN_PATTERN));
+  expect(visible(String.fromCodePoint(0x1f600).repeat(3), 2)).toBe(
+    String.fromCodePoint(0x1f600).repeat(2) + String.fromCodePoint(0x2026),
+  );
 });

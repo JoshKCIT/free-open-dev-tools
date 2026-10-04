@@ -18,6 +18,7 @@ export {
   withCommas,
 } from './limits';
 export { checkPath, forEachLine, isBlank, parsePaths, splitLines } from './lines';
+export { MAX_SHOWN_PATH, MAX_SHOWN_PATTERN, visible } from './visible';
 export { globRows, gitignoreRows };
 export type { DecidedBy, GitignoreRow } from './gitignore';
 export type { GlobRegex, GlobRow } from './glob';

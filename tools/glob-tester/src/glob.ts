@@ -50,7 +50,9 @@ export function globRows(
     if (isBlank(text)) return;
     try {
       const isMatch = picomatch(text, { windows: false, dot: options.dot, nocase: options.nocase });
-      const source = picomatch.makeRe(text, { windows: false, dot: options.dot, nocase: options.nocase }).source;
+      // The regular expression the matcher itself uses, so what is shown is what decided: asking for the details of one
+      // trivial match returns it. (A second compile of the same pattern could show something else.)
+      const source = isMatch('a', true).regex.source;
       compiled.push({ line, text, isMatch });
       regexes.push({
         line,
