@@ -1593,8 +1593,19 @@ function readStoredZip(zip: Buffer): ReadZipEntry[] {
     const name = zip.toString('utf8', at + 46, at + 46 + nameLength);
     at += 46 + nameLength + extraLength + commentLength;
     expect(zip.readUInt32LE(local)).toBe(0x04034b50);
-    const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    // The local header must say what the central directory says: a reader that walks the file from the front sees
+    // these values, so a mismatch would mean two readers of one ZIP disagree about it.
+    expect(zip.readUInt16LE(local + 8), `${name}: flags`).toBe(0);
+    expect(zip.readUInt16LE(local + 10), `${name}: method`).toBe(method);
+    expect(zip.readUInt32LE(local + 14), `${name}: crc`).toBe(crc);
+    expect(zip.readUInt32LE(local + 18), `${name}: packed size`).toBe(packed);
+    expect(zip.readUInt32LE(local + 22), `${name}: size`).toBe(size);
+    const localNameLength = zip.readUInt16LE(local + 26);
+    expect(zip.toString('utf8', local + 30, local + 30 + localNameLength), `${name}: local name`).toBe(name);
+    const start = local + 30 + localNameLength + zip.readUInt16LE(local + 28);
     expect(packed).toBe(size);
+    // And the bytes in it have that CRC-32.
+    expect(crc32(zip.subarray(start, start + packed)), `${name}: bytes against crc`).toBe(crc);
     entries.push({ name, method, crc, data: zip.subarray(start, start + packed) });
   }
   return entries;
@@ -2445,11 +2456,12 @@ test('image-converter: hostile SVGs are refused and a local server receives noth
     const requests = recordRequests(page);
     await page.locator('#f-allowSvg').check();
     await expect(page.locator('#f-allowSvg')).toBeChecked();
-    for (const hostile of HOSTILE_SVGS) {
+    for (const [index, hostile] of HOSTILE_SVGS.entries()) {
       const text = hostile.svg(address);
       const position = text.indexOf(hostile.at) + 1;
       expect(position, `${hostile.name}: test data`).toBeGreaterThan(0);
-      await attachImage(page, 'file', svgFile('hostile.svg', text));
+      // Each file has a name of its own, so the wait for its name to show can only be met by this attachment.
+      await attachImage(page, 'file', svgFile(`hostile-${String(index + 1).padStart(2, '0')}.svg`, text));
       await runButtonOf(page).click();
       const issues = outputArea(page).locator('.issue-list');
       await expect(issues, hostile.name).toContainText(
@@ -2570,6 +2582,148 @@ test('image-converter: an SVG sized in em and ex is drawn at 16 and 8 pixels to 
       [pixelOf(decoded, 2, 40), pixelOf(decoded, 79, 40), pixelOf(decoded, 80, 40), pixelOf(decoded, 157, 40)],
       name,
     ).toEqual(['255,0,0,255', '255,0,0,255', '0,0,255,255', '0,0,255,255']);
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
+/** A file of exactly `size` bytes that is only extended to its size, so no buffer of that size is built or sent. */
+function sparseFile(folder: string, name: string, size: number): string {
+  const path = join(folder, name);
+  writeFileSync(path, '');
+  truncateSync(path, size);
+  return path;
+}
+
+test('image-converter: a JPEG stored sideways is cropped on its upright size', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+
+  // Stored 16 by 8 (red left, blue right) with a quarter turn: the picture is 8 by 16, red on top and blue below. The
+  // header says 16 by 8, so a crop of the bottom square (starting at 8 down) does not fit the header and is planned
+  // again from the decoded picture, where it is the blue half.
+  await attachImage(page, 'file', await orientedJpeg(page, 'turned.jpg', 16, 8, 6));
+  await setEdit(page, { label: 'bottom square', crop: { x: 0, y: 8, width: 8, height: 8 }, rotate: 0, flip: 'none' });
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'turned.png' })).toBeVisible({ timeout: 30_000 });
+  await expect(outputArea(page)).toContainText('8 × 8');
+  const bottom = decodePngBytes(await downloadNamed(page, 'turned.png'));
+  expect([bottom.width, bottom.height]).toEqual([8, 8]);
+  for (const [x, y] of [
+    [4, 4],
+    [2, 5],
+    [6, 3],
+  ] as const) {
+    const [r, g, b] = pixelOf(bottom, x, y).split(',').map(Number);
+    expect([r! < 60, g! < 60, b! > 200], `bottom square at ${x}, ${y}`).toEqual([true, true, true]);
+  }
+
+  // The top square is the red half; with a rotation as well the crop is still taken from the upright picture first.
+  await setEdit(page, { label: 'top square', crop: { x: 0, y: 0, width: 8, height: 8 }, rotate: 90, flip: 'none' });
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('8 × 8', { timeout: 30_000 });
+  const top = decodePngBytes(await downloadNamed(page, 'turned.png'));
+  const [r, g, b] = pixelOf(top, 4, 4).split(',').map(Number);
+  expect([r! > 200, g! < 60, b! < 60]).toEqual([true, true, true]);
+
+  // A crop that fits neither the upright picture nor the stored one is refused naming a picture size.
+  await setEdit(page, { label: 'outside', crop: { x: 0, y: 0, width: 17, height: 17 }, rotate: 0, flip: 'none' });
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('does not fit inside the picture, which is', {
+    timeout: 30_000,
+  });
+  expect(offending(requests)).toEqual([]);
+});
+
+test('image-converter: an SVG over 16,777,216 declared pixels, drawn over that size or over 10 MiB is refused before it is drawn', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+  await page.locator('#f-allowSvg').check();
+  await expect(page.locator('#f-allowSvg')).toBeChecked();
+  const issues = outputArea(page).locator('.issue-list');
+
+  // One row over 4096 by 4096 declared.
+  await attachImage(page, 'file', svgFile('declared.svg', `<svg ${SVG_NS} width="4097" height="4096"/>`));
+  await runButtonOf(page).click();
+  await expect(issues).toContainText(
+    "Could not convert 'declared.svg': This SVG declares 4,097 by 4,096 pixels, more than the 16,777,216 this page draws.",
+    { timeout: 30_000 },
+  );
+  await attachImage(page, 'file', svgFile('absurd.svg', `<svg ${SVG_NS} width="1000000" height="1000000"/>`));
+  await runButtonOf(page).click();
+  await expect(issues).toContainText('This SVG declares 1,000,000 by 1,000,000 pixels', { timeout: 30_000 });
+
+  // A small SVG asked to be drawn at 5000 by 2500 (12,500,000, fine for a picture) is fine; at 5000 by 5000 it is refused.
+  await attachImage(page, 'file', svgFile('small.svg', FLAT_SVG));
+  await page.locator('input[name="resize"][value="exact"]').click();
+  await page.locator('#f-keepAspect').uncheck();
+  await fillField(page, 'width', '5000');
+  await fillField(page, 'height', '5000');
+  await runButtonOf(page).click();
+  await expect(issues).toContainText(
+    "Could not convert 'small.svg': this SVG would be drawn at 5000 by 5000 pixels, above the 16,777,216-pixel limit this page draws an SVG at. Choose a smaller output size.",
+    { timeout: 30_000 },
+  );
+  expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+
+  // One byte over 10 MiB, a valid SVG with a long comment.
+  const head = Buffer.from(`<svg ${SVG_NS} width="4" height="4"><!--`);
+  const tail = Buffer.from('--></svg>');
+  const filler = Buffer.alloc(10 * 1024 * 1024 + 1 - head.length - tail.length, 0x61);
+  const huge = Buffer.concat([head, filler, tail]);
+  expect(huge.length).toBe(10 * 1024 * 1024 + 1);
+  await attachImage(page, 'file', { name: 'huge.svg', mimeType: 'image/svg+xml', buffer: huge });
+  await runButtonOf(page).click();
+  await expect(issues).toContainText(
+    "Could not convert 'huge.svg': This SVG file is larger than 10 MiB, which is the most this page reads.",
+    { timeout: 60_000 },
+  );
+  expect(offending(requests)).toEqual([]);
+});
+
+test('image-compare: a picture over 16,000,000 declared pixels and a file over 50 MB are each refused before decoding', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'image-compare');
+  const requests = recordRequests(page);
+  const issues = outputArea(page).locator('.issue-list');
+
+  // 4000 by 4001 is 16,004,000 pixels declared by a header that holds nothing else, so it is never decoded.
+  await attachImage(page, 'imageA', pngHeaderOnly(4000, 4001));
+  await attachImage(page, 'imageB', drawnPng('plain-b.png', 20, 10));
+  await runButtonOf(page).click();
+  await expect(issues).toContainText(
+    'First image: This image declares more than 16,000,000 pixels, the most this page accepts. Choose a smaller image.',
+    { timeout: 30_000 },
+  );
+  // The second picture is held to the same limit and named as the second.
+  await attachImage(page, 'imageA', drawnPng('plain-a.png', 20, 10));
+  await attachImage(page, 'imageB', pngHeaderOnly(4001, 4000));
+  await runButtonOf(page).click();
+  await expect(issues).toContainText('Second image: This image declares more than 16,000,000 pixels', {
+    timeout: 30_000,
+  });
+
+  // One byte over 50 MB, made as a file that is only extended to its size.
+  const scratch = mkdtempSync(join(tmpdir(), 'fodt-compare-'));
+  try {
+    const path = sparseFile(scratch, 'huge.png', 50 * 1024 * 1024 + 1);
+    await expect(async () => {
+      await page.locator('#f-imageA').setInputFiles(path);
+      await expect(page.locator('.field-help', { hasText: 'huge.png' })).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 10_000 });
+    await attachImage(page, 'imageB', drawnPng('plain-b.png', 20, 10));
+    await runButtonOf(page).click();
+    await expect(issues).toContainText(
+      'First image: This file is larger than 50 MB, the most this page accepts. Choose a smaller image.',
+      { timeout: 30_000 },
+    );
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
   expect(offending(requests)).toEqual([]);
 });
