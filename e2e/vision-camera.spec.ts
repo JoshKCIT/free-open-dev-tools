@@ -13,8 +13,15 @@ import { writeFileSync } from 'node:fs';
  * Chromium and mobile Chrome run a real fake camera device that shows a picture of a QR code (a one frame .y4m file built
  * here from the module matrix, so there is no binary fixture). Firefox runs its own fake device, which shows a test
  * pattern with no code, and otherwise a scripted camera: a canvas stream carrying the QR code, with every track's stop
- * wrapped. The pinned WebKit has no camera interface at all (no navigator.mediaDevices), so only its plain message is
- * tested and the stream tests skip there.
+ * wrapped. What each test can prove is asked of the engine: the pinned WebKit on Windows has no camera interface at all
+ * (no navigator.mediaDevices), so there only the plain message is tested and the stream tests skip. WebKit on Linux has
+ * getUserMedia; it is not given a scripted stream (see suppliesStreams), so the test that the camera starts only on Run
+ * proves its rules there on the page's plain message for a refused camera, and the stream tests skip.
+ *
+ * The scripted getUserMedia is put on MediaDevices.prototype, not on the navigator.mediaDevices object: WebKit (seen on
+ * Linux) throws away the script wrapper of navigator.mediaDevices when it is garbage collected and makes a fresh one on the
+ * next read, and a function set on the old wrapper is gone with it (the page then reached the real getUserMedia and the
+ * call was never counted). The prototype lives as long as the page does.
  *
  * The browser flags for the fake devices go through `playwright.<engine>.launch()` inside the test, not through
  * `test.use({ launchOptions })` (which Playwright refuses inside a describe because it forces a new worker) and not
@@ -33,6 +40,10 @@ declare global {
     __FODT_CAMERA_TEST__?: { events: { kind: string; states: string[] }[] };
     /** How many times the replaced getUserMedia was called. */
     __fodtCameraCalls?: number;
+    /** True once the hook has replaced getUserMedia (so a missing hook is told apart from a missing call). */
+    __fodtCameraHooked?: boolean;
+    /** Whether the hook will hand the page a real canvas stream (false: it counts the call and refuses it). */
+    __fodtCameraStreams?: boolean;
     /** The page time of the first call of the held camera. */
     __fodtCameraCallAt?: number;
     /** Hands the held camera its stream. */
@@ -147,64 +158,99 @@ async function installCameraHook(page: Page): Promise<void> {
 }
 
 /**
+ * Whether the running test's engine is asked to supply scripted camera streams. Every engine that can make a canvas
+ * stream is, except WebKit: its canvas stream playing in a video element could not be proven here (the web process of
+ * WebKit for Linux ended when one was shown, in the setup this was tried in), and an unproven stream must not decide
+ * whether a release is blocked. Where a stream is not supplied the hook counts the call and refuses it, and the test
+ * proves the same rules on the page's plain message instead.
+ */
+function suppliesStreams(): boolean {
+  return test.info().project.use.defaultBrowserType !== 'webkit';
+}
+
+/**
  * Replaces getUserMedia (where the browser has it) with a camera that shows a picture drawn on a canvas: the QR code of
  * `matrix` on white, or plain white for `null`. Every call is counted, and every track's stop is wrapped to end the
- * drawing timer. A browser without mediaDevices is left as it is.
+ * drawing timer. A browser without mediaDevices is left as it is. A browser that cannot make a canvas stream gets a
+ * camera that is counted and then refused with "not found", which the page shows as its plain message.
+ *
+ * The function goes on MediaDevices.prototype where that interface exists, so a navigator.mediaDevices object the browser
+ * makes again later (WebKit does after a garbage collection) still uses it; only a browser without the interface gets it
+ * on the object itself.
  */
 async function installScriptedCamera(page: Page, matrix: string[] | null): Promise<void> {
-  await page.addInitScript((rows) => {
-    const devices = navigator.mediaDevices;
-    if (!devices) return;
-    window.__fodtCameraCalls = 0;
-    devices.getUserMedia = async () => {
-      window.__fodtCameraCalls = (window.__fodtCameraCalls ?? 0) + 1;
-      const canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 480;
-      const g = canvas.getContext('2d')!;
-      const draw = () => {
-        g.fillStyle = '#ffffff';
-        g.fillRect(0, 0, 640, 480);
-        if (rows) {
-          const total = rows.length + 8;
-          const scale = Math.floor(440 / total);
-          const left = Math.floor((640 - total * scale) / 2);
-          const top = Math.floor((480 - total * scale) / 2);
-          g.fillStyle = '#000000';
-          rows.forEach((row, r) => {
-            for (let c = 0; c < row.length; c++) {
-              if (row[c] === '1') g.fillRect(left + (c + 4) * scale, top + (r + 4) * scale, scale, scale);
-            }
-          });
+  await page.addInitScript(
+    ({ rows, streams }) => {
+      const holder: { getUserMedia?: unknown } | undefined =
+        typeof MediaDevices !== 'undefined' && typeof MediaDevices.prototype.getUserMedia === 'function'
+          ? MediaDevices.prototype
+          : (navigator.mediaDevices ?? undefined);
+      if (!holder || typeof holder.getUserMedia !== 'function') return;
+      window.__fodtCameraCalls = 0;
+      window.__fodtCameraHooked = true;
+      const canStream = () => streams && typeof HTMLCanvasElement.prototype.captureStream === 'function';
+      window.__fodtCameraStreams = canStream();
+      const replacement = async () => {
+        window.__fodtCameraCalls = (window.__fodtCameraCalls ?? 0) + 1;
+        if (!canStream()) {
+          throw new DOMException('This browser cannot make a canvas stream for the test.', 'NotFoundError');
         }
-      };
-      draw();
-      // Redrawn so the stream keeps producing frames.
-      const timer = setInterval(draw, 100);
-      const stream = canvas.captureStream(10);
-      for (const track of stream.getTracks()) {
-        const stop = track.stop.bind(track);
-        track.stop = () => {
-          clearInterval(timer);
-          stop();
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const g = canvas.getContext('2d')!;
+        const draw = () => {
+          g.fillStyle = '#ffffff';
+          g.fillRect(0, 0, 640, 480);
+          if (rows) {
+            const total = rows.length + 8;
+            const scale = Math.floor(440 / total);
+            const left = Math.floor((640 - total * scale) / 2);
+            const top = Math.floor((480 - total * scale) / 2);
+            g.fillStyle = '#000000';
+            rows.forEach((row, r) => {
+              for (let c = 0; c < row.length; c++) {
+                if (row[c] === '1') g.fillRect(left + (c + 4) * scale, top + (r + 4) * scale, scale, scale);
+              }
+            });
+          }
         };
-      }
-      return stream;
-    };
-  }, matrix);
+        draw();
+        // Redrawn so the stream keeps producing frames.
+        const timer = setInterval(draw, 100);
+        const stream = canvas.captureStream(10);
+        for (const track of stream.getTracks()) {
+          const stop = track.stop.bind(track);
+          track.stop = () => {
+            clearInterval(timer);
+            stop();
+          };
+        }
+        return stream;
+      };
+      Object.defineProperty(holder, 'getUserMedia', { value: replacement, configurable: true, writable: true });
+    },
+    { rows: matrix, streams: suppliesStreams() },
+  );
 }
 
 /**
  * Replaces getUserMedia with a camera that never answers until the test calls window.__fodtReleaseCamera(): as a
- * permission prompt nobody answers. The first call's page time is kept in window.__fodtCameraCallAt.
+ * permission prompt nobody answers. The first call's page time is kept in window.__fodtCameraCallAt. Installed on
+ * MediaDevices.prototype for the reason given at installScriptedCamera.
  */
 async function installHeldCamera(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const devices = navigator.mediaDevices;
-    if (!devices) return;
+  await page.addInitScript((streams) => {
+    const holder: { getUserMedia?: unknown } | undefined =
+      typeof MediaDevices !== 'undefined' && typeof MediaDevices.prototype.getUserMedia === 'function'
+        ? MediaDevices.prototype
+        : (navigator.mediaDevices ?? undefined);
+    if (!holder || typeof holder.getUserMedia !== 'function') return;
     window.__fodtCameraCalls = 0;
+    window.__fodtCameraHooked = true;
+    window.__fodtCameraStreams = streams && typeof HTMLCanvasElement.prototype.captureStream === 'function';
     let release: (() => void) | null = null;
-    devices.getUserMedia = () => {
+    const replacement = () => {
       window.__fodtCameraCalls = (window.__fodtCameraCalls ?? 0) + 1;
       if (window.__fodtCameraCallAt === undefined) window.__fodtCameraCallAt = Date.now();
       return new Promise<MediaStream>((resolve) => {
@@ -217,8 +263,9 @@ async function installHeldCamera(page: Page): Promise<void> {
         };
       });
     };
+    Object.defineProperty(holder, 'getUserMedia', { value: replacement, configurable: true, writable: true });
     window.__fodtReleaseCamera = () => release?.();
-  });
+  }, suppliesStreams());
 }
 
 /** Keeps the page time at which the first worker reported ready, so a limit that starts then can be bracketed. */
@@ -373,11 +420,41 @@ function y4mFromMatrix(rows: string[]): Buffer {
   ]);
 }
 
+/** Picks Camera and presses Run on the open page. */
+async function chooseCameraAndRun(page: Page): Promise<void> {
+  await setSource(page, 'camera');
+  await runButtonOf(page).click();
+}
+
 /** Opens the page, picks Camera and presses Run. */
 async function startCamera(page: Page): Promise<void> {
   await openReader(page);
-  await setSource(page, 'camera');
-  await runButtonOf(page).click();
+  await chooseCameraAndRun(page);
+}
+
+/** What this engine offers a test: the camera interface itself, and the means to build a stream for it from a canvas. */
+async function cameraSupport(page: Page): Promise<{ hasCamera: boolean; canStream: boolean }> {
+  return page.evaluate(() => ({
+    hasCamera: typeof navigator.mediaDevices?.getUserMedia === 'function',
+    canStream: window.__fodtCameraStreams === true,
+  }));
+}
+
+/**
+ * Opens the page for a test that needs a scripted camera stream. The test is skipped, with the reason, only where the
+ * engine itself cannot supply one: no camera interface, or no canvas streams. The engine's name decides nothing.
+ */
+async function openScriptedReader(page: Page): Promise<void> {
+  await openReader(page);
+  const support = await cameraSupport(page);
+  test.skip(
+    !support.hasCamera || !support.canStream,
+    'this browser has no camera interface or cannot make a canvas stream, so a camera cannot be scripted',
+  );
+  expect(
+    await page.evaluate(() => window.__fodtCameraHooked === true),
+    'the scripted getUserMedia was not installed on this page',
+  ).toBe(true);
 }
 
 /**
@@ -407,11 +484,25 @@ test('qr-barcode-reader: a browser with no camera interface shows a plain messag
   expect(await page.evaluate(() => window.__FODT_CAMERA_TEST__!.events)).toEqual([]);
 });
 
-test('qr-barcode-reader: the camera starts only when Run is pressed in camera mode', async ({ page }) => {
-  await installScriptedCamera(page, null);
+const CAMERA_DENIED_TEXT = 'The camera could not be opened: access was refused or no camera was found.';
+
+/**
+ * The camera starts only when Camera is chosen AND Run is pressed, in whatever way the engine lets the test supply a
+ * camera. Where the engine has no camera interface, Run gives the plain message and starts nothing. Where it has one and a
+ * stream can be made, Run calls getUserMedia exactly once, the view shows, and Cancel ends it with every track ended. Where
+ * it has one but no stream can be made, Run still calls getUserMedia exactly once and the page shows its plain message,
+ * with no view and no track. Every branch also proves that choosing the source, back and forth, calls nothing.
+ */
+async function proveCameraStartsOnlyOnRun(page: Page): Promise<void> {
   await installCameraHook(page);
   await openReader(page);
-  const hasCamera = await page.evaluate(() => typeof navigator.mediaDevices?.getUserMedia === 'function');
+  const { hasCamera, canStream } = await cameraSupport(page);
+  if (hasCamera) {
+    expect(
+      await page.evaluate(() => window.__fodtCameraHooked === true),
+      'the counting getUserMedia was not installed on this page',
+    ).toBe(true);
+  }
   const calls = () => page.evaluate(() => window.__fodtCameraCalls ?? 0);
 
   // Choosing the source, and changing it back and forth, never opens the camera.
@@ -426,18 +517,45 @@ test('qr-barcode-reader: the camera starts only when Run is pressed in camera mo
 
   await runButtonOf(page).click();
   if (!hasCamera) {
-    // The pinned WebKit: Run with Camera chosen gives the plain message and still starts nothing.
+    // A browser with no camera interface (the pinned WebKit on Windows): the plain message, and nothing starts.
     await expect(outputArea(page).locator('.issue-list')).toContainText(
       'This browser cannot open a camera from a web page.',
     );
     await expect(page.locator('video')).toHaveCount(0);
+    expect(await trackSummary(page)).toEqual({ started: 0, ended: 0, late: 0, allEnded: true });
     return;
   }
   await expect.poll(calls).toBe(1);
+  if (!canStream) {
+    // The camera interface is there but the test cannot make a stream: it is asked once, refuses, and the page says so.
+    await expect(outputArea(page).locator('.issue-list')).toContainText(CAMERA_DENIED_TEXT);
+    await expect(page.locator('video')).toHaveCount(0);
+    expect(await trackSummary(page)).toEqual({ started: 0, ended: 0, late: 0, allEnded: true });
+    await page.waitForTimeout(300);
+    expect(await calls()).toBe(1);
+    return;
+  }
   await expect(liveView(page)).toBeVisible();
   await cancelButtonOf(page).click();
   await expect(liveView(page)).toHaveCount(0);
+  expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
   expect(await calls()).toBe(1);
+}
+
+test('qr-barcode-reader: the camera starts only when Run is pressed in camera mode', async ({ page }) => {
+  await installScriptedCamera(page, null);
+  await proveCameraStartsOnlyOnRun(page);
+});
+
+test('qr-barcode-reader: the camera starts only when Run is pressed, also where the test cannot make a stream', async ({
+  page,
+}) => {
+  // Takes canvas streams away from the page, as in an engine that has the camera interface but no way to script a stream.
+  await page.addInitScript(() => {
+    Object.defineProperty(HTMLCanvasElement.prototype, 'captureStream', { value: undefined, configurable: true });
+  });
+  await installScriptedCamera(page, null);
+  await proveCameraStartsOnlyOnRun(page);
 });
 
 test('qr-barcode-reader: a QR code shown to a fake camera is read, the view is removed and every camera track ends', async ({
@@ -474,25 +592,21 @@ test('qr-barcode-reader: a QR code shown to a fake camera is read, the view is r
 
 test('qr-barcode-reader: a scripted camera stream carrying a QR code is read and every track ends', async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName === 'webkit', 'the pinned WebKit has no camera interface to script');
   await installScriptedCamera(page, MATRIX_STREAM);
   await installCameraHook(page);
-  await startCamera(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
   await expect(outputArea(page)).toContainText(STREAM_TEXT, { timeout: 30_000 });
   await expect(liveView(page)).toHaveCount(0);
   expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
 });
 
-test('qr-barcode-reader: Cancel stops the camera at once, removes the view and ends every track', async ({
-  page,
-  browserName,
-}) => {
-  test.skip(browserName === 'webkit', 'the pinned WebKit has no camera interface to script');
+test('qr-barcode-reader: Cancel stops the camera at once, removes the view and ends every track', async ({ page }) => {
   await installScriptedCamera(page, null);
   await installCameraHook(page);
-  await startCamera(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
   await expect(liveView(page)).toBeVisible();
   await expect.poll(async () => (await trackSummary(page)).started).toBe(1);
 
@@ -512,11 +626,11 @@ test('qr-barcode-reader: Cancel stops the camera at once, removes the view and e
   expect(await trackSummary(page)).toEqual({ started: 2, ended: 2, late: 0, allEnded: true });
 });
 
-test('qr-barcode-reader: leaving the page stops the camera and ends every track', async ({ page, browserName }) => {
-  test.skip(browserName === 'webkit', 'the pinned WebKit has no camera interface to script');
+test('qr-barcode-reader: leaving the page stops the camera and ends every track', async ({ page }) => {
   await installScriptedCamera(page, null);
   await installCameraHook(page);
-  await startCamera(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
   await expect(liveView(page)).toBeVisible();
   await expect.poll(async () => (await trackSummary(page)).started).toBe(1);
 
@@ -527,14 +641,13 @@ test('qr-barcode-reader: leaving the page stops the camera and ends every track'
 
 test('qr-barcode-reader: with no code in view the camera stops after 30 seconds with a plain message', async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName === 'webkit', 'the pinned WebKit has no camera interface to script');
   await installScriptedCamera(page, null);
   await installCameraHook(page);
   await installWorkerReadyProbe(page);
   await page.clock.install();
-  await startCamera(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
   await expect(liveView(page)).toBeVisible();
 
   // The 30 second timer starts when the reader worker is ready. Page time is frozen a little after that, then moved by
@@ -560,13 +673,12 @@ test('qr-barcode-reader: with no code in view the camera stops after 30 seconds 
 
 test('qr-barcode-reader: a camera that never answers is given up after 15 seconds and a late stream is stopped at once', async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName === 'webkit', 'the pinned WebKit has no camera interface to script');
   await installHeldCamera(page);
   await installCameraHook(page);
   await page.clock.install();
-  await startCamera(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
   await expect.poll(() => page.evaluate(() => window.__fodtCameraCalls ?? 0)).toBe(1);
   await expect(cancelButtonOf(page)).toBeVisible();
 
@@ -596,13 +708,12 @@ test('qr-barcode-reader: a camera that never answers is given up after 15 second
 
 test('qr-barcode-reader: the canary read from camera frames never reaches a request, storage, the console, the title or the address', async ({
   page,
-  browserName,
 }) => {
-  test.skip(browserName === 'webkit', 'the pinned WebKit has no camera interface to script');
   await installScriptedCamera(page, MATRIX_CANARY);
   await installCameraHook(page);
   const recording = recordEverything(page);
-  await startCamera(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
   // The canary is read from the frames and shown in the page ...
   await expect(outputArea(page)).toContainText(CANARY, { timeout: 30_000 });
   await expect(liveView(page)).toHaveCount(0);
