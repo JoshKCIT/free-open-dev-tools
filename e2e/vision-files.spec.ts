@@ -7,7 +7,7 @@ import {
   type Page,
   type TestInfo,
 } from '@playwright/test';
-import { crc32, inflateSync } from 'node:zlib';
+import { crc32, deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -499,6 +499,475 @@ test('pdf-text-metadata: an extraction that makes no progress stops with a plain
   await runButtonOf(page).click();
   await expect(outputArea(page)).toContainText('--- Page 150 ---', { timeout: 30_000 });
   await expect.poll(() => workerCounts(page)).toEqual({ built: 2, ended: 2 });
+  expect(offending(requests)).toEqual([]);
+});
+
+test('pdf-text-metadata: a page list written wrongly is reported before the file is opened, so a locked file still gets the list message', async ({
+  page,
+}) => {
+  await openTool(page, 'pdf-text-metadata');
+  const requests = recordRequests(page);
+  await attachFile(page, pdfFile('locked.pdf', USER_PASSWORD_PDF));
+  await fillField(page, 'pages', '3-1');
+  await runButtonOf(page).click();
+  // The list is wrong whatever the file holds, so it is reported first; the file's password is never asked about.
+  await expect(outputArea(page).locator('.issue-list')).toContainText('goes backwards', { timeout: 15_000 });
+  await expect(outputArea(page).locator('.issue-list')).not.toContainText('needs a password');
+  // A list that is written correctly is judged with the file: the locked file gets its own sentence.
+  await fillField(page, 'pages', '1');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'This PDF needs a password, which this page cannot use.',
+    { timeout: 30_000 },
+  );
+  expect(offending(requests)).toEqual([]);
+});
+
+/**
+ * Hostile PDFs, written here from ISO 32000-1:2008 sections 7.3 (objects), 7.4.4 (FlateDecode), 7.5 (file structure) and
+ * 8.10 (form XObjects) with Node's own zlib, so no binary fixture is committed. Each is small on disk: the three that
+ * expand hold 100 MiB of zeros once decoded in 100 KB, and the one made of forms drawing forms is under 4 KB.
+ */
+interface RawObject {
+  number: number;
+  body: Buffer;
+}
+
+function rawPdf(objects: RawObject[]): Buffer {
+  let out = Buffer.from('%PDF-1.5\n', 'latin1');
+  const offsets = new Map<number, number>();
+  for (const { number, body } of objects) {
+    offsets.set(number, out.length);
+    out = Buffer.concat([out, Buffer.from(`${number} 0 obj\n`, 'latin1'), body, Buffer.from('\nendobj\n', 'latin1')]);
+  }
+  const size = Math.max(...objects.map((o) => o.number)) + 1;
+  let xref = `xref\n0 ${size}\n0000000000 65535 f \n`;
+  for (let n = 1; n < size; n++) {
+    const at = offsets.get(n);
+    xref += at === undefined ? '0000000000 00000 f \n' : `${String(at).padStart(10, '0')} 00000 n \n`;
+  }
+  return Buffer.concat([
+    out,
+    Buffer.from(`${xref}trailer\n<< /Size ${size} /Root 1 0 R >>\nstartxref\n${out.length}\n%%EOF\n`, 'latin1'),
+  ]);
+}
+
+function streamBody(dictionary: string, data: Buffer): Buffer {
+  return Buffer.concat([
+    Buffer.from(`<< ${dictionary} /Length ${data.length} >>\nstream\n`, 'latin1'),
+    data,
+    Buffer.from('\nendstream', 'latin1'),
+  ]);
+}
+
+const CATALOG_OBJECT: RawObject = { number: 1, body: Buffer.from('<< /Type /Catalog /Pages 2 0 R >>') };
+const HELVETICA_OBJECT: RawObject = {
+  number: 5,
+  body: Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'),
+};
+
+/** Three files that expand to 100 MiB when their streams are decoded, which is past the 64 MiB one stream may reach. */
+function expandingPdf(kind: 'object-stream' | 'content-stream' | 'doubled-filter'): PickedFile {
+  const zeros = Buffer.alloc(100 * 1024 * 1024);
+  const pages: RawObject = { number: 2, body: Buffer.from('<< /Type /Pages /Kids [3 0 R] /Count 1 >>') };
+  if (kind === 'object-stream') {
+    const flate = deflateSync(Buffer.concat([Buffer.from('10 0 (x) '), zeros]));
+    const page: RawObject = {
+      number: 3,
+      body: Buffer.from('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] >>'),
+    };
+    const objectStream = streamBody('/Type /ObjStm /N 1 /First 5 /Filter /FlateDecode', flate);
+    return {
+      name: 'expands-objstm.pdf',
+      mimeType: 'application/pdf',
+      buffer: rawPdf([CATALOG_OBJECT, pages, page, { number: 6, body: objectStream }]),
+    };
+  }
+  const page: RawObject = {
+    number: 3,
+    body: Buffer.from(
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    ),
+  };
+  const content = Buffer.concat([Buffer.from('BT /F1 12 Tf 10 10 Td (hello) Tj ET\n'), zeros]);
+  const data = kind === 'content-stream' ? deflateSync(content) : deflateSync(deflateSync(content));
+  const filter = kind === 'content-stream' ? '/Filter /FlateDecode' : '/Filter [/FlateDecode /FlateDecode]';
+  return {
+    name: `expands-${kind}.pdf`,
+    mimeType: 'application/pdf',
+    buffer: rawPdf([CATALOG_OBJECT, pages, page, { number: 4, body: streamBody(filter, data) }, HELVETICA_OBJECT]),
+  };
+}
+
+/**
+ * A file of two pages. Page one holds one line of text. Page two draws a form that draws a form ten times, `depth` levels
+ * down, and the innermost form shows `text` in a font small enough to fit, so a page of `10 ** depth` items comes from a
+ * file of a few kilobytes. (Review probe: five levels were 100,000 items and about eleven seconds in Node.)
+ */
+function nestedFormsPdf(depth: number, text: string, firstPage = true): PickedFile {
+  const objects: RawObject[] = [
+    CATALOG_OBJECT,
+    {
+      number: 2,
+      body: Buffer.from(`<< /Type /Pages /Kids [${firstPage ? '3 0 R ' : ''}6 0 R] /Count ${firstPage ? 2 : 1} >>`),
+    },
+    {
+      number: 3,
+      body: Buffer.from(
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+      ),
+    },
+    { number: 4, body: streamBody('', Buffer.from('BT /F1 12 Tf 10 100 Td (FODT-FIRST-PAGE) Tj ET')) },
+    HELVETICA_OBJECT,
+    {
+      number: 6,
+      body: Buffer.from(
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 7 0 R /Resources << /XObject << /X0 10 0 R >> /Font << /F1 5 0 R >> >> >>',
+      ),
+    },
+    { number: 7, body: streamBody('', Buffer.from('/X0 Do')) },
+  ];
+  for (let level = 0; level <= depth; level++) {
+    const content =
+      level === depth
+        ? `BT /F1 0.5 Tf 0 0 Td (${text}) Tj ET`
+        : Array.from({ length: 10 }, () => `/X${level + 1} Do`).join('\n');
+    objects.push({
+      number: 10 + level,
+      body: streamBody(
+        `/Type /XObject /Subtype /Form /BBox [0 0 200 200] /Resources << /XObject << /X${level + 1} ${11 + level} 0 R >> /Font << /F1 5 0 R >> >>`,
+        Buffer.from(content),
+      ),
+    });
+  }
+  return { name: `forms-${depth}.pdf`, mimeType: 'application/pdf', buffer: rawPdf(objects) };
+}
+
+const EXPANSION_MESSAGE = 'This PDF expands to more data than this page can hold in memory.';
+
+test('pdf-text-metadata: a small file that expands past the memory cap is refused in every mode before PDF.js is built', async ({
+  page,
+}) => {
+  await slowPdfWorker(page, 0);
+  await openTool(page, 'pdf-text-metadata');
+  const requests = recordRequests(page);
+  let first = true;
+  for (const kind of ['object-stream', 'content-stream', 'doubled-filter'] as const) {
+    const file = expandingPdf(kind);
+    expect(file.buffer.length, `${kind} is small on disk`).toBeLessThan(400 * 1024);
+    await attachFile(page, file);
+    for (const mode of ['text', 'metadata', 'remove'] as const) {
+      await chooseMode(page, mode);
+      await runButtonOf(page).click();
+      await expect(outputArea(page).locator('.issue-list'), `${kind} in ${mode} mode`).toContainText(
+        EXPANSION_MESSAGE,
+        {
+          timeout: 30_000,
+        },
+      );
+      expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+      expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+      if (first) {
+        // Reading and metadata never built PDF.js's worker; Remove built its own one and ended it.
+        const expected = mode === 'remove' ? { built: 1, ended: 1 } : { built: 0, ended: 0 };
+        await expect.poll(() => workerCounts(page)).toEqual(expected);
+      }
+    }
+    first = false;
+  }
+  // The page stays usable: an ordinary file reads on the same page afterwards.
+  await attachFile(page, pdfFile('ordinary.pdf', TAGGED_PDF));
+  await chooseMode(page, 'text');
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('--- Page 1 ---', { timeout: 30_000 });
+  expect(offending(requests)).toEqual([]);
+});
+
+test('pdf-text-metadata: a small file whose forms draw each other into millions of characters stops at the text budget with a note', async ({
+  page,
+}) => {
+  await openTool(page, 'pdf-text-metadata');
+  await attachFile(page, nestedFormsPdf(4, 'A'.repeat(400)));
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('Text stops at 2,000,000 characters', { timeout: 40_000 });
+  await expect(outputArea(page).locator('.stats')).toContainText('Characters 2000000');
+  await expect(outputArea(page)).toContainText('--- Page 1 ---');
+  expect(await outputArea(page).locator('.issue-list').count()).toBe(0);
+});
+
+test('pdf-text-metadata: a heavy page that stalls the read after the first page stops with the plain message and the next file reads', async ({
+  page,
+}) => {
+  // Page one is read at once; page two is a file of forms drawing forms six levels down (a million draws of one letter, far
+  // more than any engine finishes in three seconds and far too few letters to reach the text budget), so the read stalls
+  // in the middle of the run, after the page that was already read.
+  await slowPdfWorker(page, 0, 3_000);
+  await openTool(page, 'pdf-text-metadata');
+  const requests = recordRequests(page);
+  await attachFile(page, nestedFormsPdf(6, 'A'));
+  await runButtonOf(page).click();
+  await expect(page.locator('.field-help', { hasText: 'Page 1 of 2' })).toBeVisible({ timeout: 15_000 });
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'Stopped after 20 seconds without progress. The file may be unusually large or complex for this browser.',
+    { timeout: 15_000 },
+  );
+  expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+  await expect.poll(() => workerCounts(page)).toEqual({ built: 1, ended: 1 });
+
+  // With the limit lifted, an ordinary file reads in full on a new worker.
+  await page.evaluate(() => {
+    window.__FODT_PDF_TEXT_METADATA_TEST_STALL_MS__ = 0;
+  });
+  await attachFile(page, pdfFile('ordinary.pdf', TAGGED_PDF));
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('--- Page 3 ---', { timeout: 30_000 });
+  await expect.poll(() => workerCounts(page)).toEqual({ built: 2, ended: 2 });
+  expect(offending(requests)).toEqual([]);
+});
+
+/**
+ * QR Code & Barcode Reader, picked files (review of phase 15, part A). Pictures are made here: the PNG writer of
+ * ./fixture-files draws a QR code from its module matrix (made with the qrcode 1.5.4 library from the reader folder, level
+ * M, one 1 per dark module), the browser's own canvas writes the JPEG, and the refused files are a few bytes of header.
+ */
+const QR_WORKER_MATRIX = [
+  '111111101010101111111',
+  '100000101100001000001',
+  '101110100101101011101',
+  '101110101100001011101',
+  '101110100011001011101',
+  '100000100111101000001',
+  '111111101010101111111',
+  '000000001101100000000',
+  '101101110101101001011',
+  '100111011110110101111',
+  '101101100101000011000',
+  '110001001110011001101',
+  '101111111110110100101',
+  '000000001000011000100',
+  '111111101010011111010',
+  '100000101001111011010',
+  '101110100111100000000',
+  '101110101000110101010',
+  '101110101010001101100',
+  '100000100100011011000',
+  '111111101000111001010',
+];
+
+/**
+ * A QR code whose text is FODT-HOSTILE-, U+202E, gpj.exe, U+200B, U+0007, x, the tag character U+E0041, U+FEFF and end.
+ *   cd tools/qr-barcode-reader && node -e "const Q=require('qrcode');const t='FODT-HOSTILE-'+String.fromCodePoint(0x202e)+
+ *   'gpj.exe'+String.fromCodePoint(0x200b)+String.fromCodePoint(7)+'x'+String.fromCodePoint(0xe0041)+
+ *   String.fromCodePoint(0xfeff)+'end';const q=Q.create(t,{errorCorrectionLevel:'M'});const n=q.modules.size;
+ *   for(let r=0;r<n;r++){let s='';for(let c=0;c<n;c++)s+=q.modules.data[r*n+c];console.log(s)}"
+ */
+const QR_HOSTILE_MATRIX = [
+  '11111110110110100011101111111',
+  '10000010010100000001101000001',
+  '10111010010011011100101011101',
+  '10111010111010111110101011101',
+  '10111010100111110101101011101',
+  '10000010111001101011001000001',
+  '11111110101010101010101111111',
+  '00000000111000101101100000000',
+  '10001011110001101110111111001',
+  '10010001111110011100100011110',
+  '10101010101001110000101101000',
+  '00011101111001001011001000101',
+  '00110111111011010001110111011',
+  '11010001101101110011011011100',
+  '00010110010010010011111010100',
+  '10011100101100101011000010111',
+  '01000111101011111010100011010',
+  '10010101011000011100111100111',
+  '00001010100001100110110101010',
+  '00111001110011010111000100000',
+  '11001011101111011011111111001',
+  '00000000100001101010100011001',
+  '11111110111100000111101011110',
+  '10000010011100110101100011010',
+  '10111010100111111011111110010',
+  '10111010011011011110101000100',
+  '10111010001010010110011111111',
+  '10000010010000000101011101110',
+  '11111110100010010010111110000',
+];
+
+function qrPngOf(name: string, matrix: string[]): PickedFile {
+  const scale = 8;
+  const margin = 4;
+  const size = matrix.length;
+  const side = (size + margin * 2) * scale;
+  const rgba = new Uint8Array(side * side * 4);
+  for (let y = 0; y < side; y++) {
+    const row = Math.floor(y / scale) - margin;
+    for (let x = 0; x < side; x++) {
+      const col = Math.floor(x / scale) - margin;
+      const dark = row >= 0 && row < size && col >= 0 && col < size && matrix[row]![col] === '1';
+      const o = (y * side + x) * 4;
+      const value = dark ? 0 : 255;
+      rgba[o] = value;
+      rgba[o + 1] = value;
+      rgba[o + 2] = value;
+      rgba[o + 3] = 255;
+    }
+  }
+  return { name, mimeType: 'image/png', buffer: Buffer.from(writePng(side, side, rgba)) };
+}
+
+/** The first bytes of an image file that declare a size and hold nothing else. */
+function headerOnly(
+  kind: 'png' | 'bmp' | 'gif',
+  fields: { width: number; height: number; frame?: [number, number] },
+): Buffer {
+  if (kind === 'png') {
+    const bytes = Buffer.alloc(33);
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]).copy(bytes);
+    bytes.writeUInt32BE(fields.width, 16);
+    bytes.writeUInt32BE(fields.height, 20);
+    bytes.set([8, 6, 0, 0, 0], 24);
+    return bytes;
+  }
+  if (kind === 'bmp') {
+    const bytes = Buffer.alloc(54);
+    bytes.write('BM', 0, 'latin1');
+    bytes.writeUInt32LE(54, 10);
+    bytes.writeUInt32LE(40, 14);
+    bytes.writeInt32LE(fields.width, 18);
+    bytes.writeInt32LE(fields.height, 22);
+    bytes.writeUInt16LE(1, 26);
+    bytes.writeUInt16LE(24, 28);
+    return bytes;
+  }
+  // A GIF whose logical screen is `width` by `height` and whose first image descriptor, when `frame` is given, is larger.
+  const parts = [Buffer.from('GIF89a', 'latin1'), Buffer.alloc(7)];
+  parts[1]!.writeUInt16LE(fields.width, 0);
+  parts[1]!.writeUInt16LE(fields.height, 2);
+  if (fields.frame) {
+    const descriptor = Buffer.alloc(10);
+    descriptor[0] = 0x2c;
+    descriptor.writeUInt16LE(fields.frame[0], 5);
+    descriptor.writeUInt16LE(fields.frame[1], 7);
+    parts.push(descriptor);
+  }
+  return Buffer.concat(parts);
+}
+
+test('qr-barcode-reader: a text file, an oversized picture, a picture with a negative size and a GIF that grows past its screen are refused before decoding', async ({
+  page,
+}) => {
+  await openTool(page, 'qr-barcode-reader');
+  const requests = recordRequests(page);
+  const marker = 'FODT-MARKER-NOT-IN-MESSAGES';
+  const cases: { file: PickedFile; message: string }[] = [
+    {
+      file: {
+        name: 'notes.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(`plain text, not a picture ${marker}`),
+      },
+      message: 'This is not a PNG, JPEG, GIF, WebP or BMP image.',
+    },
+    {
+      file: { name: 'huge.png', mimeType: 'image/png', buffer: headerOnly('png', { width: 100_000, height: 100_000 }) },
+      message: 'declares more than 50,000,000 pixels',
+    },
+    {
+      file: {
+        name: 'negative.bmp',
+        mimeType: 'image/bmp',
+        buffer: headerOnly('bmp', { width: -100_000, height: 100_000 }),
+      },
+      message: 'The size of this image could not be read from its header.',
+    },
+    {
+      file: { name: 'zero.png', mimeType: 'image/png', buffer: headerOnly('png', { width: 0, height: 20 }) },
+      message: 'The size of this image could not be read from its header.',
+    },
+    {
+      // A one pixel screen whose first frame is 65535 by 65535: some engines grow the picture to the frame.
+      file: {
+        name: 'grows.gif',
+        mimeType: 'image/gif',
+        buffer: headerOnly('gif', { width: 1, height: 1, frame: [65535, 65535] }),
+      },
+      message: 'declares more than 50,000,000 pixels',
+    },
+  ];
+  for (const { file, message } of cases) {
+    await attachFile(page, file);
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('.issue-list'), file.name).toContainText(message, { timeout: 15_000 });
+    await expect(outputArea(page).locator('.issue-list')).not.toContainText(marker);
+    expect(await outputArea(page).locator('pre.output').count(), file.name).toBe(0);
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
+test('qr-barcode-reader: a JPEG with more than 64 KB of header segments before its frame is read, not refused as not an image', async ({
+  page,
+}) => {
+  await openTool(page, 'qr-barcode-reader');
+  const requests = recordRequests(page);
+  // The browser writes the JPEG of the code (JPEG is the one format every engine can encode), and 70 KB of application
+  // segments are put in front of everything else, as an ICC profile, XMP and an editing program's data are on a real photo.
+  const base = qrPngOf('worker-check.png', QR_WORKER_MATRIX);
+  const jpegBase64 = await page.evaluate(async (pngBase64) => {
+    const bytes = Uint8Array.from(atob(pngBase64), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.95).split(',')[1]!;
+  }, base.buffer.toString('base64'));
+  const jpeg = Buffer.from(jpegBase64, 'base64');
+  expect(jpeg.subarray(0, 2).toString('hex')).toBe('ffd8');
+  const segments: Buffer[] = [];
+  for (let left = 70_000; left > 0;) {
+    const payload = Math.min(left, 35_000);
+    const segment = Buffer.alloc(4 + payload);
+    segment[0] = 0xff;
+    segment[1] = 0xe1;
+    segment.writeUInt16BE(payload + 2, 2);
+    segments.push(segment);
+    left -= payload;
+  }
+  const big = Buffer.concat([jpeg.subarray(0, 2), ...segments, jpeg.subarray(2)]);
+  expect(big.length).toBeGreaterThan(70_000);
+  await attachFile(page, { name: 'big-header.jpg', mimeType: 'image/jpeg', buffer: big });
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('FODT-VISION-WORKER', { timeout: 30_000 });
+  await expect(outputArea(page).locator('.issue-list')).toHaveCount(0);
+  expect(offending(requests)).toEqual([]);
+});
+
+test('qr-barcode-reader: decoded text with direction, control, invisible and tag characters is shown only as escapes', async ({
+  page,
+}) => {
+  await openTool(page, 'qr-barcode-reader');
+  const requests = recordRequests(page);
+  await attachFile(page, qrPngOf('hostile.png', QR_HOSTILE_MATRIX));
+  await runButtonOf(page).click();
+  const output = outputArea(page);
+  await expect(output).toContainText('FODT-HOSTILE-', { timeout: 30_000 });
+  const backslash = String.fromCharCode(92);
+  const shown = await output.innerText();
+  for (const escape of ['202E', '200B', 'E0041', 'FEFF']) {
+    expect(shown, `the escape of U+${escape}`).toContain(`${backslash}u{${escape}}`);
+  }
+  // The engine's own text mode writes a control character such as BEL as <BEL> before the page sees it, so the page's escape
+  // for it is the second line of defence; either way no raw control character reaches the page.
+  expect(shown.includes(`${backslash}u{7}`) || shown.includes('<BEL>')).toBe(true);
+  // None of the characters themselves reached the page: not in the table and not in the block of text.
+  const raw = [0x202e, 0x200b, 0x07, 0xfeff, 0xe0041].map((cp) => String.fromCodePoint(cp));
+  const html = await output.innerHTML();
+  for (const character of raw) {
+    expect(html.includes(character), `U+${character.codePointAt(0)!.toString(16)} in the page`).toBe(false);
+  }
+  // The harmless words around them are still readable.
+  expect(shown).toContain('gpj.exe');
+  expect(shown).toContain('end');
   expect(offending(requests)).toEqual([]);
 });
 
