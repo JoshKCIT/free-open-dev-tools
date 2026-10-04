@@ -1419,5 +1419,12 @@
     "category": "css",
     "tier": 3,
     "summary": "Style buttons, switches, checkboxes, radio buttons and range sliders while keeping the native controls."
+  },
+  {
+    "id": "cubic-bezier",
+    "name": "Cubic Bezier Easing Editor",
+    "category": "css",
+    "tier": 3,
+    "summary": "Shape a cubic-bezier easing curve by dragging its handles or picking a preset, and preview the motion."
   }
 ]
