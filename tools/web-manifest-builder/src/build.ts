@@ -138,8 +138,8 @@ function escapeAttribute(text: string): string {
  * address that cannot be read is replaced by the example address, as `processManifest` does.
  */
 export function manifestLinkTag(manifestUrl: string, pageUrl: string): string {
-  const manifest = resolveAddress(manifestUrl, DEFAULT_MANIFEST_URL).url;
-  const page = resolveAddress(pageUrl, DEFAULT_PAGE_URL).url;
+  const manifest = resolveAddress(manifestUrl, DEFAULT_MANIFEST_URL, 'manifest address field').url;
+  const page = resolveAddress(pageUrl, DEFAULT_PAGE_URL, 'page address field').url;
   const address = manifest.origin === page.origin ? manifest.pathname + manifest.search : manifest.href;
   return `<link rel="manifest" href="${escapeAttribute(address)}">`;
 }

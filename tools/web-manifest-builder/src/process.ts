@@ -217,7 +217,7 @@ export function processManifest(
   const rows: ProcessedRow[] = [];
 
   // The two addresses everything is resolved against.
-  const manifestAddress = resolveAddress(manifestUrl, DEFAULT_MANIFEST_URL);
+  const manifestAddress = resolveAddress(manifestUrl, DEFAULT_MANIFEST_URL, 'manifest address field');
   if (manifestAddress.problem !== null) {
     add(
       'manifest address',
@@ -225,7 +225,7 @@ export function processManifest(
       `The manifest address is ${manifestAddress.problem === 'empty' ? 'empty' : 'not a full http or https address'}, so ${DEFAULT_MANIFEST_URL} is used to resolve the other addresses. Write it like https://example.com/manifest.webmanifest.`,
     );
   }
-  const pageAddress = resolveAddress(pageUrl, DEFAULT_PAGE_URL);
+  const pageAddress = resolveAddress(pageUrl, DEFAULT_PAGE_URL, 'page address field');
   if (pageAddress.problem !== null) {
     add(
       'page address',
