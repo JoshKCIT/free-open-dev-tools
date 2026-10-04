@@ -38,6 +38,7 @@ Converts international domain names between their Unicode form and the ASCII for
 - [UTS #46 — Unicode IDNA Compatibility Processing](https://www.unicode.org/reports/tr46/)
 - [RFC 3492 — Punycode](https://www.rfc-editor.org/rfc/rfc3492)
 - [RFC 5891 — IDNA: Protocol](https://www.rfc-editor.org/rfc/rfc5891)
+- [RFC 5892 — The Unicode Code Points and IDNA (appendix A, joiner rules)](https://www.rfc-editor.org/rfc/rfc5892)
 - [RFC 5893 — Right-to-Left Scripts for IDNA](https://www.rfc-editor.org/rfc/rfc5893)
 - [WHATWG URL Standard — domain to ASCII](https://url.spec.whatwg.org/#concept-domain-to-ascii)
 
@@ -94,7 +95,7 @@ explainName('a..b', STRICT); // [{ label: 2, family: 'empty-label', ... }]
 npm test
 ```
 
-The Unicode conformance file IdnaTestV2.txt 17.0.0 is vendored byte for byte under test/fixtures/idna (with the Unicode License V3 text and a record of its address, SHA-256 and git blob SHA, which a test checks) and read by the test's own reader. Every one of its 6,391 rows is converted three ways: ToASCII with transitional processing off, ToASCII with it on, and ToUnicode, each with the strict profile, and the verdict and the value must equal the file's (U+FFFD in a result stands for any one code point, as the file says); the empty label status the file adds for ToUnicode is checked on its 271 rows. Every explanation must name only families the row's status codes belong to, and must name every family the file lists when the name passes the basic rules. The browser profile must differ from the strict one only in the hyphen, STD3 and length checks. Boundaries (63 and 253 octets, the three input limits), bidirectional checking on the whole name, Punycode decoding failures, escaping of hidden characters, the RFC 3492 sample strings, a second Punycode encoder written from the RFC and 6,000 seeded random names (explained exactly when refused) complete the checks. The package prints nothing.
+The Unicode conformance file IdnaTestV2.txt 17.0.0 is vendored byte for byte under test/fixtures/idna (with the Unicode License V3 text and a record of its address, SHA-256 and git blob SHA, which a test checks) and read by the test's own reader. Every one of its 6,391 rows is converted three ways: ToASCII with transitional processing off, ToASCII with it on, and ToUnicode, each with the strict profile, and the verdict and the value must equal the file's (U+FFFD in a result stands for any one code point, as the file says); the empty label status the file adds for ToUnicode is checked on its 271 rows. Every explanation must name only families the row's status codes belong to, and must name every family the file lists when the name passes the basic rules. The browser profile must differ from the strict one only in the hyphen, STD3 and length checks. Boundaries (63 and 253 octets, the three input limits), bidirectional checking on the whole name, Punycode decoding failures, escaping of hidden characters, the RFC 3492 sample strings, a second Punycode encoder written from the RFC and 6,000 seeded random names (explained exactly when refused) complete the checks. The package prints nothing. A browser test types 60 of the file's rows (30 it accepts and 30 it refuses, five for each kind of reason) on the page, once going to ASCII and once going to Unicode, in four browser projects.
 
 ## Licence
 
