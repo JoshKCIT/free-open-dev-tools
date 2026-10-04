@@ -39,7 +39,7 @@ Converts a pasted document between JSON, YAML, TOML, XML, CSV and TSV in any dir
 - A JSON number beyond double precision is rounded, the same limit JSON.parse itself has
 - Numbers written to XML, CSV and TSV are written the way JavaScript writes a number: negative zero as 0, 1e21 as 1e+21, and a number too large for a double (1e999) as Infinity, which is not a JSON number
 - Writing TOML from a float such as 1.0 can come back as the plain integer 1, since TOML numbers do not separately track a trailing .0
-- Converting from YAML runs the parse in a background worker with a fixed 1.5 second time limit, so a very large flat mapping is stopped rather than freezing the tab; the other sources have no such limit
+- Converting from YAML runs the parse in a background worker with a fixed 10 second time limit, so a very large flat mapping is stopped rather than freezing the tab; the other sources have no such limit
 - XML attributes become keys starting with @_ (you can change the prefix), element text sits under #text when the element also has attributes or children, and repeated elements become arrays.
 - CSV and TSV output flattens nested objects into dotted column names; an array inside a record, a key containing a dot, or rows of unequal length are refused with their path.
 - Records with different keys share one header of every key in order of first appearance; missing values become empty cells, with a warning.

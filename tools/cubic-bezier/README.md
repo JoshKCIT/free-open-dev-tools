@@ -19,12 +19,12 @@ Shapes a cubic-bezier() easing function. Pick one of the five CSS keywords (line
 
 ## Limits
 
-- Both x values are kept in the range 0 to 1, as the cubic-bezier() function requires; y values may go from -1 to 2.
+- Both x values are kept in the range 0 to 1, as the cubic-bezier() function requires; y values are held to -1 to 2 with a warning, although CSS itself allows any y value.
 - The motion preview stops when the visitor's system asks for reduced motion, and the copied CSS carries that rule.
 - The handle pad shows progress upward, so its second number is 1 minus the curve's y value; the cubic-bezier() text shows the real values.
 - Sampled values are computed to six decimals.
 - Numbers are kept to three decimals in the copied value, and the sampled values are computed from exactly those numbers.
-- The motion preview is a dot on a fixed 240 pixel track with one easing for the whole move; it does not show steps() or multi-segment easing.
+- The motion preview is a dot on a fixed 240 pixel track with one easing for the whole move; it plays one way, moves during the first three quarters of the duration you set and then waits, so every play shows the copied curve; it does not show steps() or multi-segment easing.
 
 ## Ambiguous cases, and what this does about them
 

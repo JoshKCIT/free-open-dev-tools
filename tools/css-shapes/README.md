@@ -23,7 +23,7 @@ Draws a triangle in one of eight directions (with borders or with clip-path), a 
 - The preview and the copied CSS are the same text; the shapes use only class selectors, so tails and ribbon ends are child elements, not pseudo-elements.
 - Sizes are clamped to 8 to 400 pixels with a warning; colours are hexadecimal.
 - Bubble and tooltip text is at most 200 characters and appears only in the markup, never in the CSS.
-- Control characters and text direction characters are removed from the text with a warning, and the markup shows the rest escaped.
+- Zero-width, control and text direction characters are removed from the text, and a tab or line break becomes a space, with a warning; text with nothing left is no text, and the markup shows the rest escaped.
 - The preview area has a fixed size, so a large shape is cut off in the preview; the copied CSS is not affected.
 - A bubble tail is a fixed 16 pixels and a tooltip arrow a fixed 10 pixels; the shapes have no outline, shadow or rounded tail.
 - The clip-path method needs a browser that supports CSS Masking; the border method works in every browser.

@@ -11,7 +11,7 @@ Pasted rows become a bar, line or pie chart drawn as SVG by this package's own c
 
 ## Supported
 
-- Comma or tab separated rows, with the quoting rules of RFC 4180 (a value in double quotes may hold commas, line breaks and doubled quotes); the delimiter is a tab when the first line holds one, otherwise a comma
+- Comma or tab separated rows, with the quoting rules of RFC 4180 (a value in double quotes may hold commas, line breaks and doubled quotes); the delimiter is a tab when the first line with anything on it holds one (blank lines before it are skipped), otherwise a comma
 - An optional header row that names the label column and each series
 - Bar charts and line charts with one to eight series, and pie charts from the first number column
 - A title, a horizontal and a vertical axis label, a legend and value labels on the marks
@@ -25,7 +25,7 @@ Pasted rows become a bar, line or pie chart drawn as SVG by this package's own c
 - Numbers are read as written with a point for decimals; thousands separators and decimal commas are refused with the row and column, and so is a number larger than 1e100 in size, which cannot be drawn.
 - A pie chart needs values of zero or more and a total above zero; a negative value or a total of zero is refused.
 - Labels longer than 40 characters are shortened with an ellipsis in the chart, the table and the description; titles are shortened to 60 characters and axis labels to 40.
-- Numbers are shown with at most 6 significant digits.
+- The data table, the written description and the image description show each number exactly as it was read. Numbers on the marks and in the pie legend are exact up to 12 characters and rounded to 6 significant digits beyond that; axis numbers and worked-out figures (an average, a total, a share) are rounded to 6 significant digits.
 - Text in the chart uses this browser's fonts, so a PNG can look slightly different between browsers.
 - The chart is a fixed 800 by 480 pixels; with many points the labels under the bars or points are thinned out and the marks become very thin.
 

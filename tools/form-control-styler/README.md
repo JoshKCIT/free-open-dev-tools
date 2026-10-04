@@ -25,7 +25,7 @@ Styles one family of form controls at a time: a button, a switch, a checkbox, a 
 - The CSS turns off its transitions when the visitor's system asks for reduced motion.
 - The preview shows one control family at a time in a frame with no scripts.
 - Colours are hexadecimal; a colour box holding other text falls back to the default colour with a warning. Size is clamped to 12 to 32 pixels and the corner radius to 0 to 24 pixels, with a warning.
-- The label text is cut to 40 characters and shown as plain text; an empty label becomes Option. It never reaches the CSS.
+- The label text is cut to 40 characters and shown as plain text; zero-width characters are removed and a tab or line break becomes a space; a label with nothing left becomes Option. It never reaches the CSS.
 - Range sliders are styled with the browser-specific parts of the control, so a browser that does not know those parts shows the native slider with the accent colour only.
 - The copied markup puts the controls on a surface element of the background colour (the class fc-surface); leave it out to place the controls on your own page, and the controls keep their own rules.
 
