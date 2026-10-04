@@ -1,0 +1,53 @@
+{
+  "name": "@fodt/semver-checker",
+  "version": "1.0.0",
+  "description": "Check versions against a semantic version range, read the range in plain words and sort a list of versions.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "semver",
+    "version",
+    "range",
+    "satisfies",
+    "caret",
+    "tilde",
+    "sort",
+    "pre-release",
+    "npm",
+    "precedence"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "semver": "7.8.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "@types/semver": "^7.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/semver-checker"
+  }
+}

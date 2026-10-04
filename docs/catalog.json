@@ -1447,5 +1447,12 @@
     "category": "devops",
     "tier": 3,
     "summary": "Test glob patterns and .gitignore rules against a list of paths and see which rule decided each one."
+  },
+  {
+    "id": "semver-checker",
+    "name": "Semantic Version Range Checker & Sorter",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Check versions against a semantic version range, read the range in plain words and sort a list of versions."
   }
 ]
