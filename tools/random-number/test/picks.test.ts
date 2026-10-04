@@ -14,6 +14,7 @@ import {
   MAX_LIST_CHARACTERS,
 } from '../src/picks';
 import { RandomDrawError } from '../src/sampler';
+import { parseDiceNotation, rollDice } from '../src/dice';
 
 // New tests for coin flips, lottery draws and list picks (plan 16-09). Fixed byte sequences are worked by hand through
 // the rejection rule of the shared sampler (see dice.test.ts for the rule):
@@ -294,7 +295,8 @@ it('the cryptographic source is the only source of randomness for flips, lottery
   expect(drawn).not.toHaveBeenCalled();
 });
 
-it('nothing is written to the console while flipping, drawing or picking', () => {
+it('nothing is written to the console while rolling, flipping, drawing or picking', () => {
+  rollDice(parseDiceNotation('2d6+3'));
   flipCoins(100);
   drawLottery({ poolSize: 1_000_000, drawSize: 100 });
   pickItems({ items: ['a', 'b', 'c'], count: 3, replace: false });
