@@ -1468,5 +1468,12 @@
     "category": "code",
     "tier": 3,
     "summary": "Build a web app manifest with its name, icons, colours, display mode and start address, each member checked."
+  },
+  {
+    "id": "idn-converter",
+    "name": "IDN & Punycode Converter",
+    "category": "encoding",
+    "tier": 3,
+    "summary": "Convert international domain names between Unicode and their ASCII Punycode form, with invalid labels explained."
   }
 ]
