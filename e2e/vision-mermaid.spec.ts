@@ -61,6 +61,22 @@ async function fillAndHold(page: Page, value: string): Promise<void> {
   }).toPass({ timeout: 10_000 });
 }
 
+/**
+ * Sets the diagram field's value directly (the way a paste would) and checks it stayed. Firefox's typing path drops a
+ * vertical tab, so the cases that need one go through the field's own value setter and an input event instead.
+ */
+async function setRawAndHold(page: Page, value: string): Promise<void> {
+  const field = page.locator('#f-source');
+  await expect(async () => {
+    await field.evaluate((element, text) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
+      setter.call(element, text);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }, value);
+    await expect(field).toHaveValue(value, { timeout: 500 });
+  }).toPass({ timeout: 10_000 });
+}
+
 /** Starts recording every request the page makes from now on, and returns the live list. */
 function recordRequests(page: Page): string[] {
   const requests: string[] = [];
@@ -456,7 +472,7 @@ test('mermaid-renderer: a fence or click line led by a blank the engine also rea
     },
   ];
   for (const c of cases) {
-    await fillAndHold(page, c.text);
+    await setRawAndHold(page, c.text);
     await runAndWait(page);
     await expect(issues, c.name).toContainText('.', { timeout: 30_000 });
     expect((await issues.innerText()).trim(), c.name).toMatch(c.message);
@@ -839,8 +855,8 @@ test('mermaid-renderer: a PNG over the size cap keeps the SVG and says why the P
   await openTool(page);
   await page.locator('input[name="format"][value="png"]').click();
   await page.locator('#f-scale').fill('4');
-  // About 40 boxes in a row: wide enough that four times its width is far over the 8,192 pixel side limit.
-  const row = Array.from({ length: 40 }, (_, i) => `  N${i}[Step number ${i}] --> N${i + 1}[Step number ${i + 1}]`);
+  // About 20 boxes in a row: wide enough that four times its width is far over the 8,192 pixel side limit.
+  const row = Array.from({ length: 20 }, (_, i) => `  N${i}[Step number ${i}] --> N${i + 1}[Step number ${i + 1}]`);
   await fillAndHold(page, `flowchart LR\n${row.join('\n')}`);
   await runAndWait(page);
   const output = outputArea(page);
