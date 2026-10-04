@@ -23,6 +23,8 @@ interface Counters {
   chunks: number;
   items: number;
   cancelled: boolean;
+  /** PDF.js asserts that a stream is cancelled with an Error; a cancel with no reason is refused and raises errors later. */
+  reasonWasError?: boolean;
 }
 
 /** A page whose text arrives as `chunkCount` chunks of `perChunk` items of `size` characters, counting what is pulled. */
@@ -46,8 +48,9 @@ function streamingPage(chunkCount: number, perChunk: number, size: number, count
             });
             controller.enqueue({ items });
           },
-          cancel() {
+          cancel(reason) {
             counters.cancelled = true;
+            counters.reasonWasError = reason instanceof Error;
           },
         },
         { highWaterMark: 0 },
@@ -67,6 +70,7 @@ it('a page with far more text than the budget is cut at 2,000,000 characters wit
   expect(counters.chunks).toBeLessThanOrEqual(22);
   expect(counters.items).toBeLessThanOrEqual(2200);
   expect(counters.cancelled).toBe(true);
+  expect(counters.reasonWasError).toBe(true);
 });
 
 it('the budget is shared by the pages: a second page is cut where the first one left off, and a third is not read', async () => {
@@ -149,7 +153,7 @@ it('cancelling while a page streams stops at once and cancels the stream', async
           if (counters.chunks === 3) controller.abort();
         }
       },
-      cancel: () => reader.cancel(),
+      cancel: (reason) => reader.cancel(reason),
     });
   };
   const doc: PdfDocLike = { numPages: 1, getPage: () => Promise.resolve(page) };
@@ -218,7 +222,7 @@ it('a real PDF whose forms repeat each other into millions of characters stops r
                 delivered += next.value.items.length;
                 controller.enqueue(next.value);
               },
-              cancel: () => reader.cancel(),
+              cancel: (reason) => reader.cancel(reason),
             });
           },
           cleanup: () => page.cleanup(),

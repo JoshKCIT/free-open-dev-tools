@@ -50,6 +50,8 @@ export interface ExtractResult {
 
 const CANCELLED = 'The run was cancelled.';
 
+const STOPPED_READING = 'The rest of this page was not read.';
+
 const CHAR_LIMIT_NOTE = 'Text stops at 2,000,000 characters, the most this page shows; later text was left out.';
 
 function cancelled(): Error {
@@ -106,8 +108,9 @@ async function readPageText(
     }
   } finally {
     // Whatever stopped the read, the stream is told to stop producing. Not awaited: the answer comes from the worker,
-    // and a worker that is busy must not hold up the page.
-    if (!finished) void reader.cancel().catch(() => undefined);
+    // and a worker that is busy must not hold up the page. PDF.js asserts that the reason is an Error (a cancel with none
+    // is refused and its late chunks then raise errors in the page), so one is given.
+    if (!finished) void reader.cancel(new Error(STOPPED_READING)).catch(() => undefined);
   }
   return { text, capped };
 }
