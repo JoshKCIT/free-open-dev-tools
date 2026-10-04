@@ -13,7 +13,7 @@ Paste a docker run command and get the same container written as a Compose servi
 
 - Every option of docker run in the Docker CLI source that this page was checked against, including the short forms (-itd, -p8080:80, -eKEY=value), the equals forms (--name=web), the hidden and deprecated names, and docker container run
 - Options end at the image: every word after the image is the command, even one that starts with a dash, and -- ends the options; a shell prompt ($) in front of the command, as copied from a page of examples, is ignored
-- POSIX and Bash quoting (single quotes, double quotes, backslash, $'...') and backslash line continuations; $NAME and ${NAME} are kept for Compose to fill in, $(pwd) becomes the current folder
+- POSIX and Bash quoting (single quotes, double quotes, backslash, $'...', $"...") and backslash line continuations; $NAME and ${NAME} are kept for Compose to fill in, $(pwd) becomes the current folder
 - Named volumes and user-defined networks declared at the top level of the file, healthcheck, logging, ulimits, devices, blkio and GPU options mapped to their Compose keys, and --mount read into the long volume syntax
 - A Compose Specification schema check of the service that is written, with each problem named by its path
 
@@ -21,12 +21,18 @@ Paste a docker run command and get the same container written as a Compose servi
 
 - A paste is limited to 65,536 characters.
 - The command is read as text and never run; no image is pulled and nothing is started.
+- A paste holds one command: a line break outside quotes ends it, so a second command on a later line is refused (a backslash at the end of a line continues the command; blank lines and comments are fine). A half of a character pair (a lone surrogate) is refused.
 - $NAME and ${NAME} are kept for Compose to fill in from its environment; $(pwd) becomes the current folder; any other command substitution is refused.
+- Nothing is expanded the way a shell would: unquoted braces such as {a,b}, an asterisk (*) and ~user are kept as written, so a command that relies on a shell to expand them will not mean the same here (no shell expansion, no globbing, no home folder lookup).
 - Options with no Compose equivalent (for example --rm, --detach, --cidfile) are listed with the reason instead of being written.
 - --link, --volumes-from and network addresses without a user-defined network need another service or network in the same file; they are listed, not written.
+- Compose fills in variables in values but not in names: a network, log option, storage option, ulimit or GPU option name that holds a dollar sign is listed with a reason instead of being written as a key, and a volume source that is a variable is written as it is, so declare that volume under the top-level volumes key by hand.
+- A named volume is declared with name: set to its own name, so Compose uses the volume docker run used instead of making a new, empty one with the project name in front of it; delete the name line if you want a separate volume for each Compose project.
 - Files named by --env-file and --label-file must exist when Compose runs.
 - Only docker run and docker container run are read; docker options placed before the word run, a shell pipeline and anything else a shell would run are refused.
 - At most the first 1,000 rows of the options table and the first 200 items of each list are shown; the counts above them cover every option.
+- The schema check does not judge a value that holds a variable (it could not say whether Compose will accept what the variable is filled in with); the page says how many values it left alone.
+- Whole numbers beyond 9,007,199,254,740,991 are kept as text in the YAML, because a number that large cannot be held exactly.
 - A value such as a size or a number that is written as a variable (for example -m $MEM) is not checked and is written as text for Compose to fill in.
 
 ## Ambiguous cases, and what this does about them
@@ -87,7 +93,7 @@ result.noEquivalent.map((entry) => entry.option); // ['--rm']
 result.validation.valid; // true
 ```
 
-`convertDockerRun(text, serviceName?)` reads the command with a shell-word tokenizer that never runs anything, reads the options the way docker's own command line does (options end at the image), and returns the Compose document, its YAML, a row for every option read, the options with no Compose equivalent, the options that need another service, the unknown options with the closest known name, hints and the Compose Specification schema check. Any refusal is a DockerRunError with a line and a column and never repeats more than 40 escaped characters of the paste. `tokenizeDockerCommand`, `parseDockerRun`, `DOCKER_RUN_OPTIONS` and `validateComposeDocument` are exported for use on their own. Everything is pure and runs in Node or a browser.
+`convertDockerRun(text, serviceName?)` reads the command with a shell-word tokenizer that never runs anything, reads the options the way docker's own command line does (options end at the image), and returns the Compose document, its YAML, a row for every option read (the value of --env, --env-file and --label is shown only as KEY=..., though the YAML keeps it), the options with no Compose equivalent, the options that need another service, the unknown options with the closest known name, hints and the Compose Specification schema check. Any refusal is a DockerRunError with a line and a column and never repeats more than 40 escaped characters of the paste. `tokenizeDockerCommand`, `parseDockerRun`, `DOCKER_RUN_OPTIONS` and `validateComposeDocument` are exported for use on their own. Everything is pure and runs in Node or a browser.
 
 ## Dependencies
 
@@ -100,7 +106,7 @@ result.validation.valid; // true
 npm test
 ```
 
-The option table is checked against the flag registrations in the Docker CLI source files cli/command/container/opts.go and run.go at a recorded commit, copied unchanged with their licence and an UPSTREAM.md of git blob SHAs: all 108 registered flags must be in the table with their value type, short form and a Compose key or a reason. Every option that has a Compose key is converted from a sample command and the service must be accepted by the Compose Specification JSON schema, bundled here as an unchanged copy of the upstream file. The same 108 samples and ten recorded commands were run through docker compose config (Compose v5.3.1, no daemon), which accepted all 118 YAML files, and through docker run with no daemon (Docker 29.6.2), whose own option reader accepted every option and value except the newest flag, --umask; that record is committed with the script that made it. The shell reading, the dollar rules, the size limit, the YAML quoting and the rule that messages never repeat pasted text have their own tests, and a browser test compares the page output for ten recorded commands with the YAML the unit tests assert in four browsers.
+The option table is checked against the flag registrations in the Docker CLI source files cli/command/container/opts.go and run.go at a recorded commit, copied unchanged with their licence and an UPSTREAM.md of git blob SHAs: all 108 registered flags must be in the table with their value type, short form and a Compose key or a reason. Every option that has a Compose key is converted from a sample command and the service must be accepted by the Compose Specification JSON schema, bundled here as an unchanged copy of the upstream file. The same 108 samples and ten recorded commands, and 57 more commands with names and characters that a YAML 1.1 reader (Compose's own loader) can misread (dates, numbers, merge keys, YAML 1.1 words, tabs, line and paragraph separators, NEL, the byte order mark, non-characters), were run through docker compose config (Compose v5.3.1, no daemon), which accepted all 175 YAML files, and through docker run with no daemon (Docker 29.6.2), whose own option reader accepted every option and value except the newest flag, --umask, and the made-up ulimit types of the 57; that record is committed with the script that made it, and unit tests read the YAML back with a YAML 1.1 reader and compare every key and string. The shell reading, the dollar rules, the size limit, the YAML quoting and the rule that messages never repeat pasted text have their own tests, and a browser test compares the page output for ten recorded commands with the YAML the unit tests assert in four browsers.
 
 ## Licence
 

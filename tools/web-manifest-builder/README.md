@@ -22,7 +22,7 @@ Fill in the members of a web app manifest and get the JSON to save as manifest.w
 ## Limits
 
 - Nothing is fetched: icon, start and shortcut addresses are checked as text only, so a missing or broken icon file is not detected.
-- Up to 50 icons and 20 shortcuts; each field up to 2,048 characters.
+- Up to 50 icons and 20 shortcuts; each field, the manifest address and the page address included, up to 2,048 characters. A start_url, id, scope or shortcut address that is not an http or https address (a blob: or data: address, say) is ignored.
 - display_override is not part of the W3C specification; its token list here is incomplete and browsers may differ.
 - Colours written as lab(), oklch(), color() and other newer CSS syntax are kept but not checked.
 - description, categories, screenshots and related_applications are not members of the W3C draft and are not offered; the *_localized members and color_scheme_dark of the draft are not offered either.
