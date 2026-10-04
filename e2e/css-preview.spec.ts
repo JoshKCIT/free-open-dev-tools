@@ -901,6 +901,73 @@ test('every phase 8 generator with a page has a css preview fixture file', () =>
   }
 });
 
+test('every phase 15 css generator has a css preview fixture file and is in the css category', () => {
+  const pageIds = new Set(
+    readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
+      .filter((f) => f.endsWith('.ts'))
+      .map((f) => f.replace(/\.ts$/, '')),
+  );
+  const catalog = JSON.parse(readFileSync(join(root, 'docs', 'catalog.json'), 'utf8')) as {
+    id: string;
+    category: string;
+  }[];
+  const fixtureIds = new Set(FIXTURES.map((f) => f.data.id));
+  expect(PHASE_15_GENERATOR_IDS.length).toBe(4);
+  for (const id of PHASE_15_GENERATOR_IDS) {
+    expect(pageIds, `${id} has no page in apps/web/src/tools`).toContain(id);
+    expect(fixtureIds, `${id} has a page but no e2e/css-preview-fixtures/${id}.json`).toContain(id);
+    expect(catalog.find((c) => c.id === id)?.category, `${id} is not in the css category`).toBe('css');
+  }
+});
+
+/** The play state of every animation on the preview's own tree, and each element's computed animation name. */
+async function previewAnimations(page: Page): Promise<{ states: string[]; names: string[] }> {
+  return page.evaluate(() => {
+    const host = document.querySelector('.css-preview-stage');
+    const root = host?.shadowRoot?.querySelector('.css-preview-tree');
+    if (!root) throw new Error('no preview was drawn');
+    const elements = [root, ...Array.from(root.querySelectorAll('*'))];
+    return {
+      states: elements.flatMap((element) => element.getAnimations().map((animation) => animation.playState)),
+      names: elements.map((element) => getComputedStyle(element).animationName),
+    };
+  });
+}
+
+test('the spinner preview really stops when the system asks for reduced motion, and moves when it does not', async ({
+  page,
+}) => {
+  for (const kind of ['ring', 'ripple', 'dots']) {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto(rel('/tools/css-spinner'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).click();
+    await setRadio(page, 'type', kind);
+    await settle(page);
+    // The control: without the preference the preview is really animating, so the check below is not vacuous.
+    const moving = await previewAnimations(page);
+    expect(moving.states.length, `${kind}: the spinner preview has no animation to stop`).toBeGreaterThan(0);
+    expect(moving.states, `${kind}: the animations should be running`).toContain('running');
+    expect(
+      moving.names.some((name) => name !== 'none'),
+      `${kind}: no element has an animation name`,
+    ).toBe(true);
+
+    // With the preference the same page has no animation at all, and no element names one.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.waitForFunction(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+    await expect
+      .poll(async () => (await previewAnimations(page)).states, {
+        message: `${kind}: the preview kept animating under reduced motion`,
+      })
+      .toEqual([]);
+    const stopped = await previewAnimations(page);
+    expect(
+      stopped.names.every((name) => name === 'none'),
+      `${kind}: an element still names an animation: ${stopped.names.join(', ')}`,
+    ).toBe(true);
+  }
+});
+
 /** Every visible, enabled control in the Input panel, tagged with a probe index for locating it again. */
 async function tagInputPanelControls(
   page: Page,
