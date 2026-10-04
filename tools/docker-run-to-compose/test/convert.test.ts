@@ -920,3 +920,26 @@ it('whole numbers beyond 2^53 stay text in the YAML instead of becoming a rounde
     ),
   ).toBe(1000);
 });
+
+it('a value that holds a variable is not judged by the schema check, and the result says how many were left alone', () => {
+  // Compose accepts --name $N once N is set, so the schema must not call the unfilled text a refusal.
+  const named = convertDockerRun(`docker run --name ${D}N nginx`);
+  expect(named.validation.valid).toBe(true);
+  expect(named.validation.errors).toEqual([]);
+  expect(named.validation.notJudged).toBe(1);
+  expect(convertDockerRun(`docker run --name ${D}N -m ${D}MEM -p ${D}PORT:80 nginx`).validation.notJudged).toBe(1);
+  // Other problems at other places are still reported, and the unfilled value is not among them.
+  const mixed = validateComposeDocument({
+    services: { web: { image: 'nginx', container_name: `${D}N`, bogus: 1, pull_policy: `${D}{PP:-always}` } },
+  });
+  expect(mixed.valid).toBe(false);
+  expect(mixed.errors.some((e) => e.message.includes('bogus'))).toBe(true);
+  expect(mixed.errors.every((e) => !e.path.endsWith('container_name') && !e.path.endsWith('pull_policy'))).toBe(true);
+  expect(mixed.notJudged).toBe(2);
+  // The same text with a doubled dollar sign is plain text and is judged like any other.
+  const plain = validateComposeDocument({ services: { web: { image: 'nginx', container_name: `${D}${D}N` } } });
+  expect(plain.valid).toBe(false);
+  expect(plain.notJudged).toBeUndefined();
+  // A document with nothing to leave alone has no count.
+  expect(validateComposeDocument({ services: { web: { image: 'nginx' } } })).toEqual({ valid: true, errors: [] });
+});

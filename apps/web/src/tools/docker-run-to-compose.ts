@@ -103,6 +103,18 @@ function outputsFor(result: ConversionResult): OutputBlock[] {
       ),
     );
   }
+  const notJudged = result.validation.notJudged ?? 0;
+  if (notJudged > 0) {
+    outputs.push({
+      kind: 'note',
+      tone: 'info',
+      value:
+        (notJudged === 1 ? '1 value that holds a variable was' : `${notJudged} values that hold a variable were`) +
+        ' not judged: Compose fills in a variable such as ' +
+        String.fromCharCode(36) +
+        'NAME later, so the schema check cannot tell what it will read.',
+    });
+  }
   for (const hint of result.hints) outputs.push({ kind: 'note', tone: 'info', value: hint });
   return outputs;
 }

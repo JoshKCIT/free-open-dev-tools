@@ -1,6 +1,7 @@
 import Ajv2020 from 'ajv/dist/2020';
 import type { ErrorObject, ValidateFunction } from 'ajv';
 import { COMPOSE_SPEC_SCHEMA } from './compose-spec-schema';
+import { hasInterpolation } from './interpolation';
 import { visible } from './limits';
 
 /** One thing the Compose Specification schema does not accept. */
@@ -15,6 +16,11 @@ export interface ComposeValidation {
   readonly valid: boolean;
   /** The first problems found, at most 20. */
   readonly errors: ComposeProblem[];
+  /**
+   * How many places the schema would have refused only because a value holds a variable (such as $NAME) that Compose fills
+   * in later. They are not judged and are not in `errors`. Left out of the result when there are none.
+   */
+  readonly notJudged?: number;
 }
 
 /** The most problems listed; an invalid document can hold hundreds. */
@@ -47,7 +53,13 @@ export function validateComposeDocument(document: unknown): ComposeValidation {
   if (valid) return { valid: true, errors: [] };
   const seen = new Set<string>();
   const errors: ComposeProblem[] = [];
+  // Places whose value holds a variable: the schema judges the unfilled text, which says nothing about what Compose will read.
+  const notJudged = new Set<string>();
   for (const error of (check.errors ?? []) as ErrorObject[]) {
+    if (typeof error.data === 'string' && hasInterpolation(error.data)) {
+      notJudged.add(error.instancePath);
+      continue;
+    }
     const problem = {
       path: visible(error.instancePath === '' ? '/' : error.instancePath, 80),
       message: `${error.message ?? 'is not valid'}${nameOfProblem(error)}`,
@@ -58,5 +70,6 @@ export function validateComposeDocument(document: unknown): ComposeValidation {
     errors.push(problem);
     if (errors.length === MAX_PROBLEMS) break;
   }
-  return { valid: false, errors };
+  const left = notJudged.size > 0 ? { notJudged: notJudged.size } : {};
+  return { valid: errors.length === 0, errors, ...left };
 }

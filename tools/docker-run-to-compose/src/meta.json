@@ -23,6 +23,7 @@
     "Files named by --env-file and --label-file must exist when Compose runs.",
     "Only docker run and docker container run are read; docker options placed before the word run, a shell pipeline and anything else a shell would run are refused.",
     "At most the first 1,000 rows of the options table and the first 200 items of each list are shown; the counts above them cover every option.",
+    "The schema check does not judge a value that holds a variable (it could not say whether Compose will accept what the variable is filled in with); the page says how many values it left alone.",
     "A value such as a size or a number that is written as a variable (for example -m $MEM) is not checked and is written as text for Compose to fill in."
   ],
   "ambiguities": [
