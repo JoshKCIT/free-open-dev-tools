@@ -420,6 +420,8 @@ function pie(drawn: ParsedTable, options: ChartSvgOptions, colours: readonly str
   const written: string[] = [];
   let before = 0;
   values.forEach((value, i) => {
+    // A slice of value 0 has no width: it draws no path (it is still in the legend, the table and the description).
+    if (value === 0) return;
     const colour = ringColour(colours, i, count);
     const label = escapeXml(`${shortLabel(drawn.labels[i]!)}: ${formatValue(value)}`);
     const share = value / total;

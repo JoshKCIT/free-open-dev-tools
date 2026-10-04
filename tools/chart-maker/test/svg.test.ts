@@ -290,7 +290,8 @@ it('every bar, point and slice is a graphics-symbol with its label and value', (
   const mixed = chartSvg(tableOf(['a', 'b', 'c'], [['V', [0, -2, 4]]]), opts('bar'));
   expect(symbolsOf(mixed).map((s) => s.attrs['aria-label'])).toEqual(['a: 0', 'b: -2', 'c: 4']);
   const zeroSlice = chartSvg(tableOf(['a', 'b', 'c'], [['V', [0, 7, 0]]]), opts('pie'));
-  expect(symbolsOf(zeroSlice).map((s) => s.attrs['aria-label'])).toEqual(['a: 0', 'b: 7', 'c: 0']);
+  // A slice of value 0 has no width, so a pie draws nothing for it (the legend, the table and the description list it).
+  expect(symbolsOf(zeroSlice).map((s) => s.attrs['aria-label'])).toEqual(['b: 7']);
 });
 
 it('bar heights, line points and pie angles follow the values exactly', () => {
@@ -373,6 +374,7 @@ it('bar heights, line points and pie angles follow the values exactly', () => {
   const shares = [3, 5, 40, 0, 1.5, 12.5];
   const pie = chartSvg(tableOf(['a', 'b', 'c', 'd', 'e', 'f'], [['V', shares]]), opts('pie'));
   const total = shares.reduce((a, b) => a + b, 0);
+  const drawnShares = shares.filter((v) => v !== 0); // a slice of value 0 is not drawn
   const slices = symbolsOf(pie).map((s) => {
     const m =
       /^M (-?[\d.]+) (-?[\d.]+) L (-?[\d.]+) (-?[\d.]+) A (-?[\d.]+) (-?[\d.]+) 0 ([01]) 1 (-?[\d.]+) (-?[\d.]+) Z$/.exec(
@@ -382,14 +384,14 @@ it('bar heights, line points and pie angles follow the values exactly', () => {
     const n = m!.slice(1).map(Number);
     return { cx: n[0]!, cy: n[1]!, x0: n[2]!, y0: n[3]!, rx: n[4]!, ry: n[5]!, large: n[6]!, x1: n[7]!, y1: n[8]! };
   });
-  expect(slices).toHaveLength(shares.length);
+  expect(slices).toHaveLength(drawnShares.length);
   const degrees = (cx: number, cy: number, x: number, y: number): number =>
     (Math.atan2(y - cy, x - cx) * 180) / Math.PI;
   let sum = 0;
   slices.forEach((s, i) => {
     let angle = degrees(s.cx, s.cy, s.x1, s.y1) - degrees(s.cx, s.cy, s.x0, s.y0);
     angle = ((angle % 360) + 360) % 360;
-    expect(Math.abs(angle - (shares[i]! / total) * 360)).toBeLessThanOrEqual(0.01);
+    expect(Math.abs(angle - (drawnShares[i]! / total) * 360)).toBeLessThanOrEqual(0.01);
     expect(s.large).toBe(angle > 180 ? 1 : 0);
     expect(s.rx).toBe(s.ry);
     expect(Math.abs(Math.hypot(s.x0 - s.cx, s.y0 - s.cy) - s.rx)).toBeLessThanOrEqual(0.01);
@@ -409,8 +411,8 @@ it('bar heights, line points and pie angles follow the values exactly', () => {
   // A slice that fills the whole circle is a circle, with the same radius as the others.
   const whole = chartSvg(tableOf(['a', 'b'], [['V', [0, 9]]]), opts('pie'));
   const marks = symbolsOf(whole);
-  expect(marks.map((m) => m.name)).toEqual(['path', 'circle']);
-  expect(Number(marks[1]!.attrs['r'])).toBeGreaterThan(50);
+  expect(marks.map((m) => m.name)).toEqual(['circle']);
+  expect(Number(marks[0]!.attrs['r'])).toBeGreaterThan(50);
 });
 
 it('nice ticks are 1, 2 or 5 times a power of ten and include zero when the range crosses it', () => {
@@ -716,4 +718,15 @@ it('a pie slice of almost the whole pie is drawn as a full circle, and so is its
     const ends = arcEnds(mark.attrs['d']!);
     expect(ends.large === '1' && ends.from === ends.to).toBe(false);
   }
+});
+
+it('a pie slice of value 0 draws no path and a pie of one value between two zeros draws one circle', () => {
+  const svg = chartSvg(tableOf(['a', 'b', 'c'], [['V', [0, 5, 0]]]), opts('pie', { values: true }));
+  const marks = pieMarks(svg);
+  expect(marks.map((m) => m.name)).toEqual(['circle']);
+  expect(marks[0]!.label).toBe('b: 5');
+  expect(svg).not.toMatch(/<path\b/);
+  // The zero slices are still in the legend.
+  expect(svg).toMatch(/>a: 0</);
+  expect(svg).toMatch(/>c: 0</);
 });
