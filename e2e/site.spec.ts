@@ -42,6 +42,9 @@ test.describe('routes', () => {
   });
 
   test('every tool page has a unique meta description', async ({ page }) => {
+    // One test visits every tool page, so its cost grows with the catalog: at 211 pages Firefox on CI took about
+    // 49 seconds, past the global 45 second budget. Give this test its own budget instead of relaxing every site test.
+    test.setTimeout(180_000);
     const seen = new Set<string>();
     for (const id of toolIds) {
       await page.goto(rel(`/tools/${id}`));
