@@ -49,7 +49,7 @@ export default defineTool({
       min: 0.2,
       max: 5,
       step: 0.1,
-      help: 'How long the motion preview takes to cross its track.',
+      help: 'How long one play of the motion preview lasts: the move takes the first three quarters, then the dot waits.',
     },
   ],
   examples: [

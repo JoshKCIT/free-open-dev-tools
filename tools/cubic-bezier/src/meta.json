@@ -16,7 +16,7 @@
     "The handle pad shows progress upward, so its second number is 1 minus the curve's y value; the cubic-bezier() text shows the real values.",
     "Sampled values are computed to six decimals.",
     "Numbers are kept to three decimals in the copied value, and the sampled values are computed from exactly those numbers.",
-    "The motion preview is a dot on a fixed 240 pixel track with one easing for the whole move; it does not show steps() or multi-segment easing."
+    "The motion preview is a dot on a fixed 240 pixel track with one easing for the whole move; it plays one way, moves during the first three quarters of the duration you set and then waits, so every play shows the copied curve; it does not show steps() or multi-segment easing."
   ],
   "ambiguities": [
     "A browser solves the curve with its own tolerance, so a value it reports for a given time can differ from the sampled value here by a tiny amount; the sampled values are the exact solution of the curve",

@@ -289,7 +289,23 @@ it('the preview stylesheet carries the timing function and the reduced-motion ru
     expect(result.css, name).toContain('animation-name: move;');
     expect(result.css, name).toContain('animation-duration: 1.5s;');
     expect(result.css, name).toContain('animation-iteration-count: infinite;');
-    expect(result.css, name).toContain('animation-direction: alternate;');
+    // One way only, with a pause at the end: a return trip would run the curve backwards, not the copied curve.
+    expect(result.css, name).toContain('animation-direction: normal;');
+    expect(result.css, name).not.toContain('alternate');
+    // The dot moves during the first three quarters of a play and then waits; the timing function is on the dot, so it
+    // shapes the move between the first two frames, the same curve on every play.
+    const frames = [
+      '  from {',
+      '    transform: translateX(0px);',
+      '  }',
+      '  75% {',
+      '    transform: translateX(216px);',
+      '  }',
+      '  to {',
+      '    transform: translateX(216px);',
+      '  }',
+    ];
+    expect(result.css, name).toContain(frames.join('\n'));
     // The exact reduced-motion block, last, stopping the dot.
     const at = result.css.indexOf(REDUCED_PRELUDE);
     expect(at, name).toBeGreaterThan(0);

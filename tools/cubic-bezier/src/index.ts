@@ -41,7 +41,7 @@ export interface GenerateEasingOptions {
   p1?: ControlPoint;
   /** The second control point, read only for 'custom'. Default (0.25, 1). */
   p2?: ControlPoint;
-  /** The length of the motion preview in seconds, clamped to 0.2 to 5. Default 1. */
+  /** The length of one play of the motion preview in seconds, the move and a short wait, clamped to 0.2 to 5. Default 1. */
   duration?: number;
 }
 
@@ -65,6 +65,9 @@ const DEFAULT_P1 = { x: 0.25, y: 0.1 };
 const DEFAULT_P2 = { x: 0.25, y: 1 };
 const TRACK_WIDTH = 240;
 const DOT_SIZE = 24;
+const END = TRACK_WIDTH - DOT_SIZE;
+/** The share of one play that the dot spends moving; it then waits for the rest, so the next play starts from the left. */
+const MOVE_PERCENT = 75;
 const round3 = (n: number): number => Math.round(n * 1000) / 1000;
 
 function choose(value: string | undefined, fallback: string): string {
@@ -79,7 +82,8 @@ function choose(value: string | undefined, fallback: string): string {
  * Shapes a cubic-bezier() easing function (CSS Easing Functions Level 1, https://www.w3.org/TR/css-easing-1/): a keyword
  * curve, a named curve of this page's own, or two control points of the visitor's. Both x values are held to 0 to 1 and
  * both y values to -1 to 2, with a warning. Returns the value and declaration to copy, a preview stylesheet written by the
- * canonical writer (the dot moves along its track with exactly this timing function and stops under reduced motion), the
+ * canonical writer (the dot moves along its track one way with exactly this timing function, waits at the end of each
+ * play, and stops under reduced motion; the duration is one whole play), the
  * curve picture and the progress sampled at eleven times.
  */
 export function generateEasing(options: GenerateEasingOptions): GenerateEasingResult {
@@ -139,7 +143,7 @@ export function generateEasing(options: GenerateEasingOptions): GenerateEasingRe
             ['animation-duration', formatLength(durationResult.value, 's')],
             ['animation-timing-function', value],
             ['animation-iteration-count', 'infinite'],
-            ['animation-direction', 'alternate'],
+            ['animation-direction', 'normal'],
           ],
         },
       ],
@@ -148,10 +152,10 @@ export function generateEasing(options: GenerateEasingOptions): GenerateEasingRe
           name: 'move',
           frames: [
             { selector: 'from', declarations: [['transform', `translateX(${formatLength(0, 'px')})`]] },
-            {
-              selector: 'to',
-              declarations: [['transform', `translateX(${formatLength(TRACK_WIDTH - DOT_SIZE, 'px')})`]],
-            },
+            // The move ends at 75% and the dot waits there for the rest of the play, so every play is one run of the copied
+            // curve from the start (a return trip would run it backwards).
+            { selector: `${MOVE_PERCENT}%`, declarations: [['transform', `translateX(${formatLength(END, 'px')})`]] },
+            { selector: 'to', declarations: [['transform', `translateX(${formatLength(END, 'px')})`]] },
           ],
         },
       ],
