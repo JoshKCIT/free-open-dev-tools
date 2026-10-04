@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /**
  * The upgraded pages keep their old answers and gain new ones (D-180). Each test opens an upgraded page the way a
@@ -375,4 +376,420 @@ test('uuid: a hidden setting of one format never changes another format output',
   await expect.poll(async () => (await readIds(page)).length).toBe(2);
   const uuids = await readIds(page);
   for (const id of uuids) expect(id).toMatch(/^urn:uuid:[0-9A-F]{32}$/); // the settings made earlier still apply to a UUID
+});
+
+// --- Date & Duration Calculator (16-08): business days, ISO week numbers and ISO 8601 durations; the old modes unchanged ---
+
+/** One row of the Python table recorded for business days (tools/date-diff/test/fixtures/business-days.json). */
+interface RecordedBusinessRow {
+  start: string;
+  end: string;
+  weekend: number[];
+  holidays: string[];
+  includeEnd: boolean;
+  count: number;
+  sign: 1 | -1;
+  calendarDays: number;
+  weekendDays: number;
+  holidaysSkipped: number;
+  holidaysOnWeekend: number;
+}
+
+const BUSINESS_TABLE = JSON.parse(
+  readFileSync(new URL('../tools/date-diff/test/fixtures/business-days.json', import.meta.url), 'utf8'),
+) as { python: string; rows: RecordedBusinessRow[] };
+
+/** Twenty-four rows of the recorded table: reversed, equal, huge, no weekend, with holidays and plain, by a fixed seed. */
+function recordedBusinessSample(): RecordedBusinessRow[] {
+  const rows = BUSINESS_TABLE.rows;
+  const kinds: [string, (row: RecordedBusinessRow) => boolean, number][] = [
+    ['reversed', (row) => row.sign === -1, 4],
+    ['equal', (row) => row.start === row.end, 4],
+    ['huge', (row) => row.calendarDays > 1_000_000, 2],
+    ['no weekend', (row) => row.weekend.length === 0, 3],
+    ['with holidays', (row) => row.holidays.length > 3 && row.sign === 1 && row.start !== row.end, 6],
+    ['plain', (row) => row.holidays.length === 0 && row.sign === 1 && row.start !== row.end, 5],
+  ];
+  const picked: RecordedBusinessRow[] = [];
+  let seed = 20261004;
+  for (const [, matches, wanted] of kinds) {
+    const pool = rows.filter(matches);
+    for (let taken = 0; taken < wanted; taken++) {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      picked.push(pool[seed % pool.length] as RecordedBusinessRow);
+    }
+  }
+  return picked;
+}
+
+/** The issues listed under the output, as one text with each run of white space made a single space. */
+async function readIssues(page: Page): Promise<string> {
+  const text = await outputArea(page)
+    .locator('ul.issue-list')
+    .first()
+    .textContent({ timeout: 500 })
+    .catch(() => '');
+  return (text ?? '').split(/\s+/).join(' ');
+}
+
+async function readTable(page: Page): Promise<string[][]> {
+  return outputArea(page)
+    .locator('table tbody tr')
+    .evaluateAll((trs) => trs.map((tr) => Array.from(tr.children).map((cell) => cell.textContent ?? '')));
+}
+
+async function chooseMode(page: Page, mode: string): Promise<void> {
+  await page.locator(`input[name="mode"][value="${mode}"]`).click();
+}
+
+/** Types a business day question and waits until the page shows the answer to it (retrying while the page catches up). */
+async function businessAnswer(
+  page: Page,
+  question: { start: string; end: string; weekend: string; holidays: string; includeEnd: boolean },
+  want: Record<string, string>,
+  label: string,
+): Promise<void> {
+  // The start is blanked first, so the page shows no result until the whole question is typed (no earlier answer can
+  // be mistaken for this one), and typed last.
+  await fillAndHold(page, 'start', '');
+  await expect(outputArea(page).locator('dl.kv')).toHaveCount(0);
+  await fillAndHold(page, 'end', question.end);
+  await fillAndHold(page, 'weekend', question.weekend);
+  await fillAndHold(page, 'holidays', question.holidays);
+  await page.locator(`input[name="endDay"][value="${question.includeEnd ? 'included' : 'excluded'}"]`).click();
+  await fillAndHold(page, 'start', question.start);
+  await expect(async () => {
+    const pairs = await readPairs(page);
+    for (const [name, value] of Object.entries(want)) expect(pairs[name], `${label}: ${name}`).toBe(value);
+  }).toPass({ timeout: 10_000 });
+}
+
+test('date-diff: business days, ISO weeks and durations show their results and the old modes answer as before', async ({
+  page,
+}) => {
+  await openTool(page, 'date-diff');
+
+  // First paint: the difference mode, the two moment fields, and none of the new fields on screen.
+  await expect(page.locator('input[name="mode"][value="difference"]')).toBeChecked();
+  expect(
+    await page.locator('input[name="mode"]').evaluateAll((radios) => radios.map((r) => (r as HTMLInputElement).value)),
+  ).toEqual(['difference', 'add', 'subtract', 'business', 'weeks', 'duration', 'build']);
+  await expect(page.locator('#f-start')).toBeVisible();
+  await expect(page.locator('#f-end')).toBeVisible();
+  for (const name of ['duration', 'weekend', 'holidays', 'dates', 'isoDuration', 'years', 'minutes', 'seconds']) {
+    await expect(page.locator(`#f-${name}`), `${name} is hidden at first paint`).toHaveCount(0);
+  }
+  await expect(page.locator('input[name="endDay"]')).toHaveCount(0);
+
+  // The old modes, answering as before: the gap, the clamped month, the old refusal of a fraction, a subtracted week.
+  await fillAndHold(page, 'start', '2024-01-31');
+  await fillAndHold(page, 'end', '2024-03-01');
+  await expect.poll(async () => (await readPairs(page))['As an ISO 8601 duration']).toBe('P1M1D');
+  let pairs = await readPairs(page);
+  // Days is shown twice (the calendar breakdown, 1, then the exact elapsed time, 30); the pairs hold the last, the exact one.
+  expect([pairs['Years'], pairs['Months'], pairs['Days'], pairs['Total seconds']]).toEqual(['0', '1', '30', '2592000']);
+  await chooseMode(page, 'add');
+  await fillAndHold(page, 'duration', 'P1M');
+  await expect.poll(async () => (await readPairs(page))['Date only']).toBe('2024-02-29');
+  await fillAndHold(page, 'duration', 'P1.5D');
+  await expect.poll(readIssues.bind(null, page)).toContain('is not an RFC 3339 Appendix A duration');
+  await chooseMode(page, 'subtract');
+  await fillAndHold(page, 'start', '2024-11-03T01:30');
+  await fillAndHold(page, 'duration', 'P1W');
+  await expect.poll(async () => (await readPairs(page))['Date only']).toBe('2024-10-27');
+
+  // Business days: the worked example (Python: 5 with the end left out, 6 with it counted; a holiday on a Saturday
+  // changes nothing; one on a Wednesday takes a day away however often it is typed).
+  await chooseMode(page, 'business');
+  for (const name of ['end', 'weekend', 'holidays']) await expect(page.locator(`#f-${name}`)).toBeVisible();
+  await expect(page.locator('#f-duration')).toHaveCount(0);
+  await expect(page.locator('#f-weekend')).toHaveValue('Sat, Sun');
+  const monday = { start: '2024-01-01', end: '2024-01-08', weekend: 'Sat, Sun', holidays: '', includeEnd: false };
+  await businessAnswer(
+    page,
+    monday,
+    { 'Business days': '5', 'Calendar days': '7', 'Weekend days skipped': '2', 'End day': 'Not counted' },
+    'plain',
+  );
+  await businessAnswer(
+    page,
+    { ...monday, includeEnd: true },
+    { 'Business days': '6', 'Calendar days': '8' },
+    'end counted',
+  );
+  await businessAnswer(
+    page,
+    { ...monday, holidays: '2024-01-06' },
+    { 'Business days': '5', 'Holidays skipped': '0', 'Holidays on weekend days': '1' },
+    'holiday on a Saturday',
+  );
+  await businessAnswer(
+    page,
+    { ...monday, holidays: '2024-01-03\n2024-01-03\n\n2024-01-03' },
+    { 'Business days': '4', 'Holidays skipped': '1', 'Holidays on weekend days': '0' },
+    'holiday on a Wednesday typed three times',
+  );
+  await businessAnswer(page, { ...monday, weekend: '5, 6' }, { 'Business days': '5' }, 'Friday and Saturday off');
+  await businessAnswer(page, { ...monday, weekend: 'friday saturday' }, { 'Business days': '5' }, 'day names in words');
+  await businessAnswer(
+    page,
+    { ...monday, weekend: '' },
+    { 'Business days': '7', 'Weekend days skipped': '0' },
+    'no weekend',
+  );
+  // The edge probe: equal dates, an end before the start (a minus sign), and the two ends of the calendar.
+  const same = { start: '2024-01-01', end: '2024-01-01', weekend: 'Sat, Sun', holidays: '', includeEnd: true };
+  await businessAnswer(page, same, { 'Business days': '1' }, 'start equals end, end counted');
+  await businessAnswer(
+    page,
+    { ...same, includeEnd: false },
+    { 'Business days': '0' },
+    'start equals end, end left out',
+  );
+  await businessAnswer(
+    page,
+    { ...same, start: '2024-01-06', end: '2024-01-06', includeEnd: true },
+    { 'Business days': '0' },
+    'a Saturday',
+  );
+  await businessAnswer(
+    page,
+    { ...monday, start: '2024-01-08', end: '2024-01-01' },
+    { 'Business days': '-5' },
+    'end before the start',
+  );
+  await expect(outputArea(page)).toContainText('The end is before the start, so the count has a minus sign.');
+  await businessAnswer(
+    page,
+    { ...same, start: '0001-01-01', end: '0001-01-08', includeEnd: false },
+    { 'Business days': '5' },
+    'year 0001',
+  );
+  await businessAnswer(
+    page,
+    { ...same, start: '9999-12-24', end: '9999-12-31', includeEnd: true },
+    { 'Business days': '6' },
+    'year 9999',
+  );
+
+  // Twenty-four rows of the table Python recorded, typed the way a visitor would.
+  const sample = recordedBusinessSample();
+  expect(sample).toHaveLength(24);
+  for (const row of sample) {
+    await businessAnswer(
+      page,
+      {
+        start: row.start,
+        end: row.end,
+        weekend: row.weekend.join(', '),
+        holidays: row.holidays.join('\n'),
+        includeEnd: row.includeEnd,
+      },
+      {
+        'Business days': row.sign === -1 && row.count > 0 ? `-${row.count}` : String(row.count),
+        'Calendar days': String(row.calendarDays),
+        'Weekend days skipped': String(row.weekendDays),
+        'Holidays skipped': String(row.holidaysSkipped),
+        'Holidays on weekend days': String(row.holidaysOnWeekend),
+        'End day': row.includeEnd ? 'Counted' : 'Not counted',
+      },
+      `${row.start} to ${row.end} [${row.weekend}] ${row.includeEnd ? 'counted' : 'left out'}`,
+    );
+  }
+
+  // Refusals: years 0000 and 10000, a time, a bad weekend and bad holiday lines say what is wrong and never repeat the paste.
+  const marker = 'FODT-MARKER-3141';
+  await fillAndHold(page, 'holidays', '');
+  await fillAndHold(page, 'weekend', 'Sat, Sun');
+  await fillAndHold(page, 'end', '2024-01-08');
+  await fillAndHold(page, 'start', '0000-01-01');
+  await expect.poll(readIssues.bind(null, page)).toContain('Start: The year must be from 0001 to 9999.');
+  await fillAndHold(page, 'start', '10000-01-01');
+  await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
+  await fillAndHold(page, 'start', '2024-01-01T12:00:00Z');
+  await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
+  await fillAndHold(page, 'start', `2024-01-${marker}`);
+  await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
+  expect(await outputArea(page).innerText()).not.toContain(marker);
+  await fillAndHold(page, 'start', '2024-01-01');
+  await fillAndHold(page, 'end', '2023-02-29');
+  await expect.poll(readIssues.bind(null, page)).toContain('End: That day does not exist in that month.');
+  await fillAndHold(page, 'end', '2024-01-08');
+  await fillAndHold(page, 'weekend', `Funday ${marker}`);
+  await expect.poll(readIssues.bind(null, page)).toContain('Weekend days must be names');
+  expect(await outputArea(page).innerText()).not.toContain(marker);
+  await fillAndHold(page, 'weekend', '1 2 3 4 5 6 7');
+  await expect.poll(readIssues.bind(null, page)).toContain('At most six days can be weekend days');
+  await fillAndHold(page, 'weekend', 'Sat, Sun');
+  await fillAndHold(page, 'holidays', `2024-01-03\nnot a date ${marker}\n\n2024-02-30`);
+  await expect.poll(readIssues.bind(null, page)).toContain('Line 2: Holidays:');
+  const issues = await readIssues(page);
+  expect(issues).toContain('Line 4: Holidays: That day does not exist in that month.');
+  expect(await outputArea(page).innerText()).not.toContain(marker);
+  await expect(outputArea(page).locator('dl.kv')).toHaveCount(0);
+  await fillAndHold(page, 'holidays', '');
+
+  // ISO week numbers (Python: 2021-01-03 is 2020, week 53, weekday 7; 2024-12-30 is 2025, week 1, weekday 1). The Start,
+  // End and Holidays typed above are still in their fields, hidden, and change nothing.
+  await chooseMode(page, 'weeks');
+  for (const name of ['start', 'end', 'weekend', 'holidays']) await expect(page.locator(`#f-${name}`)).toHaveCount(0);
+  await expect(page.locator('#f-dates')).toBeVisible();
+  const weekDates = '2021-01-03\n2020-12-28\n2024-01-04\n\n2024-12-30\n0001-01-01\n9999-12-31\nnope';
+  await fillAndHold(page, 'dates', weekDates);
+  const wanted = [
+    ['1', '2021-01-03', '2020-W53-7', '2020', '53', '7 Sunday', '2020-12-28', '53'],
+    ['2', '2020-12-28', '2020-W53-1', '2020', '53', '1 Monday', '2020-12-28', '53'],
+    ['3', '2024-01-04', '2024-W01-4', '2024', '1', '4 Thursday', '2024-01-01', '52'],
+    ['5', '2024-12-30', '2025-W01-1', '2025', '1', '1 Monday', '2024-12-30', '52'],
+    ['6', '0001-01-01', '0001-W01-1', '1', '1', '1 Monday', '0001-01-01', '52'],
+    ['7', '9999-12-31', '9999-W52-5', '9999', '52', '5 Friday', '9999-12-27', '52'],
+  ];
+  await expect(async () => {
+    expect(await readTable(page)).toEqual(wanted);
+  }).toPass({ timeout: 10_000 });
+  expect(await readIssues(page)).toContain('Line 8: Dates: A date must be written YYYY-MM-DD');
+  await expect(outputArea(page).locator('thead th')).toHaveText([
+    'Line',
+    'Date',
+    'ISO week date',
+    'Week-numbering year',
+    'Week',
+    'Weekday',
+    'Week starts',
+    'Weeks in that year',
+  ]);
+
+  // ISO 8601 durations: read into parts, written back canonically, the exact time part only, and the refusals.
+  await chooseMode(page, 'duration');
+  await expect(page.locator('#f-isoDuration')).toBeVisible();
+  await expect(page.locator('#f-dates')).toHaveCount(0);
+  await fillAndHold(page, 'isoDuration', 'P1Y2M3W4DT5H6M7.5S');
+  await expect(async () => {
+    expect(await readTable(page)).toEqual([
+      ['Years', '1'],
+      ['Months', '2'],
+      ['Weeks', '3'],
+      ['Days', '4'],
+      ['Hours', '5'],
+      ['Minutes', '6'],
+      ['Seconds', '7.5'],
+      ['Hours, minutes and seconds in seconds', '18367.5'],
+    ]);
+  }).toPass({ timeout: 10_000 });
+  expect(((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim()).toBe(
+    'P1Y2M3W4DT5H6M7.5S',
+  );
+  await expect(outputArea(page)).toContainText('no total in seconds is given for them');
+  await fillAndHold(page, 'isoDuration', 'P0,5D');
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('P0.5D');
+  await fillAndHold(page, 'isoDuration', 'P007Y');
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('P7Y');
+  for (const [text, sentence] of [
+    ['P1.5Y2M', 'Only the smallest part present can have a decimal fraction.'],
+    ['P', 'A duration needs at least one part after the P'],
+    ['PT', 'A T must be followed by at least one of hours'],
+    ['-P1D', 'A sign is not accepted'],
+    ['1D', 'An ISO 8601 duration starts with P'],
+    [`P${marker}`, 'Each part is a number and its capital letter'],
+  ] as const) {
+    await fillAndHold(page, 'isoDuration', text);
+    await expect.poll(readIssues.bind(null, page), text).toContain(sentence);
+    expect(await outputArea(page).innerText()).not.toContain(marker);
+  }
+
+  // Build an ISO 8601 duration from number fields: zero parts are left out and nothing at all is PT0S.
+  await chooseMode(page, 'build');
+  for (const name of ['years', 'months', 'weeks', 'days', 'hours', 'minutes', 'seconds']) {
+    await expect(page.locator(`#f-${name}`)).toBeVisible();
+  }
+  await expect(page.locator('#f-isoDuration')).toHaveCount(0);
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('PT0S');
+  await fillAndHold(page, 'days', '10');
+  await fillAndHold(page, 'minutes', '30');
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('P10DT30M');
+  await fillAndHold(page, 'seconds', '7,5');
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('P10DT30M7.5S');
+  await fillAndHold(page, 'years', '1');
+  await fillAndHold(page, 'weeks', '2');
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('P1Y2W10DT30M7.5S');
+  // A number outside 0 to 999,999 names its field; text in the seconds box that is not a number is refused.
+  await fillAndHold(page, 'years', '-98765123456');
+  await expect.poll(readIssues.bind(null, page)).toContain('Years must be a whole number from 0 to 999,999.');
+  await fillAndHold(page, 'years', '1000000');
+  await expect.poll(readIssues.bind(null, page)).toContain('Years must be a whole number from 0 to 999,999.');
+  await fillAndHold(page, 'years', '999999');
+  await expect
+    .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
+    .toBe('P999999Y2W10DT30M7.5S');
+  await fillAndHold(page, 'seconds', `7${marker}`);
+  await expect.poll(readIssues.bind(null, page)).toContain('Seconds: The seconds value must be a number');
+  expect(await outputArea(page).innerText()).not.toContain(marker);
+
+  // Back on the first mode, the page still answers as it did at first paint.
+  await chooseMode(page, 'difference');
+  await fillAndHold(page, 'start', '2024-01-31');
+  await fillAndHold(page, 'end', '2024-03-01');
+  await expect.poll(async () => (await readPairs(page))['As an ISO 8601 duration']).toBe('P1M1D');
+  pairs = await readPairs(page);
+  expect(pairs['Total seconds']).toBe('2592000');
+});
+
+test('date-diff: business days and ISO weeks give the same answers in time zones 14 hours apart', async ({
+  browser,
+}, testInfo) => {
+  // The new modes use whole day numbers, never the machine's clock or time zone. The same questions are asked in a zone
+  // 14 hours ahead of UTC, one 11 hours behind it and one with daylight saving time, across the days the clocks change
+  // (Python: 2024-03-08 to 2024-03-12 is 2 business days with the end left out and 3 with it counted; 2024-11-01 to
+  // 2024-11-06 is 3; 2024-03-10 is 2024 week 10, weekday 7; 2024-11-03 is week 44, weekday 7).
+  for (const timezoneId of ['Pacific/Kiritimati', 'Pacific/Pago_Pago', 'America/Los_Angeles']) {
+    const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL, timezoneId });
+    try {
+      const page = await context.newPage();
+      expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)).toBe(timezoneId);
+      await openTool(page, 'date-diff');
+      await chooseMode(page, 'business');
+      const base = { weekend: 'Sat, Sun', holidays: '' };
+      await businessAnswer(
+        page,
+        { ...base, start: '2024-03-08', end: '2024-03-12', includeEnd: false },
+        { 'Business days': '2', 'Calendar days': '4' },
+        `${timezoneId} spring`,
+      );
+      await businessAnswer(
+        page,
+        { ...base, start: '2024-03-08', end: '2024-03-12', includeEnd: true },
+        { 'Business days': '3', 'Calendar days': '5' },
+        `${timezoneId} spring, end counted`,
+      );
+      await businessAnswer(
+        page,
+        { ...base, start: '2024-11-01', end: '2024-11-06', includeEnd: false },
+        { 'Business days': '3', 'Calendar days': '5' },
+        `${timezoneId} autumn`,
+      );
+      await chooseMode(page, 'weeks');
+      await fillAndHold(page, 'dates', '2024-03-10\n2024-11-03\n2021-01-03');
+      await expect(async () => {
+        expect((await readTable(page)).map((cells) => cells.slice(1, 6))).toEqual([
+          ['2024-03-10', '2024-W10-7', '2024', '10', '7 Sunday'],
+          ['2024-11-03', '2024-W44-7', '2024', '44', '7 Sunday'],
+          ['2021-01-03', '2020-W53-7', '2020', '53', '7 Sunday'],
+        ]);
+      }).toPass({ timeout: 10_000 });
+    } finally {
+      await context.close();
+    }
+  }
 });

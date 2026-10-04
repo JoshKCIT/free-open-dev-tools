@@ -1081,3 +1081,266 @@ test('idn-converter: the page converts IdnaTestV2 rows the same way in every bro
     }
   }
 });
+
+// --- Date & Duration Calculator (16-08): ISO week numbers and ISO 8601 durations against this browser's Temporal ---
+
+/** The parts of Temporal the date calculator tests use. Temporal ships in Chromium, Firefox and WebKit; Node 22 has none. */
+interface TemporalPlainDate {
+  yearOfWeek: number;
+  weekOfYear: number;
+  dayOfWeek: number;
+  subtract(duration: { days: number }): { toString(): string };
+}
+
+interface TemporalDuration {
+  years: number;
+  months: number;
+  weeks: number;
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  milliseconds: number;
+  microseconds: number;
+  nanoseconds: number;
+  toString(): string;
+}
+
+interface TemporalApi {
+  PlainDate: { from(source: string | { year: number; month: number; day: number }): TemporalPlainDate };
+  Duration: { from(source: string): TemporalDuration };
+}
+
+async function hasTemporal(page: Page): Promise<boolean> {
+  return page.evaluate(() => typeof (globalThis as unknown as { Temporal?: unknown }).Temporal !== 'undefined');
+}
+
+/** Whether a year is a leap year, written here again from the Gregorian rule (the page's code is not used). */
+function weekLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function weekDateText(year: number, month: number, day: number): string {
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * 2,000 dates from a fixed seed: 1,200 anywhere from 0001 to 9999, 600 in the eight days from 28 December to 4 January
+ * (where the week-numbering year and the calendar year differ) of a year from 1900 to 2100, 195 from 1990 to 2040, and
+ * five that are known to be awkward.
+ */
+function weekSeededDates(): string[] {
+  const random = idnaSeeded(20261004);
+  const lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const monthLength = (year: number, month: number) =>
+    month === 2 && weekLeapYear(year) ? 29 : (lengths[month - 1] ?? 31);
+  const anywhere = (low: number, high: number): string => {
+    const year = low + Math.floor(random() * (high - low + 1));
+    const month = 1 + Math.floor(random() * 12);
+    const day = 1 + Math.floor(random() * monthLength(year, month));
+    return weekDateText(year, month, day);
+  };
+  const dates: string[] = ['0001-01-01', '9999-12-31', '2021-01-03', '2020-12-31', '2024-12-30'];
+  for (let i = 0; i < 1200; i++) dates.push(anywhere(1, 9999));
+  for (let i = 0; i < 600; i++) {
+    const year = 1900 + Math.floor(random() * 201);
+    const offset = Math.floor(random() * 8);
+    dates.push(offset < 4 ? weekDateText(year, 12, 28 + offset) : weekDateText(year + 1, 1, offset - 3));
+  }
+  for (let i = 0; i < 195; i++) dates.push(anywhere(1990, 2040));
+  return dates;
+}
+
+async function readTableCells(page: Page): Promise<string[][]> {
+  return outputArea(page)
+    .locator('table tbody tr')
+    .evaluateAll((trs) => trs.map((tr) => Array.from(tr.children).map((cell) => cell.textContent ?? '')));
+}
+
+test('date-diff: ISO week numbers agree with this browser Temporal for 2,000 seeded dates', async ({ page }) => {
+  await openTool(page, 'date-diff');
+  test.skip(!(await hasTemporal(page)), 'This browser has no Temporal, so there is no second opinion to compare with.');
+  const dates = weekSeededDates();
+  expect(dates).toHaveLength(2000);
+
+  // What Temporal says, asked in the same page: the week-numbering year, the week, the weekday, the Monday that starts
+  // the week, and the number of weeks of that year (the week of 28 December, which is always in the last week).
+  const expected = await page.evaluate((list) => {
+    const temporal = (globalThis as unknown as { Temporal: TemporalApi }).Temporal;
+    return list.map((text) => {
+      const day = temporal.PlainDate.from(text);
+      const monday = day.subtract({ days: day.dayOfWeek - 1 }).toString();
+      const weeks = temporal.PlainDate.from({ year: day.yearOfWeek, month: 12, day: 28 }).weekOfYear;
+      return [day.yearOfWeek, day.weekOfYear, day.dayOfWeek, monday, weeks] as [number, number, number, string, number];
+    });
+  }, dates);
+
+  // Values typed for the other modes are kept while hidden and must not change the week table.
+  await page.locator('input[name="mode"][value="business"]').click();
+  await fillAndHold(page, 'start', '2024-01-01');
+  await fillAndHold(page, 'end', '2024-12-31');
+  await fillAndHold(page, 'holidays', '2024-01-03\n2024-01-04');
+  await fillAndHold(page, 'weekend', 'Fri, Sat');
+  await page.locator('input[name="mode"][value="weeks"]').click();
+  await fillAndHold(page, 'dates', dates.join('\n'));
+
+  const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  await expect(async () => {
+    const rows = await readTableCells(page);
+    expect(rows).toHaveLength(dates.length);
+    const wrong: string[] = [];
+    rows.forEach((cells, index) => {
+      const [weekYear, week, weekday, monday, weeks] = expected[index] as [number, number, number, string, number];
+      const written = `${String(weekYear).padStart(4, '0')}-W${String(week).padStart(2, '0')}-${weekday}`;
+      const same =
+        cells[0] === String(index + 1) &&
+        cells[1] === dates[index] &&
+        cells[2] === written &&
+        cells[3] === String(weekYear) &&
+        cells[4] === String(week) &&
+        cells[5] === `${weekday} ${names[weekday - 1]}` &&
+        cells[6] === monday &&
+        cells[7] === String(weeks);
+      if (!same)
+        wrong.push(`${dates[index]}: page ${cells.slice(1).join(' | ')}; Temporal ${written} ${monday} ${weeks}`);
+    });
+    expect(wrong.slice(0, 5)).toEqual([]);
+  }).toPass({ timeout: 30_000 });
+});
+
+/** The text of a time part value times a factor, in nanoseconds, from decimal text with up to nine fraction digits. */
+function nanosecondsOf(text: string, factor: bigint): bigint {
+  const [whole = '0', fraction = ''] = text.split('.');
+  return BigInt(whole + fraction.padEnd(9, '0')) * factor;
+}
+
+function secondsText(nanoseconds: bigint): string {
+  const whole = nanoseconds / 1_000_000_000n;
+  const rest = (nanoseconds % 1_000_000_000n).toString().padStart(9, '0').replace(/0+$/, '');
+  return rest === '' ? whole.toString() : `${whole}.${rest}`;
+}
+
+test('date-diff: parsed durations agree with this browser Temporal.Duration', async ({ page }) => {
+  await openTool(page, 'date-diff');
+  test.skip(!(await hasTemporal(page)), 'This browser has no Temporal, so there is no second opinion to compare with.');
+
+  // Twelve recorded durations: every part, weeks alone and with days, zero, a decimal fraction on seconds (dot and comma)
+  // and on hours, a long time part, and large calendar parts. Only inputs are recorded; every answer comes from Temporal.
+  const durations = [
+    'P1Y2M3W4DT5H6M7.5S',
+    'PT0S',
+    'P1W',
+    'P2Y',
+    'PT36H',
+    'PT0.123456789S',
+    'PT1.5H',
+    'P10DT30M',
+    'P1W2D',
+    'PT0,5S',
+    'P999999999Y',
+    'PT1000000H',
+  ];
+  expect(durations).toHaveLength(12);
+  const expected = await page.evaluate((list) => {
+    const temporal = (globalThis as unknown as { Temporal: TemporalApi }).Temporal;
+    return list.map((text) => {
+      const duration = temporal.Duration.from(text);
+      return {
+        years: duration.years,
+        months: duration.months,
+        weeks: duration.weeks,
+        days: duration.days,
+        hours: duration.hours,
+        minutes: duration.minutes,
+        seconds: duration.seconds,
+        milliseconds: duration.milliseconds,
+        microseconds: duration.microseconds,
+        nanoseconds: duration.nanoseconds,
+        // The same duration after the page's canonical text has been read by Temporal again.
+        text: duration.toString(),
+      };
+    });
+  }, durations);
+
+  await page.locator('input[name="mode"][value="duration"]').click();
+  for (const [index, text] of durations.entries()) {
+    await fillAndHold(page, 'isoDuration', text);
+    const want = expected[index]!;
+    await expect(async () => {
+      const cells = await readTableCells(page);
+      const part = (name: string) => cells.find((row) => row[0] === name)?.[1] ?? '';
+      expect(cells).toHaveLength(8);
+      expect(part('Years'), text).toBe(String(want.years));
+      expect(part('Months'), text).toBe(String(want.months));
+      expect(part('Weeks'), text).toBe(String(want.weeks));
+      expect(part('Days'), text).toBe(String(want.days));
+      // Hours, minutes and seconds are compared as one exact amount of time in nanoseconds: Temporal turns a fraction of
+      // an hour into minutes and a fraction of a second into milliseconds, microseconds and nanoseconds.
+      const pageTime =
+        nanosecondsOf(part('Hours'), 3_600n) + nanosecondsOf(part('Minutes'), 60n) + nanosecondsOf(part('Seconds'), 1n);
+      const temporalTime =
+        BigInt(want.hours) * 3_600_000_000_000n +
+        BigInt(want.minutes) * 60_000_000_000n +
+        BigInt(want.seconds) * 1_000_000_000n +
+        BigInt(want.milliseconds) * 1_000_000n +
+        BigInt(want.microseconds) * 1_000n +
+        BigInt(want.nanoseconds);
+      expect(pageTime, text).toBe(temporalTime);
+      expect(part('Hours, minutes and seconds in seconds'), text).toBe(secondsText(temporalTime));
+      // The canonical text the page writes is read back by Temporal as the same duration.
+      const canonical = (await outputArea(page).locator('pre.output').first().textContent()) ?? '';
+      const again = await page.evaluate((source) => {
+        const temporal = (globalThis as unknown as { Temporal: TemporalApi }).Temporal;
+        return temporal.Duration.from(source).toString();
+      }, canonical);
+      expect(again, `${text} written as ${canonical}`).toBe(want.text);
+    }).toPass({ timeout: 10_000 });
+  }
+
+  // Durations that both refuse: no part, a T with nothing after it, wrong order, a letter in the wrong half, a fraction
+  // before the last part. Temporal throws for each, and so does the page. A repeated letter (P1Y1Y) is left out: ISO 8601
+  // allows each letter once and Firefox and WebKit refuse it, but Chromium 153 reads P1Y1Y as P1Y (recorded in the plan
+  // summary); the page refuses it, as its unit tests show.
+  const refused = ['P', 'PT', 'P1DT', 'P1D1Y', 'PT1M2H', 'P1H', 'PT1D', 'P1.5Y2M', 'PT1.5H30M'];
+  const thrown = await page.evaluate((list) => {
+    const temporal = (globalThis as unknown as { Temporal: TemporalApi }).Temporal;
+    return list.map((text) => {
+      try {
+        temporal.Duration.from(text);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+  }, refused);
+  expect(thrown).toEqual(refused.map(() => true));
+  for (const text of refused) {
+    await fillAndHold(page, 'isoDuration', text);
+    await expect(outputArea(page).locator('ul.issue-list'), text).toBeVisible();
+    await expect(outputArea(page).locator('table'), text).toHaveCount(0);
+  }
+
+  // Where the page departs from Temporal, by the specification it follows: ISO 8601-1 section 5.5.2.4 lets the lowest
+  // order component carry a decimal fraction, days included, and RFC 3339 Appendix A has no sign. Temporal accepts a
+  // fraction only on hours, minutes and seconds, and accepts a leading sign. Both facts are checked in this browser.
+  const departures = await page.evaluate(() => {
+    const temporal = (globalThis as unknown as { Temporal: TemporalApi }).Temporal;
+    let fractionOfDay: string;
+    try {
+      temporal.Duration.from('P0,5D');
+      fractionOfDay = 'accepted';
+    } catch {
+      fractionOfDay = 'refused';
+    }
+    return { fractionOfDay, negativeDays: temporal.Duration.from('-P1D').days };
+  });
+  expect(departures).toEqual({ fractionOfDay: 'refused', negativeDays: -1 });
+  await fillAndHold(page, 'isoDuration', 'P0,5D');
+  await expect(async () => {
+    const cells = await readTableCells(page);
+    expect(cells.find((row) => row[0] === 'Days')?.[1]).toBe('0.5');
+    expect(((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim()).toBe('P0.5D');
+  }).toPass({ timeout: 10_000 });
+  await fillAndHold(page, 'isoDuration', '-P1D');
+  await expect(outputArea(page).locator('ul.issue-list')).toContainText('A sign is not accepted');
+});
