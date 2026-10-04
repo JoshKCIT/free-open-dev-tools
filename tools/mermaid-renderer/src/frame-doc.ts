@@ -118,7 +118,12 @@ function bootScript(): string {
 /** The closing tag of a script, which would end the script early if the bundle held it. */
 const SCRIPT_CLOSE = '</script';
 
-/** The bundle text with every closing script tag (in any case) written so the HTML parser cannot end the script. */
+/**
+ * The bundle text with every closing script tag (in any case) written so the HTML parser cannot end the script. A comment
+ * opener followed by an opening script tag would change how the parser reads the next closing tag, so this is only enough
+ * while the bundle holds no opening script tag; a test in this folder fails the day it does (the answer then is to
+ * escape the comment opener as well).
+ */
 function escapeScriptClose(bundle: string): string {
   const lower = bundle.toLowerCase();
   let at = lower.indexOf(SCRIPT_CLOSE);

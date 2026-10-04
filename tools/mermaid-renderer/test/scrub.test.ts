@@ -422,3 +422,38 @@ it('a style element inside a style element is refused as malformed, so no style 
     refusal('a style rule that loads something'),
   );
 });
+
+it('the style functions src and image are refused with the other loaders, so a style cannot name a file with them', () => {
+  const loads = refusal('a style rule that loads something');
+  const cases: Array<[string, string]> = [
+    ['src in style text', wrap('<style>a{b:src("x.png")}</style>')],
+    ['image in style text', wrap('<style>a{b:image("x.png")}</style>')],
+    ['image in capitals', wrap('<style>a{b:IMAGE("x.png")}</style>')],
+    ['src in a style attribute', wrap('<g style="background:src(\'x.png\')"/>')],
+    ['image in a style attribute', wrap('<g style="background:image(\'x.png\')"/>')],
+    ['src in a presentation attribute', wrap('<path fill="src(x)"/>')],
+  ];
+  for (const [what, svg] of cases) expect(refusalOf(svg).message, what).toBe(loads);
+  // The words alone, outside a function call, are ordinary text.
+  expect(() => scrubSvg(wrap('<text>src and image</text>'))).not.toThrow();
+  expect(() => scrubSvg(wrap('<style>a{b:c}</style>'))).not.toThrow();
+});
+
+it('an href written with a prefix bound to the xlink namespace under another name is refused as a link', () => {
+  const xlink = 'http://www.w3.org/1999/xlink';
+  const leaves = refusal('a link that leaves the diagram');
+  const cases: Array<[string, string]> = [
+    ['a file with a fragment', wrap(`<g xmlns:ns="${xlink}" ns:href="x.svg#a"/>`)],
+    ['a fragment of this document', wrap(`<g xmlns:ns="${xlink}" ns:href="#a"/>`)],
+    ['declared on an ancestor', wrap(`<g xmlns:ns="${xlink}"><path ns:href="#a"/></g>`)],
+    ['declared after other attributes', wrap(`<g id="a" ns:href="#a" xmlns:ns="${xlink}"/>`)],
+    ['declared on the root', `<svg xmlns="${SVG_NS}" xmlns:q="${xlink}"><g><path q:href="y"/></g></svg>`],
+    ['declared with a character reference', wrap(`<g xmlns:ns="http://www.w3.org/1999/xlin&#107;" ns:href="#a"/>`)],
+  ];
+  for (const [what, svg] of cases) expect(refusalOf(svg).message, what).toBe(leaves);
+  // The usual prefix still works for a fragment, and a prefix bound to some other namespace is not an xlink link.
+  expect(() => scrubSvg(wrap(`<g xmlns:xlink="${xlink}"><path xlink:href="#a"/></g>`))).not.toThrow();
+  expect(() => scrubSvg(wrap(`<g xmlns:ns="${SVG_NS}" ns:href="#a"/>`))).not.toThrow();
+  // A prefix declared in one place does not make an unrelated attribute of the same name elsewhere a link when it is not bound there.
+  expect(() => scrubSvg(wrap(`<g xmlns:ns="${SVG_NS}"><path ns:href="#a"/></g>`))).not.toThrow();
+});

@@ -82,6 +82,8 @@ const STYLE_LOADERS: readonly string[] = [
   'image-set(',
   'cross-fade(',
   'element(',
+  'src(',
+  'image(',
   '-moz-binding',
 ];
 
@@ -323,10 +325,20 @@ function checkStyleText(decoded: string): void {
   if (!urlsStayInside(lower)) refuse('style');
 }
 
-/** Refuses an attribute that carries an address, a link, a handler or a style that loads something. */
-function checkAttribute(attribute: Attribute): void {
+/** The namespace the `xlink` prefix is bound to by convention, and the one an `href` with any prefix bound to it means. */
+const XLINK_NAMESPACE = 'http://www.w3.org/1999/xlink';
+
+/**
+ * Refuses an attribute that carries an address, a link, a handler or a style that loads something. `xlinkPrefixes` holds
+ * every prefix the document has bound to the xlink namespace so far: an `href` written with one of them under another
+ * name than `xlink` is a link too, and is refused whatever it holds.
+ */
+function checkAttribute(attribute: Attribute, xlinkPrefixes: ReadonlySet<string>): void {
   const lowerName = attribute.name.toLowerCase();
   if (lowerName.startsWith('on')) refuse('event');
+  const colon = attribute.name.indexOf(':');
+  const prefix = colon > 0 && attribute.name.slice(colon + 1) === 'href' ? attribute.name.slice(0, colon) : '';
+  if (prefix !== '' && prefix !== 'xlink' && xlinkPrefixes.has(prefix)) refuse('link');
   const value = decodeEntities(attribute.value);
   if (lowerName === 'xmlns' || lowerName.startsWith('xmlns:')) {
     if (!NAMESPACES.has(value)) refuse('address');
@@ -400,6 +412,7 @@ export function scrubSvg(svg: string): ScrubResult {
   let captured = '';
   let inStyle = false;
   let styleText = '';
+  const xlinkPrefixes = new Set<string>();
   let i = 0;
 
   const handleText = (raw: string): void => {
@@ -471,7 +484,13 @@ export function scrubSvg(svg: string): ScrubResult {
         if (attribute.name === 'aria-roledescription') type = plainType(decodeEntities(attribute.value));
       }
     }
-    for (const attribute of tag.attributes) checkAttribute(attribute);
+    // Prefixes this element binds to the xlink namespace count for all of its attributes, whatever their order.
+    for (const attribute of tag.attributes) {
+      if (attribute.name.startsWith('xmlns:') && decodeEntities(attribute.value) === XLINK_NAMESPACE) {
+        xlinkPrefixes.add(attribute.name.slice('xmlns:'.length));
+      }
+    }
+    for (const attribute of tag.attributes) checkAttribute(attribute, xlinkPrefixes);
     if (tag.selfClosing) {
       if (stack.length === 0) rootClosed = true;
     } else {

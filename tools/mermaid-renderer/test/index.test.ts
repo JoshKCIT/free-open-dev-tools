@@ -388,6 +388,19 @@ it('the frame document carries the locked policy, strict security level and SVG 
   expect(stranger.posts).toEqual([{ kind: 'ready' }]);
 });
 
+it('the Mermaid bundle put in the frame holds no opening script tag, so no comment opener can hide its closing tags from the escape', () => {
+  // The frame document escapes every closing script tag of the bundle, but not a comment opener. An HTML comment opener
+  // followed by an opening script tag puts the parser in a state where the next closing tag does not end the script, so
+  // the escape would then be wrong. The bundle holds comment openers but no opening script tag, and this fails the day
+  // a new Mermaid version makes that untrue (the answer is then to escape the comment opener too).
+  const bundle = readFileSync(new URL('../node_modules/mermaid/dist/mermaid.min.js', import.meta.url), 'utf8');
+  expect(bundle.toLowerCase().includes('<script')).toBe(false);
+  const doc = buildFrameDocument(bundle).toLowerCase();
+  // Only the document's own two script elements are in it.
+  expect(doc.split('<script').length - 1).toBe(2);
+  expect(doc.split('</script').length - 1).toBe(2);
+});
+
 it('theme names are looked up safely for __proto__, constructor and toString', () => {
   expect(MERMAID_THEMES.size).toBe(5);
   for (const name of ['default', 'neutral', 'dark', 'forest', 'base']) {
