@@ -20,7 +20,7 @@ Draws a Mermaid diagram description with Mermaid 11.17.2 inside a locked frame i
 
 ## Limits
 
-- Diagrams up to 20,000 characters and 300 lines are accepted.
+- Diagrams up to 20,000 characters and 300 lines are accepted, and no single line may be longer than 2,000 characters.
 - A large diagram can leave the tab unresponsive for a few seconds while it is drawn; it cannot be stopped part way, because the drawing runs in a frame that holds the page while it works.
 - Nothing is fetched: settings directives, click and link lines, image shapes and icons from outside are refused or drawn as text.
 - Math in labels is not supported.

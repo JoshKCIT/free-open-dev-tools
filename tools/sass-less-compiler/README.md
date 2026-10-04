@@ -22,7 +22,7 @@ Compiles SCSS, the indented Sass syntax or Less to CSS with the official Sass co
 - Sources up to 256 KiB (counted in UTF-8 bytes) are accepted, and compiled CSS over 2 MiB is refused.
 - Imports of other files and addresses are refused: Sass @use, @forward, @import and meta.load-css, Less @import, and plain CSS @import rules in the output.
 - Less @plugin, inline JavaScript, data-uri with a file and image-size are refused.
-- Compiling stops after 20 seconds with a message; Cancel stops it at once.
+- Compiling stops after 8 seconds with a message, because a short stylesheet can make the compiler use more and more memory until it is stopped; Cancel stops it at once.
 - Only the built-in Sass modules are available, such as sass:math and sass:color.
 - At most 20 Sass warnings are shown, each cut at 200 characters.
 
