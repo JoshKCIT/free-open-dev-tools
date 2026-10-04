@@ -289,15 +289,40 @@ it('only docker run commands with an image and well-formed values are read', () 
     'docker run --health-interval 30 nginx',
     'docker run --cpus abc nginx',
     'docker run --stop-timeout 1.5.2 nginx',
+    // Forms docker refuses (checked with the installed docker command line, no daemon).
+    'docker run --pids-limit 1.5 nginx',
+    'docker run --pids-limit 1e3 nginx',
+    'docker run --pids-limit 08 nginx',
+    'docker run --pids-limit 1__0 nginx',
+    'docker run --pids-limit 1_ nginx',
+    'docker run --pids-limit _1 nginx',
+    'docker run --pids-limit 0x nginx',
+    'docker run --pids-limit "" nginx',
+    'docker run --memory 5i nginx',
+    'docker run --memory 5ib nginx',
+    'docker run --memory 5Ki nginx',
+    'docker run --cpus 1/0 nginx',
+    'docker run --cpus 1e nginx',
+    'docker run --cpus 1/2/3 nginx',
   ];
   for (const text of refused) {
     expect(() => parseDockerCommand(text), text).toThrow(DockerRunError);
   }
+  // A shell prompt in front of the command, as copied from a page of examples, is ignored; anything else in front is refused.
+  expect(parseDockerCommand('$ docker run -d nginx').options.map((entry) => entry.option.name)).toEqual(['detach']);
+  expect(() => parseDockerCommand('$ sudo docker run nginx')).toThrow(DockerRunError);
+  expect(() => parseDockerCommand('$ $ docker run nginx')).toThrow(DockerRunError);
+  expect(() => parseDockerCommand('$')).toThrow(DockerRunError);
+
   const accepted = [
     'docker run --memory 512m --memory-reservation 1g --shm-size 64mb --memory-swap -1 nginx',
     'docker run --health-interval 30s --health-timeout 1m30s --health-start-period 500ms --health-start-interval 0 nginx',
     'docker run --cpus 1.5 --cpu-shares 512 --stop-timeout 20 --pids-limit -1 --oom-score-adj -500 nginx',
     'docker run --rm=f --init=0 --privileged=T nginx',
+    // Forms docker accepts that are easy to refuse by mistake (checked with the installed docker command line, no daemon).
+    'docker run --cpus 1/2 --cpus .5 --cpus 5. --cpus 1e1 --cpus +1 --cpus -1/2 --cpus 1e-1 --cpus 0x10 nginx',
+    'docker run --pids-limit 0x10 --pids-limit 010 --pids-limit 1_000 --pids-limit +5 --pids-limit 0b101 --pids-limit 0o17 --pids-limit -0x10 --pids-limit 0_7 nginx',
+    'docker run --memory 5kib --memory 5k --memory 5b --memory 5kb --memory 5KIB --memory 5mib nginx',
   ];
   for (const text of accepted) expect(() => parseDockerCommand(text), text).not.toThrow();
 

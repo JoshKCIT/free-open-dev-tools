@@ -12,7 +12,7 @@ Paste a docker run command and get the same container written as a Compose servi
 ## Supported
 
 - Every option of docker run in the Docker CLI source that this page was checked against, including the short forms (-itd, -p8080:80, -eKEY=value), the equals forms (--name=web), the hidden and deprecated names, and docker container run
-- Options end at the image: every word after the image is the command, even one that starts with a dash, and -- ends the options
+- Options end at the image: every word after the image is the command, even one that starts with a dash, and -- ends the options; a shell prompt ($) in front of the command, as copied from a page of examples, is ignored
 - POSIX and Bash quoting (single quotes, double quotes, backslash, $'...') and backslash line continuations; $NAME and ${NAME} are kept for Compose to fill in, $(pwd) becomes the current folder
 - Named volumes and user-defined networks declared at the top level of the file, healthcheck, logging, ulimits, devices, blkio and GPU options mapped to their Compose keys, and --mount read into the long volume syntax
 - A Compose Specification schema check of the service that is written, with each problem named by its path

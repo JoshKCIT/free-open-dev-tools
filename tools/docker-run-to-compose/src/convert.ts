@@ -12,6 +12,7 @@ import { readCsvRecord } from './csv';
 import { DockerRunError } from './errors';
 import { hasInterpolation } from './interpolation';
 import { visible } from './limits';
+import { parseCpuCount, parseGoInteger } from './numbers';
 import type { DockerRunOption } from './options';
 import { isSize, parseDockerCommand, type ParsedOption } from './parse-run';
 import { validateComposeDocument, type ComposeValidation } from './validate';
@@ -74,16 +75,14 @@ function isWhole(text: string): boolean {
   return isDigits(text[0] === '-' ? text.slice(1) : text);
 }
 
-/** A decimal number such as 12, -1 or 1.5. */
-function isDecimalText(text: string): boolean {
-  const body = text[0] === '-' ? text.slice(1) : text;
-  const dot = body.indexOf('.');
-  return dot < 0 ? isDigits(body) : isDigits(body.slice(0, dot)) && isDigits(body.slice(dot + 1));
+/** A whole number when docker reads the text as one (0x10 is 16), otherwise the text (a variable for Compose to fill in, say). */
+function integerOrText(text: string): number | string {
+  return parseGoInteger(text) ?? text;
 }
 
-/** A number when the text is one, the text itself when it is not (a variable for Compose to fill in, say). */
-function numberOrText(text: string): number | string {
-  return isDecimalText(text) ? Number(text) : text;
+/** The CPU count of a --cpus value (1/2 is 0.5), otherwise the text. */
+function cpusOrText(text: string): number | string {
+  return parseCpuCount(text) ?? text;
 }
 
 /** A whole number when the text is one, otherwise the text (a size such as 512m). */
@@ -313,7 +312,9 @@ class Conversion {
       return this.setScalar(stringPath, value, option, index);
     }
     const numberPath = NUMBER_PATHS.get(name);
-    if (numberPath !== undefined) return this.setScalar(numberPath, numberOrText(value), option, index);
+    if (numberPath !== undefined) {
+      return this.setScalar(numberPath, name === 'cpus' ? cpusOrText(value) : integerOrText(value), option, index);
+    }
     const sizePath = SIZE_PATHS.get(name);
     if (sizePath !== undefined) return this.setScalar(sizePath, wholeOrText(value), option, index);
     const booleanPath = BOOLEAN_PATHS.get(name);
@@ -336,7 +337,7 @@ class Conversion {
       }
       case 'blkio-weight-device': {
         const [path, weight] = this.splitDevice(read);
-        this.pushIn(['blkio_config', 'weight_device'], { path, weight: numberOrText(weight) });
+        this.pushIn(['blkio_config', 'weight_device'], { path, weight: integerOrText(weight) });
         return 'blkio_config.weight_device';
       }
       case 'entrypoint': {
@@ -474,7 +475,7 @@ class Conversion {
 
   private blkioDevice(read: ParsedOption, key: string, unit: boolean): string {
     const [path, rate] = this.splitDevice(read);
-    this.pushIn(['blkio_config', key], { path, rate: unit ? wholeOrText(rate) : numberOrText(rate) });
+    this.pushIn(['blkio_config', key], { path, rate: unit ? wholeOrText(rate) : integerOrText(rate) });
     return `blkio_config.${key}`;
   }
 

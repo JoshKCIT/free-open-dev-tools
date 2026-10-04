@@ -603,6 +603,16 @@ it('network options in the long form and the gpu, ulimit and healthcheck forms a
   expect(convertDockerRun('docker run --entrypoint "sh -c" nginx').hints.some((h) => h.includes('--entrypoint'))).toBe(
     true,
   );
+  // Numbers are written as docker read them: a fraction, an exponent and a base prefix all become plain numbers.
+  const forms = convertDockerRun('docker run --cpus 1/2 --pids-limit 0x10 --oom-score-adj +5 --cpu-shares 1_000 nginx');
+  expect(at(forms.document, 'services.nginx')).toMatchObject({
+    cpus: 0.5,
+    pids_limit: 16,
+    oom_score_adj: 5,
+    cpu_shares: 1000,
+  });
+  expect(at(convertDockerRun('docker run --cpus 1e1 nginx').document, 'services.nginx.cpus')).toBe(10);
+  expect(at(convertDockerRun('docker run --cpus .5 nginx').document, 'services.nginx.cpus')).toBe(0.5);
 });
 
 it('the service name comes from the argument, the name option or the image', () => {

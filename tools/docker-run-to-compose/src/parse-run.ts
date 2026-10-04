@@ -11,6 +11,7 @@
 import { DockerRunError } from './errors';
 import { hasInterpolation } from './interpolation';
 import { visible } from './limits';
+import { parseCpuCount, parseGoInteger } from './numbers';
 import { closestOption, optionByName, type DockerRunOption } from './options';
 import { readDockerCommand, type CommandWord } from './tokenize';
 
@@ -51,24 +52,6 @@ function isDigit(ch: string | undefined): boolean {
   return ch !== undefined && ch >= '0' && ch <= '9';
 }
 
-/** A decimal number such as 12, -1 or 1.5, with nothing else in it. */
-function isDecimal(text: string): boolean {
-  let i = text[0] === '-' ? 1 : 0;
-  let digits = 0;
-  while (isDigit(text[i])) {
-    i++;
-    digits++;
-  }
-  if (text[i] === '.') {
-    i++;
-    while (isDigit(text[i])) {
-      i++;
-      digits++;
-    }
-  }
-  return digits > 0 && i === text.length;
-}
-
 /** A size as docker reads it: a number and an optional k, m, g, t or p with an optional i and b, such as 512m, 1g or 64MiB. */
 export function isSize(text: string): boolean {
   let i = text[0] === '-' ? 1 : 0;
@@ -85,14 +68,13 @@ export function isSize(text: string): boolean {
     }
   }
   if (digits === 0) return false;
+  // The unit is nothing, b, or one of k m g t p followed by nothing, b or ib (kib, MiB): docker refuses a bare i.
   const unit = text.slice(i).toLowerCase();
-  if (unit === '') return true;
-  const letters = unit[0];
-  let rest = unit;
-  if (letters !== undefined && 'kmgtp'.includes(letters)) rest = unit.slice(1);
-  if (rest.startsWith('i')) rest = rest.slice(1);
-  if (rest.startsWith('b')) rest = rest.slice(1);
-  return rest === '' && unit !== 'i';
+  if (unit === '' || unit === 'b') return true;
+  const letter = unit[0];
+  if (letter === undefined || !'kmgtp'.includes(letter)) return false;
+  const rest = unit.slice(1);
+  return rest === '' || rest === 'b' || rest === 'ib';
 }
 
 const DURATION_UNITS = new Set([
@@ -141,7 +123,8 @@ function valueIsWellFormed(option: DockerRunOption, value: string): boolean {
     case 'none':
       return BOOLEANS.has(value);
     case 'number':
-      return isDecimal(value);
+      // --cpus is read as a fraction or a decimal; every other number is a whole number.
+      return option.name === 'cpus' ? parseCpuCount(value) !== null : parseGoInteger(value) !== null;
     case 'size':
       return isSize(value);
     case 'duration':
@@ -192,6 +175,8 @@ function toWord(entry: string | CommandWord, index: number): CommandWord {
  */
 export function parseDockerRun(entries: readonly (string | CommandWord)[]): ParsedRun {
   const words = entries.map(toWord);
+  // A command copied from a page that shows a shell prompt starts with a lone dollar sign (written $$ by the tokenizer).
+  if (words[0]?.text === '$$' && words[1]?.text === 'docker') words.shift();
   const first = words[0];
   if (first === undefined) throw new DockerRunError('Paste a docker run command.', 1, 1);
   if (first.text !== 'docker') {

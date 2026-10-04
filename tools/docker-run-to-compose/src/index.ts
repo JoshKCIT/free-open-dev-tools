@@ -17,3 +17,4 @@ export { validateComposeDocument } from './validate';
 export type { ComposeProblem, ComposeValidation } from './validate';
 export { hasInterpolation } from './interpolation';
 export { readCsvRecord } from './csv';
+export { parseCpuCount, parseGoInteger } from './numbers';
