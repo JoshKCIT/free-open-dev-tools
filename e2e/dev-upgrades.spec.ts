@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 /**
@@ -1239,4 +1240,89 @@ test('random-number: the default integer mode still answers 7 first for a range 
   await run(page);
   await expect.poll(async () => (await readStats(page))['Range']).toBe('7–7');
   expect(await readIds(page)).toEqual(['7']);
+});
+
+// --- The File Hash page (16-10): a Base64 or Base64url checksum is compared exactly ---
+
+const MATCH_NOTE = 'That checksum matches SHA-256 of this file.';
+const NO_MATCH_NOTE = 'That checksum does not match any selected algorithm for this file.';
+const WRONG_LENGTH_NOTE =
+  "That checksum's length does not match any selected algorithm at the current output format. Check that you selected the right algorithm and output format.";
+
+/** The SHA-256 of "abc" written three ways by Node's own crypto module and Buffer, which share no code with the page. */
+const ABC_DIGEST = createHash('sha256').update('abc').digest();
+const ABC_HEX = ABC_DIGEST.toString('hex');
+const ABC_BASE64 = ABC_DIGEST.toString('base64');
+const ABC_BASE64URL = ABC_DIGEST.toString('base64url');
+
+/** The text with the letter at `index` written in the other case (the position must hold a letter). */
+function otherCaseAt(text: string, index: number): string {
+  const ch = text.charAt(index);
+  const other = ch === ch.toLowerCase() ? ch.toUpperCase() : ch.toLowerCase();
+  expect(other, `position ${index} is not a letter`).not.toBe(ch);
+  return text.slice(0, index) + other + text.slice(index + 1);
+}
+
+/**
+ * Pastes a checksum, presses Run and waits for the verdict note to read exactly `verdict`. The checksum box is emptied and
+ * run first, so the note on screen is always the answer to this paste and never the one left by the previous paste.
+ */
+async function checkChecksum(page: Page, pasted: string, verdict: string): Promise<void> {
+  await fillAndHold(page, 'expected', '');
+  await run(page);
+  await expect(outputArea(page).locator('.note')).toHaveCount(0, { timeout: 15_000 });
+  await fillAndHold(page, 'expected', pasted);
+  await run(page);
+  await expect(outputArea(page).locator('.note')).toHaveText(verdict, { timeout: 15_000 });
+}
+
+test('hash-file: a Base64url checksum with a wrong letter case does not match and its length hint is right', async ({
+  page,
+}) => {
+  await openTool(page, 'hash-file');
+  await page
+    .locator('#f-file')
+    .setInputFiles({ name: 'abc.txt', mimeType: 'text/plain', buffer: Buffer.from('abc', 'utf8') });
+
+  // The digest the page shows in Base64url is the one Node makes, 43 characters with a hyphen and an underscore in it.
+  expect(ABC_BASE64URL).toHaveLength(43);
+  expect(ABC_BASE64URL).toContain('-');
+  expect(ABC_BASE64URL).toContain('_');
+  await page.locator('#f-output').selectOption('base64url');
+
+  // The right checksum is a match.
+  await checkChecksum(page, ABC_BASE64URL, MATCH_NOTE);
+  expect((await readCodeBlocks(page))['SHA-256']).toBe(ABC_BASE64URL);
+  // A wrapped copy (white space is ignored) is a match too.
+  await checkChecksum(page, `${ABC_BASE64URL.slice(0, 20)} ${ABC_BASE64URL.slice(20)}`, MATCH_NOTE);
+
+  // One letter in the other case is not a match, and the hint does not say the length is wrong: it is 43 characters.
+  await checkChecksum(page, otherCaseAt(ABC_BASE64URL, 0), NO_MATCH_NOTE);
+  // The whole checksum in upper case is not a match either.
+  await checkChecksum(page, ABC_BASE64URL.toUpperCase(), NO_MATCH_NOTE);
+  // A checksum of the wrong length does get the length hint (the hexadecimal one is 64 characters, not 43).
+  await checkChecksum(page, ABC_HEX, WRONG_LENGTH_NOTE);
+
+  // The hyphen is a character of the value: another character in its place is a different value of the right length,
+  // so the hint says the checksum does not match, not that its length is wrong.
+  await checkChecksum(page, ABC_BASE64URL.replace('-', 'x'), NO_MATCH_NOTE);
+  // And leaving the hyphen and the underscore out leaves 41 characters, which is a length that no digest has here.
+  await checkChecksum(page, ABC_BASE64URL.replaceAll('-', '').replaceAll('_', ''), WRONG_LENGTH_NOTE);
+
+  // Base64 with its plus sign, slash and padding is compared exactly as well.
+  await page.locator('#f-output').selectOption('base64');
+  await checkChecksum(page, ABC_BASE64, MATCH_NOTE);
+  expect((await readCodeBlocks(page))['SHA-256']).toBe(ABC_BASE64);
+  await checkChecksum(page, otherCaseAt(ABC_BASE64, 0), NO_MATCH_NOTE);
+
+  // Hexadecimal still ignores case and the separators between bytes, in both hexadecimal outputs.
+  await page.locator('#f-output').selectOption('hex');
+  await checkChecksum(page, ABC_HEX.toUpperCase(), MATCH_NOTE);
+  expect((await readCodeBlocks(page))['SHA-256']).toBe(ABC_HEX);
+  await checkChecksum(page, ABC_HEX.match(/.{2}/g)!.join(':'), MATCH_NOTE);
+  // A different value is still a mismatch: the last digit changed.
+  await checkChecksum(page, `${ABC_HEX.slice(0, 63)}e`.toUpperCase(), NO_MATCH_NOTE);
+  await page.locator('#f-output').selectOption('HEX');
+  await checkChecksum(page, ABC_HEX.match(/.{8}/g)!.join('_'), MATCH_NOTE);
+  await checkChecksum(page, ABC_HEX.match(/.{8}/g)!.join('-').toUpperCase(), MATCH_NOTE);
 });
