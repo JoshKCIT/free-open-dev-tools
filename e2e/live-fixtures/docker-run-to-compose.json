@@ -1,0 +1,6 @@
+{
+  "id": "docker-run-to-compose",
+  "label": "Compose Specification: -p 8080:80 becomes ports \"8080:80\" and --rm has no Compose equivalent",
+  "steps": [{ "action": "fill", "field": "command", "value": "docker run --rm -p 8080:80 nginx" }],
+  "expect": ["\"8080:80\"", "--rm"]
+}

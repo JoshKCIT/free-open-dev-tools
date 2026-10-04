@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "command": "docker run -d --name web -p 8080:80 -v $(pwd):/usr/share/nginx/html:ro nginx:1.27",
+      "serviceName": "web"
+    },
+    "attachesFile": false
+  }
+]

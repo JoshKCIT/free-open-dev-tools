@@ -324,7 +324,7 @@ class DockerTokenizer {
     const pwd = this.text.startsWith('(pwd)', this.i + 1) || this.text.startsWith('(PWD)', this.i + 1);
     if (!pwd) {
       this.fail(
-        'A dollar sign and bracket start a command substitution, which is never run here. Only $(pwd) is read, as the current folder.',
+        'A $( starts a command substitution, which is never run here. Only $(pwd) is read, as the current folder.',
         line,
         column,
       );
