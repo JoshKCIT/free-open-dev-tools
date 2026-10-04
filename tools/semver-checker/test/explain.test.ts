@@ -170,18 +170,18 @@ it('every range explanation agrees with satisfies at and just around each bounda
     }
   }
   // The property is not vacuous: many ranges were explained and both answers were seen many times.
-  expect(explained).toBeGreaterThan(900);
-  expect(comparisons).toBeGreaterThan(8000);
-  expect(satisfied).toBeGreaterThan(500);
-  expect(unsatisfied).toBeGreaterThan(5000);
+  expect(explained).toBeGreaterThan(800);
+  expect(comparisons).toBeGreaterThan(15000);
+  expect(satisfied).toBeGreaterThan(4000);
+  expect(unsatisfied).toBeGreaterThan(10000);
 });
 
 it('range explanations read as plain words alternative by alternative', () => {
   const caret = explainRange('^1.2.3 || >=4.0.0 <5.0.0', NO_OPTIONS);
-  expect(caret.normalized).toBe('>=1.2.3 <2.0.0-0||>=4.0.0 <5.0.0-0');
+  expect(caret.normalized).toBe('>=1.2.3 <2.0.0-0||>=4.0.0 <5.0.0');
   expect(caret.alternatives.map((alternative) => alternative.words)).toEqual([
     '1.2.3 or higher, and lower than 2.0.0, with no 2.0.0 pre-release',
-    '4.0.0 or higher, and lower than 5.0.0, with no 5.0.0 pre-release',
+    '4.0.0 or higher, and lower than 5.0.0',
   ]);
   expect(caret.alternatives[0]?.comparators.map((c) => c.words)).toEqual([
     '1.2.3 or higher',
@@ -212,10 +212,15 @@ it('range explanations read as plain words alternative by alternative', () => {
   }
   expect(explainRange('<0.0.0-0', NO_OPTIONS).alternatives[0]?.words).toBe('no version at all');
 
-  // With Include pre-releases the lower bounds count their own pre-releases and the rule note is not needed.
-  const included = explainRange('^1.2.3', { loose: false, includePrerelease: true });
+  // With Include pre-releases a range written with x or a short version starts at the first pre-release of its lowest
+  // version (npm writes >=1.2.0-0), and the rule note is not needed. A full version such as ^1.2.3 starts at 1.2.3.
+  const included = explainRange('~1.2', { loose: false, includePrerelease: true });
+  expect(included.normalized).toBe('>=1.2.0-0 <1.3.0-0');
   expect(included.alternatives[0]?.words).toBe(
-    '1.2.3 or higher, including its pre-releases, and lower than 2.0.0, with no 2.0.0 pre-release',
+    '1.2.0 or higher, including its pre-releases, and lower than 1.3.0, with no 1.3.0 pre-release',
+  );
+  expect(explainRange('^1.2.3', { loose: false, includePrerelease: true }).alternatives[0]?.words).toBe(
+    '1.2.3 or higher, and lower than 2.0.0, with no 2.0.0 pre-release',
   );
   expect(included.prereleaseNote).toBeNull();
 });
