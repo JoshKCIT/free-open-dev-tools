@@ -2651,3 +2651,232 @@ test('cubic-bezier: the sampled curve agrees with the browser animation engine f
   );
   expect(offending(requests)).toEqual([]);
 });
+
+/** Clicks Download in the SVG block of the chart page and returns the text of the file that was saved. */
+async function downloadChartSvg(page: Page): Promise<string> {
+  const block = outputArea(page)
+    .locator('.output-block')
+    .filter({ has: page.locator('.output-label span', { hasText: /^SVG$/ }) });
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    block.getByRole('button', { name: 'Download' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('chart.svg');
+  return readFileSync(await download.path(), 'utf8');
+}
+
+/** Opens a blank page in the same browser and puts the SVG text in it inline, as a visitor who saved the file would. */
+async function inlineChart(page: Page, svg: string): Promise<Page> {
+  const blank = await page.context().newPage();
+  await blank.setContent(`<!doctype html><html><body>${svg}</body></html>`);
+  return blank;
+}
+
+test('chart-maker: bar heights in the browser are proportional to the values and every bar is announced with its label and value', async ({
+  page,
+  browserName,
+}) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'chart-maker');
+  const requests = recordRequests(page);
+
+  const values = [3, 5, 8, 0, 6.5];
+  const labels = ['Apples', 'Pears', 'Cherries', 'Plums', 'Figs'];
+  await fillField(page, 'data', 'Fruit,Count\n' + labels.map((label, i) => `${label},${values[i]}`).join('\n'));
+  await page.locator('input[name="type"][value="bar"]').check();
+  await fillField(page, 'title', 'Fruit sold');
+  await fillField(page, 'xLabel', 'Fruit');
+  await fillField(page, 'yLabel', 'Number sold');
+  await expect(outputArea(page).locator('pre.output').first()).toContainText('Figs: 6.5', { timeout: 10_000 });
+
+  // The file a visitor saves, placed inline in a blank page.
+  const svg = await downloadChartSvg(page);
+  const blank = await inlineChart(page, svg);
+  try {
+    // Every bar's height is its value times one scale, to half a pixel, and the bars stand on one baseline.
+    const bars = await blank.evaluate(() =>
+      Array.from(document.querySelectorAll('[role="graphics-symbol"]')).map((element) => {
+        const box = (element as unknown as SVGGraphicsElement).getBBox();
+        return { label: element.getAttribute('aria-label'), height: box.height, bottom: box.y + box.height };
+      }),
+    );
+    expect(bars.map((bar) => bar.label)).toEqual(labels.map((label, i) => `${label}: ${values[i]}`));
+    const scale = bars[2]!.height / 8;
+    expect(scale, 'the tallest bar should be many pixels tall').toBeGreaterThan(10);
+    values.forEach((value, i) => {
+      expect(
+        Math.abs(bars[i]!.height - value * scale),
+        `${labels[i]}: ${bars[i]!.height} for ${value}`,
+      ).toBeLessThanOrEqual(0.5);
+      // A bar of no height has an empty box in Firefox and WebKit, so only bars with some height are compared.
+      if (value > 0) expect(Math.abs(bars[i]!.bottom - bars[0]!.bottom)).toBeLessThanOrEqual(0.05);
+    });
+    expect(bars[3]!.height).toBe(0);
+
+    // The chart is named by its title and described by its description; every bar is named by its label and value.
+    const description =
+      'Horizontal axis: Fruit. Vertical axis: Number sold. Count: 5 values, from 0 (Plums) to 8 (Cherries), averaging 4.5.';
+    const root = blank.locator('svg[role="graphics-document"]');
+    await expect(root).toHaveAccessibleName('Fruit sold');
+    await expect(root).toHaveAccessibleDescription(description);
+    // The wiring itself: the ids that aria-labelledby and aria-describedby name are on the title and the description
+    // elements (a browser also falls back to the title element, so the name alone would not show a broken id).
+    const wiring = await blank.evaluate(() => {
+      const chart = document.querySelector('svg[role="graphics-document"]')!;
+      const texts = (attribute: string) =>
+        (chart.getAttribute(attribute) ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? null);
+      return { title: texts('aria-labelledby'), description: texts('aria-describedby') };
+    });
+    expect(wiring).toEqual({ title: ['Fruit sold'], description: [description] });
+    const marks = blank.locator('[role="graphics-symbol"]');
+    await expect(marks).toHaveCount(values.length);
+    for (let i = 0; i < values.length; i++)
+      await expect(marks.nth(i)).toHaveAccessibleName(`${labels[i]}: ${values[i]}`);
+
+    // In Chromium the browser's own accessibility tree can be read: the document named by the title holds the series,
+    // which holds one item per bar, and the gridlines, numbers and legend are not in the tree at all. (Playwright has no
+    // way to read the tree of Firefox or WebKit; there the names above are computed by Playwright's own implementation of
+    // the accessible name rules.)
+    if (browserName === 'chromium') {
+      const session = await blank.context().newCDPSession(blank);
+      const { nodes } = (await session.send('Accessibility.getFullAXTree')) as {
+        nodes: {
+          nodeId: string;
+          ignored?: boolean;
+          role?: { value: string };
+          name?: { value: string };
+          childIds?: string[];
+        }[];
+      };
+      const live = nodes.filter((node) => node.ignored !== true);
+      const byId = new Map(nodes.map((node) => [node.nodeId, node]));
+      const documents = live.filter((node) => node.role?.value === 'graphics-document');
+      expect(documents.map((node) => node.name?.value)).toEqual(['Fruit sold']);
+      const series = (documents[0]!.childIds ?? []).map((id) => byId.get(id)!).filter((node) => node.ignored !== true);
+      expect(series.map((node) => [node.role?.value, node.name?.value])).toEqual([['graphics-object', 'Count']]);
+      const items = (series[0]!.childIds ?? []).map((id) => byId.get(id)!);
+      expect(items.map((node) => [node.role?.value, node.name?.value])).toEqual(
+        labels.map((label, i) => ['graphics-symbol', `${label}: ${values[i]}`]),
+      );
+      expect(live.filter((node) => node.role?.value === 'graphics-symbol')).toHaveLength(values.length);
+    }
+  } finally {
+    await blank.close();
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
+test('chart-maker: pie slices cover the full circle in proportion and the PNG matches the chart size', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'chart-maker');
+  const requests = recordRequests(page);
+
+  const shares = [3, 5, 40, 1.5, 12.5];
+  const total = shares.reduce((sum, share) => sum + share, 0);
+  const names = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'];
+  await fillField(page, 'data', 'Share,Value\n' + names.map((name, i) => `${name},${shares[i]}`).join('\n'));
+  await page.locator('input[name="type"][value="pie"]').check();
+  await fillField(page, 'title', 'Shares');
+  await page.locator('input[name="format"][value="png"]').check();
+  await expect(outputArea(page).locator('li', { hasText: 'chart.png' })).toBeVisible({ timeout: 10_000 });
+  const svg = await downloadChartSvg(page);
+  const png = await downloadNamed(page, 'chart.png');
+
+  // The slices drawn by the browser's own geometry: walking round the circle in steps of a twentieth of a degree from
+  // twelve o'clock, every point is inside exactly one slice, and the slice changes within a step of where the values say.
+  const blank = await inlineChart(page, svg);
+  try {
+    const walk = await blank.evaluate(() => {
+      const paths = Array.from(document.querySelectorAll('path[role="graphics-symbol"]')) as SVGPathElement[];
+      const read = paths.map((path) => {
+        const parts = /^M (\S+) (\S+) L \S+ \S+ A (\S+)/.exec(path.getAttribute('d') ?? '')!;
+        return { cx: Number(parts[1]), cy: Number(parts[2]), r: Number(parts[3]) };
+      });
+      const { cx, cy, r } = read[0]!;
+      const result: { radius: number; none: number; several: number; changes: [number, number][] }[] = [];
+      for (const radius of [0.9, 0.3]) {
+        let previous = -1;
+        let none = 0;
+        let several = 0;
+        const changes: [number, number][] = [];
+        for (let step = 0; step < 7200; step++) {
+          const degrees = 0.025 + step * 0.05;
+          const angle = ((-90 + degrees) * Math.PI) / 180;
+          const point = new DOMPoint(cx + r * radius * Math.cos(angle), cy + r * radius * Math.sin(angle));
+          const owners = paths.flatMap((path, index) => (path.isPointInFill(point) ? [index] : []));
+          if (owners.length === 0) none++;
+          else if (owners.length > 1) several++;
+          const owner = owners.length === 1 ? owners[0]! : -1;
+          if (step > 0 && owner !== previous && owner >= 0) changes.push([degrees, owner]);
+          previous = owner;
+        }
+        result.push({ radius, none, several, changes });
+      }
+      return { paths: paths.length, rings: result };
+    });
+    expect(walk.paths).toBe(shares.length);
+    // The boundaries are the running totals of the values over the total, times 360 degrees.
+    let running = 0;
+    const boundaries = shares.slice(0, -1).map((share) => {
+      running += share;
+      return (running / total) * 360;
+    });
+    for (const ring of walk.rings) {
+      expect(ring.none, `radius ${ring.radius}: points in no slice`).toBe(0);
+      expect(ring.several, `radius ${ring.radius}: points in two slices`).toBe(0);
+      // The walk starts inside slice 0, so the changes are into slices 1 to 4, in order.
+      expect(ring.changes.map(([, owner]) => owner)).toEqual([1, 2, 3, 4]);
+      ring.changes.forEach(([degrees], i) => {
+        expect(degrees - boundaries[i]!, `radius ${ring.radius}: boundary ${i + 1} at ${degrees}`).toBeGreaterThan(
+          -0.001,
+        );
+        expect(degrees - boundaries[i]!).toBeLessThanOrEqual(0.05 + 0.001);
+      });
+    }
+  } finally {
+    await blank.close();
+  }
+
+  // The PNG is the chart drawn twice its size (800 by 480), is not one colour, is white where the chart has no ink, and
+  // shows each slice's own fill colour at that slice's middle. The positions come from the SVG's own numbers.
+  const image = decodePngBytes(png);
+  expect([image.width, image.height]).toEqual([1600, 960]);
+  const colours = new Set<number>();
+  for (let i = 0; i < image.width * image.height; i++) {
+    colours.add((image.rgba[i * 4]! << 16) | (image.rgba[i * 4 + 1]! << 8) | image.rgba[i * 4 + 2]!);
+  }
+  expect(colours.size, 'the PNG should hold the slices, the outlines and the text').toBeGreaterThanOrEqual(8);
+  const pixel = (x: number, y: number): number[] => {
+    const at = (Math.round(y) * image.width + Math.round(x)) * 4;
+    return [image.rgba[at]!, image.rgba[at + 1]!, image.rgba[at + 2]!];
+  };
+  expect(pixel(2, 2)).toEqual([255, 255, 255]);
+  expect(pixel(image.width - 3, image.height - 3)).toEqual([255, 255, 255]);
+  const slices = [...svg.matchAll(/<path\b[^>]*role="graphics-symbol"[^>]*>/g)].map((match) => {
+    const tag = match[0];
+    const d = /\sd="M (\S+) (\S+) L \S+ \S+ A (\S+)/.exec(tag)!;
+    return { cx: Number(d[1]), cy: Number(d[2]), r: Number(d[3]), fill: /\sfill="#([0-9a-f]{6})"/.exec(tag)![1]! };
+  });
+  expect(slices).toHaveLength(shares.length);
+  let before = 0;
+  slices.forEach((slice, i) => {
+    const middle = ((-90 + ((before + shares[i]! / 2) / total) * 360) * Math.PI) / 180;
+    before += shares[i]!;
+    const [r, g, b] = pixel(
+      2 * (slice.cx + slice.r * 0.6 * Math.cos(middle)),
+      2 * (slice.cy + slice.r * 0.6 * Math.sin(middle)),
+    );
+    const want = [
+      parseInt(slice.fill.slice(0, 2), 16),
+      parseInt(slice.fill.slice(2, 4), 16),
+      parseInt(slice.fill.slice(4, 6), 16),
+    ];
+    expect(
+      Math.max(Math.abs(r! - want[0]!), Math.abs(g! - want[1]!), Math.abs(b! - want[2]!)),
+      `${names[i]} at its middle`,
+    ).toBeLessThanOrEqual(3);
+  });
+  expect(offending(requests)).toEqual([]);
+});
