@@ -116,10 +116,12 @@ test('a YAML conversion still going at 10 seconds is stopped with the time-limit
   await expect(page.locator('section[aria-label="Output"]')).not.toContainText('Stopped after');
   expect(await terminatedWorkers(page)).toEqual([]);
 
-  // 12 seconds in: stopped, with the plain message, and the timed-out worker has been terminated.
+  // 12 seconds in: stopped, with the plain message, and the timed-out worker has been terminated. The page clock keeps
+  // running after it is moved, so this wait is short on purpose: a limit of 15 seconds would show the message only about
+  // 3 real seconds later, and a long wait here would let it pass.
   await page.clock.fastForward(Math.max(0, before + 12_000 - (await pageNow(page))));
   await expect(page.locator('section[aria-label="Output"] .issue-list')).toContainText('Stopped after 10 seconds', {
-    timeout: 15_000,
+    timeout: 2_000,
   });
   expect(await page.locator('section[aria-label="Output"] pre.output').count()).toBe(0);
   expect(await terminatedWorkers(page)).toEqual([0]);
@@ -141,9 +143,15 @@ test('after a YAML conversion is stopped, the next conversion runs normally in a
   await page.locator('#f-input').fill('a: 1\n');
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
   await page.waitForTimeout(800);
-  await page.clock.fastForward(12_000);
+  // 8 seconds in, a limit that is too short would already have stopped the run.
+  await page.clock.fastForward(8_000);
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+  await expect(page.locator('section[aria-label="Output"]')).not.toContainText('Stopped after');
+  // About 11.8 seconds of page time: past a 10 second limit, short of a 15 second one, which would need about 3 more real
+  // seconds (the page clock keeps running), so the short wait below also fails a limit that is too long.
+  await page.clock.fastForward(3_000);
   await expect(page.locator('section[aria-label="Output"] .issue-list')).toContainText('Stopped after 10 seconds', {
-    timeout: 15_000,
+    timeout: 2_000,
   });
 
   // A genuinely broken worker (the exact failure mode this test guards
