@@ -1,0 +1,6 @@
+{
+  "id": "keyboard-event-viewer",
+  "label": "UI Events names location 3 DOM_KEY_LOCATION_NUMPAD",
+  "steps": [{ "action": "uncheck", "field": "preventOther" }],
+  "expect": ["DOM_KEY_LOCATION_NUMPAD", "DOM_KEY_LOCATION_LEFT"]
+}
