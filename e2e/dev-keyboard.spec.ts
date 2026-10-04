@@ -261,10 +261,7 @@ test('keyboard-event-viewer: modifier chords, left and right modifiers and held 
   expect(heldRows.map((cells) => cells[8])).toEqual(['false', 'true', 'true']);
 });
 
-test('keyboard-event-viewer: numpad keys report the numpad location on key down in every engine', async ({
-  page,
-  browserName,
-}) => {
+test('keyboard-event-viewer: numpad keys report the numpad location on key down in every engine', async ({ page }) => {
   await openViewer(page);
   await page.keyboard.press('Numpad1');
 
@@ -277,9 +274,12 @@ test('keyboard-event-viewer: numpad keys report the numpad location on key down 
   // With NumLock off the key reports End, not 1; the location of a key down is the numpad in all four engines.
   expect(down).toMatchObject({ code: 'Numpad1', key: 'End', location: 3 });
   for (const e of events.filter((x) => x.type === 'keypress')) expect(e.location).toBe(3);
-  // Research A1: the injected key up reports location 1 in chromium and mobile-chrome, and 3 in firefox and webkit
-  // (real keyboards report 3); what the page shows is whatever the engine reported.
-  expect(up?.location).toBe(browserName === 'chromium' ? 1 : 3);
+  // The location of the injected key up differs between engines (research A1: 1 in chromium and mobile-chrome, 3 in
+  // firefox and webkit; real keyboards report 3), so it is not tabled here: the page must show exactly what the test's own
+  // listener saw for that event, whatever the engine says.
+  expect(up).toBeDefined();
+  const rows = await historyRows(page);
+  expect(rows[events.indexOf(up!)]?.[6]).toBe(`${up!.location} (${LOCATION_WORDS[up!.location] ?? 'unknown'})`);
 });
 
 test('keyboard-event-viewer: an input method composition is shown with its composition events and isComposing', async ({

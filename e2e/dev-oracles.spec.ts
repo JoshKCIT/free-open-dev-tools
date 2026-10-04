@@ -882,6 +882,8 @@ interface IdnaRow {
   toAsciiNError: boolean;
   /** The status codes of the toAsciiN column, as the file lists them. */
   toAsciiNCodes: string[];
+  /** The status codes of the toUnicode column, as the file lists them. */
+  toUnicodeCodes: string[];
 }
 
 function idnaUnescape(text: string): string {
@@ -925,6 +927,11 @@ function readIdnaRows(): IdnaRow[] {
       toAsciiN: columns[3] === '' ? toUnicode : idnaUnescape(columns[3] ?? ''),
       toAsciiNError: asciiStatus !== '',
       toAsciiNCodes: asciiStatus
+        .slice(1, -1)
+        .split(',')
+        .map((code) => code.trim())
+        .filter((code) => code !== ''),
+      toUnicodeCodes: unicodeStatus
         .slice(1, -1)
         .split(',')
         .map((code) => code.trim())
@@ -985,6 +992,23 @@ function idnaShown(text: string): string {
 const IDNA_REASONS = ['processing', 'hyphen', 'std3', 'length', 'bidi', 'joiner'];
 
 /** The one kind of reason a row's status codes give, or a mix: V2 and V3 hyphens, U1 STD3, A4 length, B bidi, C joiners, anything else processing. */
+/**
+ * The words the page puts before an explanation of each kind of reason (its own wording, written again here): a length code
+ * stands for a length or an empty label, and a mix of reasons can be named by any of its families.
+ */
+function idnaWords(reason: string): string[] {
+  const words: Record<string, string[]> = {
+    // X4_2, the file's empty label status, falls in this group here and is named by the page as an empty label.
+    processing: ['Characters or labels that cannot be processed', 'Empty label'],
+    hyphen: ['Hyphens'],
+    std3: ['Characters not allowed in a host name'],
+    length: ['Length', 'Empty label'],
+    bidi: ['Bidirectional text'],
+    joiner: ['Joiner characters'],
+  };
+  return words[reason] ?? Object.values(words).flat();
+}
+
 function idnaReason(codes: string[]): string {
   const kinds = new Set(
     codes.map((code) =>
@@ -1062,7 +1086,7 @@ test('idn-converter: the page converts IdnaTestV2 rows the same way in every bro
           .locator('table tbody tr')
           .evaluateAll((trs) => trs.map((tr) => Array.from(tr.children).map((cell) => cell.textContent ?? '')));
         expect(shown, `${direction}, rows ${start + 1} to ${start + 20}`).toHaveLength(batch.length);
-        batch.forEach((row, index) => {
+        for (const [index, row] of batch.entries()) {
           const cells = shown[index] ?? [];
           const refused = direction === 'to-ascii' ? row.toAsciiNError : row.toUnicodeError;
           const wanted = direction === 'to-ascii' ? row.toAsciiN : row.toUnicode;
@@ -1072,11 +1096,21 @@ test('idn-converter: the page converts IdnaTestV2 rows the same way in every bro
           if (refused) {
             expect(cells[direction === 'to-ascii' ? 2 : 3], where).toBe('not converted');
             expect(cells[4], where).toMatch(/^not valid: [1-9]/);
+            // The explanation names the family of the file's reason, in the page's words, on the row's own line.
+            const reason = idnaReason(direction === 'to-ascii' ? row.toAsciiNCodes : row.toUnicodeCodes);
+            const explained = (await idnBlock(page, 'Why a name is invalid').locator('li').allTextContents())
+              .filter((item) => item.startsWith(`Line ${index + 1}, `))
+              .map((item) => item.slice(`Line ${index + 1}, `.length, item.indexOf(':')));
+            expect(explained.length, where).toBeGreaterThan(0);
+            expect(
+              explained.some((word) => idnaWords(reason).includes(word)),
+              `${where} (${reason}: ${explained.join(' | ')})`,
+            ).toBe(true);
           } else {
             expect(cells[direction === 'to-ascii' ? 2 : 3], where).toBe(idnaShown(wanted));
             expect(cells[4], where).toBe('valid');
           }
-        });
+        }
       }).toPass({ timeout: 15_000 });
     }
   }
