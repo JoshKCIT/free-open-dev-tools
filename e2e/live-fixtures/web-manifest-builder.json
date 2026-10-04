@@ -1,0 +1,9 @@
+{
+  "id": "web-manifest-builder",
+  "label": "W3C Web Application Manifest: id foo?x=y#heading is processed to https://example.com/foo?x=y",
+  "steps": [
+    { "action": "fill", "field": "startUrl", "value": "/" },
+    { "action": "fill", "field": "id", "value": "foo?x=y#heading" }
+  ],
+  "expect": ["https://example.com/foo?x=y"]
+}
