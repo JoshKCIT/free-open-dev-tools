@@ -1461,5 +1461,12 @@
     "category": "devops",
     "tier": 3,
     "summary": "Turn a docker run command into a Compose service, with every option that has no Compose equivalent listed."
+  },
+  {
+    "id": "web-manifest-builder",
+    "name": "Web App Manifest Builder",
+    "category": "code",
+    "tier": 3,
+    "summary": "Build a web app manifest with its name, icons, colours, display mode and start address, each member checked."
   }
 ]
