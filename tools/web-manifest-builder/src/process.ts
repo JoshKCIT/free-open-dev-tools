@@ -151,9 +151,17 @@ function describe(value: unknown): string {
   return String(value);
 }
 
+/**
+ * True for an http or https address. A blob: or filesystem: address has the origin of the address inside it, but it is not
+ * a page a browser opens as an app, and it cannot be a base for other addresses, so it is never one of these.
+ */
+function isWebAddress(url: URL): boolean {
+  return url.protocol === 'http:' || url.protocol === 'https:';
+}
+
 /** True when both are http or https addresses with the same scheme, host and port. */
 function sameOrigin(a: URL, b: URL): boolean {
-  return a.origin !== 'null' && a.origin === b.origin;
+  return isWebAddress(a) && isWebAddress(b) && a.origin === b.origin;
 }
 
 /**
@@ -298,6 +306,13 @@ export function processManifest(
       if (sameOrigin(parsed, page)) {
         startUrl = parsed;
         startStatus = 'read';
+      } else if (!isWebAddress(parsed)) {
+        add(
+          'start_url',
+          'ignored',
+          'start_url is not an http or https address, so it is ignored and the page address is the start address.',
+        );
+        startStatus = 'ignored';
       } else {
         add(
           'start_url',
@@ -337,6 +352,13 @@ export function processManifest(
       if (sameOrigin(parsed, startUrl)) {
         id = withoutFragment(parsed);
         idStatus = 'read';
+      } else if (!isWebAddress(parsed)) {
+        add(
+          'id',
+          'ignored',
+          'id is not an http or https address, so it is ignored and the start address identifies the app.',
+        );
+        idStatus = 'ignored';
       } else {
         add(
           'id',
@@ -371,7 +393,14 @@ export function processManifest(
       );
       scopeStatus = 'ignored';
     }
-    if (parsed !== null) {
+    if (parsed !== null && !isWebAddress(parsed)) {
+      add(
+        'scope',
+        'ignored',
+        'scope is not an http or https address, so it is ignored and the folder of the start address is the scope.',
+      );
+      scopeStatus = 'ignored';
+    } else if (parsed !== null) {
       parsed.search = '';
       parsed.hash = '';
       if (withinScope(startUrl, parsed)) {
@@ -754,6 +783,10 @@ export function processManifest(
         url = new URL(rawUrl, manifest);
       } catch {
         drop(writtenName, 'has a url that is not an address the URL parser can read');
+        return;
+      }
+      if (!isWebAddress(url)) {
+        drop(writtenName, 'has a url that is not an http or https address');
         return;
       }
       if (!withinScope(url, scope)) {
