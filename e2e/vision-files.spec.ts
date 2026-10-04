@@ -3858,3 +3858,25 @@ test('chart-maker: pie slices cover the full circle in proportion and the PNG ma
   });
   expect(offending(requests)).toEqual([]);
 });
+
+test('chart-maker: a first row that looks like data is noted, and a lone row says to untick Header row', async ({
+  page,
+}) => {
+  await openTool(page, 'chart-maker');
+  const requests = recordRequests(page);
+
+  // One row with a ticked Header row has no chart; the message says what to change.
+  await fillField(page, 'data', 'Jan,12');
+  await expect(outputArea(page)).toContainText('Untick Header row if the first row is data.', { timeout: 10_000 });
+  await expect(outputArea(page)).not.toContainText('Tick Header row when');
+
+  // Two rows with a ticked Header row draw a chart from the second row and say the first row looks like data.
+  await fillField(page, 'data', 'Jan,12\nFeb,19');
+  await expect(outputArea(page)).toContainText('The first row looks like data; untick Header row to chart it.', {
+    timeout: 10_000,
+  });
+  await page.locator('#f-header').uncheck();
+  await expect(outputArea(page).locator('pre.output').first()).toContainText('Feb: 19', { timeout: 10_000 });
+  await expect(outputArea(page)).not.toContainText('looks like data');
+  expect(offending(requests)).toEqual([]);
+});

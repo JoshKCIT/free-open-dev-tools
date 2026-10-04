@@ -6,7 +6,7 @@ const PLACEHOLDER = 'Type or paste here. Nothing leaves your browser.';
 
 const NOTHING_YET =
   'There is no chart yet. Type one row per line: a label, a comma or a tab, then a number. ' +
-  'Tick Header row when the first row names the columns.';
+  'Untick Header row if the first row is data.';
 
 const PALETTE_NAMES = ['default', 'colour-blind', 'grayscale', 'high-contrast'];
 

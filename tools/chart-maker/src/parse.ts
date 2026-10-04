@@ -264,6 +264,11 @@ export function parseTable(text: string, options: { header: boolean }): ParsedTa
   }
   if (dataRows.length === 0 || seriesCount === 0) return { ...nothing, notes };
 
+  // A header row whose number columns are all numbers is most likely data that was read as the header.
+  if (headerRow !== null && kept.slice(1).every((column) => isNumberText(trimBlanks(headerRow[column] ?? '')))) {
+    notes.push('The first row looks like data; untick Header row to chart it.');
+  }
+
   const columns: number[][] = kept.slice(1).map(() => []);
   for (let r = 0; r < dataRows.length; r++) {
     const row = dataRows[r]!;

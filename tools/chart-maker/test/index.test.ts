@@ -510,3 +510,24 @@ it('a paste that starts with blank or white-space-only lines is read with the de
   // A leading blank line does not change a paste that has no tab.
   expect(readRows('\n\nMonth,Sales\nJan,5').delimiter).toBe(',');
 });
+
+it('a ticked header row whose number columns all hold numbers gets a note that the first row looks like data', () => {
+  const note = 'The first row looks like data; untick Header row to chart it.';
+  // The paste from the review: two data rows read as a header and one row.
+  const eaten = must('Jan,12\nFeb,19', BAR);
+  expect(eaten.table.headers).toEqual(['Jan', '12']);
+  expect(eaten.notes).toEqual([note]);
+  // Unticked, the same paste is two rows and no note.
+  const bare = must('Jan,12\nFeb,19', { ...BAR, header: false });
+  expect(bare.table.rows).toHaveLength(2);
+  expect(bare.notes).toEqual([]);
+  // Every number column must look like a number: one named column is a real header.
+  expect(must('Month,Sales,2024\nJan,5,6', BAR).notes).toEqual([]);
+  expect(must('Jan,12,Orders\nFeb,19,3', BAR).notes).toEqual([]);
+  expect(must('Jan,12,13\nFeb,19,20', BAR).notes).toEqual([note]);
+  // Ordinary headers, and a pie, are not noted.
+  expect(must(FRUIT, BAR).notes).toEqual([]);
+  expect(must('Jan,12\nFeb,19', { type: 'pie' }).notes).toEqual([note]);
+  // A header row alone has no chart; the page says what to do (its own message), and the package gives nothing.
+  expect(makeChart('Jan,12', BAR)).toBeNull();
+});
