@@ -295,6 +295,16 @@ const PHASE_15_TOOL_IDS = [
   'chart-maker',
 ];
 
+/** The 6 developer workflow tools Phase 16 adds (DEV-01..06), taking the catalog to 211. */
+const PHASE_16_TOOL_IDS = [
+  'keyboard-event-viewer',
+  'glob-tester',
+  'semver-checker',
+  'docker-run-to-compose',
+  'web-manifest-builder',
+  'idn-converter',
+];
+
 // --- Small, deliberately unabstracted field helpers -------------------------
 // ToolRunner.tsx assigns every non-radio control the id `f-<field name>`, and
 // every radio input its field's `name` attribute plus its option `value`
@@ -683,7 +693,7 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 205 links to built tool pages, every entry of the 205-entry catalog', async ({
+  test('the rendered catalog counts 211 links to built tool pages, every entry of the 211-entry catalog', async ({
     page,
   }) => {
     await page.goto(rel('/catalog'));
@@ -691,7 +701,7 @@ test.describe('the live catalog shows exactly the built tools', () => {
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(205);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(211);
   });
 
   test('every docs/catalog.json entry has a built page and the catalog shows none missing', async ({ page }) => {
@@ -700,7 +710,7 @@ test.describe('the live catalog shows exactly the built tools', () => {
     const docsEntries: { id: string }[] = Array.isArray(docsCatalogRaw)
       ? (docsCatalogRaw as { id: string }[])
       : (docsCatalogRaw as { tools: { id: string }[] }).tools;
-    expect(docsEntries.length, 'docs/catalog.json is the single source of truth for the catalog size').toBe(205);
+    expect(docsEntries.length, 'docs/catalog.json is the single source of truth for the catalog size').toBe(211);
 
     await page.goto(rel('/catalog'));
     await expect(page.locator('a.tool-card').first()).toBeVisible();
@@ -896,13 +906,20 @@ test('every phase 15 tool has exactly one live fixture file', () => {
   }
 });
 
+test('every phase 16 tool has exactly one live fixture file', () => {
+  for (const id of PHASE_16_TOOL_IDS) {
+    const count = LIVE_FIXTURE_IDS.filter((x) => x === id).length;
+    expect(count, `expected exactly one live fixture file for ${id}, found ${count}`).toBe(1);
+  }
+});
+
 /**
- * Strict equality (not membership-only): the catalog is complete at 205
- * tools, so every id list above (the thirteen phases and the 2026-09-29
+ * Strict equality (not membership-only): the catalog is complete at 211
+ * tools, so every id list above (the fourteen phases and the 2026-09-29
  * additions) must have exactly one live fixture file, and no fixture id may
- * exist outside those fourteen lists.
+ * exist outside those fifteen lists.
  */
-test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 or the 2026-09-29 additions', () => {
+test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 or the 2026-09-29 additions', () => {
   const union = [
     ...PHASE_3_TOOL_IDS,
     ...PHASE_4_TOOL_IDS,
@@ -917,10 +934,11 @@ test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 
     ...PHASE_13_TOOL_IDS,
     ...PHASE_14_TOOL_IDS,
     ...PHASE_15_TOOL_IDS,
+    ...PHASE_16_TOOL_IDS,
     ...ADDED_2026_09_29_TOOL_IDS,
   ];
   expect(
     [...LIVE_FIXTURE_IDS].sort(),
-    'every live fixture id must be exactly the union of all thirteen phases and the 2026-09-29 additions',
+    'every live fixture id must be exactly the union of all fourteen phases and the 2026-09-29 additions',
   ).toEqual([...union].sort());
 });
