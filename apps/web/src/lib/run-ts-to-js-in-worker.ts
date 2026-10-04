@@ -24,11 +24,23 @@ import type { TsToJsJobMessage, TsToJsWorkerMessage } from './workers/ts-to-js.w
 import type { StripTypesResult } from '@fodt/ts-to-js';
 import type { RunContext } from './tool-ui';
 
-/** The exact value this file enforces, same register as the regex and jsonpath workers' own 1.5 second limit. */
-export const TS_TO_JS_TIME_LIMIT_MS = 1500;
+/**
+ * The exact value this file enforces, same register as the other formatter
+ * pages' own 10 second limit. It was 1.5 seconds until the 2026-10-03
+ * nightly full run showed a loaded runner pushing the same TypeScript
+ * compiler call (the JavaScript formatter's own 200 KB minify) past 1.5
+ * seconds in WebKit. A 200 KB realistic file here takes about 0.5 seconds in
+ * WebKit on an idle machine, but with the CPU oversubscribed 2x it crossed
+ * 1.5 seconds in 3 of 5 runs, so an ordinary file could hit the limit. A
+ * 60,000-term string-concatenation chain, the runaway case this limit exists
+ * for, takes about 29 seconds in Node, so 10 seconds still stops it (WebKit is
+ * faster, and overflows its call stack somewhere between 50,000 and 60,000
+ * terms).
+ */
+export const TS_TO_JS_TIME_LIMIT_MS = 10000;
 
 export const TS_TO_JS_TIME_LIMIT_MESSAGE =
-  'Stopped after 1.5 seconds: this input took too long to compile. Try a smaller file.';
+  'Stopped after 10 seconds: this input took too long to compile. Try a smaller file.';
 
 export class TsToJsRunError extends Error {}
 
