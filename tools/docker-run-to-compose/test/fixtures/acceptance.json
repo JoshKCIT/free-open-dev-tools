@@ -716,5 +716,199 @@
       "compose": "accepted",
       "dockerRun": "accepted"
     }
+  ],
+  "hostile": [
+    {
+      "command": "docker run --name 2024-10-04 nginx",
+      "yamlSha256": "12f5aafdb3c7244132f21b9b883b0a18df98d2e9100b0facc3bca8ecc6092ea4",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -v 2024-10-04:/data nginx",
+      "yamlSha256": "57b7dc0a9e7570ccf9434ba30f67270a16bb704b853b725c3579ce1740756147",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run 2024-10-04",
+      "yamlSha256": "3f7ecfea6b2cc6e16c42be6870ced3024cc16965525a15e7fa38f1fa72cea872",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network 2024-10-04 --network-alias a nginx",
+      "yamlSha256": "565ac2bc2f802621ee94d937c5c3eff958165fcfe79f8970cfd92d2f14192655",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-opt 2024-10-04=x nginx",
+      "yamlSha256": "6448d68353ab4f143691c691f13c545eae948e936ff2e86cafcc4ed6956cae60",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ulimit 2024-10-04=1 nginx",
+      "yamlSha256": "8f257bcd2630844273f9a74f88af03ca87157ba0d97ed0298f7a4315e7c1a588",
+      "compose": "accepted",
+      "dockerRun": "refused: invalid argument \"2024-10-04=1\" for \"--ulimit\" flag: invalid ulimit type: 2024-10-04"
+    },
+    {
+      "command": "docker run --name 1_000 nginx",
+      "yamlSha256": "9980f57b0fb741a042f86a74e82ccf01dc5dc4ed0738ed064c3ad4b8d5b0bca7",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -v 1_000:/data nginx",
+      "yamlSha256": "8a38a6063e56b3db18dfff8336a42f3e3260a15a6f99710d22797e4a9e98c239",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run 1_000",
+      "yamlSha256": "ed4bf48afd133b6825999e602771856da8b769d899bc4cad1a85a56399e3b48c",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name 0b11 nginx",
+      "yamlSha256": "3aaf0ae48cbda3188aaa41a878abba4744a7fdbf56d27e80953228809b276733",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -v 0b11:/data nginx",
+      "yamlSha256": "3f7d24fa61d346a331ac104762bf276874b7f65a970d984b8cccdeb20a2645b4",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run 0b11",
+      "yamlSha256": "4379594acb1738acd0972ec4366200640ad5002720ff3dc5753d1a4dadb951dd",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name 0x_1f nginx",
+      "yamlSha256": "d7b42f1a16c1c2358c0bfd7fda1cedb72adb9c185276df6bcd5b7c156f6c7493",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -v 0x_1f:/data nginx",
+      "yamlSha256": "5f2661eb0eebfd7daf39d899e954005768bfa13c8892a8b5b0d44b19f176ed8c",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run 0x_1f",
+      "yamlSha256": "fc12bb15277c5ad2e4392db6a5738ceaf1966357c7292c087350b07c847f5c52",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-opt '<<=x' nginx",
+      "yamlSha256": "c6bc7015bcd33d3b8ae094e4f0c9fce61999f1f70459790b03c0bdad98df5ab5",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ulimit '<<=1' nginx",
+      "yamlSha256": "ef3c73c44a3e6ed629c5d43144c0b7555efda44afc178a0050e94fc2940160a9",
+      "compose": "accepted",
+      "dockerRun": "refused: invalid argument \"<<=1\" for \"--ulimit\" flag: invalid ulimit type: <<"
+    },
+    {
+      "command": "docker run --network '<<' nginx",
+      "yamlSha256": "b065d606000388d4cc48422791500fae0420ae21641d6521e9759b17a0e61d86",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --storage-opt '<<=x' nginx",
+      "yamlSha256": "5b5d172e8d46e5bb57e890a713a70dce788e4ef43435d48c0556e784b41390fe",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-opt 'a<U+0009>b=1' nginx",
+      "yamlSha256": "c2035d7380f74e067d31601ba8a5f6aa0d6bc534a72bf6bee7d2974d368bf4b5",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ulimit 'a<U+0009>b=1' nginx",
+      "yamlSha256": "0f85853d7ad614d59b0bbac6258e5e8aca7d0c95c28f83d75a4e9effbce2c2b8",
+      "compose": "accepted",
+      "dockerRun": "refused: invalid argument \"a\\tb=1\" for \"--ulimit\" flag: invalid ulimit type: a\tb"
+    },
+    {
+      "command": "docker run --log-opt '~=x' nginx",
+      "yamlSha256": "e205453dc17a3f15f33d37faa9343cf32c8c2d33b14ca95f1c1756b8299f2843",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name yes nginx",
+      "yamlSha256": "9ed6619552273a3a5233a6e90388a7b3b02e5dbb338f399ee331226b69378ea1",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name no nginx",
+      "yamlSha256": "903ba7daa4f38c2cd63c4acffaf5ce97023bea16d8d781f6dc3ebf22e58bb470",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name on nginx",
+      "yamlSha256": "cbdd47ecfb57c0021f8b01c0087a3e8800138702e4744e61df07ab73650015a3",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name off nginx",
+      "yamlSha256": "aedc5f7fdc37b801ab4fa845993658a67ad97e6dcaa97f7e4fa07367b193ac14",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run y",
+      "yamlSha256": "376b91905f18a3a62a7ea70cbfea65d6743230961f47acff177603a8b99ad708",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run n",
+      "yamlSha256": "9460dd1cd96cbe60d7dd2358007fe8547d25acb353e700c2f8fb0b8c8790cf5e",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name null nginx",
+      "yamlSha256": "28803c039262236a88146871844026d887f2f55fdb02644e33854cb2a9736cd9",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name true nginx",
+      "yamlSha256": "3d6c46f62684bf4a99a0dfdffc257ce4587236e95f70a8301a6e9e504aa236db",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name false nginx",
+      "yamlSha256": "eb01f2356a2595fbcca034c0406b3576469961c70304b4c8b7d692351a9eb5f3",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-opt yes=x --log-opt NO=y --log-opt Null=z nginx",
+      "yamlSha256": "77ef18fd5ee1deef1de53b481fd1bc2821b0994365b19eb216ff9d6331d1de15",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    }
   ]
 }

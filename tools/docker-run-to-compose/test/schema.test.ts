@@ -28,11 +28,18 @@ interface Acceptance {
   composeSpecCommit: string;
   samples: AcceptedSample[];
   recorded: AcceptedSample[];
+  hostile: AcceptedSample[];
 }
 
 const SAMPLES: Sample[] = JSON.parse(readFileSync(join(FIXTURES, 'samples.json'), 'utf8'));
 const RECORDED_COMMANDS: string[] = JSON.parse(readFileSync(join(FIXTURES, 'recorded-commands.json'), 'utf8'));
+const HOSTILE_COMMANDS: string[] = JSON.parse(readFileSync(join(FIXTURES, 'hostile-commands.json'), 'utf8'));
 const ACCEPTANCE: Acceptance = JSON.parse(readFileSync(join(FIXTURES, 'acceptance.json'), 'utf8'));
+
+/** A marker such as <U+2028> (a code point written as printable text) becomes the character itself. */
+function expandMarkers(text: string): string {
+  return text.replace(/<U\+([0-9A-F]{4,6})>/g, (_marker, hex: string) => String.fromCodePoint(parseInt(hex, 16)));
+}
 
 /** The git blob SHA-1 of a file's bytes: what `git hash-object` prints. */
 function gitBlobSha(bytes: Buffer): string {
@@ -122,4 +129,19 @@ it('the recorded docker compose config run accepted every sample', () => {
   const refused = ACCEPTANCE.samples.filter((s) => s.dockerRun !== 'accepted');
   expect(refused.map((s) => s.command)).toEqual(['docker run --umask 022 nginx']);
   expect(refused[0]?.dockerRun).toContain('unknown flag');
+});
+
+it('the recorded docker compose config run accepted the commands whose keys and characters other YAML readers misread', () => {
+  expect(ACCEPTANCE.hostile.map((s) => s.command)).toEqual(HOSTILE_COMMANDS);
+  expect(HOSTILE_COMMANDS.length).toBeGreaterThan(30);
+  for (const entry of ACCEPTANCE.hostile) {
+    // The record holds a marker such as <U+2028> for each unusual character; the real one is built here.
+    const yaml = convertDockerRun(expandMarkers(entry.command)).yaml;
+    expect(createHash('sha256').update(yaml).digest('hex'), entry.command).toBe(entry.yamlSha256);
+    expect(entry.compose, entry.command).toBe('accepted');
+    // docker run's own option reader refuses a ulimit type it does not know (these commands use odd names on purpose, to
+    // test the YAML key); it accepted every other option.
+    if (entry.command.includes('--ulimit')) expect(entry.dockerRun, entry.command).toContain('invalid ulimit type');
+    else expect(entry.dockerRun, entry.command).toBe('accepted');
+  }
 });

@@ -635,7 +635,8 @@ it('the service name comes from the argument, the name option or the image', () 
   expect(Object.keys(proto.document['services'] as object)).toEqual(['__proto__']);
   expect(Object.getPrototypeOf({})).toBe(Object.prototype);
   expect(proto.validation.valid).toBe(true);
-  expect(proto.yaml).toContain('__proto__:');
+  // A key that does not start with a letter is written in double quotes (the plain-key rule of the YAML writer).
+  expect(proto.yaml).toContain('"__proto__":');
   // The container name is the typed name; only the service key is reduced.
   expect(
     at(convertDockerRun('docker run --name "My App.v2" nginx').document, 'services.my-app-v2.container_name'),

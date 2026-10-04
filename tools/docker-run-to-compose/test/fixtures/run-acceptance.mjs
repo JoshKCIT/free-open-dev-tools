@@ -77,7 +77,13 @@ function firstLine(text) {
   return line.trim().slice(0, 200);
 }
 
-function probe(command, id) {
+/** Text with a marker such as <U+2028> (a code point written as printable text) becomes the real character. */
+function expand(text) {
+  return text.replace(/<U\+([0-9A-F]{4,6})>/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
+}
+
+function probe(marked, id) {
+  const command = expand(marked);
   const yaml = convertDockerRun(command).yaml;
   const file = `${id}.yaml`;
   writeFileSync(join(work, file), yaml);
@@ -90,7 +96,7 @@ function probe(command, id) {
   const helped = words.includes('--help') && flags.status === 0;
   const dockerRun = reachedDaemon || helped ? 'accepted' : `refused: ${firstLine(stderr) || 'no message'}`;
   return {
-    command,
+    command: marked,
     yamlSha256: createHash('sha256').update(yaml).digest('hex'),
     compose: composeResult,
     dockerRun,
@@ -99,6 +105,7 @@ function probe(command, id) {
 
 const samples = JSON.parse(readFileSync(join(here, 'samples.json'), 'utf8'));
 const recorded = JSON.parse(readFileSync(join(here, 'recorded-commands.json'), 'utf8'));
+const hostile = JSON.parse(readFileSync(join(here, 'hostile-commands.json'), 'utf8'));
 const result = {
   recordedOn: new Date().toISOString().slice(0, 10),
   docker,
@@ -108,13 +115,15 @@ const result = {
   howRun: 'docker compose -f <file> config --quiet, and docker run <words> with DOCKER_HOST=tcp://127.0.0.1:1 (no daemon); see run-acceptance.mjs',
   samples: samples.map((sample, index) => probe(sample.command, `sample-${String(index + 1).padStart(3, '0')}`)),
   recorded: recorded.map((command, index) => probe(command, `recorded-${String(index + 1).padStart(2, '0')}`)),
+  hostile: hostile.map((command, index) => probe(command, `hostile-${String(index + 1).padStart(3, '0')}`)),
 };
+const everyEntry = [...result.samples, ...result.recorded, ...result.hostile];
 writeFileSync(join(here, 'acceptance.json'), JSON.stringify(result, null, 2) + '\n');
-const refused = [...result.samples, ...result.recorded].filter((entry) => entry.compose !== 'accepted');
-const flagsRefused = [...result.samples, ...result.recorded].filter((entry) => entry.dockerRun !== 'accepted');
+const refused = everyEntry.filter((entry) => entry.compose !== 'accepted');
+const flagsRefused = everyEntry.filter((entry) => entry.dockerRun !== 'accepted');
 console.log(`${docker}; ${composeVersion}`);
-console.log(`Compose accepted ${result.samples.length + result.recorded.length - refused.length} of ${result.samples.length + result.recorded.length}.`);
+console.log(`Compose accepted ${everyEntry.length - refused.length} of ${everyEntry.length}.`);
 for (const entry of refused) console.log(`COMPOSE REFUSED: ${entry.command} -> ${entry.compose}`);
-console.log(`docker run read the options of ${result.samples.length + result.recorded.length - flagsRefused.length} of ${result.samples.length + result.recorded.length}.`);
+console.log(`docker run read the options of ${everyEntry.length - flagsRefused.length} of ${everyEntry.length}.`);
 for (const entry of flagsRefused) console.log(`DOCKER RUN REFUSED: ${entry.command} -> ${entry.dockerRun}`);
 process.exit(refused.length > 0 ? 1 : 0);

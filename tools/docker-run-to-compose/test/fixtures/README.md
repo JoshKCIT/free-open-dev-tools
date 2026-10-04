@@ -8,7 +8,8 @@ Everything in this folder is test data. None of it is part of the published pack
 | `compose-spec/`                | The Compose Specification JSON schema (Apache-2.0) at commit `914ec15d1fa498969c0df5c1d672306db3256089`, fetched on 2026-09-25.                |
 | `samples.json`                 | One command for every option `docker run` registers (108 of them), with the Compose key it must write or how it is listed.                    |
 | `recorded-commands.json`       | The ten commands whose YAML the unit tests and the browser test both assert.                                                                  |
-| `acceptance.json`              | The record of the offline Compose run, made with `run-acceptance.mjs`: for every command, the hash of the YAML and what Compose and docker said. |
+| `hostile-commands.json`        | Commands whose names or characters a YAML 1.1 reader (Compose's loader) could misread: dates, numbers, merge keys, YAML 1.1 words, tabs, line separators. A marker such as `<U+2028>` stands for one unusual character and is turned into the real character when the command is read. |
+| `acceptance.json`              | The record of the offline Compose run, made with `run-acceptance.mjs`: for every command (samples, recorded and hostile), the hash of the YAML and what Compose and docker said. |
 | `run-acceptance.mjs`           | The script that made `acceptance.json`. Run by hand; CI never runs Docker.                                                                    |
 
 ## The vendored files
