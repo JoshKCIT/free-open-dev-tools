@@ -58,9 +58,7 @@ export class MermaidFrameError extends Error {
 }
 
 /** The shape of a message from the frame, checked before any field is read. */
-function readMessage(
-  data: unknown,
-):
+function readMessage(data: unknown):
   | {
       kind: string;
       id?: number;
@@ -130,6 +128,8 @@ export function renderInFrame(text: string, theme: string, ctx: RunContext): Pro
       if (message === undefined) return;
       if (message.kind === 'ready') {
         clearTimeout(readyTimer);
+        // A second ready message must not leave the first reply timer running with nothing able to clear it.
+        clearTimeout(replyTimer);
         replyTimer = setTimeout(
           () => finish(() => reject(new MermaidFrameError(REPLY_MESSAGE))),
           MERMAID_REPLY_LIMIT_MS,
