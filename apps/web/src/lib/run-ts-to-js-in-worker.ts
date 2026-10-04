@@ -10,7 +10,8 @@
  * A close copy of run-jsonpath-in-worker.ts, not a shared helper -- same
  * reason that file gives for its own duplication. Measured this session
  * (D-57, profile first): a 200KB realistic TypeScript file transpiles in
- * well under 1.5 seconds. The real risk is a long chain of string-literal
+ * about half a second on an idle machine (the limit's own comment below has
+ * the figures under load). The real risk is a long chain of string-literal
  * `+` concatenation -- TypeScript's own binary-expression printer shows
  * clear super-linear growth measured directly against the installed
  * compiler (10,000 terms ~840ms, 20,000 ~2.2s, 30,000 ~5.2s, 100,000 ~92
