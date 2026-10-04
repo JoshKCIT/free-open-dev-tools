@@ -202,6 +202,8 @@ it('check mode names the highest pasted version that satisfies the range and the
   ]);
   expect(checked.maxSatisfying).toBe('1.9.9');
   expect(checked.minVersion).toBe('1.2.3');
+  expect(checked.prereleases).toBe(0);
+  expect(checkVersions('1.0.0\n1.3.0-beta.1\n2.0.0-rc.1\nnope', '*', NO_OPTIONS).prereleases).toBe(2);
   // Loose parsing accepts =1.5.0 and v1.5.0 as versions; strict parsing does not accept the first.
   expect(results('=1.5.0\nv1.5.0', '^1.2.3')).toEqual(['not a valid version', 'satisfies']);
   expect(results('=1.5.0\nv1.5.0', '^1.2.3', { loose: true, includePrerelease: false })).toEqual([

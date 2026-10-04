@@ -32,6 +32,8 @@ export interface CheckResult {
   maxSatisfying: string | null;
   /** The lowest version the range allows, whether or not it was pasted, or null when the range allows none. */
   minVersion: string | null;
+  /** How many of the pasted lines are pre-release versions (such as 1.3.0-beta.1), whether or not they satisfy. */
+  prereleases: number;
 }
 
 const UNREADABLE =
@@ -108,8 +110,10 @@ export function checkVersions(versions: string, range: string, options: CheckOpt
   const parsedRange = readRange(range, options);
   const rows: CheckRow[] = [];
   const satisfying: string[] = [];
+  let prereleases = 0;
   for (const { line, text } of splitVersionLines(versions)) {
     const version = parse(text, { loose: options.loose });
+    if (version !== null && version.prerelease.length > 0) prereleases += 1;
     if (version === null) {
       rows.push({ line, shown: visible(text, MAX_SHOWN_CHARACTERS), result: 'not a valid version' });
     } else if (parsedRange.test(version)) {
@@ -126,5 +130,6 @@ export function checkVersions(versions: string, range: string, options: CheckOpt
     rows,
     maxSatisfying: highest === null ? null : visible(highest, MAX_VERSION_CHARACTERS),
     minVersion: lowest === null ? null : lowest.version,
+    prereleases,
   };
 }
