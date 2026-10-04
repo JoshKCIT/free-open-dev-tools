@@ -320,6 +320,8 @@ function surfaceRules(palette: Palette): ControlRule[] {
     rule('.fc-surface', [
       ['background-color', palette.background],
       ['color', palette.ink],
+      ['display', 'inline-block'],
+      ['vertical-align', 'top'],
       ['padding', '16px'],
       ['border-radius', '8px'],
       ['font-family', 'system-ui, sans-serif'],
@@ -526,7 +528,7 @@ function rangeSheet(look: Look, palette: Palette, geometry: Geometry): ControlSh
       rule('.fc-range', [
         ['appearance', 'none'],
         ['accent-color', palette.accent],
-        ['width', '200px'],
+        ['width', '160px'],
         ['height', px(size)],
         ['margin', '0 0 8px 10px'],
         ['vertical-align', 'middle'],

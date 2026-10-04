@@ -53,6 +53,7 @@ export const ALLOWED_PROPERTIES: readonly string[] = [
   'color',
   'content',
   'cursor',
+  'display',
   'font-family',
   'font-size',
   'font-weight',

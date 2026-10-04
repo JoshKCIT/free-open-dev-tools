@@ -2103,6 +2103,7 @@ async function expectPatternCopyMatches(
   markup: string,
   label: string,
   inFrame: boolean,
+  options: { selector?: string; act?: (blank: Page) => Promise<void> } = {},
 ): Promise<void> {
   await sitOnWholePixel(page, holder, inFrame ? holder : shown);
   const holderBox = await holder.boundingBox();
@@ -2116,8 +2117,10 @@ async function expectPatternCopyMatches(
     await blank.setContent(
       `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body style="margin:${offsetY}px 0 0 ${offsetX}px">${markup}</body></html>`,
     );
-    const copied = blank.locator('.pattern');
+    const copied = blank.locator(options.selector ?? '.pattern');
     await expect(copied).toBeVisible();
+    // A state the shown element was put in (a checked box, a moved slider) is put on the copy the same way.
+    if (options.act) await options.act(blank);
     const copiedPng = await copied.screenshot();
     const result = await comparePatternPixels(blank, shownPng, copiedPng, PATTERN_CHANNEL_THRESHOLD);
     expect(result.widthDiff, `${label}: the copied pattern differs in width`).toBe(0);
@@ -2219,3 +2222,432 @@ async function provePatternGradients(page: Page, context: BrowserContext): Promi
   }
   expect(offending(requests)).toEqual([]);
 }
+
+// --- Form control styler and cubic-bezier easing editor (plan 15-09) ---------------------------------------------------
+
+const STYLER_CLASSES: Record<string, string> = {
+  button: '.fc-button',
+  switch: '.fc-switch',
+  checkbox: '.fc-check',
+  radio: '.fc-radio',
+  range: '.fc-range',
+};
+/** Two presets for each family, six different presets between them: each is operated and its focus ring read. */
+const STYLER_OPERATE_CASES: [string, string][] = [
+  ['button', 'plain'],
+  ['button', 'bold'],
+  ['switch', 'pill'],
+  ['switch', 'soft'],
+  ['checkbox', 'rounded'],
+  ['checkbox', 'outline'],
+  ['radio', 'bold'],
+  ['radio', 'pill'],
+  ['range', 'outline'],
+  ['range', 'plain'],
+];
+
+function stylerFrame(page: Page) {
+  return page.frameLocator('iframe.preview-frame');
+}
+
+/** True when the control answers a look-up inside the frame within five seconds, asked twice. */
+async function frameAnswers(element: Locator): Promise<boolean> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await Promise.race([
+        element.waitFor({ state: 'visible' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('the frame did not answer')), 5_000)),
+      ]);
+      return true;
+    } catch {
+      // Asked once more, then given up on.
+    }
+  }
+  return false;
+}
+
+/**
+ * Chooses a control and a preset on the styler page and waits until the frame shows it. `restore` puts back what the test set
+ * on the page before this call (the fields it filled), and `requests` is the test's request recorder, for the case below.
+ *
+ * Firefox, now and then (measured: about one preview change in a hundred, more when two Firefox runs share the machine),
+ * leaves a frame that has just loaded a new document unanswered for good: every look-up inside it waits for ever, though the
+ * frame is on screen and working. A look-up is a wait for the element, not an expect, made after the load is over, and when
+ * it still gets no answer the page is loaded again once (the page, not the code under test, is what is stuck) and the
+ * message is printed.
+ */
+async function showStyledControl(
+  page: Page,
+  control: string,
+  preset: string,
+  again: { restore: () => Promise<void>; requests: string[] } | null = null,
+): Promise<Locator> {
+  for (let round = 1; ; round++) {
+    await page.locator(`input[type="radio"][name="control"][value="${control}"]`).check();
+    await page.locator('#f-preset').selectOption(preset);
+    await settlePreview(page);
+    // The frame loads its new document just after the output settles; the first look-up waits for that load to be over.
+    await page.waitForTimeout(400);
+    const element = stylerFrame(page).locator(STYLER_CLASSES[control]!).first();
+    if (await frameAnswers(element)) return element;
+    if (round >= 2)
+      throw new Error(`the preview frame did not answer after the page was loaded again (${control} / ${preset})`);
+    console.log(
+      `NOTE ${test.info().project.name}: the preview frame did not answer for ${control} / ${preset}; the page is loaded again`,
+    );
+    const seen = again?.requests.length ?? 0;
+    await openTool(page, 'form-control-styler');
+    await page.waitForLoadState('networkidle');
+    await again?.restore();
+    // The page's own load is not what the recorder is there to watch.
+    if (again) again.requests.length = seen;
+  }
+}
+
+/** Operates one styled control the way a visitor would, by pointer and by keyboard, inside the frame. */
+async function operateStyledControl(page: Page, control: string, element: Locator, label: string): Promise<void> {
+  const frame = stylerFrame(page);
+  if (control === 'switch' || control === 'checkbox') {
+    if (control === 'switch') await expect(element, label).toHaveAttribute('role', 'switch');
+    await element.click();
+    await expect(element, `${label}: a click`).toBeChecked();
+    await element.focus();
+    await page.keyboard.press('Space');
+    await expect(element, `${label}: the Space key`).not.toBeChecked();
+  } else if (control === 'radio') {
+    const radios = frame.locator('.fc-radio');
+    await radios.first().click();
+    await expect(radios.first(), `${label}: a click`).toBeChecked();
+    await radios.first().focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(radios.nth(1), `${label}: the arrow key`).toBeChecked();
+    await expect(radios.first(), `${label}: the arrow key`).not.toBeChecked();
+  } else if (control === 'range') {
+    await element.focus();
+    const before = Number(await element.inputValue());
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    expect(Number(await element.inputValue()), `${label}: two ArrowRight presses`).toBe(before + 2);
+    // By pointer: a click near the right end of the slider moves it well past where the keys left it.
+    const box = await element.boundingBox();
+    if (!box) throw new Error('the slider has no box');
+    await element.click({ position: { x: box.width - 6, y: box.height / 2 } });
+    expect(Number(await element.inputValue()), `${label}: a click near the right end`).toBeGreaterThan(before + 12);
+  } else {
+    await element.click();
+    await expect(element, label).toBeEnabled();
+  }
+}
+
+/**
+ * Tabs into the frame from the last field before it and reads the focus ring of the control that takes focus: a real Tab,
+ * so the browser's own :focus-visible rule applies, and an outline of at least 2 pixels drawn solid.
+ */
+async function expectKeyboardFocusRing(page: Page, control: string, label: string): Promise<void> {
+  const target =
+    control === 'radio'
+      ? stylerFrame(page).locator('.fc-radio:checked')
+      : stylerFrame(page).locator(STYLER_CLASSES[control]!).first();
+  await page.locator('#f-showDisabled').focus();
+  let reached = false;
+  for (let i = 0; i < 6 && !reached; i++) {
+    await page.keyboard.press('Tab');
+    reached = await target.evaluate((el) => document.activeElement === el);
+  }
+  expect(reached, `${label}: Tab never reached the control inside the frame`).toBe(true);
+  const ring = await target.evaluate((el) => ({
+    style: getComputedStyle(el).outlineStyle,
+    width: parseFloat(getComputedStyle(el).outlineWidth),
+    visible: el.matches(':focus-visible'),
+  }));
+  expect(ring.visible, `${label}: :focus-visible does not match`).toBe(true);
+  expect(ring.style, `${label}: the outline is not solid`).toBe('solid');
+  expect(ring.width, `${label}: the outline is under 2 pixels`).toBeGreaterThanOrEqual(2);
+}
+
+test('form-control-styler: the styled native controls work by pointer and keyboard inside the frame and keep a visible focus ring', async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await openTool(page, 'form-control-styler');
+  const requests = recordRequests(page);
+  await page.locator('#f-showDisabled').check();
+  for (const [control, preset] of STYLER_OPERATE_CASES) {
+    const label = `${control} / ${preset}`;
+    const element = await showStyledControl(page, control, preset, {
+      restore: () => page.locator('#f-showDisabled').check(),
+      requests,
+    });
+    // The disabled copy is a native disabled control: exactly one of them.
+    await expect(stylerFrame(page).locator(`${STYLER_CLASSES[control]!}:disabled`), label).toHaveCount(1);
+    await operateStyledControl(page, control, element, label);
+    await expectKeyboardFocusRing(page, control, label);
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
+/** The states compared against a copy in a blank page: two presets for each family, all six presets between them. */
+const STYLER_COPY_CASES: [string, string][] = [
+  ['button', 'pill'],
+  ['button', 'outline'],
+  ['switch', 'rounded'],
+  ['switch', 'soft'],
+  ['checkbox', 'bold'],
+  ['checkbox', 'outline'],
+  ['radio', 'plain'],
+  ['radio', 'soft'],
+  ['range', 'rounded'],
+  ['range', 'bold'],
+];
+
+/** Puts a styled control in its other state: a box checked, the second radio chosen, a slider at its end. */
+async function changeStyledControl(
+  root: Page | ReturnType<typeof stylerFrame>,
+  owner: Page,
+  control: string,
+): Promise<void> {
+  const cls = STYLER_CLASSES[control]!;
+  if (control === 'switch' || control === 'checkbox') {
+    await root.locator(`${cls}:not(:disabled)`).first().click();
+  } else if (control === 'radio') {
+    await root.locator(cls).nth(1).click();
+  } else {
+    // A slider at its end. The value is set from the page, not by a key press: Firefox sends no key presses to a page that
+    // is not the visible tab, which this one is for a moment after the copy's page closes.
+    await root
+      .locator(cls)
+      .first()
+      .evaluate((el) => {
+        (el as HTMLInputElement).value = (el as HTMLInputElement).max;
+      });
+  }
+  // No focus ring and no hover in either picture: focus nowhere and the pointer away.
+  await root.locator('body').evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await owner.mouse.move(0, 0);
+  // Both pictures are taken after every transition the change started has ended. The wait is polled from here, not an
+  // in-page wait on the transitions: a page that is not yet the visible tab does not run its animation clock (Firefox,
+  // right after the copy's page closed), and an in-page wait would then never return.
+  await expect
+    .poll(() => root.locator('body').evaluate(() => document.getAnimations().length), {
+      message: 'a transition did not end',
+      timeout: 15_000,
+    })
+    .toBe(0);
+}
+
+test('form-control-styler: the copied CSS and markup draw the same pixels as the preview frame', async ({
+  browser,
+  baseURL,
+}, testInfo) => {
+  test.setTimeout(150_000);
+  // The copies are drawn in a second browser context: in Firefox the page that is shown goes quiet for a while whenever a
+  // second tab of its own context opens and closes, and the next frame it draws is then not seen for minutes.
+  const context = await wholeScaleContext(browser, baseURL, testInfo);
+  const copyContext = await wholeScaleContext(browser, baseURL, testInfo);
+  try {
+    await proveStylerCopies(await context.newPage(), copyContext);
+  } finally {
+    await copyContext.close();
+    await context.close();
+  }
+});
+
+async function proveStylerCopies(page: Page, copyContext: BrowserContext): Promise<void> {
+  await openTool(page, 'form-control-styler');
+  const requests = recordRequests(page);
+  const setupPage = async () => {
+    await page.locator('#f-showDisabled').check();
+    await page.locator('input[aria-label="Accent value"]').fill('#7c3aed');
+    await page.locator('input[aria-label="Background value"]').fill('#f5f3ff');
+  };
+  await setupPage();
+  for (const [control, preset] of STYLER_COPY_CASES) {
+    const label = `${control} / ${preset}`;
+    await showStyledControl(page, control, preset, { restore: setupPage, requests });
+    const frame = stylerFrame(page);
+    const surface = frame.locator('.fc-surface');
+    await surface.waitFor({ state: 'visible' });
+
+    // The code blocks are what a visitor copies: the CSS first, then the markup. The frame holds exactly that CSS.
+    const css = (await outputArea(page).locator('pre').first().innerText()).trim();
+    const markup = (await outputArea(page).locator('pre').nth(1).innerText()).trim();
+    const frameCss = (await frame.locator('body style').evaluate((el) => el.textContent ?? '')).trim();
+    expect(frameCss, label).toBe(css);
+    expect(css, label).toContain('#7c3aed');
+    expect(markup, label).toContain(STYLER_CLASSES[control]!.slice(1));
+
+    const holder = page.locator('iframe.preview-frame');
+    await page.mouse.move(0, 0);
+    await expectPatternCopyMatches(page, copyContext, holder, surface, css, markup, label, true, {
+      selector: '.fc-surface',
+    });
+
+    // The other state: the same change made in the frame and in the copy, and the pictures compared again.
+    if (control !== 'button') {
+      await changeStyledControl(frame, page, control);
+      await expectPatternCopyMatches(page, copyContext, holder, surface, css, markup, `${label} changed`, true, {
+        selector: '.fc-surface',
+        act: (blank) => changeStyledControl(blank, blank, control),
+      });
+    }
+  }
+  expect(offending(requests)).toEqual([]);
+}
+
+test('form-control-styler: under reduced motion the styled controls have no transition', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'form-control-styler');
+  const requests = recordRequests(page);
+  for (const control of Object.keys(STYLER_CLASSES)) {
+    const element = await showStyledControl(page, control, 'rounded');
+    const css = (await outputArea(page).locator('pre').first().innerText()).trim();
+    expect(css, control).toContain('@media (prefers-reduced-motion: reduce) {');
+    const reducedBlock = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce) {'));
+    expect(reducedBlock, control).toContain('transition: none');
+
+    // Every element and pseudo-element a family gives a transition to (the slider's thumb parts cannot be read by
+    // script in every browser, so its rules are checked in the CSS text above).
+    const targets: (string | null)[] = control === 'switch' ? [null, '::before'] : control === 'range' ? [] : [null];
+    for (const pseudo of targets) {
+      const durations = async () =>
+        element.evaluate(
+          (el, which) =>
+            getComputedStyle(el, which)
+              .transitionDuration.split(',')
+              .map((d) => parseFloat(d)),
+          pseudo,
+        );
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await expect
+        .poll(async () => (await durations()).some((d) => d > 0), {
+          message: `${control} ${pseudo ?? ''} should have a transition without the preference`,
+        })
+        .toBe(true);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), control).toBe(true);
+      await expect
+        .poll(async () => (await durations()).every((d) => d === 0), {
+          message: `${control} ${pseudo ?? ''} should have no transition under reduced motion`,
+        })
+        .toBe(true);
+    }
+    if (control === 'range') {
+      for (const part of ['::-webkit-slider-thumb', '::-moz-range-thumb']) {
+        expect(reducedBlock, `${control} ${part}`).toContain(`.fc-range${part} {\n  transition: none;\n}`);
+      }
+    }
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  }
+  expect(offending(requests)).toEqual([]);
+});
+
+/** A small seeded generator, so the curves compared with the browser are the same on every run. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * Fills one of a handle pad's number boxes. The pad rounds what it is given to its step of 0.01, which can leave a little
+ * floating-point noise in the box (0.8200000000000001), so the box is checked to six decimals, not as text.
+ */
+async function fillPadNumber(page: Page, name: string, value: number): Promise<void> {
+  const field = page.locator(`#f-${name}`);
+  await expect(async () => {
+    await field.fill(String(value));
+    expect(Number(await field.inputValue())).toBeCloseTo(value, 6);
+  }).toPass({ timeout: 10_000 });
+}
+
+/** The most the page's table may differ from the browser's own animation engine: 1e-6, or what an engine's own solver needs. */
+const ENGINE_TOLERANCE: Record<string, number> = { chromium: 1e-6, firefox: 1e-6, webkit: 1e-6 };
+
+/**
+ * Reads the value and the eleven sampled rows the page prints, asks the browser's Web Animations engine for the progress of
+ * an animation with that easing at the same eleven times (a one second animation paused at 0, 100 ... 1000 ms), and returns
+ * the largest difference.
+ */
+async function compareWithEngine(page: Page, label: string, expectedValue: string | null): Promise<number> {
+  const value = (await codeText(page)).split('\n')[0]!.trim();
+  if (expectedValue !== null) expect(value, label).toBe(expectedValue);
+  const printed = await outputArea(page)
+    .locator('table tbody tr')
+    .evaluateAll((rows) =>
+      rows.map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent ?? '')),
+    );
+  expect(
+    printed.map((row) => row[0]),
+    label,
+  ).toEqual(['0.0', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '1.0']);
+  const engine = await page.evaluate((easing) => {
+    const animation = document.body.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 1000,
+      easing,
+      fill: 'both',
+    });
+    animation.pause();
+    const progress: (number | null)[] = [];
+    for (let i = 0; i <= 10; i++) {
+      animation.currentTime = i * 100;
+      progress.push(animation.effect!.getComputedTiming().progress ?? null);
+    }
+    animation.cancel();
+    return progress;
+  }, value);
+  let worst = 0;
+  for (let i = 0; i <= 10; i++) {
+    expect(engine[i], `${label}: the engine gave no progress at ${i / 10}`).not.toBeNull();
+    worst = Math.max(worst, Math.abs(Number(printed[i]![1]) - engine[i]!));
+  }
+  return worst;
+}
+
+test('cubic-bezier: the sampled curve agrees with the browser animation engine for the keyword curves and seeded custom curves', async ({
+  page,
+  browserName,
+}) => {
+  test.setTimeout(120_000);
+  await openTool(page, 'cubic-bezier');
+  const requests = recordRequests(page);
+  const tolerance = ENGINE_TOLERANCE[browserName] ?? 1e-6;
+  let worst = 0;
+
+  for (const keyword of ['linear', 'ease', 'ease-in', 'ease-out', 'ease-in-out']) {
+    await page.locator('#f-preset').selectOption(keyword);
+    await settlePreview(page);
+    const difference = await compareWithEngine(page, keyword, null);
+    expect(difference, `${keyword}: the table differs from the animation engine`).toBeLessThanOrEqual(tolerance);
+    worst = Math.max(worst, difference);
+  }
+
+  // Ten curves from a seeded generator, entered through the pad's numeric inputs as (x, 1 - y), with y from -1 to 2.
+  await page.locator('#f-preset').selectOption('custom');
+  const random = mulberry32(20261003);
+  for (let i = 0; i < 10; i++) {
+    const pads = [round2(random()), round2(random() * 3 - 1), round2(random()), round2(random() * 3 - 1)];
+    const [x1, y1, x2, y2] = [pads[0]!, round2(1 - pads[1]!), pads[2]!, round2(1 - pads[3]!)];
+    await fillPadNumber(page, 'p1-x', pads[0]!);
+    await fillPadNumber(page, 'p1-y', pads[1]!);
+    await fillPadNumber(page, 'p2-x', pads[2]!);
+    await fillPadNumber(page, 'p2-y', pads[3]!);
+    await settlePreview(page);
+    const difference = await compareWithEngine(page, `curve ${i + 1}`, `cubic-bezier(${x1}, ${y1}, ${x2}, ${y2})`);
+    expect(
+      difference,
+      `curve ${i + 1} (${x1}, ${y1}, ${x2}, ${y2}): the table differs from the animation engine`,
+    ).toBeLessThanOrEqual(tolerance);
+    worst = Math.max(worst, difference);
+  }
+  console.log(
+    `ORACLE ${browserName}: largest difference from the animation engine over 15 curves ${worst.toExponential(3)}`,
+  );
+  expect(offending(requests)).toEqual([]);
+});
