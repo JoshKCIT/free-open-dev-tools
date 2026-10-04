@@ -321,3 +321,23 @@ it('glob mode matches and shows a path with the trailing slash it was pasted wit
   expect(globRows('src/', 'src', { dot: false, nocase: false }).rows[0]?.matched).toBe(false);
   expect(globRows('src', 'src/', { dot: false, nocase: false }).rows[0]?.matched).toBe(false);
 });
+
+it('glob mode reads POSIX classes as picomatch 4.0.7 does, and the published text says so and not the opposite', () => {
+  // picomatch turns [[:alpha:]] into a letter class by default, so a class is a feature of glob mode, not a limit.
+  const cases: { pattern: string; matches: string[]; misses: string[] }[] = [
+    { pattern: '[[:alpha:]].txt', matches: ['a.txt', 'Z.txt'], misses: ['1.txt', '-.txt', 'ab.txt'] },
+    { pattern: '[[:digit:]]*', matches: ['1', '9x'], misses: ['a', 'x1'] },
+    { pattern: '*.[[:lower:]]s', matches: ['a.js', 'b.ts'], misses: ['a.Js', 'a.1s'] },
+  ];
+  for (const c of cases) {
+    const { rows } = globRows(c.pattern, [...c.matches, ...c.misses].join('\n'), { dot: false, nocase: false });
+    expect(
+      rows.map((row) => row.matched),
+      c.pattern,
+    ).toEqual([...c.matches.map(() => true), ...c.misses.map(() => false)]);
+  }
+  const limits = toolMeta.limits.join('\n');
+  expect(limits).not.toMatch(/POSIX classes[^.]*not turned on/i);
+  expect(limits).not.toMatch(/POSIX/);
+  expect(toolMeta.supports.join('\n')).toMatch(/POSIX classes such as \[\[:alpha:\]\]/);
+});

@@ -5,6 +5,7 @@
   "about": "Paste glob patterns or .gitignore rules and a list of paths, and see for each path whether it matches and which line decided it. Globs are matched with picomatch and .gitignore rules with the ignore package, as one .gitignore file at the top of a repository. Matching runs in a background task that stops after 5 seconds, so a pattern that backtracks cannot freeze the page. Nothing you paste is sent anywhere.",
   "supports": [
     "Glob mode: picomatch 4.0.7 globs with braces, extglobs such as @(*.js|*.ts) and ** across directories; one pattern per line, the first matching line is named and the other matching lines are listed",
+    "Glob mode reads POSIX classes such as [[:alpha:]] and [[:digit:]] as picomatch does (a letter class, a digit class)",
     "Glob options: match dotfiles, and ignore case",
     ".gitignore mode: the rules of one .gitignore file at the top of a repository, decided by the ignore package 7.0.8 with case-sensitive matching: negation with ! (a line holding only a ! matches nothing and still counts in the line numbers, as in git), directory-only patterns ending in /, anchoring with a leading or middle /, ** as a whole path segment, backslash escapes, trailing spaces, comments, CRLF line ends and a byte order mark",
     "The deciding rule for each path in .gitignore mode: the line number and pattern of the last rule that matched (a negation included), the excluded parent directory with its line, or no rule matched",
@@ -18,7 +19,7 @@
     "In glob mode [!a] is not negation, as picomatch defines it; write [^a]. The extglob forms !(a).txt and @(*.js|*.ts) match differently from Bash.",
     "A glob such as src/** also matches src itself, as picomatch documents, while git's :(glob) pathspec lists only what is under it.",
     "Nested .gitignore files, a global excludes file, .git/info/exclude, tracked files and symbolic links are not modelled; each path is judged as if untracked, against one .gitignore at the top.",
-    "Glob patterns follow picomatch, not Bash or git: braces, extglobs and a leading ! are picomatch features, POSIX classes such as [[:alpha:]] are not turned on, and * does not match a leading dot unless that option is ticked."
+    "Glob patterns follow picomatch, not Bash or git: braces, extglobs and a leading ! are picomatch features, and * does not match a leading dot unless that option is ticked."
   ],
   "ambiguities": [
     "A path ending in / is a directory; the same name without it is a file. logs/ in a .gitignore matches the directory logs and everything under it, never a file named logs.",
