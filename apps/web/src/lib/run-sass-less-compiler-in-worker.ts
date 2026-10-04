@@ -14,13 +14,17 @@
  * whose evaluation is still running drops a message posted to it. The worker says `sass-less-compiler-ready` as the last
  * statement of its module; the stylesheet is posted only then. Two limits follow from that. A worker that never says
  * ready is stopped after 10 seconds with its own message, so a tab whose worker cannot start does not wait forever. The
- * 20 second run limit starts when the stylesheet is posted, not when the worker is created, so a slow start is never
+ * 8 second run limit starts when the stylesheet is posted, not when the worker is created, so a slow start is never
  * counted against the visitor's stylesheet.
  *
- * The run limit is 20 seconds. Ordinary stylesheets compile in 9 to 22 milliseconds and a 200,000-rule loop in 1.6 to
- * 3.3 seconds in every tested engine, so 20 seconds is several times the slowest measured honest compile; an endless
- * `@while true` loop is stopped there. The page owns the limit because the worker is inside one engine call when it
- * matters, and terminate() is the only real way to stop it.
+ * The run limit is 8 seconds. Ordinary stylesheets compile in 9 to 22 milliseconds, a 256 KiB stylesheet of ordinary
+ * rules in about half a second and a loop that fills the 2 MiB output cap in about one second (measured in Node 22 with
+ * the packages' own engines), so 8 seconds is several times the slowest honest compile; an endless `@while true` loop
+ * is stopped there. It is not longer because a very short stylesheet can make the engine's memory grow without end (68
+ * bytes of `@for` that write a rule on every pass reached about 4 GB in 20 seconds in Node, about 200 MB a second), and
+ * the output size is checked only after the compile ends, so the time limit is what bounds the memory. The page owns
+ * the limit because the worker is inside one engine call when it matters, and terminate() is the only real way to stop
+ * it.
  *
  * Only the stylesheet and two choices go in; only the CSS, the warnings and the engine's name come back, or the
  * package's own plain message with its position.
@@ -29,10 +33,10 @@ import SassLessCompilerWorker from './workers/sass-less-compiler.worker.ts?worke
 import type { SassLessCompilerJobMessage, SassLessCompilerWorkerMessage } from './workers/sass-less-compiler.worker';
 import type { RunContext } from './tool-ui';
 
-export const SASS_LESS_COMPILER_TIME_LIMIT_MS = 20000;
+export const SASS_LESS_COMPILER_TIME_LIMIT_MS = 8000;
 
 export const SASS_LESS_COMPILER_TIME_LIMIT_MESSAGE =
-  'Stopped after 20 seconds: compiling this stylesheet took too long. Look for a loop that never ends.';
+  'Stopped after 8 seconds: compiling this stylesheet took too long. Look for a loop that never ends.';
 
 export const SASS_LESS_COMPILER_START_LIMIT_MS = 10000;
 

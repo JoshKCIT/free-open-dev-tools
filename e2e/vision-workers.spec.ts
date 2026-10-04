@@ -431,8 +431,8 @@ const ENGINE_CASES: EngineCase[] = [
     valid: { source: '$c: #336699;\n.a { color: $c; }' },
     pressRun: true,
     expectOutput: 'color: #336699',
-    limitSeconds: 20,
-    limitMessage: 'Stopped after 20 seconds',
+    limitSeconds: 8,
+    limitMessage: 'Stopped after 8 seconds',
   },
   {
     // Remove mode swallows the removal job (the first worker); the page then builds PDF.js's own worker, from a blob address
@@ -721,14 +721,16 @@ test('sass-less-compiler: an import of another file or address is refused in the
   expect(control).toEqual(['GET /control']);
 });
 
-test('sass-less-compiler: an endless loop is stopped at the run limit and the page keeps answering', async ({
-  page,
-}) => {
-  // Unlike the generated limit test, the job is NOT swallowed: the real Sass engine runs a loop that never ends, so the
-  // worker is genuinely busy when the limit is crossed. The page clock is frozen after the job is posted and moved by
-  // exact amounts, so the limit is crossed to the millisecond, not at the speed of the machine.
+/**
+ * The body shared by the two run-limit tests of the Sass and Less page: the real Sass engine runs `source`, a loop that
+ * never ends, so the worker is genuinely busy when the limit is crossed (the job is NOT swallowed). The page clock is
+ * frozen after the job is posted and moved by exact amounts, so the limit is crossed to the millisecond, not at the
+ * speed of the machine. The run must be stopped at the limit, the busy worker ended, the page must still answer and a
+ * valid stylesheet must compile in a new worker.
+ */
+async function loopIsStoppedAtTheLimit(page: Page, source: string): Promise<void> {
   const base = ENGINE_CASES.find((c) => c.id === 'sass-less-compiler')!;
-  const endless: EngineCase = { ...base, valid: { source: '$i: 0;\n@while true { $i: $i + 1; }' } };
+  const endless: EngineCase = { ...base, valid: { source } };
   await installWorkerWrapper(page, { swallowFirstJob: false, swallowReady: false });
   await page.clock.install();
   await openTool(page, endless.id);
@@ -741,7 +743,7 @@ test('sass-less-compiler: an endless loop is stopped at the run limit and the pa
   const used = await freezeClock(page, before, await pageNow(page));
   const limit = endless.limitSeconds * 1000;
 
-  // Short of the limit (19.5 seconds at most): still running, no stop message, the worker not yet ended and silent.
+  // Short of the limit (half a second at most): still running, no stop message, the worker not yet ended and silent.
   const early = Math.max(0, limit - 500 - used.atMost);
   await page.clock.runFor(early);
   await expect(cancelButtonOf(page)).toBeVisible();
@@ -753,7 +755,7 @@ test('sass-less-compiler: an endless loop is stopped at the run limit and the pa
     log.join(' | '),
   ).toEqual([]);
 
-  // Past the limit (20.1 seconds at least): stopped with the plain message, and the busy worker is ended.
+  // Past the limit (a tenth of a second at least): stopped with the plain message, and the busy worker is ended.
   await page.clock.runFor(Math.max(1, limit + 100 - used.atLeast - early));
   await expect(outputArea(page).locator('.issue-list')).toContainText(endless.limitMessage, { timeout: 5_000 });
   expect(await outputArea(page).locator('pre.output').count()).toBe(0);
@@ -770,6 +772,21 @@ test('sass-less-compiler: an endless loop is stopped at the run limit and the pa
   await runButtonOf(page).click();
   await expect(outputArea(page)).toContainText(base.expectOutput, { timeout: 15_000 });
   expect((await page.evaluate(() => window.__FODT_VISION_WORKERS__!.addresses)).length).toBeGreaterThanOrEqual(2);
+}
+
+test('sass-less-compiler: an endless loop is stopped at the run limit and the page keeps answering', async ({
+  page,
+}) => {
+  await loopIsStoppedAtTheLimit(page, '$i: 0;\n@while true { $i: $i + 1; }');
+});
+
+test('sass-less-compiler: a short loop that grows without end is stopped at the run limit and the page keeps answering', async ({
+  page,
+}) => {
+  // 68 bytes of source that write a new rule on every pass: the engine's memory grows for as long as it runs (about 200
+  // megabytes a second in Node), so the run limit is what keeps it from reaching gigabytes. The worker is ended and the
+  // page still answers.
+  await loopIsStoppedAtTheLimit(page, '@for $i from 1 through 100000000 { .a-#{$i} { b: c; d: e } }');
 });
 
 test('pdf-text-metadata: a PDF.js worker that fails to start in Text mode is reported at once as unable to start, not as too large after 20 seconds', async ({
