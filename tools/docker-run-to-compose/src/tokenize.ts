@@ -36,6 +36,7 @@ export interface ReadCommand {
 
 const LONE_SURROGATE =
   'This paste holds half of a character pair (a lone surrogate), which is not a character. Remove it and retype the text.';
+const MORE_THAN_ONE_COMMAND = 'This paste holds more than one command. Paste one docker run command.';
 const UNQUOTED_OPERATORS = new Set(['|', ';', '&', '<', '>', '(', ')']);
 /** The characters after a dollar sign that make a shell special variable: positional, status, process id and the like. */
 const SPECIAL_PARAMETERS = '@*#?-$!';
@@ -71,6 +72,8 @@ class DockerTokenizer {
   private wordLine = 1;
   private wordColumn = 1;
   private usesPwd = false;
+  /** True once a line break outside quotes has ended the command; any later word is a second command. */
+  private afterBreak = false;
   /** Where the backslash of the ANSI-C escape being read is. */
   private escapeLine = 1;
   private escapeColumn = 1;
@@ -454,6 +457,8 @@ class DockerTokenizer {
       if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
         this.advance();
         this.endWord();
+        // A line break outside quotes ends the command: only white space and comments may follow it.
+        if (ch === '\n' && this.words.length > 0) this.afterBreak = true;
         continue;
       }
 
@@ -461,6 +466,8 @@ class DockerTokenizer {
         while (this.i < this.text.length && this.peek() !== '\n') this.advance();
         continue;
       }
+
+      if (this.afterBreak) this.fail(MORE_THAN_ONE_COMMAND);
 
       if (UNQUOTED_OPERATORS.has(ch)) {
         this.fail(
