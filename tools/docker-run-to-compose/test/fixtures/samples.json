@@ -55,7 +55,7 @@
   },
   {
     "option": "cidfile",
-    "command": "docker run --cidfile /tmp/web.cid nginx",
+    "command": "docker run --cidfile ./web.cid nginx",
     "path": null,
     "result": "no-equivalent"
   },

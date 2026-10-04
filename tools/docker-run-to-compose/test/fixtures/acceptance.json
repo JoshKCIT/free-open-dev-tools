@@ -1,0 +1,720 @@
+{
+  "recordedOn": "2026-10-04",
+  "docker": "Docker version 29.6.2, build dfc4efb",
+  "composeVersion": "Docker Compose version v5.3.1",
+  "dockerCliCommit": "09d30a34bf8c7b1fe9c323b23935a1ddb7af8ec0",
+  "composeSpecCommit": "914ec15d1fa498969c0df5c1d672306db3256089",
+  "howRun": "docker compose -f <file> config --quiet, and docker run <words> with DOCKER_HOST=tcp://127.0.0.1:1 (no daemon); see run-acceptance.mjs",
+  "samples": [
+    {
+      "command": "docker run --add-host myhost:10.0.0.5 nginx",
+      "yamlSha256": "1f6ead0e12a6f2e895c235f763156691f638b1e44af0497289a7b5196b7360b2",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --annotation a=b nginx",
+      "yamlSha256": "fd5c56ec142bb9bc41bc65b550a94636d2ca3337a83076a1c412f0d83f59caf2",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -a stdout nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --blkio-weight 300 nginx",
+      "yamlSha256": "21f977e15cd994355e013922f8632a799c9b3d9c483239dd79ed63f2f83b8c88",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --blkio-weight-device /dev/sda:400 nginx",
+      "yamlSha256": "21bc46d95b41c4a095f358ad4d9b8c285942a349774aa873e1d3e6a361ccd0fe",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cap-add NET_ADMIN nginx",
+      "yamlSha256": "b3cade117b866aa7c8d4f64c68ed6bf0f16ccb3dcb141195193cc7713dfd47ee",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cap-drop ALL nginx",
+      "yamlSha256": "5438e734941d782fe43e6be639e6f31f6144431f6d4f86abc83bd4e7c1f8c87f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cgroup-parent m-executor-abcd nginx",
+      "yamlSha256": "df3b8a8d16f08ccb0276cc8da324add659d119abf641cf111e62b86bc72c574f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cgroupns host nginx",
+      "yamlSha256": "262907df8862900a08eaec7cba0d4ec60210e12d40a908bcf8c7626e9bb6c4e6",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cidfile ./web.cid nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpu-count 2 nginx",
+      "yamlSha256": "79cb91273e26fa6247607d4fdfc66d8449c52e2066f2517d086807039d41e0e1",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpu-percent 50 nginx",
+      "yamlSha256": "4e368b8b7d35126d886a0b1b6c2dfca809eb74b79d26b57b2c39e043899f6f07",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpu-period 100000 nginx",
+      "yamlSha256": "92c3d4a87dec8fd9c2df563a54e633dc9dd47b8507f80ee8555c03e75afbb8eb",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpu-quota 50000 nginx",
+      "yamlSha256": "a142b4e6f8bf9dabd58fd445e79a0cfba4637794303b53be16fa341e73d86b06",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpu-rt-period 950000 nginx",
+      "yamlSha256": "e9bb93ad39e4b3fad925530690867f18c20ddbd12ff1f62921ebb5d577c8cb50",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpu-rt-runtime 400000 nginx",
+      "yamlSha256": "851e0538f08c8b37afb5395d2abbcc4fa082530223edbc39aeff3d53d041f87a",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -c 512 nginx",
+      "yamlSha256": "4b8ccc76f885ed5f206391058066cc7d7c27c37fab440b44880b85d240c44570",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpus 1.5 nginx",
+      "yamlSha256": "c8b1c9d6275212fc589ed1206ec3fe70a9daf974a31331c216105fa3bd895009",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpuset-cpus 0-2 nginx",
+      "yamlSha256": "8c4130b747c316cb8b5e5ede36134c798fe4f73923c98ad7c1a6aedaed19a072",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --cpuset-mems 0 nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -d nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --detach-keys ctrl-x nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --device /dev/ttyUSB0:/dev/ttyUSB0 nginx",
+      "yamlSha256": "5e3c16b40d65d566a874e040d56b6dab9cecb1b6199b0e7768eb910712828b75",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --device-cgroup-rule 'c 1:3 mr' nginx",
+      "yamlSha256": "7e21957e01ec4d05d2d167926e1b7451362dad6f3d1000cc6c5a83b8bf427199",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --device-read-bps /dev/sda:12mb nginx",
+      "yamlSha256": "842404da462698cbe1991f746b0c346ef0c5a35911a5687a4e5c60f9e606394b",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --device-read-iops /dev/sda:120 nginx",
+      "yamlSha256": "95a416472f1cdea5fc396ce7e66d6dc4f88a9b7ddafdbe7bc3cdd5a3b2b8c7f4",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --device-write-bps /dev/sda:1mb nginx",
+      "yamlSha256": "7f15d0d178730f6b3c2738a07f65e50dfc88ebd68347ef560d42bd9a4d7cde94",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --device-write-iops /dev/sda:30 nginx",
+      "yamlSha256": "269dc49f1793825fadde292b59299315ee8f1a874bc517dd1bea213a9fa0e689",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --disable-content-trust=false nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --dns 8.8.8.8 nginx",
+      "yamlSha256": "e88b0492144eb240b0c90c0b9ec766a98bacabdce2c4416f35f7f63933a9454f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --dns-opt use-vc nginx",
+      "yamlSha256": "c8bfd7a0e2fbfcef523ba5a961710815510b169b6da7ee1477762f84e53d7774",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --dns-option use-vc nginx",
+      "yamlSha256": "c8bfd7a0e2fbfcef523ba5a961710815510b169b6da7ee1477762f84e53d7774",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --dns-search example.com nginx",
+      "yamlSha256": "2b1c602f6ebbc3a8bc03d4bd407f289371de80fa77280561549e008b0cb9a994",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --domainname example.com nginx",
+      "yamlSha256": "8f30d8b7d80a0027554e1225dcfa55abcdc011da24fb0bf84333f829b8d611a3",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --entrypoint /entry.sh nginx",
+      "yamlSha256": "2b849ea7aac483147f83eb36789c806e9db8e2ea9a4034cfbd0375cfa8e20e16",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -e A=1 -e B nginx",
+      "yamlSha256": "3a16f70d89a5086fe3556afb78e48ab57bd7d3da4047e96cd6765e430a472c3b",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --env-file ./a.envfile nginx",
+      "yamlSha256": "35ee37d58a647ccc906dbfebc40268c3f5e1e9c0516093df6f2b46080dd02ead",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --expose 3000 nginx",
+      "yamlSha256": "517deaada08c79b6926fa1ac0f998b96420840be92202935b5ec83255603bf09",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --gpus all nginx",
+      "yamlSha256": "4a32e0b72c7a80a2f92f30549d55c0f9645e142127847d030604e2b8c6c4a14d",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --group-add mail nginx",
+      "yamlSha256": "42d6d39685997d54282df10613ed34ebc6cc09be2c52e4fc666e476ae601fe0d",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --health-cmd 'curl -f http://localhost' nginx",
+      "yamlSha256": "350e3d5c9d16e0b108dd1f2c3d8ad2a766fc0229fb785a97784803a12fcd284d",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --health-interval 30s nginx",
+      "yamlSha256": "4c2d67d6ac78ca3589725a7f31f22d95c0a2d2037edf08c4015f81a02e42fb16",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --health-retries 3 nginx",
+      "yamlSha256": "a9b19afa94347ebd648ff2c5dc577ce5e5da46cd4d4b7556e056e8bda4ef323c",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --health-start-interval 5s nginx",
+      "yamlSha256": "11a3dc956e7627aa474d961533e9ffbbfb956529ede593abad862f0cf0e79fb7",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --health-start-period 40s nginx",
+      "yamlSha256": "1fadc5151e147154f7039c8e2f3d6d54a16eb5a319933c9e27c6b9845978690f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --health-timeout 10s nginx",
+      "yamlSha256": "04e37c93a8ec8921f7397152190f2a9c61ee5268e027d87238103f62ba2c510e",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --help nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -h web nginx",
+      "yamlSha256": "02074db3daafd402bc202c9a9cbbbcbacdae2a0841d3d9c2adaa4664004ccea6",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --init nginx",
+      "yamlSha256": "8f13801df95c461774ea89829b153b9acf430f18d5624b74d9a7b89061c20fac",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -i nginx",
+      "yamlSha256": "761457bc644b0f6e2fb2d98a44909755a055a56c1e26344cf6298ff3b47ffc28",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --io-maxbandwidth 1mb nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --io-maxiops 100 nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet --ip 172.20.0.5 nginx",
+      "yamlSha256": "9bd8476102912b76b163b8eaf42ae1b22dc71c9ead84cb6ca2d19cddb2502d8e",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet --ip6 2001:db8::33 nginx",
+      "yamlSha256": "66ee50a74fcfaf071e031a142c9c4192557080f3f46103da37977b2d2c90c463",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ipc host nginx",
+      "yamlSha256": "15bda86c1e5f88aadbd2ef8a0ded933c77e6aabde9285ee4278641fbde44befb",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --isolation default nginx",
+      "yamlSha256": "5f30158b706bca0d0739c190bb83096c3fc3886113170f48fffd5e351a7a8c81",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --kernel-memory 4m nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -l a=b nginx",
+      "yamlSha256": "934aee9950eb85fea78f24c7d8589eed3ee33e7a972d463d418d1d534123ac6a",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --label-file ./labels nginx",
+      "yamlSha256": "16f34d6e70f9b026a17b894b3106966c0ecc6d82b6039502e22c7ec9b40392dd",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --link db:database nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet --link-local-ip 169.254.1.1 nginx",
+      "yamlSha256": "9481fa23ac4350d6896e522840f537bcceb804c8aa3a410b30de8098c41c826b",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-driver json-file nginx",
+      "yamlSha256": "e6724755f2a2d5b9fd764593f999372af9b4cf2920654643813de6d91f23833f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-opt max-size=10m nginx",
+      "yamlSha256": "10165d39b004273f31211b5f5011fee1eabfa4584afb95b090b0aa1f8358280e",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --mac-address 02:42:ac:11:65:43 nginx",
+      "yamlSha256": "06884ada6f913c8d7f1b734452a7abf79e7e24418a3b35406152ae3d702883f3",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -m 512m nginx",
+      "yamlSha256": "1ca3e81657f0312b9a57617bce14ad96ed3bf77e28fcdf2bd8d089abf6fa4e09",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --memory-reservation 256m nginx",
+      "yamlSha256": "aef340062b576f4817fd1ccc0003cf4d629daab71debfc9dc4728b3db822e800",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --memory-swap 1g nginx",
+      "yamlSha256": "19646b648bdd46cae2f0fd25186a83f0bc6dbf3f50cfdea7e7a94f8cbdaa898e",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --memory-swappiness 60 nginx",
+      "yamlSha256": "2bbee17c1c36c39014321d53545cef0322fb541dbdfe7d98ff1a466639e2a827",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --mount type=bind,source=.,target=/app,readonly nginx",
+      "yamlSha256": "ea6fa3e591891b75044e3355f8370e523d19620ab4cff0e1ae4b94d3a6bcfd92",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name web nginx",
+      "yamlSha256": "fea27ca2d2507d7173322f0ff173474db9c9201ab88b279143b577c89ca99775",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --net appnet nginx",
+      "yamlSha256": "867ff24fe735d5ca55c0dfb01b19535df2f2fb71579618844f0dff7efd906890",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet --net-alias web nginx",
+      "yamlSha256": "453a29aee256494802b7cac378f30e61d2daa20b6adddecde85b32ac9d9b3e89",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet nginx",
+      "yamlSha256": "867ff24fe735d5ca55c0dfb01b19535df2f2fb71579618844f0dff7efd906890",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet --network-alias web nginx",
+      "yamlSha256": "453a29aee256494802b7cac378f30e61d2daa20b6adddecde85b32ac9d9b3e89",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --no-healthcheck nginx",
+      "yamlSha256": "27c51e8d1dfb89db7192fdffd13456174bc69c732ad079491f75d6e378de69a3",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --oom-kill-disable nginx",
+      "yamlSha256": "8f7c1f83b4b5baeb2fb32223d31b5620be2783c609987929760912bec108fbd9",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --oom-score-adj 500 nginx",
+      "yamlSha256": "78fd543c0ce8af2a85ce845abcdf0b036b6c7c75a08f3961a664595747ae2dec",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --pid host nginx",
+      "yamlSha256": "e1fd4614ad90ae1cde3b591b510933560ce76f94d3972702f8a2998c7c8e3485",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --pids-limit 100 nginx",
+      "yamlSha256": "dd90b706057eda867d8a7d780692db4bf55f669f32b5b0f5a73322b2e27cd728",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --platform linux/amd64 nginx",
+      "yamlSha256": "c08ec5ab5d0e33d1be7951aec789fe7410292d9df91aac88adb0bbb18dc071f8",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --privileged nginx",
+      "yamlSha256": "554850407fa205dd45108cd2da704897de4c812ce4cca35331123ebdfca93e72",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -p 8080:80/tcp nginx",
+      "yamlSha256": "69d9932c99833fd270607adc35bc8c60dcf07840cfb1873e3dfbdccb3d8bc72d",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -P nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --pull always nginx",
+      "yamlSha256": "8ca90529f0d19566dd8337d26ff32a1d85eb9784d38ea0f5022a61d662377bbf",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -q nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --read-only nginx",
+      "yamlSha256": "48f45664080af3941be0aa2af17e2d6e987f78c577faad00a01ee79991c8fcc7",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --restart on-failure:3 nginx",
+      "yamlSha256": "2d691dcea22b16369b8827ac2b53b27b1f9171189d934223e0f3d80209cf5a6c",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --rm nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --runtime runc nginx",
+      "yamlSha256": "9276dd3f61ed5b0d10648881e3935c6d4ff78c1475760abe540962e3004e033f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --security-opt seccomp=unconfined nginx",
+      "yamlSha256": "794303b387479495967ef2d02101dedede324684ff87bda4e99e6c10cef43c70",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --shm-size 64m nginx",
+      "yamlSha256": "d9021e3868f04a0de4ce70caf960982fb142ef305056cd17d871ac16d5bbdb4c",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --sig-proxy=false nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --stop-signal SIGUSR1 nginx",
+      "yamlSha256": "adeef525b367885b9f3c333038aab8f6ef64da975b40e164db50b8128266d908",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --stop-timeout 20 nginx",
+      "yamlSha256": "4d2ae92b6591adf66740f66415ee9f680b8c5b8ad84a1f753caadc6ac8b231d0",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --storage-opt size=1G nginx",
+      "yamlSha256": "a37f7128ef646c81fe74423a848819bb68663f67a7faf2ea557e65e1dfbf119d",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --sysctl net.core.somaxconn=1024 nginx",
+      "yamlSha256": "026b97106beb1e8d7ea29b67c793cbe5c2d8d9ffea9960bed71ec29e3099a8b4",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --tmpfs /run nginx",
+      "yamlSha256": "4cde499e5647ac02b5da3d4ddaba516c3a7e1ecbeffe5ff18ae525512a7c4345",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -t nginx",
+      "yamlSha256": "9dd941a9eb9dabd98d8f573e2bfbc996a6f30a34cd641dc7235a98c79222624a",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ulimit nofile=20000:40000 --ulimit nproc=65535 nginx",
+      "yamlSha256": "edfc4aba0e2208805a2bc7b535b40d46fdccac697a5bf8661953094ba108fced",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --umask 022 nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "refused: unknown flag: --umask"
+    },
+    {
+      "command": "docker run --use-api-socket nginx",
+      "yamlSha256": "50702fff5007c7936aeada022383c98bc6d8798140a54d14c3d2a2ab06bdbee0",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -u 1000:1000 nginx",
+      "yamlSha256": "fa653a2ce41546eb1704be9efec8bb732b84f2cd9c3a3ff308a4c5e4f7095380",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --userns host nginx",
+      "yamlSha256": "48de75a70163a2a3f580a42065e9b49e5ac1311a2e9a07a6023d64573d8a74e6",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --uts host nginx",
+      "yamlSha256": "23a74a6bba83557521d408baa0104b3b845c21835cb3c3eef8d4abcd3396c8c6",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -v data:/var/lib/x:ro nginx",
+      "yamlSha256": "e17dda2ac622b8304fadb208fa196f808f86a1ffac4c5f3e333deaf80e699886",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --volume-driver local nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --volumes-from other nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -w /app nginx",
+      "yamlSha256": "2b059088ea5b314283ab67f7d7a839c49a1cc6436b1e77705a36c461e4c517a9",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    }
+  ],
+  "recorded": [
+    {
+      "command": "docker run --rm -p 8080:80 nginx",
+      "yamlSha256": "70dfc61a501089e86670b9f9aba68b917ac2faf496c5b9b9c5307bce494c88c1",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -d --name web -p 8080:80 -v $(pwd):/usr/share/nginx/html:ro --restart unless-stopped nginx:1.27",
+      "yamlSha256": "ad16f999cffcc3bf27cb167c6071077e6f37e16eb89f3c7d969035e7f6b924ee",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -d --name db -e POSTGRES_PASSWORD=example -e POSTGRES_DB=app -v pgdata:/var/lib/postgresql/data -p 127.0.0.1:5432:5432 postgres:16",
+      "yamlSha256": "f7aeb160bd5e04b7e4ca3c3aac2f180da133638b7ecafdbe9f4a5b5bb1a8e11e",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network appnet --network-alias api -e API_KEY=$API_KEY -p 3000:3000 ghcr.io/example/api:2.1",
+      "yamlSha256": "485016808e0121c68f3a5acaad07d7f674df385f0f742a0d39f1790f37ae4439",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -m 512m --cpus 1.5 --pids-limit 100 --memory-swap 1g --name worker busybox sleep 3600",
+      "yamlSha256": "57bd563ebccc6a9afb60582cf2ff49e2727c8eb30e3ea97c56390e0fc58a616f",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --name web --health-cmd 'curl -f http://localhost/ || exit 1' --health-interval 30s --health-timeout 5s --health-retries 3 nginx",
+      "yamlSha256": "2d61fc336e5731081853ec7f1cd7b116cd749f671611a0f2072b2dae80f91e23",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -d \\\n  --name cache \\\n  --restart=always \\\n  -p 6379:6379 \\\n  -v redis-data:/data \\\n  redis:7 redis-server --appendonly yes",
+      "yamlSha256": "10a97fc0462d4321811afd28fce9918facbe0a1d574a6cd6e05f6b87e7c3f3ce",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ulimit nofile=1024:2048 --ulimit nproc=65535 --sysctl net.core.somaxconn=1024 --storage-opt size=1G --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 alpine",
+      "yamlSha256": "489a6d3e4bef4f080622134324e33088eeca6137230b5bdabec65aec83307687",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --mount type=volume,source=data,target=/data,volume-nocopy --mount type=bind,source=$(pwd)/conf,target=/etc/app,readonly --tmpfs /run alpine",
+      "yamlSha256": "c47bb90a3c410906c1d61466361cd6ac21ae39a4c914696c82a7c802db9fd506",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -it --entrypoint /bin/sh --workdir /work -u 1000:1000 -e MODE=production -e 'GREETING=hello world' alpine -c 'echo $HOME'",
+      "yamlSha256": "81f4c7b564693464b6f831849aa034f46582a9dd9be60d3df3767bb8e8f10208",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    }
+  ]
+}

@@ -66,12 +66,24 @@ it('the bundled Compose schema is exactly what the copied generator builds from 
   expect(notice).toContain(COMPOSE_SPEC_COMMIT);
   expect(notice).toContain('tools/docker-run-to-compose/test/fixtures/compose-spec/LICENSE');
   expect(ACCEPTANCE.composeSpecCommit).toBe(COMPOSE_SPEC_COMMIT);
-  // The schema is the Compose Specification's: it names the service keys the converter writes.
-  const service = (COMPOSE_SPEC_SCHEMA['$defs'] as Record<string, unknown>)['container_spec'] as {
-    properties: Record<string, unknown>;
-  };
-  for (const key of ['container_name', 'ports', 'storage_opt', 'ulimits', 'healthcheck', 'networks']) {
-    expect(Object.hasOwn(service.properties, key), key).toBe(true);
+  // The schema is the Compose Specification's: it names the service keys the converter writes (some are in the shared
+  // container part, some in the workload part and some in the service part itself).
+  const defs = COMPOSE_SPEC_SCHEMA['$defs'] as Record<string, { properties?: Record<string, unknown> }>;
+  const known = new Set<string>();
+  for (const part of ['container_spec', 'workload_spec', 'service']) {
+    for (const key of Object.keys(defs[part]?.properties ?? {})) known.add(key);
+  }
+  for (const key of [
+    'container_name',
+    'ports',
+    'storage_opt',
+    'ulimits',
+    'healthcheck',
+    'networks',
+    'volumes_from',
+    'links',
+  ]) {
+    expect(known.has(key), key).toBe(true);
   }
 });
 

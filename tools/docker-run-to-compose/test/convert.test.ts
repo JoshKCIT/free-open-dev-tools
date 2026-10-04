@@ -664,12 +664,12 @@ it('pasted values stay data in the YAML: structure never changes', () => {
   }
   // Keys that come from pasted text (ulimit names, storage keys, volume and network names) are data too.
   const keys = convertDockerRun(
-    'docker run --ulimit __proto__=1 --storage-opt constructor=x --log-opt toString=y -v __proto__:/p --network hasOwnProperty nginx',
+    'docker run --ulimit __proto__=1 --storage-opt constructor=x --log-opt toString=y -v constructor:/p --network __proto__ nginx',
   );
   expect(at(keys.document, 'services.nginx.ulimits')).toEqual(JSON.parse('{"__proto__": 1}'));
   expect(Object.keys(at(keys.document, 'services.nginx.ulimits') as object)).toEqual(['__proto__']);
-  expect(Object.keys(keys.document['volumes'] as object)).toEqual(['__proto__']);
-  expect(Object.keys(keys.document['networks'] as object)).toEqual(['hasOwnProperty']);
+  expect(Object.keys(keys.document['volumes'] as object)).toEqual(['constructor']);
+  expect(Object.keys(keys.document['networks'] as object)).toEqual(['__proto__']);
   expect(Object.keys(at(keys.document, 'services.nginx.storage_opt') as object)).toEqual(['constructor']);
   expect(Object.keys(at(keys.document, 'services.nginx.logging.options') as object)).toEqual(['toString']);
   expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();

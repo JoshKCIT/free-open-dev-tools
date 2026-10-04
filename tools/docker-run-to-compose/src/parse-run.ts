@@ -9,6 +9,7 @@
  * Every name is looked up in a Map, so a pasted `__proto__` is an unknown option like any other.
  */
 import { DockerRunError } from './errors';
+import { hasInterpolation } from './interpolation';
 import { visible } from './limits';
 import { closestOption, optionByName, type DockerRunOption } from './options';
 import { readDockerCommand, type CommandWord } from './tokenize';
@@ -69,7 +70,7 @@ function isDecimal(text: string): boolean {
 }
 
 /** A size as docker reads it: a number and an optional k, m, g, t or p with an optional i and b, such as 512m, 1g or 64MiB. */
-function isSize(text: string): boolean {
+export function isSize(text: string): boolean {
   let i = text[0] === '-' ? 1 : 0;
   let digits = 0;
   while (isDigit(text[i])) {
@@ -158,7 +159,8 @@ const EXPECTED: Record<'none' | 'number' | 'size' | 'duration', string> = {
 };
 
 function checkValue(option: DockerRunOption, value: string | null, word: CommandWord): void {
-  if (value === null || valueIsWellFormed(option, value)) return;
+  // A value with a variable in it (a number written as a variable name, say) is for Compose to fill in, so it is not judged here.
+  if (value === null || hasInterpolation(value) || valueIsWellFormed(option, value)) return;
   const kind =
     option.value === 'none' || option.value === 'number' || option.value === 'size' || option.value === 'duration'
       ? option.value
