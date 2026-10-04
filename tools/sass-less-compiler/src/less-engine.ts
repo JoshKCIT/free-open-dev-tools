@@ -1,5 +1,5 @@
 import createLess, { type LessEnvironment, type LessInstance, type LessNode } from 'less/lib/less/index.js';
-import { StylesheetError, describeEngineMessage, importRefusedError, syntaxError } from './errors';
+import { StylesheetError, describeEngineMessage, engineFailureKind, importRefusedError, syntaxError } from './errors';
 import { scanAtRule } from './import-scan';
 import { positionAt } from './text';
 
@@ -154,6 +154,11 @@ export async function compileLess(source: string, options: { compress: boolean }
     if (err instanceof RangeError) throw new StylesheetError(`${TOO_DEEP}.`, 'limit');
     if (failure?.type === undefined) throw new StylesheetError(`${COMPILER_FAILED}.`, 'limit');
     const message = typeof failure?.message === 'string' ? failure.message : undefined;
+    // The same words from the JavaScript engine reach here as a message of a Less error: a stack overflow is a limit, and
+    // a TypeError inside Less's own code is not a mistake in the stylesheet.
+    const kind = engineFailureKind(message);
+    if (kind === 'limit') throw new StylesheetError(`${TOO_DEEP}.`, 'limit');
+    if (kind === 'internal') throw new StylesheetError(`${COMPILER_FAILED}.`, 'limit');
     if (message === undefined) throw new StylesheetError(`${TOO_DEEP}.`, 'limit');
     const offset = typeof failure?.index === 'number' ? failure.index : undefined;
     // Less counts columns from 0 and gives no offset for some errors; the offset is preferred.

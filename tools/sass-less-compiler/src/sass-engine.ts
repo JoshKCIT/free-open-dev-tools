@@ -1,5 +1,5 @@
 import * as sass from 'sass';
-import { StylesheetError, describeEngineMessage, importRefusedError, syntaxError } from './errors';
+import { StylesheetError, describeEngineMessage, engineFailureKind, importRefusedError, syntaxError } from './errors';
 import { cutWithEllipsis, positionAt, visible } from './text';
 
 /** At most this many messages are returned, the last of them saying how many more were left out. */
@@ -95,6 +95,15 @@ export function compileSass(
     if (asked.length > 0) {
       const position = offset === undefined ? undefined : positionAt(source, offset);
       throw importRefusedError({ line: position?.line, column: position?.column, target: asked[0] });
+    }
+    // Running out of stack, array or string room is not a mistake in the stylesheet, even when the compiler wraps it
+    // as an error with a position. Only these words are looked for here: a visitor's own @error can say anything else.
+    if (
+      err instanceof RangeError ||
+      engineFailureKind(failure.sassMessage) === 'limit' ||
+      engineFailureKind((err as Error)?.message) === 'limit'
+    ) {
+      throw new StylesheetError(`${TOO_DEEP}.`, 'limit');
     }
     if (typeof failure.sassMessage === 'string') {
       throw syntaxError(describeEngineMessage(failure.sassMessage, source, COMPILER_FAILED), source, offset, {});

@@ -452,3 +452,20 @@ it('a notice from the Sass compiler with a position is shown as a short compiler
     'math.div() will only support number arguments in a future release.',
   ]);
 });
+
+it('a stack overflow and a failure inside the Less compiler are limits, not syntax errors', async () => {
+  // A stylesheet nested 5000 deep overflows the compiler's stack: the message is the limit sentence and has no position.
+  const deep = await failureOf(`${'.a{'.repeat(5000)}b:c${'}'.repeat(5000)}`, 'less');
+  expect(deep.kind).toBe('limit');
+  expect(deep.message).toBe('This stylesheet nests or repeats too deeply for the compiler.');
+  expect(deep.line).toBeUndefined();
+  // data-uri with a number makes Less fail inside its own code; the visitor is not told it is a syntax error.
+  const inside = await failureOf('.a { b: data-uri(1); }', 'less');
+  expect(inside.kind).toBe('limit');
+  expect(inside.message).toBe('The compiler could not process this stylesheet.');
+  expect(inside.message).not.toContain('indexOf');
+  // An ordinary mistake in Less is still a syntax error with its position.
+  const mistake = await failureOf('.a { b: @nope; }', 'less');
+  expect(mistake.kind).toBe('syntax');
+  expect(mistake.message).toMatch(/\(line 1, column \d+\)\.$/);
+});

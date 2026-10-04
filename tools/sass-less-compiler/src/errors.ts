@@ -194,6 +194,41 @@ export function describeEngineMessage(message: string | undefined, source: strin
   return cutWithEllipsis(visible(hidden), MAX_ENGINE_MESSAGE_CHARS);
 }
 
+/** The words the JavaScript engine itself uses when it runs out of stack, array, string or memory room. */
+const ENGINE_LIMIT_TEXTS: readonly string[] = [
+  'maximum call stack size exceeded',
+  'too much recursion',
+  'invalid array length',
+  'invalid string length',
+  'invalid typed array length',
+  'array buffer allocation failed',
+  'out of memory',
+];
+
+/** The words of a JavaScript TypeError raised inside a compiler's own code, which is never the stylesheet's mistake. */
+const ENGINE_INTERNAL_TEXTS: readonly string[] = [
+  ' is not a function',
+  ' is not a constructor',
+  ' is not iterable',
+  'cannot read propert',
+  'cannot set propert',
+  'cannot convert undefined or null',
+];
+
+/**
+ * What a failure message that is not a mistake in the stylesheet says about itself: `limit` when it is the JavaScript
+ * engine running out of stack, array, string or memory room (the stylesheet nests or repeats too much), `internal`
+ * when it is a TypeError raised inside the compiler's own code, and `undefined` for anything else, which is then read
+ * as the compiler's own message about the stylesheet.
+ */
+export function engineFailureKind(message: unknown): 'limit' | 'internal' | undefined {
+  if (typeof message !== 'string') return undefined;
+  const lower = message.slice(0, 400).toLowerCase();
+  if (ENGINE_LIMIT_TEXTS.some((text) => lower.includes(text))) return 'limit';
+  if (ENGINE_INTERNAL_TEXTS.some((text) => lower.includes(text))) return 'internal';
+  return undefined;
+}
+
 /** A mistake the compiler found: its short message, then the position in parentheses when there is one. */
 export function syntaxError(
   text: string,
