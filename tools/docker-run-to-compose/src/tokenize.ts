@@ -34,6 +34,8 @@ export interface ReadCommand {
   readonly usesPwd: boolean;
 }
 
+const LONE_SURROGATE =
+  'This paste holds half of a character pair (a lone surrogate), which is not a character. Remove it and retype the text.';
 const UNQUOTED_OPERATORS = new Set(['|', ';', '&', '<', '>', '(', ')']);
 /** The characters after a dollar sign that make a shell special variable: positional, status, process id and the like. */
 const SPECIAL_PARAMETERS = '@*#?-$!';
@@ -69,6 +71,9 @@ class DockerTokenizer {
   private wordLine = 1;
   private wordColumn = 1;
   private usesPwd = false;
+  /** Where the backslash of the ANSI-C escape being read is. */
+  private escapeLine = 1;
+  private escapeColumn = 1;
 
   constructor(input: string) {
     this.text = input;
@@ -186,6 +191,21 @@ class DockerTokenizer {
     }
   }
 
+  /**
+   * The character a \u or \U escape names. A surrogate code (U+D800 to U+DFFF) is half of a character pair, not a character,
+   * so it is refused, at the backslash that started the escape (the one just before the text read so far).
+   */
+  private characterOf(point: number): string {
+    if (point >= 0xd800 && point <= 0xdfff) {
+      this.fail(
+        "This $'...' ANSI-C quoted string holds a surrogate code, which is half of a character pair and not a character.",
+        this.escapeLine,
+        this.escapeColumn,
+      );
+    }
+    return String.fromCodePoint(point);
+  }
+
   private readAnsiCEscape(): string {
     const e = this.peek();
     if (e === undefined) this.fail("This $'...' ANSI-C quoted string ends with an incomplete escape.");
@@ -237,7 +257,8 @@ class DockerTokenizer {
         this.advance();
         let hex = '';
         while (hex.length < 4 && isHexDigit(this.peek())) hex += this.advance();
-        return hex ? String.fromCodePoint(parseInt(hex, 16)) : 'u';
+        if (hex === '') return 'u';
+        return this.characterOf(parseInt(hex, 16));
       }
       case 'U': {
         this.advance();
@@ -246,7 +267,7 @@ class DockerTokenizer {
         if (hex === '') return 'U';
         const point = parseInt(hex, 16);
         if (point > 0x10ffff) this.fail("This $'...' ANSI-C quoted string holds a character code that does not exist.");
-        return String.fromCodePoint(point);
+        return this.characterOf(point);
       }
       default:
         if (isOctalDigit(e)) {
@@ -274,6 +295,8 @@ class DockerTokenizer {
         return;
       }
       if (c === '\\') {
+        this.escapeLine = this.line;
+        this.escapeColumn = this.column;
         this.advance();
         this.add(this.readAnsiCEscape());
         continue;
@@ -393,8 +416,37 @@ class DockerTokenizer {
     this.current += raw;
   }
 
+  /**
+   * Refuses half of a surrogate pair that has no other half. It is not a character, a file that holds one is not valid text,
+   * and Compose refuses it. Columns count UTF-16 code units, the way `advance` does, so the place matches the other messages.
+   */
+  private checkSurrogates(): void {
+    let line = 1;
+    let column = 1;
+    for (let i = 0; i < this.text.length; i++) {
+      const code = this.text.charCodeAt(i);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        const next = this.text.charCodeAt(i + 1);
+        if (next >= 0xdc00 && next <= 0xdfff) {
+          i++;
+          column += 2;
+          continue;
+        }
+        this.fail(LONE_SURROGATE, line, column);
+      }
+      if (code >= 0xdc00 && code <= 0xdfff) this.fail(LONE_SURROGATE, line, column);
+      if (code === 10) {
+        line++;
+        column = 1;
+      } else {
+        column++;
+      }
+    }
+  }
+
   tokenize(): ReadCommand {
     checkSize(this.text);
+    this.checkSurrogates();
 
     while (this.i < this.text.length) {
       const ch = this.peek()!;
