@@ -105,6 +105,12 @@ it('icon sizes and purposes follow the W3C image resource rules and invalid ones
   expect(ignored).toHaveLength(3);
   // Icons 3 and 7 are kept, with a warning that no size could be read; icon 5 has a warning for its dropped keyword.
   const warned = messages.filter((finding) => finding.severity === 'warning');
+  // Icon 3 (048x048) and icon 7 (10x10x10) have no size at all; icon 5 has a purpose keyword that is not known.
+  const messageOf = (position: number) =>
+    warned.find((finding) => finding.message.startsWith('Icon ' + position + ' '))?.message ?? '';
+  expect(messageOf(3)).toContain('no usable size');
+  expect(messageOf(7)).toContain('no usable size');
+  expect(messageOf(5)).toContain('purpose keyword');
   for (const position of [3, 5, 7]) {
     expect(
       warned.some((finding) => finding.message.startsWith(`Icon ${position}`)),

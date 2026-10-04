@@ -297,6 +297,13 @@ it('install advice is a separate list of what browsers look for and is never par
   const halfAdvice = installAdvice(half.processed);
   expect(halfAdvice).toHaveLength(1);
   expect(halfAdvice[0]).toContain('512');
+  // A wide icon is not a big one: 600 by 100 pixels is not at least 512 by 512.
+  const wide = processManifest(
+    { name: 'Racer', display: 'minimal-ui', icons: [{ src: 'a.png', sizes: '600x100' }] },
+    'https://example.com/manifest.webmanifest',
+    'https://example.com/',
+  );
+  expect(installAdvice(wide.processed)).toHaveLength(2);
   // A local address is treated as secure by browsers, so it needs no HTTPS advice.
   const local = processManifest(
     { name: 'Racer', display: 'standalone', icons: [{ src: 'a.png', sizes: 'any' }] },

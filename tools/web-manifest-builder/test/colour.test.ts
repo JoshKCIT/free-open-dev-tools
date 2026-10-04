@@ -68,6 +68,11 @@ it('colours are kept only when they parse as sRGB CSS colours and others are rep
   expect(srgb('rgb(none 2 3)')).toEqual([0, 2, 3, 1]);
   expect(srgb('rgb(1.5 2.5 3.5)')).toEqual([2, 3, 4, 1]);
   closeTo(srgb('rgb(1 2 3 / 50%)'), [1, 2, 3, 0.5], 'rgb(1 2 3 / 50%)');
+  // A browser keeps alpha in eight bits. Chromium 153 reported these literals for its processed manifest (recorded
+  // 2026-10-04): 50 percent is 128 / 255 and .25 is 64 / 255. The browser test compares them for every colour it builds.
+  expect(srgb('rgb(1 2 3 / 50%)')[3]).toBe(0.5019607843137255);
+  expect(srgb('rgba(1, 2, 3, .25)')[3]).toBe(0.25098039215686274);
+  expect(srgb('#FFFFFF80')[3]).toBe(0.5019607843137255);
   closeTo(srgb('rgb(1 2 3 / 0.5)'), [1, 2, 3, 0.5], 'rgb(1 2 3 / 0.5)');
   closeTo(srgb('rgba(1, 2, 3, .25)'), [1, 2, 3, 0.25], 'rgba(1, 2, 3, .25)');
   expect(srgb('rgb(0 0 0 / 150%)')).toEqual([0, 0, 0, 1]);
@@ -126,7 +131,12 @@ it('colours are kept only when they parse as sRGB CSS colours and others are rep
     'hsl(120 100% 50% 1)',
     'hsl(120foo 100% 50%)',
     'lab(50% 0 0',
+    'lab(1 2 (3)',
+    'lab(1 2 3))',
+    'lab()',
     'lab',
+    // U+212A KELVIN SIGN lower-cases to a k outside ASCII, so blacK written with it is not the name black.
+    'blac' + String.fromCodePoint(0x212a),
     'currentcolor',
     'canvas',
     'inherit',

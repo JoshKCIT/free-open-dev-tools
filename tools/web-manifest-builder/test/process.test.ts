@@ -1,5 +1,5 @@
 import { it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MAX_SHOWN, buildManifest, processManifest, type ManifestFinding } from '../src/index';
+import { MAX_CELL_SHOWN, MAX_SHOWN, buildManifest, processManifest, type ManifestFinding } from '../src/index';
 
 // Expected values below come from the W3C Web Application Manifest Working Draft of 13 August 2026 (its examples 1, 3,
 // 4, 5 and 6 and the processing steps), the Image Resource draft section 6, RFC 5646 section 2.1.1 and Appendix A, and
@@ -67,6 +67,14 @@ it('start_url, id and scope resolve against the manifest and page addresses as t
   // The same origin on another port is another origin.
   expect(run({ start_url: 'https://example.com:8443/' }).processed.startUrl).toBe(PAGE_URL);
   // An address the URL parser cannot read is ignored too.
+  // A relative start_url is resolved against the manifest address, not the page address.
+  expect(
+    processManifest(
+      { start_url: 'a.html' },
+      'https://example.com/m/manifest.webmanifest',
+      'https://example.com/p/index.html',
+    ).processed.startUrl,
+  ).toBe('https://example.com/m/a.html');
   const unreadable = run({ start_url: 'http://[' });
   expect(unreadable.processed.startUrl).toBe(PAGE_URL);
   expect(findingsFor(unreadable.findings, 'start_url').map((finding) => finding.severity)).toContain('ignored');
@@ -170,6 +178,10 @@ it('start_url, id and scope resolve against the manifest and page addresses as t
   expect(findingsFor(fallback.findings, 'manifest address').map((finding) => finding.severity)).toEqual(['warning']);
   expect(findingsFor(fallback.findings, 'page address').map((finding) => finding.severity)).toEqual(['warning']);
   for (const finding of fallback.findings) expect(finding.message).not.toContain('not an address');
+  // An empty address is named as empty, not as unreadable.
+  const emptied = processManifest({}, '', '   ');
+  expect(findingsFor(emptied.findings, 'manifest address')[0]?.message).toContain('is empty');
+  expect(findingsFor(emptied.findings, 'page address')[0]?.message).toContain('is empty');
 });
 
 it('display, orientation and dir accept only their listed values and report ignored values', () => {
@@ -441,7 +453,7 @@ it('name and short name lengths are counted in code points', () => {
 });
 
 it('typed text in every field never stops a run and never appears in a finding beyond 40 escaped characters', () => {
-  const tail = 'abcdefghijklmnopqrstuvwxyz0123456789'.repeat(3);
+  const tail = 'abcdefghijklmnopqrstuvwxyz0123456789'.repeat(8);
   const bell = String.fromCodePoint(7);
   const rlo = String.fromCodePoint(0x202e);
   const marker = `FODT-MARKER-4417-${tail}${bell}${rlo}`;
@@ -479,15 +491,22 @@ it('typed text in every field never stops a run and never appears in a finding b
       for (const cell of [row.written, row.processed]) {
         expect(cell).not.toContain(bell);
         expect(cell).not.toContain(rlo);
-        // 17 characters of marker head plus 23 of the tail is the most that is shown.
-        expect(cell).not.toContain(marker.slice(0, 41));
+        // A table cell shows at most 200 characters of what was typed.
+        expect(cell).not.toContain(marker.slice(0, 201));
       }
     }
   }
-  // The shown part is cut at MAX_SHOWN characters, with an ellipsis after it.
+  // A direction-changing character inside the shown part is written as its code point, so a name cannot read backwards.
+  const bidi = run({ name: 'a' + rlo + 'b' + bell });
+  const backslash = String.fromCharCode(92);
+  expect(bidi.processed.rows.find((row) => row.member === 'name')?.written).toBe(
+    'a' + backslash + 'u{202E}b' + backslash + 'u{7}',
+  );
+  // A finding is cut at MAX_SHOWN characters and a table cell at MAX_CELL_SHOWN, with an ellipsis after it.
   expect(MAX_SHOWN).toBe(40);
+  expect(MAX_CELL_SHOWN).toBe(200);
   const longName = results[0]?.processed.rows.find((row) => row.member === 'name');
-  expect(longName?.written).toBe(marker.slice(0, 40) + String.fromCodePoint(0x2026));
+  expect(longName?.written).toBe(marker.slice(0, 200) + String.fromCodePoint(0x2026));
 
   // Values that are not text, in every member, are ignored and never throw.
   const hostile: Record<string, unknown> = {};
