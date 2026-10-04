@@ -29,14 +29,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
  */
 async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(200);
-  try {
-    await expect(page.locator('section[aria-label="Output"]')).toHaveAttribute('aria-busy', 'false', {
-      timeout: 15_000,
-    });
-  } catch {
-    // A page that never clears aria-busy is a real finding; the extraction
-    // step below fails loudly when there is nothing to extract.
-  }
+  // A page that never clears aria-busy within 15 seconds fails here, with this message, not further on.
+  await expect(
+    page.locator('section[aria-label="Output"]'),
+    'the Output section never stopped being busy',
+  ).toHaveAttribute('aria-busy', 'false', { timeout: 15_000 });
 }
 
 /** The 11 interactive generator ids (CSS-04..14; the phase 8 id list minus the 8 pure-maths tools). */
@@ -53,6 +50,12 @@ export const PHASE_8_GENERATOR_IDS = [
   'clip-path',
   'css-effects',
 ];
+
+/**
+ * The four phase 15 CSS generators (the pattern, shapes, spinner and easing pages). Each must have a fixture file, so
+ * deleting one fails the coverage test below instead of quietly dropping the tool from every test in this file.
+ */
+export const PHASE_15_GENERATOR_IDS = ['css-pattern', 'css-shapes', 'css-spinner', 'cubic-bezier'];
 
 /** Hostile CSS text this file itself feeds to `previewHazard` (D-118). Every host is `example.invalid`. */
 export const HOSTILE_TEXT = [
@@ -175,6 +178,11 @@ interface Scenario {
   steps: LiveStep[];
   pixels?: boolean;
   hover?: boolean;
+  /**
+   * Text the shown CSS must contain after the steps have run. It proves the steps took effect: the preview and the
+   * blank page are built from the same shown text, so a step that did nothing would still make them agree.
+   */
+  expectCss?: string[];
 }
 interface DragEntry {
   field: string;
@@ -631,6 +639,20 @@ test('every css preview fixture file names a built page and uses only known step
       for (const step of scenario.steps) {
         expect(KNOWN_ACTIONS, `${file} uses an unknown step action "${step.action}"`).toContain(step.action);
       }
+      if (scenario.expectCss !== undefined) {
+        expect(
+          Array.isArray(scenario.expectCss) &&
+            scenario.expectCss.length > 0 &&
+            scenario.expectCss.every((text) => typeof text === 'string' && text.length > 0),
+          `${file}'s scenario "${scenario.label}" has an expectCss that is not a non-empty list of non-empty strings`,
+        ).toBe(true);
+      }
+      if (PHASE_15_GENERATOR_IDS.includes(data.id)) {
+        expect(
+          scenario.expectCss,
+          `${file}'s scenario "${scenario.label}" has no expectCss, so nothing proves its steps took effect`,
+        ).toBeDefined();
+      }
     }
 
     const pageSource = pageIds.has(data.id)
@@ -682,6 +704,11 @@ for (const { data: fixture } of FIXTURES) {
 
       const snapshot = await extractPreviewSnapshot(page);
       expect(snapshot.css.length, 'the shown CSS text is empty').toBeGreaterThan(0);
+      for (const needle of scenario.expectCss ?? []) {
+        expect(snapshot.css, `the shown CSS lacks "${needle}": the scenario's steps did not take effect`).toContain(
+          needle,
+        );
+      }
 
       const styleElCount = await page.evaluate(
         () =>

@@ -1,33 +1,88 @@
 {
   "id": "cubic-bezier",
   "drag": [
-    { "field": "p1", "steps": [{ "action": "select", "field": "preset", "value": "custom" }] },
-    { "field": "p2", "steps": [{ "action": "select", "field": "preset", "value": "custom" }] }
+    {
+      "field": "p1",
+      "steps": [
+        {
+          "action": "select",
+          "field": "preset",
+          "value": "custom"
+        }
+      ]
+    },
+    {
+      "field": "p2",
+      "steps": [
+        {
+          "action": "select",
+          "field": "preset",
+          "value": "custom"
+        }
+      ]
+    }
   ],
   "scenarios": [
     {
       "label": "ease",
-      "steps": [{ "action": "select", "field": "preset", "value": "ease" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "select",
+          "field": "preset",
+          "value": "ease"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1)"]
     },
     {
       "label": "custom overshoot",
       "steps": [
-        { "action": "select", "field": "preset", "value": "custom" },
-        { "action": "fill", "field": "p1-x", "value": "0.34" },
-        { "action": "fill", "field": "p1-y", "value": "-0.56" },
-        { "action": "fill", "field": "p2-x", "value": "0.64" },
-        { "action": "fill", "field": "p2-y", "value": "0" }
+        {
+          "action": "select",
+          "field": "preset",
+          "value": "custom"
+        },
+        {
+          "action": "fill",
+          "field": "p1-x",
+          "value": "0.34"
+        },
+        {
+          "action": "fill",
+          "field": "p1-y",
+          "value": "-0.56"
+        },
+        {
+          "action": "fill",
+          "field": "p2-x",
+          "value": "0.64"
+        },
+        {
+          "action": "fill",
+          "field": "p2-y",
+          "value": "0"
+        }
       ],
-      "pixels": true
+      "pixels": true,
+      "expectCss": ["animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1)"]
     },
     {
       "label": "back in over three seconds",
       "steps": [
-        { "action": "select", "field": "preset", "value": "back-in" },
-        { "action": "fill", "field": "duration", "value": "3" }
+        {
+          "action": "select",
+          "field": "preset",
+          "value": "back-in"
+        },
+        {
+          "action": "fill",
+          "field": "duration",
+          "value": "3"
+        }
       ],
-      "pixels": true
+      "pixels": true,
+      "expectCss": ["animation-timing-function: cubic-bezier(0.36, 0, 0.66, -0.56)", "animation-duration: 3s"]
     }
   ]
 }

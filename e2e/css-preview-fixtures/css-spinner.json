@@ -3,33 +3,75 @@
   "scenarios": [
     {
       "label": "ring",
-      "steps": [{ "action": "radio", "field": "type", "value": "ring" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "radio",
+          "field": "type",
+          "value": "ring"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["@keyframes spin", "border-top-color: #1d4ed8"]
     },
     {
       "label": "dual ring",
-      "steps": [{ "action": "radio", "field": "type", "value": "dual-ring" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "radio",
+          "field": "type",
+          "value": "dual-ring"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["@keyframes spin", "border-left-color: transparent"]
     },
     {
       "label": "dots",
-      "steps": [{ "action": "radio", "field": "type", "value": "dots" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "radio",
+          "field": "type",
+          "value": "dots"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["@keyframes bounce", "animation-delay: 0.333s"]
     },
     {
       "label": "bars",
-      "steps": [{ "action": "radio", "field": "type", "value": "bars" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "radio",
+          "field": "type",
+          "value": "bars"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["@keyframes stretch", "animation-delay: 0.375s"]
     },
     {
       "label": "pulse",
-      "steps": [{ "action": "radio", "field": "type", "value": "pulse" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "radio",
+          "field": "type",
+          "value": "pulse"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["@keyframes pulse"]
     },
     {
       "label": "ripple",
-      "steps": [{ "action": "radio", "field": "type", "value": "ripple" }],
-      "pixels": true
+      "steps": [
+        {
+          "action": "radio",
+          "field": "type",
+          "value": "ripple"
+        }
+      ],
+      "pixels": true,
+      "expectCss": ["@keyframes ripple", "animation-delay: 0.5s"]
     }
   ]
 }

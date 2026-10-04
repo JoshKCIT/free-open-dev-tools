@@ -14,7 +14,8 @@
           "field": "output",
           "value": "gradient"
         }
-      ]
+      ],
+      "expectCss": ["repeating-linear-gradient(45deg"]
     },
     {
       "label": "horizontal stripes",
@@ -24,7 +25,8 @@
           "field": "pattern",
           "value": "stripes-horizontal"
         }
-      ]
+      ],
+      "expectCss": ["repeating-linear-gradient(180deg"]
     },
     {
       "label": "vertical stripes",
@@ -34,7 +36,8 @@
           "field": "pattern",
           "value": "stripes-vertical"
         }
-      ]
+      ],
+      "expectCss": ["repeating-linear-gradient(90deg"]
     },
     {
       "label": "checks",
@@ -44,7 +47,8 @@
           "field": "pattern",
           "value": "checks"
         }
-      ]
+      ],
+      "expectCss": ["repeating-conic-gradient"]
     },
     {
       "label": "dots",
@@ -54,7 +58,8 @@
           "field": "pattern",
           "value": "dots"
         }
-      ]
+      ],
+      "expectCss": ["radial-gradient(circle at 50% 50%"]
     },
     {
       "label": "grid",
@@ -64,7 +69,8 @@
           "field": "pattern",
           "value": "grid"
         }
-      ]
+      ],
+      "expectCss": ["repeating-linear-gradient(90deg", "repeating-linear-gradient(0deg"]
     },
     {
       "label": "zigzag",
@@ -74,7 +80,8 @@
           "field": "pattern",
           "value": "zigzag"
         }
-      ]
+      ],
+      "expectCss": ["linear-gradient(135deg", "linear-gradient(315deg"]
     },
     {
       "label": "cross-hatch",
@@ -84,7 +91,8 @@
           "field": "pattern",
           "value": "cross"
         }
-      ]
+      ],
+      "expectCss": ["repeating-linear-gradient(45deg", "repeating-linear-gradient(135deg"]
     }
   ]
 }
