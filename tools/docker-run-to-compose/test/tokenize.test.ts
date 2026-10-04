@@ -3,6 +3,7 @@ import {
   DockerRunError,
   MAX_INPUT_LENGTH,
   MAX_SHOWN,
+  meta,
   parseDockerCommand,
   readDockerCommand,
   tokenizeDockerCommand,
@@ -293,4 +294,26 @@ it('a dollar sign straight before a double quote is dropped, as Bash reads a loc
   const open = refusal(`docker run -e ${D}${Q2}A=b nginx`);
   expect(open.message).toBe('This double-quoted string is never closed.');
   expect(open.column).toBe(16);
+});
+
+it('unquoted braces, an asterisk and a tilde user are kept as written because nothing is expanded, and the limits say so', () => {
+  const words = tokenizeDockerCommand('docker run -e A={a,b} -v ~user/x:/y --label *.x=1 -p {80,81}:80 nginx');
+  expect(words).toEqual([
+    'docker',
+    'run',
+    '-e',
+    'A={a,b}',
+    '-v',
+    '~user/x:/y',
+    '--label',
+    '*.x=1',
+    '-p',
+    '{80,81}:80',
+    'nginx',
+  ]);
+  const line = meta.limits.find((text) => text.includes('{a,b}'));
+  expect(line).toBeDefined();
+  expect(line).toContain('*');
+  expect(line).toContain('~user');
+  expect(line).toContain('no shell expansion');
 });

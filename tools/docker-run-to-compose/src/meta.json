@@ -15,6 +15,7 @@
     "The command is read as text and never run; no image is pulled and nothing is started.",
     "A paste holds one command: a line break outside quotes ends it, so a second command on a later line is refused (a backslash at the end of a line continues the command; blank lines and comments are fine). A half of a character pair (a lone surrogate) is refused.",
     "$NAME and ${NAME} are kept for Compose to fill in from its environment; $(pwd) becomes the current folder; any other command substitution is refused.",
+    "Nothing is expanded the way a shell would: unquoted braces such as {a,b}, an asterisk (*) and ~user are kept as written, so a command that relies on a shell to expand them will not mean the same here (no shell expansion, no globbing, no home folder lookup).",
     "Options with no Compose equivalent (for example --rm, --detach, --cidfile) are listed with the reason instead of being written.",
     "--link, --volumes-from and network addresses without a user-defined network need another service or network in the same file; they are listed, not written.",
     "Compose fills in variables in values but not in names: a network, log option, storage option, ulimit or GPU option name that holds a dollar sign is listed with a reason instead of being written as a key, and a volume source that is a variable is written as it is, so declare that volume under the top-level volumes key by hand.",
