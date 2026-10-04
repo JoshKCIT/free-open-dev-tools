@@ -531,7 +531,7 @@ class Conversion {
       const source = value.slice(0, colon);
       if (hasInterpolation(source)) this.variableVolume = true;
       const isDrive = source.length === 1 && (value[colon + 1] === '\\' || value[colon + 1] === '/');
-      if (!isDrive && isVolumeName(source)) this.topVolumes[source] = {};
+      if (!isDrive && isVolumeName(source)) this.topVolumes[source] = { name: source };
     }
     return 'volumes';
   }
@@ -653,7 +653,7 @@ class Conversion {
     if (Object.keys(image).length > 0) entry['image'] = image;
     this.push('volumes', entry);
     if (type === 'volume' && source !== null && hasInterpolation(source)) this.variableVolume = true;
-    if (type === 'volume' && source !== null && isVolumeName(source)) this.topVolumes[source] = {};
+    if (type === 'volume' && source !== null && isVolumeName(source)) this.topVolumes[source] = { name: source };
     for (const key of lost) {
       this.noEquivalent.push({
         option: `--mount ${key}`,
@@ -946,6 +946,11 @@ class Conversion {
     if (interpolated) {
       hints.push(
         `Variables such as ${String.fromCharCode(36)}NAME are left for Compose to fill in from its environment or a .env file next to the Compose file.`,
+      );
+    }
+    if (Object.keys(this.topVolumes).length > 0) {
+      hints.push(
+        'Each named volume is declared with name: set to the same name, so Compose uses the volume docker run used. Without it Compose would make a new, empty volume with the project name in front of the name.',
       );
     }
     if (this.variableVolume) {

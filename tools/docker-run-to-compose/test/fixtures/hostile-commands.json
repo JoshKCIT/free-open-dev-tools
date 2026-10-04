@@ -48,5 +48,12 @@
   "docker run -e 'X=a<U+FFFF>b' nginx",
   "docker run -e 'X=a<U+007F>b' nginx",
   "docker run -e 'X=a<U+0080>b' nginx",
-  "docker run -e 'X=a<U+009F>b' nginx"
+  "docker run -e 'X=a<U+009F>b' nginx",
+  "docker run --network $NET nginx",
+  "docker run --network ${NET:-mynet} --network-alias a nginx",
+  "docker run --log-opt 'k$x=1' --log-opt max-size=1m nginx",
+  "docker run --storage-opt k$X=1 nginx",
+  "docker run --ulimit a$B=1 nginx",
+  "docker run -v pgdata:/var/lib/postgresql/data postgres:16",
+  "docker run -v my.vol:/x --mount type=volume,source=other,target=/o nginx"
 ]

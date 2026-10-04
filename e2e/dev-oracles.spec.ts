@@ -250,7 +250,8 @@ const DOCKER_RECORDED: { command: string; yaml: string }[] = [
         '    ports:',
         '      - "127.0.0.1:5432:5432"',
         'volumes:',
-        '  pgdata: {}',
+        '  pgdata:',
+        '    name: "pgdata"',
       ].join('\n') + '\n',
   },
   {
@@ -327,7 +328,8 @@ const DOCKER_RECORDED: { command: string; yaml: string }[] = [
         '      - "--appendonly"',
         '      - "yes"',
         'volumes:',
-        '  redis-data: {}',
+        '  redis-data:',
+        '    name: "redis-data"',
       ].join('\n') + '\n',
   },
   {
@@ -375,7 +377,8 @@ const DOCKER_RECORDED: { command: string; yaml: string }[] = [
         '    tmpfs:',
         '      - "/run"',
         'volumes:',
-        '  data: {}',
+        '  data:',
+        '    name: "data"',
       ].join('\n') + '\n',
   },
   {

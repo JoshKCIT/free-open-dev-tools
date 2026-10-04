@@ -632,7 +632,7 @@
     },
     {
       "command": "docker run -v data:/var/lib/x:ro nginx",
-      "yamlSha256": "e17dda2ac622b8304fadb208fa196f808f86a1ffac4c5f3e333deaf80e699886",
+      "yamlSha256": "3ea6f3ef86285cfa20d9be69bda27c2124d2262cab644c85489106fffa7d6419",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -670,7 +670,7 @@
     },
     {
       "command": "docker run -d --name db -e POSTGRES_PASSWORD=example -e POSTGRES_DB=app -v pgdata:/var/lib/postgresql/data -p 127.0.0.1:5432:5432 postgres:16",
-      "yamlSha256": "f7aeb160bd5e04b7e4ca3c3aac2f180da133638b7ecafdbe9f4a5b5bb1a8e11e",
+      "yamlSha256": "50dd6a76b920d074aba14bb7b88aba4f30ed4d1cbd1045d66aa24fa040dbb5a5",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -694,7 +694,7 @@
     },
     {
       "command": "docker run -d \\\n  --name cache \\\n  --restart=always \\\n  -p 6379:6379 \\\n  -v redis-data:/data \\\n  redis:7 redis-server --appendonly yes",
-      "yamlSha256": "10a97fc0462d4321811afd28fce9918facbe0a1d574a6cd6e05f6b87e7c3f3ce",
+      "yamlSha256": "4d154328e175d64a9362a34a69e2fb41bf89c6c1868a2c534c786e1c7f4ef251",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -706,7 +706,7 @@
     },
     {
       "command": "docker run --mount type=volume,source=data,target=/data,volume-nocopy --mount type=bind,source=$(pwd)/conf,target=/etc/app,readonly --tmpfs /run alpine",
-      "yamlSha256": "c47bb90a3c410906c1d61466361cd6ac21ae39a4c914696c82a7c802db9fd506",
+      "yamlSha256": "b977b8fb1256d1586fa9c50c67d5c703e15458b300b5ca8aaedb3c6268e96839",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -726,7 +726,7 @@
     },
     {
       "command": "docker run -v 2024-10-04:/data nginx",
-      "yamlSha256": "57b7dc0a9e7570ccf9434ba30f67270a16bb704b853b725c3579ce1740756147",
+      "yamlSha256": "859b1bc28ca957e80cc1f0fdcd7dc366eefc51d32829508a4a6b2ba6436f7313",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -762,7 +762,7 @@
     },
     {
       "command": "docker run -v 1_000:/data nginx",
-      "yamlSha256": "8a38a6063e56b3db18dfff8336a42f3e3260a15a6f99710d22797e4a9e98c239",
+      "yamlSha256": "f0c09188d050ed30456554b008cdb1731677816483b871003ec95ae32a18487b",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -780,7 +780,7 @@
     },
     {
       "command": "docker run -v 0b11:/data nginx",
-      "yamlSha256": "3f7d24fa61d346a331ac104762bf276874b7f65a970d984b8cccdeb20a2645b4",
+      "yamlSha256": "f00736641eb9e1c1261cc8381a1d42c514c7c3784f4b9f700d57ef0d01189082",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -798,7 +798,7 @@
     },
     {
       "command": "docker run -v 0x_1f:/data nginx",
-      "yamlSha256": "5f2661eb0eebfd7daf39d899e954005768bfa13c8892a8b5b0d44b19f176ed8c",
+      "yamlSha256": "abc9367ca3a5a3047356d1378ae4c441c6bf0ee9157656837fca2c5eb0bcad77",
       "compose": "accepted",
       "dockerRun": "accepted"
     },
@@ -1015,6 +1015,48 @@
     {
       "command": "docker run -e 'X=a<U+009F>b' nginx",
       "yamlSha256": "acf4d377b293afadcee46a38c05cbf84e6f832bdec9c579923596ed03091ef91",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network $NET nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --network ${NET:-mynet} --network-alias a nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --log-opt 'k$x=1' --log-opt max-size=1m nginx",
+      "yamlSha256": "2d278b40e303af698137dfa47a977c429608937f88b0f87fa5abfa690ba4f73d",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --storage-opt k$X=1 nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run --ulimit a$B=1 nginx",
+      "yamlSha256": "143888fdf4fdc0517afcddbca10eabbb47567964790f95040bd65eef1e101e98",
+      "compose": "accepted",
+      "dockerRun": "refused: invalid argument \"a$B=1\" for \"--ulimit\" flag: invalid ulimit type: a$B"
+    },
+    {
+      "command": "docker run -v pgdata:/var/lib/postgresql/data postgres:16",
+      "yamlSha256": "30c0527d35e5b0d393f8f05315ad2cec4b95c8e2e4354a0bec1874feb2c35785",
+      "compose": "accepted",
+      "dockerRun": "accepted"
+    },
+    {
+      "command": "docker run -v my.vol:/x --mount type=volume,source=other,target=/o nginx",
+      "yamlSha256": "7e067a426dc76a749b1be9219c072b9e396570b6a3672e97edfdd96c5c44b789",
       "compose": "accepted",
       "dockerRun": "accepted"
     }

@@ -18,6 +18,7 @@
     "Options with no Compose equivalent (for example --rm, --detach, --cidfile) are listed with the reason instead of being written.",
     "--link, --volumes-from and network addresses without a user-defined network need another service or network in the same file; they are listed, not written.",
     "Compose fills in variables in values but not in names: a network, log option, storage option, ulimit or GPU option name that holds a dollar sign is listed with a reason instead of being written as a key, and a volume source that is a variable is written as it is, so declare that volume under the top-level volumes key by hand.",
+    "A named volume is declared with name: set to its own name, so Compose uses the volume docker run used instead of making a new, empty one with the project name in front of it; delete the name line if you want a separate volume for each Compose project.",
     "Files named by --env-file and --label-file must exist when Compose runs.",
     "Only docker run and docker container run are read; docker options placed before the word run, a shell pipeline and anything else a shell would run are refused.",
     "At most the first 1,000 rows of the options table and the first 200 items of each list are shown; the counts above them cover every option.",

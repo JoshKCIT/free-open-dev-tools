@@ -87,7 +87,8 @@ const RECORDED: Recorded[] = [
       '    ports:',
       '      - "127.0.0.1:5432:5432"',
       'volumes:',
-      '  pgdata: {}',
+      '  pgdata:',
+      '    name: "pgdata"',
       '',
     ].join(LF),
   },
@@ -170,7 +171,8 @@ const RECORDED: Recorded[] = [
       '      - "--appendonly"',
       '      - "yes"',
       'volumes:',
-      '  redis-data: {}',
+      '  redis-data:',
+      '    name: "redis-data"',
       '',
     ].join(LF),
   },
@@ -217,7 +219,8 @@ const RECORDED: Recorded[] = [
       '    tmpfs:',
       '      - "/run"',
       'volumes:',
-      '  data: {}',
+      '  data:',
+      '    name: "data"',
       '',
     ].join(LF),
   },
@@ -323,7 +326,12 @@ it('named volumes and user networks are declared at the top level and storage op
   const volumes = convertDockerRun(
     'docker run -v data:/var/lib/data -v my.vol:/x:ro -v ./rel:/r -v /abs:/a -v ~/home:/h -v /anon --mount type=volume,source=other,target=/o nginx',
   );
-  expect(volumes.document['volumes']).toEqual({ data: {}, 'my.vol': {}, other: {} });
+  // Each is declared with its own name, so Compose reuses the volume docker run made instead of a project-prefixed new one.
+  expect(volumes.document['volumes']).toEqual({
+    data: { name: 'data' },
+    'my.vol': { name: 'my.vol' },
+    other: { name: 'other' },
+  });
   expect(at(volumes.document, 'services.nginx.volumes')).toEqual([
     'data:/var/lib/data',
     'my.vol:/x:ro',
