@@ -65,9 +65,24 @@ export function checkPasteSize(text: string): void {
   }
 }
 
-/** True when the first line of the text holds a tab outside a pair of quotes, so the rows are tab separated. */
+/** The start of the first line that has anything on it, past blank lines and lines of only spaces and tabs. */
+function firstRealLine(text: string, from: number): number {
+  let lineStart = from;
+  for (let i = from; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+    if (unit === 10 || unit === 13) lineStart = i + 1;
+    else if (unit !== 32 && unit !== 9) return lineStart;
+  }
+  return text.length;
+}
+
+/**
+ * True when the first line that has anything on it holds a tab outside a pair of quotes, so the rows are tab separated.
+ * Blank lines and lines of only spaces and tabs before it are skipped.
+ */
 function firstLineHasTab(text: string, from: number): boolean {
   let quoted = false;
+  from = firstRealLine(text, from);
   for (let i = from; i < text.length; i++) {
     const unit = text.charCodeAt(i);
     if (unit === 34) quoted = !quoted;
@@ -80,7 +95,7 @@ function firstLineHasTab(text: string, from: number): boolean {
 /**
  * Splits pasted text into rows of cells in one pass, as RFC 4180 describes: a value in double quotes may hold the
  * separator, line breaks and a doubled quote; a quote inside an unquoted value is kept as it is; rows end at a line feed,
- * a carriage return or both. The separator is a tab when the first line holds one outside quotes, otherwise a comma.
+ * a carriage return or both. The separator is a tab when the first line with anything on it holds one outside quotes, otherwise a comma.
  * Every cell is kept, so a row that ends in a separator ends in an empty cell. A line with nothing on it is skipped, and
  * a leading byte order mark is dropped. A value in quotes that is never closed, or that has text after its closing quote,
  * is refused with its row and column.

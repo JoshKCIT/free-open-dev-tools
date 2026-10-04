@@ -490,3 +490,23 @@ it('the documentation states the limits the code enforces', () => {
     'https://www.rfc-editor.org/rfc/rfc4180',
   ]);
 });
+
+it('a paste that starts with blank or white-space-only lines is read with the delimiter of its first real line', () => {
+  const tabbed = '\nMonth\tSales\nJan\t5\nFeb\t7';
+  expect(readRows(tabbed).delimiter).toBe('\t');
+  const chart = must(tabbed, BAR);
+  expect(chart.table.headers).toEqual(['Month', 'Sales']);
+  expect(chart.table.rows).toEqual([
+    ['Jan', '5'],
+    ['Feb', '7'],
+  ]);
+  // Several blank lines, a line of only spaces and a carriage-return line end all count as blank.
+  expect(readRows('\r\n  \n\n\t\nMonth\tSales\nJan\t5').delimiter).toBe('\t');
+  expect(readRows(String.fromCodePoint(0xfeff) + '\n\nMonth\tSales\nJan\t5').delimiter).toBe('\t');
+  // A tab at the start of the first real line is still a tab on that line.
+  expect(readRows('\n\tSales\nJan\t5').delimiter).toBe('\t');
+  // A first real line with only commas stays comma separated, whatever follows it.
+  expect(readRows('\nMonth,Sales\nJan\t5').delimiter).toBe(',');
+  // A leading blank line does not change a paste that has no tab.
+  expect(readRows('\n\nMonth,Sales\nJan,5').delimiter).toBe(',');
+});

@@ -4,7 +4,7 @@
   "summary": "Paste a table and get a bar, line or pie chart as SVG or PNG with a text description for screen readers.",
   "about": "Pasted rows become a bar, line or pie chart drawn as SVG by this package's own code, with a title, axis labels and a text description that screen readers can use. Put the labels in the first column and one or more columns of numbers after it, separated by commas or tabs. The chart can be copied or downloaded as SVG, or as a PNG that the page draws from the same SVG; the data is also shown as a table, so nothing depends on seeing the picture.",
   "supports": [
-    "Comma or tab separated rows, with the quoting rules of RFC 4180 (a value in double quotes may hold commas, line breaks and doubled quotes); the delimiter is a tab when the first line holds one, otherwise a comma",
+    "Comma or tab separated rows, with the quoting rules of RFC 4180 (a value in double quotes may hold commas, line breaks and doubled quotes); the delimiter is a tab when the first line with anything on it holds one (blank lines before it are skipped), otherwise a comma",
     "An optional header row that names the label column and each series",
     "Bar charts and line charts with one to eight series, and pie charts from the first number column",
     "A title, a horizontal and a vertical axis label, a legend and value labels on the marks",
