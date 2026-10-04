@@ -374,6 +374,74 @@ describe('lockfileImpact', () => {
         dev: ['(the entry itself)'],
       });
     });
+
+    it('excuses each of the seven stylesheet and minifier peers vite lists, by name', () => {
+      for (const peer of ['sass', 'sass-embedded', 'less', 'stylus', 'sugarss', 'lightningcss', 'terser']) {
+        const swap = (text) => text.replaceAll('sass', peer);
+        const impact = lockfileImpact(swap(beforeLock()), swap(afterLock()));
+        expect(impact.everything, peer).toBeUndefined();
+        expect([...impact.importers.keys()], peer).toEqual(['tools/styles']);
+        expect(impact.optionalPeers.declaredBy, peer).toEqual(['vite@6.0.0']);
+      }
+    });
+
+    it('still reaches vite users when vite gains an optional peer that is not one of those seven', () => {
+      // vite does declare yaml and tsx as optional peers, but a tool adding one is a real change to what vite runs with.
+      for (const peer of ['yaml', 'tsx', 'jiti']) {
+        const swap = (text) => text.replaceAll('sass', peer);
+        const impact = lockfileImpact(swap(beforeLock()), swap(afterLock()));
+        expect(impact.importers.get('apps/web'), peer).toEqual({
+          runtime: ['plugin-react', 'runner', 'vite'],
+          dev: [],
+        });
+        expect(impact.optionalPeers, peer).toBeUndefined();
+      }
+    });
+
+    describe('a package other than vite', () => {
+      // jsdom declares canvas as an optional peer, and with canvas present it implements <canvas> differently, so a
+      // tool that adds canvas changes what every user of jsdom runs against.
+      const jsdomEntry =
+        '  jsdom@29.1.1:\n    resolution: {integrity: sha512-j}\n    peerDependencies:\n      canvas: ^3.0.0\n    peerDependenciesMeta:\n      canvas:\n        optional: true\n\n';
+      const canvasEntry = '  canvas@3.0.0:\n    resolution: {integrity: sha512-c}\n';
+      const user = (path, jsdom, extra = {}) =>
+        `  ${path}:\n    dependencies:\n      jsdom:\n        specifier: ^29.1.1\n        version: ${jsdom}\n` +
+        Object.entries(extra)
+          .map(([n, v]) => `      ${n}:\n        specifier: ^${v}\n        version: ${v}\n`)
+          .join('') +
+        '\n';
+      const jsdomBefore = lock({
+        importers: user('apps/web', '29.1.1') + user('tools/a', '29.1.1') + user('tools/b', '29.1.1'),
+        packages: jsdomEntry,
+        snapshots: '  jsdom@29.1.1: {}\n',
+      });
+      const jsdomAfter = lock({
+        importers:
+          user('apps/web', '29.1.1(canvas@3.0.0)') +
+          user('tools/a', '29.1.1(canvas@3.0.0)') +
+          user('tools/b', '29.1.1(canvas@3.0.0)') +
+          user('tools/c', '29.1.1(canvas@3.0.0)', { canvas: '3.0.0' }),
+        packages: jsdomEntry + canvasEntry,
+        snapshots:
+          '  jsdom@29.1.1(canvas@3.0.0):\n    optionalDependencies:\n      canvas: 3.0.0\n\n  canvas@3.0.0: {}\n',
+      });
+
+      it('reaches every user of jsdom when jsdom gains canvas', () => {
+        const impact = lockfileImpact(jsdomBefore, jsdomAfter);
+        expect(impact.everything).toBeUndefined();
+        expect([...impact.importers.keys()].sort()).toEqual(['apps/web', 'tools/a', 'tools/b', 'tools/c']);
+        expect(impact.importers.get('tools/a')).toEqual({ runtime: ['jsdom'], dev: [] });
+        expect(impact.importers.get('apps/web')).toEqual({ runtime: ['jsdom'], dev: [] });
+        expect(impact.optionalPeers).toBeUndefined();
+      });
+
+      it('reaches every user of jsdom when jsdom loses canvas', () => {
+        const impact = lockfileImpact(jsdomAfter, jsdomBefore);
+        // The tool that added canvas is gone from the new lockfile; every user of jsdom that is left is still reached.
+        expect([...impact.importers.keys()]).toEqual(expect.arrayContaining(['apps/web', 'tools/a', 'tools/b']));
+        expect(impact.optionalPeers).toBeUndefined();
+      });
+    });
   });
 });
 

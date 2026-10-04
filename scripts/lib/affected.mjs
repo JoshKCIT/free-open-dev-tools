@@ -390,7 +390,21 @@ export function parseLockfile(text) {
 // every vite snapshot, and everything that depends on vite, with sass in its key:
 // `vite@6.4.3(terser@5.51.2)` becomes `vite@6.4.3(sass@1.103.1)(terser@5.51.2)`.
 // Nothing about vite changed, and a page that never imports a stylesheet builds
-// the same. The functions below recognise exactly that and nothing wider.
+// the same.
+//
+// An optional peer is not harmless in general: it changes what the package does
+// when it is present (jsdom with canvas implements <canvas> differently, for one).
+// So this is an allowlist of (declaring package, peer) pairs, in
+// EXCUSED_OPTIONAL_PEERS below: vite with the stylesheet compilers and the
+// minifier it loads only when a page asks for them. A pair counts only when the
+// package's own entry also marks that peer `optional: true`. Any other optional
+// peer appearing or going away, for any package, is a real dependency change and
+// reaches everything that uses the package.
+
+/** Package name -> the optional peers whose appearing or going away is not a change to it. */
+const EXCUSED_OPTIONAL_PEERS = new Map([
+  ['vite', new Set(['sass', 'sass-embedded', 'less', 'stylus', 'sugarss', 'lightningcss', 'terser'])],
+]);
 
 const SNAPSHOT_DEP_GROUPS = new Set(['dependencies', 'optionalDependencies']);
 const withoutSuffix = (ref) => ref.replace(/\(.*$/, '');
@@ -467,9 +481,10 @@ function suffixPeers(key) {
  * when all of these hold:
  *  - both keys are the same package at the same version, and the package's own
  *    entry is byte for byte the same before and after;
- *  - every peer added or removed is marked optional by that package, or by a
- *    package below it that passes the same test (vite's optional sass shows up
- *    in the key of vite-node, which depends on vite but has no peers itself);
+ *  - every peer added or removed is one that package marks optional and that
+ *    is on its list in EXCUSED_OPTIONAL_PEERS, or one that a package below it
+ *    passes the same test for (vite's optional sass shows up in the key of
+ *    vite-node, which depends on vite but has no peers itself);
  *  - no peer, and no other dependency, changed version;
  *  - the rest of the snapshot's text is the same, and each dependency or peer
  *    whose key differs is itself such a pair.
@@ -485,7 +500,8 @@ function optionalPeerPairs(a, b, roots, banned) {
     if (base !== withoutSuffix(y)) return null;
     const entry = a.entries.get(`packages:${base}`);
     if (entry === undefined || entry !== b.entries.get(`packages:${base}`)) return null;
-    const optional = optionalPeerNames(entry);
+    const excused = EXCUSED_OPTIONAL_PEERS.get(refName(base));
+    const optional = new Set([...optionalPeerNames(entry)].filter((name) => excused?.has(name)));
     const was = a.entries.get(`snapshots:${x}`);
     const now = b.entries.get(`snapshots:${y}`);
     if (was === undefined || now === undefined) return null;
