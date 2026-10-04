@@ -77,7 +77,7 @@ export function checkSizes(text: string): void {
     if (trimmed === '') return;
     if (countCharacters(trimmed) > MAX_NAME_CHARACTERS) {
       throw new IdnConverterError(
-        `Line ${number} is longer than ${withCommas(MAX_NAME_CHARACTERS)} characters. The limit for one name is ${withCommas(MAX_NAME_CHARACTERS)} characters because no domain name is anywhere near that long.`,
+        `This line is longer than ${withCommas(MAX_NAME_CHARACTERS)} characters. The limit for one name is ${withCommas(MAX_NAME_CHARACTERS)} characters because no domain name is anywhere near that long.`,
         number,
       );
     }

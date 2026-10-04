@@ -301,7 +301,9 @@ it('inputs over the limits are refused before parsing', () => {
   // One version: 256 characters are read (and found not to be a version), 257 are refused naming the line.
   expect(checkVersions('1.0.0\n' + 'a'.repeat(256), '*', NO_OPTIONS).rows[1]?.result).toBe('not a valid version');
   const longError = refusal(() => checkVersions('1.0.0\n' + 'a'.repeat(257), '*', NO_OPTIONS));
-  expect(longError.message).toContain('Line 2');
+  // The page writes the line number in front of this sentence ("Line 2: ..."), so the sentence itself must not repeat it.
+  expect(longError.message).toMatch(/^This line is longer than 256 characters/);
+  expect(longError.message).not.toMatch(/Line \d/);
   expect(longError.message).toContain('256 characters');
   expect(longError.line).toBe(2);
   expect(longError.message).not.toContain('aaaa');

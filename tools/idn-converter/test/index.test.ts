@@ -99,6 +99,9 @@ it('inputs over the limits are refused before conversion', () => {
   expect(longLine).toBeInstanceOf(IdnConverterError);
   expect((longLine as IdnConverterError).line).toBe(3);
   expect((longLine as IdnConverterError).message).toContain('4,096');
+  // The page writes the line number in front of this sentence ("Line 3: ..."), so the sentence itself must not repeat it.
+  expect((longLine as IdnConverterError).message).toMatch(/^This line is longer than 4,096 characters\./);
+  expect((longLine as IdnConverterError).message).not.toMatch(/Line \d/);
   expect((longLine as IdnConverterError).message).not.toContain(MARKER);
   expect((longLine as IdnConverterError).message).not.toContain('FODT');
   expect(counter.calls).toBe(0);

@@ -61,7 +61,7 @@ export function checkSizes(versions: string, range: string): void {
     if (trimmed === '') return;
     if (trimmed.length > MAX_VERSION_CHARACTERS) {
       throw new SemverCheckerError(
-        `Line ${number} is longer than ${MAX_VERSION_CHARACTERS} characters, which is the longest version npm's semver package reads.`,
+        `This line is longer than ${MAX_VERSION_CHARACTERS} characters, which is the longest version npm's semver package reads.`,
         number,
       );
     }
