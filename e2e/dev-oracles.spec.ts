@@ -1082,6 +1082,53 @@ test('idn-converter: the page converts IdnaTestV2 rows the same way in every bro
   }
 });
 
+/** The block whose label starts with the text, and its text, as the visitor can copy it. */
+function idnBlock(page: Page, label: string) {
+  return outputArea(page).locator('.output-block', { has: page.locator('.output-label', { hasText: label }) });
+}
+
+test('idn-converter: the copied and downloaded list holds the real names, joiner characters included', async ({
+  page,
+}) => {
+  // Two valid names that hold a zero width non-joiner (U+200C) and a zero width joiner (U+200D), as xn-- names. The
+  // expected text is built from code points at run time, never typed as a character or as escape text.
+  const persian = String.fromCodePoint(0x646, 0x627, 0x645, 0x647, 0x200c, 0x627, 0x6cc) + '.example';
+  const devanagari = String.fromCodePoint(0x915, 0x94d, 0x200d, 0x937) + '.example';
+  const escapeText = String.fromCharCode(92) + 'u{';
+  await openTool(page, 'idn-converter');
+  await page.locator('input[name="direction"][value="to-unicode"]').click();
+  await fillAndHold(page, 'names', 'xn--mgba3gch31f060k.example\nxn--11b2ezcw70k.example');
+
+  const list = idnBlock(page, 'Converted names, one per line');
+  await expect(list).toBeVisible({ timeout: 15_000 });
+  const expected = `${persian}\n${devanagari}`;
+  // What is shown in the list block is the real text, so it is also what Copy hands over.
+  await expect(async () => {
+    expect(await list.locator('pre').textContent()).toBe(expected);
+  }).toPass({ timeout: 10_000 });
+
+  // The Download button of the same block writes the same bytes.
+  const downloadPromise = page.waitForEvent('download');
+  await list.getByRole('button', { name: 'Download', exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('domains.txt');
+  const path = await download.path();
+  expect(readFileSync(path, 'utf8')).toBe(expected);
+  expect(readFileSync(path, 'utf8').includes(escapeText)).toBe(false);
+
+  // The escape-annotated forms are still shown, in the table, for reading; the block that is not to be copied says so.
+  const cells = await readTableCells(page);
+  expect(cells[0]?.[3]).toBe(
+    `${String.fromCodePoint(0x646, 0x627, 0x645, 0x647)}${escapeText}200C}${String.fromCodePoint(0x627, 0x6cc)}.example`,
+  );
+  expect(cells[1]?.[3]).toBe(
+    `${String.fromCodePoint(0x915, 0x94d)}${escapeText}200D}${String.fromCodePoint(0x937)}.example`,
+  );
+  await expect(outputArea(page).locator('.output-label', { hasText: 'Each name in both forms' })).toContainText(
+    'do not copy',
+  );
+});
+
 // --- Date & Duration Calculator (16-08): ISO week numbers and ISO 8601 durations against this browser's Temporal ---
 
 /** The parts of Temporal the date calculator tests use. Temporal ships in Chromium, Firefox and WebKit; Node 22 has none. */

@@ -1,7 +1,6 @@
 import {
   FAMILY_WORDS,
   IdnConverterError,
-  MAX_NAME_CHARACTERS,
   convertNames,
   meta,
   visible,
@@ -15,8 +14,6 @@ import { defineTool, str, type OutputBlock, type ToolIssue, type ToolResult, typ
 const MAX_ROWS_SHOWN = 1_000;
 /** How many explanations are listed. */
 const MAX_PROBLEMS_SHOWN = 200;
-/** How many characters of one converted name the list shows. */
-const MAX_NAME_SHOWN = MAX_NAME_CHARACTERS * 4;
 /** What the table shows where a name has no converted form. */
 const NOT_CONVERTED = 'not converted';
 
@@ -44,7 +41,7 @@ function outputsFor(rows: ConvertedName[]): ToolResult {
   const outputs: OutputBlock[] = [
     {
       kind: 'table',
-      label: 'Each name in both forms',
+      label: 'Each name in both forms (invisible characters are shown as escapes, so do not copy from this table)',
       table: {
         headers: ['Line', 'Name as pasted', 'ASCII form', 'Unicode form', 'Result'],
         rows: rows
@@ -93,8 +90,10 @@ function outputsFor(rows: ConvertedName[]): ToolResult {
   if (valid.length > 0) {
     outputs.push({
       kind: 'code',
-      label: 'Converted names, one per line',
-      value: valid.map((row) => visible(convertedForm(row), MAX_NAME_SHOWN)).join('\n'),
+      label: 'Converted names, one per line (copy this list)',
+      // The real names, never the escape text of the table: a valid name can hold a zero width joiner or non-joiner, and a
+      // copy or download that wrote its escape instead would be a different, invalid name.
+      value: valid.map(convertedForm).join('\n'),
       download: 'domains.txt',
     });
   }
@@ -102,7 +101,7 @@ function outputsFor(rows: ConvertedName[]): ToolResult {
     kind: 'note',
     tone: 'warn',
     value:
-      'Conversion does not judge look-alike characters: a name that converts can still imitate another name, so compare the ASCII form and the code points, not how a name looks. The mapping data is Unicode 17; a name that uses a code point added in Unicode 18 is judged by the Unicode 17 table. Label numbers count the labels of the name after UTS #46 has mapped it, from 1, and invisible, control and direction-changing characters are shown as escapes.',
+      'Conversion does not judge look-alike characters: a name that converts can still imitate another name, so compare the ASCII form and the code points, not how a name looks. The mapping data is Unicode 17; a name that uses a code point added in Unicode 18 is judged by the Unicode 17 table. Label numbers count the labels of the name after UTS #46 has mapped it, from 1, and invisible, control and direction-changing characters are shown as escapes in the table and the explanations, never in the list of converted names, which holds the real names.',
   });
   return {
     outputs,
