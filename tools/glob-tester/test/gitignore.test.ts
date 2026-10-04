@@ -242,3 +242,88 @@ it('a later line that matches the same path decides it and logs/ matches only th
   expect(file.ignored).toBe(false);
   expect(file.decidedBy).toEqual({ kind: 'none' });
 });
+
+it('line numbers stay exact across many rules, and when a re-included directory sits above the path', () => {
+  const decisions = (text: string, paths: string[]): GitignoreRow[] => gitignoreRows(text, paths.join('\n'));
+
+  // 200 rules whose answers are known by construction: line k names f<k>.txt for k up to 150, so every file's line is its
+  // own number, whichever group of rules the search reaches it in (groups hold 32 rules, so 32, 33, 64 and 65 cross).
+  const lines: string[] = [];
+  for (let k = 1; k <= 150; k++) lines.push(`f${k}.txt`);
+  lines.push('*.log'); // 151
+  lines.push('!keep.log'); // 152
+  for (let k = 153; k <= 197; k++) lines.push(`d${k}/`); // line k is the directory d<k>/
+  lines.push('!f9.txt'); // 198
+  lines.push('f5.txt'); // 199
+  lines.push('d160/inner.txt'); // 200
+  const many = lines.join('\n');
+  const paths = [
+    'f1.txt',
+    'f32.txt',
+    'f33.txt',
+    'f64.txt',
+    'f65.txt',
+    'f150.txt',
+    'f9.txt',
+    'f5.txt',
+    'x.log',
+    'keep.log',
+    'd153/',
+    'd197/',
+    'd153',
+    'd160/x.txt',
+    'd160/inner.txt',
+    'none.txt',
+    'sub/f1.txt',
+  ];
+  const rows = decisions(many, paths);
+  const lineOf = (index: number): number | undefined => {
+    const by = (rows[index] as GitignoreRow).decidedBy;
+    return by.kind === 'rule' || by.kind === 'parent' ? by.line : undefined;
+  };
+  expect([0, 1, 2, 3, 4, 5].map(lineOf)).toEqual([1, 32, 33, 64, 65, 150]);
+  // f9.txt is named by line 9 and re-included by line 198: the last decides. f5.txt is named again on line 199.
+  expect(rows[6]).toMatchObject({
+    ignored: false,
+    decidedBy: { kind: 'rule', line: 198, pattern: '!f9.txt', negated: true },
+  });
+  expect(rows[7]).toMatchObject({
+    ignored: true,
+    decidedBy: { kind: 'rule', line: 199, pattern: 'f5.txt', negated: false },
+  });
+  expect(rows[8]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 151 } });
+  expect(rows[9]).toMatchObject({ ignored: false, decidedBy: { kind: 'rule', line: 152, negated: true } });
+  expect(rows[10]).toMatchObject({
+    ignored: true,
+    isDirectory: true,
+    decidedBy: { kind: 'rule', line: 153, pattern: 'd153/' },
+  });
+  expect(rows[11]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 197 } });
+  expect(rows[12]).toMatchObject({ ignored: false, isDirectory: false, decidedBy: { kind: 'none' } });
+  // Under an excluded directory the directory decides, even where a later line names the file itself.
+  expect(rows[13]).toMatchObject({
+    ignored: true,
+    decidedBy: { kind: 'parent', directory: 'd160/', line: 160, pattern: 'd160/' },
+  });
+  expect(rows[14]).toMatchObject({ ignored: true, decidedBy: { kind: 'parent', directory: 'd160/', line: 160 } });
+  expect(rows[15]).toMatchObject({ ignored: false, decidedBy: { kind: 'none' } });
+  // f1.txt in a folder is still named by line 1 (no slash in the rule, so it matches at any depth).
+  expect(rows[16]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 1 } });
+
+  // Everything at the top is excluded (line 60), then the src directory is re-included (line 70), with the file rule
+  // on line 5. A rule group that holds line 60 but not line 70 would see src/ as excluded and wrongly name line 60 for
+  // src/x.dat; the answer is line 5, as git reads it (the directory is back in, so the file rule counts).
+  const tail: string[] = [];
+  for (let k = 1; k <= 100; k++)
+    tail.push(k === 5 ? 'src/*.dat' : k === 60 ? '/*' : k === 70 ? '!/src/' : `zz${k}.tmp`);
+  const reincluded = decisions(tail.join('\n'), ['src/x.dat', 'src/other.txt', 'top.txt', 'lib/y.txt', 'src/']);
+  expect(reincluded[0]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 5, pattern: 'src/*.dat' } });
+  expect(reincluded[1]).toMatchObject({ ignored: false, decidedBy: { kind: 'none' } });
+  expect(reincluded[2]).toMatchObject({ ignored: true, decidedBy: { kind: 'rule', line: 60, pattern: '/*' } });
+  expect(reincluded[3]).toMatchObject({ ignored: true, decidedBy: { kind: 'parent', directory: 'lib/', line: 60 } });
+  expect(reincluded[4]).toMatchObject({
+    ignored: false,
+    isDirectory: true,
+    decidedBy: { kind: 'rule', line: 70, negated: true },
+  });
+});

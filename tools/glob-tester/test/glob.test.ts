@@ -4,6 +4,24 @@ import { globRows } from '../src/glob';
 import { meta as toolMeta } from '../src/index';
 import { pathspecCorpus } from './corpus';
 
+// Every call the tool makes to picomatch is recorded (and passed on unchanged), so a test can see the options it was
+// given. picomatch decides what to do about backslashes from the `windows` option, and when that option is missing it
+// asks the platform: the tool must never leave it out.
+const picomatchCalls = vi.hoisted(() => ({ matcher: [] as unknown[], makeRe: [] as unknown[] }));
+
+vi.mock('picomatch', async (importOriginal) => {
+  const real = (await importOriginal<{ default: typeof picomatch }>()).default;
+  const wrapped = ((glob: string, options?: Parameters<typeof real>[1]) => {
+    picomatchCalls.matcher.push(options);
+    return real(glob, options);
+  }) as typeof real;
+  wrapped.makeRe = (glob, options) => {
+    picomatchCalls.makeRe.push(options);
+    return real.makeRe(glob, options);
+  };
+  return { default: wrapped };
+});
+
 // Expected values: (1) git's own `git ls-files -- ":(glob)<pattern>"` answers on the recorded pathspec corpus, for the
 // patterns made only of *, ?, brackets and ** that picomatch and git both define; (2) the examples published in the
 // picomatch README at its 4.0.7 tag (https://github.com/micromatch/picomatch/blob/4.0.7/README.md); (3) Bash 5.2.37
@@ -139,12 +157,9 @@ it('glob mode agrees with git pathspec glob matching on the recorded corpus exce
 });
 
 it('glob mode matches each path as picomatch 4.0.7 does with windows false whatever the platform reports', () => {
-  // picomatch reads navigator.platform when windows is not given; with windows false the platform must change nothing.
-  const platforms = ['Win32', 'Linux x86_64', 'MacIntel'];
   const BACKSLASH = String.fromCharCode(92);
   const cases: { pattern: string; paths: string[]; expected: boolean[] }[] = [
-    // A backslash escapes the star, so only the literal text a*b matches. If a backslash were a separator (windows on)
-    // the pattern would read as a/*b and a/xb would match.
+    // A backslash escapes the star, so only the literal text a*b matches.
     { pattern: 'a' + BACKSLASH + '*b', paths: ['a*b', 'a/xb', 'axb'], expected: [true, false, false] },
     // Examples from the picomatch README at its 4.0.7 tag.
     { pattern: '*.js', paths: ['abcd', 'a.js', 'a.md', 'a/b.js'], expected: [false, true, false, false] },
@@ -154,22 +169,43 @@ it('glob mode matches each path as picomatch 4.0.7 does with windows false whate
     { pattern: '!(foo).!(bar)', paths: ['foo.bar'], expected: [false] },
     { pattern: '!(!(foo)).!(!(bar))', paths: ['foo.bar'], expected: [true] },
     { pattern: 'a/*', paths: ['a/b', 'a/b/c'], expected: [true, false] },
+    { pattern: 'src/**/*.js', paths: ['src/a.js', 'src/x/y/a.js', 'lib/a.js'], expected: [true, true, false] },
   ];
+  // The regular expression picomatch writes for a posix path, asked for with windows false explicitly. This is what
+  // the tool must show on every platform.
+  const posix = cases.map((c) => picomatch.makeRe(c.pattern, { windows: false, dot: false, nocase: false }).source);
 
-  for (const platform of platforms) {
+  // Why the flag matters: when picomatch is left to find the platform out, a Windows machine reads a backslash in a
+  // path as a separator and a Linux machine does not. If this stops being true the premise is gone.
+  const slashPath = 'a' + BACKSLASH + 'b';
+  vi.stubGlobal('navigator', { platform: 'Win32' });
+  expect(picomatch('a/*', { dot: false })(slashPath)).toBe(true);
+  vi.stubGlobal('navigator', { platform: 'Linux x86_64' });
+  expect(picomatch('a/*', { dot: false })(slashPath)).toBe(false);
+  vi.unstubAllGlobals();
+
+  for (const platform of ['Win32', 'Linux x86_64', 'MacIntel']) {
     vi.stubGlobal('navigator', { platform });
-    for (const c of cases) {
-      const { rows } = globRows(c.pattern, c.paths.join('\n'), { dot: false, nocase: false });
+    picomatchCalls.matcher.length = 0;
+    picomatchCalls.makeRe.length = 0;
+    cases.forEach((c, index) => {
+      const { rows, regexes } = globRows(c.pattern, c.paths.join('\n'), { dot: false, nocase: false });
       expect(
         rows.map((r) => r.matched),
         `${platform}: ${c.pattern}`,
       ).toEqual(c.expected);
+      expect(regexes[0]?.source, `${platform}: regular expression of ${c.pattern}`).toBe(posix[index]);
+    });
+    // Every call picomatch received, for the matcher and for the regular expression, pinned the platform to posix.
+    expect(picomatchCalls.matcher.length).toBe(cases.length);
+    expect(picomatchCalls.makeRe.length).toBe(cases.length);
+    for (const options of [...picomatchCalls.matcher, ...picomatchCalls.makeRe]) {
+      expect((options as { windows?: boolean }).windows, platform).toBe(false);
     }
-    // The regular expression is also the one picomatch writes for a posix path: a slash only, never a backslash class.
-    const { regexes } = globRows('+(a|aa)', 'a', { dot: false, nocase: false });
-    expect(regexes[0]?.source).toBe(String.raw`^(?:\+\(a\|aa\))$`);
-    const star = globRows('*.js', 'a.js', { dot: false, nocase: false }).regexes[0]?.source ?? '';
-    expect(star).not.toContain(BACKSLASH + BACKSLASH);
+    // A published vector: a quantified extglob that is risky is read literally by default.
+    expect(globRows('+(a|aa)', 'a', { dot: false, nocase: false }).regexes[0]?.source).toBe(
+      String.raw`^(?:\+\(a\|aa\))$`,
+    );
   }
   vi.unstubAllGlobals();
 });
