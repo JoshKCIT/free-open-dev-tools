@@ -15,8 +15,9 @@ import {
  *  - Keys and composition events are read only by listeners on the capture box itself, never on the document or the
  *    window, so nothing is read while focus is anywhere else.
  *  - The history lives in this module's memory, is bounded by the package's KeyHistory (200 rows), is emptied by
- *    Clear history and is forgotten when the capture area leaves the page. Nothing is logged, stored, put in the
- *    address, the title or a file name, or sent.
+ *    Clear history and is forgotten the moment the capture area leaves the page (a MutationObserver on the document
+ *    body notices that the area is no longer connected, which happens when the visitor follows a link to another tool,
+ *    because the site never reloads). Nothing is logged, stored, put in the address, the title or a file name, or sent.
  *  - Cells are written with textContent only, and the shown text has control, invisible and direction-changing characters escaped.
  *  - Tab, Shift+Tab and Escape are never prevented, so focus can always leave the box (no keyboard trap).
  *  - The box is an ordinary editable text area: an input method only starts in an editable element.
@@ -278,6 +279,22 @@ function build(): Area {
   });
 
   container.append(heading, warning, box, clear, scroller);
+
+  // Forget everything the moment the area is no longer on the page: clear the history, empty the box and the table the
+  // area still holds, drop the area and stop watching. The visitor leaving the tool through the site's own links removes
+  // the area without touching this module, so this is how what was typed stops being held at once, not on a later visit.
+  // An area that was only replaced (it is not the current one) just stops watching.
+  const watcher = new MutationObserver(() => {
+    if (container.isConnected) return;
+    watcher.disconnect();
+    if (!area || area.container !== container) return;
+    history.clear();
+    box.value = '';
+    body.replaceChildren();
+    area = null;
+  });
+  watcher.observe(document.body, { childList: true, subtree: true });
+
   return { container, box, scroller, body, emptyRow, dataRows: 0 };
 }
 

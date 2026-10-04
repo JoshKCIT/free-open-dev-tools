@@ -52,6 +52,8 @@ declare global {
     __FODT_KEY_BOX__?: Element | null;
     /** How many key downs reached the document, counted by the test's own listener. */
     __FODT_DOCUMENT_KEYS__?: number;
+    /** The capture box and the history table body as they were before the visitor left the tool. */
+    __FODT_KEY_OLD__?: { box: HTMLTextAreaElement; body: HTMLElement };
   }
 }
 
@@ -574,6 +576,47 @@ test('keyboard-event-viewer: the capture box survives a field edit, Run and Rese
   await box.focus();
   await page.keyboard.press('b');
   await expect.poll(async () => (await historyRows(page)).length).toBe(9);
+});
+
+test('keyboard-event-viewer: leaving the tool inside the site forgets the keys and the box at once, and a return finds both empty', async ({
+  page,
+}) => {
+  const box = await openViewer(page);
+  await page.keyboard.type('abc');
+  await expect(box).toHaveValue('abc');
+  await expect.poll(async () => (await historyRows(page)).length).toBe(9);
+  // Keep hold of the capture box and the body of the history table, to look at them after the page has left them.
+  await page.evaluate(() => {
+    window.__FODT_KEY_OLD__ = {
+      box: document.querySelector('textarea[aria-label="Key capture box"]') as HTMLTextAreaElement,
+      body: document.querySelector('#fodt-key-capture tbody') as HTMLElement,
+    };
+  });
+
+  // Another tool, reached through the site's own links (the single page app never reloads).
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click();
+  await page.locator('a[href$="/tools/base64"]').first().click();
+  await expect(page).toHaveURL(/\/tools\/base64$/);
+  await expect(page.locator('#fodt-key-capture')).toHaveCount(0);
+
+  // The old box and table were emptied when the area left the page, not when a visitor comes back: what was typed is
+  // no longer held by anything this page keeps.
+  await expect
+    .poll(() => page.evaluate(() => window.__FODT_KEY_OLD__?.box.value ?? 'missing'), { timeout: 5000 })
+    .toBe('');
+  expect(await page.evaluate(() => window.__FODT_KEY_OLD__?.body.children.length ?? -1)).toBe(0);
+
+  // Back at the tool, the box and the history are empty.
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click();
+  await page.locator('a[href$="/tools/keyboard-event-viewer"]').first().click();
+  await expect(captureBox(page)).toBeVisible();
+  await expect(captureBox(page)).toHaveValue('');
+  expect(await historyRows(page)).toEqual([['No key events yet.']]);
+  await expect(page.locator('#fodt-key-capture')).toHaveCount(1);
+  // And the new box reads keys as before.
+  await captureBox(page).focus();
+  await page.keyboard.press('q');
+  await expect.poll(async () => (await historyRows(page)).length).toBe(3);
 });
 
 /** Everything the recorder has seen since it was started. */
