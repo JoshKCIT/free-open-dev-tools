@@ -94,6 +94,9 @@ export const HOSTILE_FIELD_VALUES = [
   '-moz-binding:url(https://example.invalid/x.xml#exploit)',
 ];
 
+/** What no generated CSS may contain whatever is typed into a field. */
+const FORBIDDEN_CSS_TOKENS = ['url(', '@import', 'image-set(', 'example.invalid'];
+
 /** Numbers embedded in a computed style string are compared within this tolerance. */
 export const NUMERIC_TOLERANCE = 0.01;
 
@@ -1027,6 +1030,17 @@ for (const { data: fixture } of FIXTURES) {
         if (await el.isVisible()) await el.fill('1e999');
       }
       await settle(page);
+
+      // The CSS shown after this value, not only after the last one: every hostile string is checked.
+      const shown = page.locator('.css-preview pre.output').first();
+      if ((await shown.count()) > 0) {
+        const text = (await shown.innerText({ timeout: 5_000 })).toLowerCase();
+        for (const token of FORBIDDEN_CSS_TOKENS) {
+          expect(text, `${fixture.id}'s CSS contains "${token}" after typing ${JSON.stringify(hostile)}`).not.toContain(
+            token.toLowerCase(),
+          );
+        }
+      }
     }
 
     const nonDataRequests = requests.filter((u) => !u.startsWith('data:') && !u.startsWith('blob:'));
@@ -1039,7 +1053,7 @@ for (const { data: fixture } of FIXTURES) {
       .first()
       .innerText()
       .catch(() => '');
-    for (const token of ['url(', '@import', 'image-set(', 'example.invalid']) {
+    for (const token of FORBIDDEN_CSS_TOKENS) {
       expect(cssText.toLowerCase(), `${fixture.id}'s CSS contains "${token}"`).not.toContain(token.toLowerCase());
     }
 
