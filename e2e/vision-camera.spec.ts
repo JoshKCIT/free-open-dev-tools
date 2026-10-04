@@ -50,6 +50,8 @@ declare global {
     __fodtReleaseCamera?: () => void;
     /** The page time at which the first worker said it was ready. */
     __fodtWorkerReadyAt?: number;
+    /** Installed in the listening page of installReportingCamera: hands a camera event to the test. */
+    __fodtReportTrack?: (kind: string) => void;
   }
 }
 
@@ -284,6 +286,105 @@ async function installWorkerReadyProbe(page: Page): Promise<void> {
       }
     } as typeof Worker;
   });
+}
+
+/**
+ * Like installScriptedCamera (a blank canvas stream), but every stream and every call of a track's stop() is also announced
+ * on a BroadcastChannel, and a second page of the same context and origin hears the announcements and hands them to the
+ * test. A page that is being left cannot report to the test itself (a function exposed to Chromium is not delivered during
+ * pagehide, while a BroadcastChannel message is, in Chromium, Firefox and WebKit), so the second page stays open and
+ * reports for it. Only the page's own call of stop() on a track is announced: the browser ending a page's tracks by itself
+ * is not.
+ */
+async function installReportingCamera(page: Page, reports: string[]): Promise<void> {
+  const listener = await page.context().newPage();
+  await listener.exposeFunction('__fodtReportTrack', (kind: string) => {
+    reports.push(kind);
+  });
+  await listener.goto(rel('/about'));
+  await listener.evaluate(() => {
+    const channel = new BroadcastChannel('fodt-camera-test');
+    channel.onmessage = (event) => window.__fodtReportTrack?.(String(event.data));
+  });
+  await page.addInitScript((streams) => {
+    const holder: { getUserMedia?: unknown } | undefined =
+      typeof MediaDevices !== 'undefined' && typeof MediaDevices.prototype.getUserMedia === 'function'
+        ? MediaDevices.prototype
+        : (navigator.mediaDevices ?? undefined);
+    if (!holder || typeof holder.getUserMedia !== 'function') return;
+    window.__fodtCameraCalls = 0;
+    window.__fodtCameraHooked = true;
+    const canStream = () => streams && typeof HTMLCanvasElement.prototype.captureStream === 'function';
+    window.__fodtCameraStreams = canStream();
+    const channel = new BroadcastChannel('fodt-camera-test');
+    const replacement = async () => {
+      window.__fodtCameraCalls = (window.__fodtCameraCalls ?? 0) + 1;
+      if (!canStream())
+        throw new DOMException('This browser cannot make a canvas stream for the test.', 'NotFoundError');
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 48;
+      const g = canvas.getContext('2d')!;
+      const draw = () => {
+        g.fillStyle = '#ffffff';
+        g.fillRect(0, 0, 64, 48);
+      };
+      draw();
+      const timer = setInterval(draw, 100);
+      const stream = canvas.captureStream(10);
+      channel.postMessage('start');
+      for (const track of stream.getTracks()) {
+        const stop = track.stop.bind(track);
+        track.stop = () => {
+          clearInterval(timer);
+          channel.postMessage('stop');
+          stop();
+        };
+      }
+      return stream;
+    };
+    Object.defineProperty(holder, 'getUserMedia', { value: replacement, configurable: true, writable: true });
+  }, suppliesStreams());
+}
+
+/**
+ * Makes the reader's background worker fail, from before any page script runs. With `error`, the first worker raises an
+ * error event as soon as it is built (a worker whose module cannot be evaluated does). With `silent`, the page never hears
+ * the worker's ready message (as if the module never finished loading), and the page time of the swallowed message is kept in
+ * window.__fodtWorkerReadyAt.
+ */
+async function installFailingReaderWorker(page: Page, mode: 'error' | 'silent'): Promise<void> {
+  await page.addInitScript((how) => {
+    const OriginalWorker = window.Worker;
+    window.Worker = class extends OriginalWorker {
+      constructor(scriptURL: string | URL, options?: WorkerOptions) {
+        super(scriptURL, options);
+        if (how === 'error') {
+          setTimeout(() => this.dispatchEvent(new ErrorEvent('error', { message: 'probe' })), 0);
+          return;
+        }
+        const add = this.addEventListener.bind(this) as (...args: unknown[]) => void;
+        this.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, opts?: unknown) => {
+          if (type !== 'message' || typeof listener !== 'function') {
+            add(type, listener, opts);
+            return;
+          }
+          add(
+            type,
+            (event: MessageEvent) => {
+              const kind = (event.data as { type?: unknown } | null)?.type;
+              if (typeof kind === 'string' && kind.endsWith('-ready')) {
+                window.__fodtWorkerReadyAt = Date.now();
+                return;
+              }
+              listener.call(this, event);
+            },
+            opts,
+          );
+        }) as typeof this.addEventListener;
+      }
+    } as typeof Worker;
+  }, mode);
 }
 
 /** Everything the recorder has seen since it was started. */
@@ -626,17 +727,24 @@ test('qr-barcode-reader: Cancel stops the camera at once, removes the view and e
   expect(await trackSummary(page)).toEqual({ started: 2, ended: 2, late: 0, allEnded: true });
 });
 
-test('qr-barcode-reader: leaving the page stops the camera and ends every track', async ({ page }) => {
-  await installScriptedCamera(page, null);
+test('qr-barcode-reader: really leaving the page, by a navigation, stops the camera and ends every track', async ({
+  page,
+}) => {
+  // The page is gone after a navigation, so what it did is announced to a second page of the same site while it happens (see
+  // installReportingCamera). Only the page's own call of stop() on a track is announced: the browser ending a page's tracks
+  // by itself is not. The old form of this test dispatched a made-up pagehide event, which proves the listener exists but not
+  // that a real departure fires it.
+  const reports: string[] = [];
+  await installReportingCamera(page, reports);
   await installCameraHook(page);
   await openScriptedReader(page);
   await chooseCameraAndRun(page);
   await expect(liveView(page)).toBeVisible();
-  await expect.poll(async () => (await trackSummary(page)).started).toBe(1);
+  await expect.poll(() => reports.filter((kind) => kind === 'start').length).toBe(1);
 
-  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-  await expect(liveView(page)).toHaveCount(0, { timeout: 1_000 });
-  expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
+  await page.goto('about:blank');
+  await expect.poll(() => reports.filter((kind) => kind === 'stop').length, { timeout: 5_000 }).toBe(1);
+  expect(reports).toEqual(['start', 'stop']);
 });
 
 test('qr-barcode-reader: with no code in view the camera stops after 30 seconds with a plain message', async ({
@@ -647,16 +755,17 @@ test('qr-barcode-reader: with no code in view the camera stops after 30 seconds 
   await installWorkerReadyProbe(page);
   await page.clock.install();
   await openScriptedReader(page);
+  const pressedAt = await pageNow(page);
   await chooseCameraAndRun(page);
   await expect(liveView(page)).toBeVisible();
 
-  // The 30 second timer starts when the reader worker is ready. Page time is frozen a little after that, then moved by
-  // exact amounts: still running while no more than 29.5 seconds can have passed on the timer, stopped once at least
-  // 30.1 seconds have.
+  // The 30 second timer starts when the camera's stream arrives, which is after Run was pressed and before the reader
+  // worker is ready. Page time is frozen a little after the worker is ready, then moved by exact amounts: still running
+  // while no more than 29.5 seconds can have passed on the timer (counted from the press), stopped once at least 30.1
+  // seconds have (counted from the moment the worker was seen ready).
   await expect.poll(() => page.evaluate(() => window.__fodtWorkerReadyAt ?? 0), { timeout: 20_000 }).toBeGreaterThan(0);
-  const readyAt = await page.evaluate(() => window.__fodtWorkerReadyAt!);
   await page.waitForTimeout(150);
-  const used = await freezeClock(page, readyAt, await pageNow(page));
+  const used = await freezeClock(page, pressedAt, await pageNow(page));
   const limit = 30_000;
 
   const early = Math.max(0, limit - 500 - used.atMost);
@@ -744,4 +853,149 @@ test('qr-barcode-reader: the Firefox fake camera device starts and every track e
   } finally {
     await browser.close();
   }
+});
+
+test('qr-barcode-reader: Cancel while the permission prompt is open stops a stream that arrives afterwards and shows no view', async ({
+  page,
+}) => {
+  await installHeldCamera(page);
+  await installCameraHook(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
+  await expect.poll(() => page.evaluate(() => window.__fodtCameraCalls ?? 0)).toBe(1);
+  await expect(cancelButtonOf(page)).toBeVisible();
+  await cancelButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('Cancelled before finishing');
+  await expect(page.locator('video')).toHaveCount(0);
+
+  // The prompt is answered now: the stream that arrives is stopped at once, and no view or session starts for it.
+  await page.evaluate(() => window.__fodtReleaseCamera!());
+  await expect.poll(async () => (await trackSummary(page)).late).toBe(1);
+  expect(await trackSummary(page)).toEqual({ started: 0, ended: 0, late: 1, allEnded: true });
+  await page.waitForTimeout(300);
+  await expect(page.locator('video')).toHaveCount(0);
+  await expect(outputArea(page)).toContainText('Cancelled before finishing');
+});
+
+test('qr-barcode-reader: switching the source while the permission prompt is open stops a stream that arrives afterwards', async ({
+  page,
+}) => {
+  await installHeldCamera(page);
+  await installCameraHook(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
+  await expect.poll(() => page.evaluate(() => window.__fodtCameraCalls ?? 0)).toBe(1);
+  // An edit abandons the run, as Cancel does.
+  await setSource(page, 'file');
+  await expect(page.locator('video')).toHaveCount(0);
+
+  await page.evaluate(() => window.__fodtReleaseCamera!());
+  await expect.poll(async () => (await trackSummary(page)).late).toBe(1);
+  expect(await trackSummary(page)).toEqual({ started: 0, ended: 0, late: 1, allEnded: true });
+  await page.waitForTimeout(300);
+  await expect(page.locator('video')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__fodtCameraCalls ?? 0)).toBe(1);
+});
+
+test('qr-barcode-reader: a reader worker that fails to start ends the camera at once with its plain message and every track ends', async ({
+  page,
+}) => {
+  await installScriptedCamera(page, null);
+  await installFailingReaderWorker(page, 'error');
+  await installCameraHook(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
+  await expect(outputArea(page).locator('.issue-list')).toContainText('The background task could not start.', {
+    timeout: 15_000,
+  });
+  await expect(page.locator('video')).toHaveCount(0);
+  expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
+});
+
+test('qr-barcode-reader: a reader worker that never reports ready is given up after 10 seconds, and the camera and every track end', async ({
+  page,
+}) => {
+  await installScriptedCamera(page, null);
+  await installFailingReaderWorker(page, 'silent');
+  await installCameraHook(page);
+  await page.clock.install();
+  await openScriptedReader(page);
+  const pressedAt = await pageNow(page);
+  await chooseCameraAndRun(page);
+  await expect(liveView(page)).toBeVisible();
+
+  // The worker's 10 second start limit begins when it is built, after the stream arrived and the view played: after
+  // Run was pressed and before the ready message that the page was never allowed to hear. Page time is frozen a little
+  // after that, then moved by exact amounts: no message while no more than 9.5 seconds can have passed, the message once
+  // at least 10.1 seconds have.
+  await expect.poll(() => page.evaluate(() => window.__fodtWorkerReadyAt ?? 0), { timeout: 20_000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(150);
+  const used = await freezeClock(page, pressedAt, await pageNow(page));
+  const limit = 10_000;
+
+  const early = Math.max(0, limit - 500 - used.atMost);
+  await page.clock.runFor(early);
+  await expect(outputArea(page)).not.toContainText('did not start');
+  expect((await trackSummary(page)).ended).toBe(0);
+
+  await page.clock.runFor(Math.max(1, limit + 100 - used.atLeast - early));
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'The background task did not start within 10 seconds. Reload the page and try again.',
+    { timeout: 5_000 },
+  );
+  await expect(liveView(page)).toHaveCount(0);
+  expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
+});
+
+test('qr-barcode-reader: a camera view that cannot play ends the camera with its plain message and every track ends', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = () =>
+      Promise.reject(new DOMException('The probe refuses to play.', 'NotAllowedError'));
+  });
+  await installScriptedCamera(page, null);
+  await installCameraHook(page);
+  await openScriptedReader(page);
+  await chooseCameraAndRun(page);
+  await expect(outputArea(page).locator('.issue-list')).toContainText('The camera could not be started.', {
+    timeout: 15_000,
+  });
+  await expect(page.locator('video')).toHaveCount(0);
+  expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
+});
+
+test('qr-barcode-reader: a camera view that never starts playing still stops after 30 seconds from the moment the stream arrived', async ({
+  page,
+}) => {
+  // The view's play() never settles, as a camera that opens but never delivers a frame. Nothing after play() runs, so the
+  // limit can only be the one armed when the stream arrived.
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = () => new Promise<void>(() => undefined);
+  });
+  await installScriptedCamera(page, null);
+  await installCameraHook(page);
+  await page.clock.install();
+  await openScriptedReader(page);
+  const pressedAt = await pageNow(page);
+  await chooseCameraAndRun(page);
+  await expect.poll(async () => (await trackSummary(page)).started).toBe(1);
+  await expect(liveView(page)).toBeVisible();
+
+  // Page time is frozen a little after the stream arrived, then moved by exact amounts: still running while no more than
+  // 29.5 seconds can have passed on the timer (counted from the press), stopped once at least 30.1 seconds have (counted
+  // from the moment the arrival was seen).
+  const used = await freezeClock(page, pressedAt, await pageNow(page));
+  const limit = 30_000;
+
+  const early = Math.max(0, limit - 500 - used.atMost);
+  await page.clock.runFor(early);
+  await expect(liveView(page)).toBeVisible();
+  await expect(outputArea(page)).not.toContainText('Stopped after');
+  expect((await trackSummary(page)).ended).toBe(0);
+
+  await page.clock.runFor(Math.max(1, limit + 100 - used.atLeast - early));
+  await expect(outputArea(page).locator('.issue-list')).toContainText('Stopped after 30 seconds', { timeout: 5_000 });
+  await expect(liveView(page)).toHaveCount(0);
+  expect(await trackSummary(page)).toEqual({ started: 1, ended: 1, late: 0, allEnded: true });
 });

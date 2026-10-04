@@ -3,6 +3,8 @@
  * visitor chose Camera and pressed Run), shows the live view inside the Output panel while it looks for a code, reads one
  * frame at a time in the reader worker, and ends the camera on EVERY way out -- a code was read, Cancel, an edit or a new
  * run (both abort the run), the page being left, the 15 second start limit, the 30 second session limit, or any error.
+ * The session limit is one timer armed the moment the camera's stream arrives, so the camera is always stopped within 30
+ * seconds of opening however long the view takes to play or the reader's worker takes to start.
  * Ending means every track is stopped, the view is removed and the worker is closed, all in the same turn as the event
  * that ended it, so a new camera can never be requested while an old one is still running.
  *
@@ -189,6 +191,11 @@ export function scanWithCamera(
       }
       stream = arrived;
       note('stream-started', stream.getTracks());
+      // The one overall limit of the session, armed now: a view whose play() never settles, or a worker that is slow to
+      // start, cannot keep the camera on past it.
+      limitTimer = setTimeout(() => {
+        end({ ok: false, error: new CameraScanError(CAMERA_SESSION_LIMIT_MESSAGE) });
+      }, CAMERA_SESSION_LIMIT_MS);
 
       const element = document.createElement('video');
       element.muted = true;
@@ -218,9 +225,6 @@ export function scanWithCamera(
         return;
       }
       session = opened;
-      limitTimer = setTimeout(() => {
-        end({ ok: false, error: new CameraScanError(CAMERA_SESSION_LIMIT_MESSAGE) });
-      }, CAMERA_SESSION_LIMIT_MS);
       frameTimer = setInterval(() => void tick(), CAMERA_FRAME_INTERVAL_MS);
     };
 
