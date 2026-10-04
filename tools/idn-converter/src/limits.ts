@@ -38,15 +38,32 @@ export function countCharacters(text: string): number {
 }
 
 /**
+ * A name with the white space around it taken off: only an ASCII space, a tab and a carriage return count as white space
+ * here. Any other character at an end of a name (a no-break space, an ideographic space, a line separator, a zero width
+ * space) stays in the name, so it is judged and shown as an escape instead of being dropped without a word.
+ */
+export function trimName(line: string): string {
+  let start = 0;
+  let end = line.length;
+  while (start < end && isEdgeSpace(line.charCodeAt(start))) start++;
+  while (end > start && isEdgeSpace(line.charCodeAt(end - 1))) end--;
+  return line.slice(start, end);
+}
+
+function isEdgeSpace(unit: number): boolean {
+  return unit === 0x20 || unit === 0x09 || unit === 0x0d;
+}
+
+/**
  * Reads a pasted text one line at a time: lines end at a line feed. Line numbers start at 1 and count every line, blank
- * ones included, so a number shown to the visitor is the number in what they pasted. A carriage return before a line feed
- * and a byte order mark at the start are white space, so the callers' `trim()` takes them off.
+ * ones included, so a number shown to the visitor is the number in what they pasted. A byte order mark at the very start
+ * of the text is dropped, and a carriage return before a line feed is taken off with the other ends by `trimName`.
  *
  * One pass with `indexOf`, no regular expression, no array of lines: a paste of many line feeds costs one visit each and
  * nothing is kept.
  */
 export function forEachLine(text: string, visit: (line: string, number: number) => void): void {
-  let start = 0;
+  let start = text.charCodeAt(0) === 0xfeff ? 1 : 0;
   let number = 1;
   for (;;) {
     const lineFeed = text.indexOf('\n', start);
@@ -73,7 +90,7 @@ export function checkSizes(text: string): void {
   }
   let names = 0;
   forEachLine(text, (line, number) => {
-    const trimmed = line.trim();
+    const trimmed = trimName(line);
     if (trimmed === '') return;
     if (countCharacters(trimmed) > MAX_NAME_CHARACTERS) {
       throw new IdnConverterError(

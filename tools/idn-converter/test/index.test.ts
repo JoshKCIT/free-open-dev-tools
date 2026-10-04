@@ -193,6 +193,28 @@ it('empty input gives no rows and blank lines are skipped while line numbers sta
   });
 });
 
+it('only an ASCII space, tab and carriage return are taken off the ends of a name, so a hidden character there is judged', () => {
+  // A no-break space, an ideographic space and a line separator are not white space here: each reaches the conversion,
+  // stays in the name as pasted, and the strict profile refuses it (a space is not allowed in a host name).
+  for (const hidden of [0xa0, 0x3000, 0x2028, 0x2003]) {
+    const rows = convertNames('example.com' + cp(hidden) + '\n' + cp(hidden) + 'example.com', STRICT_ASCII);
+    expect(rows.map((row) => row.line)).toEqual([1, 2]);
+    expect(rows.map((row) => row.input.length)).toEqual([12, 12]);
+    expect(rows.map((row) => row.valid)).toEqual([false, false]);
+    expect(rows.every((row) => row.problems.length > 0)).toBe(true);
+  }
+  // A line that holds nothing but such a character is a name, not a blank line, and is explained.
+  const alone = convertNames(cp(0xa0), STRICT_ASCII);
+  expect(alone).toHaveLength(1);
+  expect(alone[0]?.valid).toBe(false);
+  // An ASCII space, tab and carriage return around a name are still taken off, and a line of only those is blank.
+  const plain = convertNames(' \t example.com \t\r\n\t \r\n', STRICT_ASCII);
+  expect(plain.map((row) => [row.line, row.input, row.valid])).toEqual([[1, 'example.com', true]]);
+  // The size check counts a name the same way: 4,096 characters plus one hidden character is over the limit.
+  const over = thrown(() => convertNames('b'.repeat(MAX_NAME_CHARACTERS) + cp(0xa0), BROWSER_ASCII));
+  expect(over).toBeInstanceOf(IdnConverterError);
+});
+
 it('automatic direction goes to ASCII for a non-ASCII name, to Unicode for an xn-- name and shows both otherwise', () => {
   const rows = convertNames(
     ['b' + cp(0xfc) + 'cher.de', 'xn--bcher-kva.de', 'Example.COM', 'XN--BCHER-KVA.DE'].join('\n'),

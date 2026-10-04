@@ -2,7 +2,7 @@ import { toASCII, toUnicode } from 'tr46';
 import { IdnConverterError } from './errors';
 import { explainName } from './explain';
 import type { LabelProblem } from './explain';
-import { checkSizes, forEachLine } from './limits';
+import { checkSizes, forEachLine, trimName } from './limits';
 import { PROFILES } from './profiles';
 import type { Profile, ProfileId } from './profiles';
 
@@ -20,7 +20,7 @@ export interface ConvertOptions {
 export interface ConvertedName {
   /** The line of the pasted text the name is on, counting every line (blank ones too), from 1. */
   line: number;
-  /** The name as pasted, with surrounding white space taken off. */
+  /** The name as pasted, with surrounding ASCII spaces, tabs and carriage returns taken off. */
   input: string;
   /** How the name was judged. */
   direction: ResolvedDirection;
@@ -89,8 +89,8 @@ export function convertName(name: string, options: ConvertOptions, line = 1): Co
 }
 
 /**
- * Converts a pasted list of names, one per line. Blank lines are skipped, each name has the white space around it taken
- * off, and the line numbers count every line. The options are checked and the text is size-checked first, so a refused
+ * Converts a pasted list of names, one per line. Blank lines are skipped, each name has the ASCII spaces, tabs and carriage
+ * returns around it taken off (no other character is dropped: a no-break space at an end is judged with the name), and the line numbers count every line. The options are checked and the text is size-checked first, so a refused
  * paste is refused before anything is converted.
  */
 export function convertNames(text: string, options: ConvertOptions): ConvertedName[] {
@@ -99,7 +99,7 @@ export function convertNames(text: string, options: ConvertOptions): ConvertedNa
   checkSizes(text);
   const rows: ConvertedName[] = [];
   forEachLine(text, (lineText, number) => {
-    const name = lineText.trim();
+    const name = trimName(lineText);
     if (name === '') return;
     rows.push(convertName(name, options, number));
   });

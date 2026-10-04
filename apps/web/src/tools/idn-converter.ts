@@ -183,7 +183,6 @@ export default defineTool({
   ],
   run(values): ToolResult {
     const text = str(values, 'names');
-    if (text.trim() === '') return { outputs: [] };
     try {
       const rows = convertNames(text, { direction: directionOf(values), profile: profileOf(values) });
       if (rows.length === 0) return { outputs: [] };
