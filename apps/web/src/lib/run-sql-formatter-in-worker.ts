@@ -25,7 +25,11 @@ import type { SqlFormatterJobMessage, SqlFormatterWorkerMessage } from './worker
 import type { FormatSqlResult } from '@fodt/sql-formatter';
 import type { RunContext } from './tool-ui';
 
-/** The exact value this file enforces, same register as the regex, jsonpath and ts-to-js workers' own 1.5 second limit. */
+/**
+ * The exact value this file enforces, and the one its message states: 1.5 seconds. Other workers' limits differ: some
+ * also use 1.5 seconds, while the workers that run a larger engine moved to 10 seconds after the 2026-10-03 nightly
+ * full run showed a loaded machine pushing an ordinary job past 1.5 seconds.
+ */
 export const SQL_FORMATTER_TIME_LIMIT_MS = 1500;
 
 export const SQL_FORMATTER_TIME_LIMIT_MESSAGE =

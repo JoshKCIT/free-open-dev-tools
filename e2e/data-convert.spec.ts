@@ -7,88 +7,157 @@ import { test, expect, type Page } from '@playwright/test';
  * composes, so a large flat mapping's parse time grows quadratically with
  * its key count -- a large enough one could freeze the tab.
  * `apps/web/src/lib/run-data-convert-in-worker.ts` moves a YAML source's
- * parse into a worker and races it against the same 1.5 second time limit
- * `run-yaml-formatter-in-worker.ts` already proved for the identical risk
- * in yaml-formatter. JSON and TOML sources are unaffected and still run on
+ * parse into a worker and races it against the same 10 second time limit
+ * `run-yaml-formatter-in-worker.ts` uses for the identical risk in
+ * yaml-formatter. JSON and TOML sources are unaffected and still run on
  * the main thread.
+ *
+ * The limit is 10 seconds, not 1.5: the same yaml package and the same
+ * duplicate-key check made the 2026-10-03 nightly full run fail when a loaded
+ * runner pushed a realistic job past 1.5 seconds. Like
+ * `e2e/yaml-formatter.spec.ts`, the limit is proved with a worker that is
+ * never given its job (as if the engine were stuck inside one synchronous
+ * call) and a page clock that is moved, not with a runaway input: a flat
+ * mapping would need about 80,000 keys (an 880KB document; 6.8s at 40,000
+ * keys, 34s at 80,000 in Node), which a faster runner could still finish
+ * inside the limit.
  */
 const rel = (path: string) => path.replace(/^\//, '');
 
-/**
- * Sets a textarea's value through the native setter and dispatches one
- * `input` event, instead of Playwright's `locator.fill()`, which
- * `e2e/yaml-formatter.spec.ts` documents as routinely taking over a minute
- * on a value this size.
- */
-async function setLargeValue(page: Page, selector: string, value: string): Promise<void> {
-  await page.locator(selector).evaluate((el, v) => {
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!;
-    setter.call(el, v);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }, value);
+declare global {
+  interface Window {
+    /** How many workers the page has built, and the position (in construction order) of each one it has terminated. */
+    __FODT_DATA_CONVERT_WORKERS__?: number;
+    __FODT_DATA_CONVERT_TERMINATED__?: number[];
+  }
 }
 
 /**
- * A flat mapping with 40,000 keys, not 20,000: `e2e/yaml-formatter.spec.ts`
- * documents that a 20,000-key mapping (~1.75s on this project's own Windows
- * laptop) sat too close to the 1.5s limit and a faster machine parsed it
- * inside the limit, failing the test (commit 48c9a90). Parse time grows
- * with the square of the key count, so 40,000 keys stays well past the
- * limit on any plausibly faster runner.
+ * Installs a wrapper around the global Worker constructor, before any page
+ * script runs. The first worker built never receives its job (so the run
+ * stays in flight like a stuck engine); every later worker behaves normally,
+ * so the next run after a stop can be proven to work. Every construction is
+ * counted and every terminate() call is recorded by the position of the
+ * worker it ends.
  */
-function pathologicalSource(): string {
-  const lines: string[] = [];
-  for (let i = 0; i < 40_000; i++) lines.push(`k${i}: ${i}`);
-  return lines.join('\n') + '\n';
+async function installStuckFirstWorker(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const OriginalWorker = window.Worker;
+    window.__FODT_DATA_CONVERT_WORKERS__ = 0;
+    window.__FODT_DATA_CONVERT_TERMINATED__ = [];
+
+    class WrappedWorker {
+      inner: Worker;
+      index: number;
+      constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
+        this.inner = new OriginalWorker(scriptURL, workerOptions);
+        this.index = window.__FODT_DATA_CONVERT_WORKERS__ ?? 0;
+        window.__FODT_DATA_CONVERT_WORKERS__ = this.index + 1;
+      }
+      postMessage(...args: Parameters<Worker['postMessage']>): void {
+        if (this.index === 0) return;
+        this.inner.postMessage(...args);
+      }
+      addEventListener(...args: Parameters<Worker['addEventListener']>): void {
+        this.inner.addEventListener(...args);
+      }
+      removeEventListener(...args: Parameters<Worker['removeEventListener']>): void {
+        this.inner.removeEventListener(...args);
+      }
+      terminate(): void {
+        window.__FODT_DATA_CONVERT_TERMINATED__!.push(this.index);
+        this.inner.terminate();
+      }
+      dispatchEvent(event: Event): boolean {
+        return this.inner.dispatchEvent(event);
+      }
+    }
+
+    window.Worker = WrappedWorker as unknown as typeof Worker;
+  });
 }
 
-test('a huge flat YAML mapping is stopped with the time-limit message when converting, and the tab stays responsive', async ({
+const terminatedWorkers = (page: Page) => page.evaluate(() => window.__FODT_DATA_CONVERT_TERMINATED__ ?? []);
+const workerCount = (page: Page) => page.evaluate(() => window.__FODT_DATA_CONVERT_WORKERS__ ?? 0);
+
+/** Page time in milliseconds, read from the page itself so it follows the page clock. */
+const pageNow = (page: Page) => page.evaluate(() => Date.now());
+
+test('a YAML conversion still going at 10 seconds is stopped with the time-limit message, not before, and the tab stays responsive', async ({
   page,
 }) => {
+  await installStuckFirstWorker(page);
+  await page.clock.install();
   await page.goto(rel('/tools/data-convert'));
   await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
 
   await page.locator('#f-from').selectOption('yaml');
   await page.locator('#f-to').selectOption('json');
-  await setLargeValue(page, '#f-input', pathologicalSource());
 
-  // Sampled shortly after the debounced autoRun should have started the
-  // worker, but well before this tool's own 1.5s time limit could have
-  // fired -- this evaluate() round trip runs on the PAGE's own event loop,
-  // so it proves the tab stays responsive while parsing is stuck on the
-  // worker's own thread, not that parsing itself finished quickly.
-  await page.waitForTimeout(300);
-  const evalStart = Date.now();
-  await page.evaluate(() => performance.now());
-  expect(Date.now() - evalStart).toBeLessThan(500);
+  // Page time before the run is started: the run's own timer begins a little after this (the input debounce), so
+  // no more than this much page time has passed on it at any moment measured from here.
+  const before = await pageNow(page);
+  await page.locator('#f-input').fill('a: 1\n');
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
 
-  await expect(page.locator('section[aria-label="Output"] .issue-list')).toContainText('Stopped after 1.5 seconds', {
-    timeout: 10_000,
+  // Real time, not page time: the run's debounce has fired and its limit timer exists before the clock moves.
+  await page.waitForTimeout(800);
+
+  // 8 seconds into a stuck run: still running, no stop message, and the stuck worker is not yet ended. A limit left
+  // at 1.5 seconds would already have stopped it.
+  await page.clock.fastForward(Math.max(0, before + 8_000 - (await pageNow(page))));
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+  await expect(page.locator('section[aria-label="Output"]')).not.toContainText('Stopped after');
+  expect(await terminatedWorkers(page)).toEqual([]);
+
+  // 9.9 seconds in, at the most: still running. A limit that fired at 9 seconds would already have stopped it.
+  await page.clock.fastForward(Math.max(0, before + 9_900 - (await pageNow(page))));
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+  await expect(page.locator('section[aria-label="Output"]')).not.toContainText('Stopped after');
+  expect(await terminatedWorkers(page)).toEqual([]);
+
+  // 12 seconds in: stopped, with the plain message, and the timed-out worker has been terminated.
+  await page.clock.fastForward(Math.max(0, before + 12_000 - (await pageNow(page))));
+  await expect(page.locator('section[aria-label="Output"] .issue-list')).toContainText('Stopped after 10 seconds', {
+    timeout: 15_000,
   });
+  expect(await page.locator('section[aria-label="Output"] pre.output').count()).toBe(0);
+  expect(await terminatedWorkers(page)).toEqual([0]);
+
+  // The tab answers a script call within a second.
+  const answerStart = Date.now();
+  await page.evaluate(() => 1 + 1);
+  expect(Date.now() - answerStart).toBeLessThan(1_000);
 });
 
-test('after a huge flat YAML mapping is stopped, the next conversion runs normally', async ({ page }) => {
+test('after a YAML conversion is stopped, the next conversion runs normally in a new worker', async ({ page }) => {
+  await installStuckFirstWorker(page);
+  await page.clock.install();
   await page.goto(rel('/tools/data-convert'));
   await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
 
   await page.locator('#f-from').selectOption('yaml');
   await page.locator('#f-to').selectOption('json');
-  await setLargeValue(page, '#f-input', pathologicalSource());
-  await expect(page.locator('section[aria-label="Output"] .issue-list')).toContainText('Stopped after 1.5 seconds', {
-    timeout: 10_000,
+  await page.locator('#f-input').fill('a: 1\n');
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+  await page.waitForTimeout(800);
+  await page.clock.fastForward(12_000);
+  await expect(page.locator('section[aria-label="Output"] .issue-list')).toContainText('Stopped after 10 seconds', {
+    timeout: 15_000,
   });
 
   // A genuinely broken worker (the exact failure mode this test guards
   // against: a bundler setting once silently dropped a worker's startup
   // code in this repo, .planning/RETROSPECTIVE.md) would never resolve
-  // normal input either -- it would sit on the same 1.5s timer and show the
+  // normal input either -- it would sit on the same timer and show the
   // same stopped message again. A working worker resolves this quickly
   // with the correct output instead.
   await page.locator('#f-input').fill('name: Ada\n');
   await expect(page.locator('section[aria-label="Output"] pre.output')).toContainText('"name": "Ada"', {
-    timeout: 10_000,
+    timeout: 15_000,
   });
   await expect(page.locator('section[aria-label="Output"] .issue-list')).toHaveCount(0);
+  expect(await workerCount(page)).toBeGreaterThanOrEqual(2);
 });
 
 test('a realistic nested YAML document converts normally, well under the time limit', async ({ page }) => {

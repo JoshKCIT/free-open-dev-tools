@@ -24,11 +24,18 @@ import type { DataConvertJobMessage, DataConvertWorkerMessage } from './workers/
 import type { ConvertResult } from '@fodt/data-convert';
 import type { RunContext } from './tool-ui';
 
-/** The exact value this file enforces, same register as yaml-formatter's own 1.5 second limit -- the same underlying package, the same risk. */
-export const DATA_CONVERT_TIME_LIMIT_MS = 1500;
+/**
+ * The exact value this file enforces: 10 seconds, the same as yaml-formatter's own limit, because it is the same yaml
+ * package and the same quadratic duplicate-key check. It was 1.5 seconds until the 2026-10-03 nightly full run, which
+ * failed when a loaded runner pushed a realistic YAML job in the same package past 1.5 seconds. A flat mapping of
+ * 40,000 keys takes about 6.8 seconds in Node and one of 80,000 about 34 seconds, so 10 seconds still stops the
+ * runaway case this limit exists for. Other workers that run a YAML parse differ: some allow 2 seconds, yaml-formatter
+ * allows 10.
+ */
+export const DATA_CONVERT_TIME_LIMIT_MS = 10000;
 
 export const DATA_CONVERT_TIME_LIMIT_MESSAGE =
-  'Stopped after 1.5 seconds: this document took too long to check for duplicate keys. Try a smaller document.';
+  'Stopped after 10 seconds: this document took too long to check for duplicate keys. Try a smaller document.';
 
 export class DataConvertRunError extends Error {
   readonly line?: number;

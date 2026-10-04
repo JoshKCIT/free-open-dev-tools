@@ -43,10 +43,10 @@ function rulesNote(from: DataFormat, to: DataFormat, options: ConvertOptions): s
 export default defineTool({
   id: 'data-convert',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
-  // A YAML source runs in a background worker with a 1.5 second time limit
-  // (checking duplicate mapping keys grows quadratically with a flat
-  // mapping's key count, the same risk any YAML parse here carries), so that run
-  // can be cancelled. The other sources (JSON, TOML, XML, CSV, TSV) stay synchronous.
+  // A YAML source runs in a background worker with a 10 second time limit,
+  // the same as yaml-formatter's (checking duplicate mapping keys grows
+  // quadratically with a flat mapping's key count, and a loaded machine can
+  // push an ordinary file past a shorter limit), so that run can be cancelled. The other sources (JSON, TOML, XML, CSV, TSV) stay synchronous.
   cancellable: true,
   fields: [
     {
