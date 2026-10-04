@@ -29,7 +29,13 @@
  */
 import QrBarcodeReaderWorker from './workers/qr-barcode-reader.worker.ts?worker&inline';
 import type { QrBarcodeReaderWorkerMessage } from './workers/qr-barcode-reader.worker';
-import { CodeReaderError, checkDecodedSize, type CodeResult, type ImagePixels } from '@fodt/qr-barcode-reader';
+import {
+  CodeReaderError,
+  checkDecodedSize,
+  fitToCanvas,
+  type CodeResult,
+  type ImagePixels,
+} from '@fodt/qr-barcode-reader';
 import type { RunContext } from './tool-ui';
 
 export const QR_BARCODE_READER_TIME_LIMIT_MS = 20000;
@@ -58,7 +64,8 @@ export class QrBarcodeReaderRunError extends Error {
 /**
  * Decodes an image file to RGBA pixels on the page thread. The canvas used is a local variable never appended to the
  * document, so the picked image is never shown. `createImageBitmap` is asked to apply the image's own orientation. A
- * `maxWidth` scales a wider picture down, keeping its shape. The caller has already checked the file's size and header,
+ * picture of more than 16,777,216 pixels is drawn smaller (keeping its shape), because Safari on an iPhone or iPad draws a
+ * larger canvas blank, which would be reported as a picture with no code in it. A `maxWidth` scales a wider picture down too. The caller has already checked the file's size and header,
  * but a browser decides what size a picture decodes to, so the decoded size is checked again before any canvas is made.
  */
 export async function imagePixelsFromFile(file: File, maxWidth?: number): Promise<ImagePixels> {
@@ -70,8 +77,7 @@ export async function imagePixelsFromFile(file: File, maxWidth?: number): Promis
   }
   try {
     checkDecodedSize(bitmap.width, bitmap.height);
-    let width = bitmap.width;
-    let height = bitmap.height;
+    let { width, height } = fitToCanvas(bitmap.width, bitmap.height);
     if (maxWidth !== undefined && width > maxWidth) {
       height = Math.max(1, Math.round((height * maxWidth) / width));
       width = maxWidth;

@@ -12,6 +12,7 @@
   ],
   "limits": [
     "Files up to 50 MB and up to 50,000,000 declared pixels are accepted; larger ones are refused before decoding.",
+    "A picture of more than 16,777,216 pixels (a 48 megapixel photograph, for example) is scaled down to that size before it is read, because Safari on an iPhone or iPad draws a larger canvas blank; a small code in a very large photograph may therefore be missed.",
     "Reading stops after 20 seconds with a message; Cancel stops it at once.",
     "The camera starts only when you press Run with Camera chosen; it stops when a code is read, when you press Cancel, when you leave the page, or after 30 seconds.",
     "If the camera does not start within 15 seconds the page stops waiting; allow camera access when the browser asks.",

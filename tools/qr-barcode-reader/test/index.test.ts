@@ -4,7 +4,9 @@ import { beforeAll, expect, it, vi } from 'vitest';
 import QRCode from 'qrcode';
 import {
   checkDecodedSize,
+  CANVAS_SAFE_PIXELS,
   checkImageFile,
+  fitToCanvas,
   CodeReaderError,
   codeRows,
   MAX_HEADER_BYTES,
@@ -332,4 +334,22 @@ it('a decoded picture over the pixel limit is refused after decoding too, whatev
   ] as const) {
     expect(() => checkDecodedSize(width, height)).toThrow(/could not decode/);
   }
+});
+
+it('a picture too big for a phone browser canvas is scaled down to fit it, keeping its shape and never growing', () => {
+  expect(CANVAS_SAFE_PIXELS).toBe(16_777_216);
+  expect(fitToCanvas(4000, 3000)).toEqual({ width: 4000, height: 3000 });
+  expect(fitToCanvas(4096, 4096)).toEqual({ width: 4096, height: 4096 });
+  // A 48 megapixel photograph (8000 by 6000) is scaled to about 16.7 million pixels at the same shape.
+  const scaled = fitToCanvas(8000, 6000);
+  expect(scaled.width * scaled.height).toBeLessThanOrEqual(CANVAS_SAFE_PIXELS);
+  expect(scaled.width * scaled.height).toBeGreaterThan(CANVAS_SAFE_PIXELS * 0.99);
+  expect(Math.abs(scaled.width / scaled.height - 8000 / 6000)).toBeLessThan(0.001);
+  // A very wide strip keeps at least one pixel in its short side.
+  const strip = fitToCanvas(40_000_000, 1);
+  expect(strip.height).toBe(1);
+  expect(strip.width).toBeLessThanOrEqual(CANVAS_SAFE_PIXELS);
+  const tall = fitToCanvas(3, 30_000_000);
+  expect(tall.width).toBe(1);
+  expect(tall.height).toBeLessThanOrEqual(CANVAS_SAFE_PIXELS);
 });

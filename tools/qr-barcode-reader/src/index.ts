@@ -23,6 +23,14 @@ export const MAX_INPUT_PIXELS = 50_000_000;
  */
 export const MAX_IMAGE_HEADER_BYTES = 2 * 1024 * 1024;
 
+/**
+ * A picture is drawn on a canvas of at most this many pixels (4096 by 4096). Safari on an iPhone or iPad cannot make a canvas
+ * with more than 16,777,216 pixels: the drawing comes out blank and the picture would be reported as holding no code. A larger
+ * picture is scaled down to fit before it is read (`fitToCanvas`), so the result is a real read of a smaller picture, never a
+ * silent blank.
+ */
+export const CANVAS_SAFE_PIXELS = 16_777_216;
+
 /** Camera frames are drawn at most this wide before they are read. */
 export const MAX_FRAME_WIDTH = 1280;
 
@@ -103,6 +111,24 @@ function jpegFrameSize(bytes: Uint8Array): { width: number; height: number } | n
 /** True when the bytes start with the two letters "BM" that open every BMP file. */
 function isBmpStart(header: Uint8Array): boolean {
   return header.length >= 2 && header[0] === 0x42 && header[1] === 0x4d;
+}
+
+/**
+ * The size a picture of `width` by `height` pixels is drawn at: its own size when it has at most CANVAS_SAFE_PIXELS, or the
+ * largest size of the same shape (rounded down, at least 1 by 1 pixel) that does. Never larger than the picture.
+ */
+export function fitToCanvas(width: number, height: number): { width: number; height: number } {
+  if (width * height <= CANVAS_SAFE_PIXELS) return { width, height };
+  const scale = Math.sqrt(CANVAS_SAFE_PIXELS / (width * height));
+  let fitted = { width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale)) };
+  // A very thin picture keeps one pixel on its short side, which can leave the long side over the limit.
+  if (fitted.width * fitted.height > CANVAS_SAFE_PIXELS) {
+    fitted =
+      fitted.width >= fitted.height
+        ? { width: CANVAS_SAFE_PIXELS, height: 1 }
+        : { width: 1, height: CANVAS_SAFE_PIXELS };
+  }
+  return fitted;
 }
 
 /**
