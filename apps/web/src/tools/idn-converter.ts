@@ -150,7 +150,7 @@ export default defineTool({
         { value: 'strict', label: 'Strict, as for registering a name' },
         { value: 'browser', label: 'As a browser address bar reads it' },
       ],
-      help: 'The browser profile switches off the hyphen, character and length checks; bidirectional text and joiners are still checked.',
+      help: 'The browser profile switches off the hyphen, character, length and empty label checks; bidirectional text and joiners are still checked.',
     },
     {
       name: 'names',

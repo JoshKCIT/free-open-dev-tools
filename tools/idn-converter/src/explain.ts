@@ -299,10 +299,13 @@ export function explainName(name: string, profile: Profile, direction: ExplainDi
   });
 
   // An empty label (also one that Punycode decodes to nothing) anywhere but the one empty root label after a final full
-  // stop (the data's X4_2).
+  // stop (the data's X4_2). An empty label is a length problem (the data lists A4_1 and A4_2 with it), so it is reported
+  // only when the profile verifies DNS length; the browser profile, which does not, converts such a name as UTS #46
+  // and the URL Standard's domain parser do. (A label that Punycode cannot decode is a processing problem either way.)
   const hasRoot = labels.length > 1 && labels[labels.length - 1] === '';
   let emptyFound = false;
   views.forEach((view, index) => {
+    if (!profile.verifyDNSLength) return;
     if (hasRoot && index === labels.length - 1) return;
     if (labels[index] === '') {
       emptyFound = true;

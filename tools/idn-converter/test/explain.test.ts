@@ -1,6 +1,6 @@
 import { toASCII as tr46ToASCII, toUnicode as tr46ToUnicode } from 'tr46';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { BROWSER, FAMILY_WORDS, PROBLEM_FAMILIES, STRICT, convertName, explainName, visible } from '../src/index';
+import { BROWSER, FAMILY_WORDS, PROBLEM_FAMILIES, STRICT, convertName, explainName, meta, visible } from '../src/index';
 import { readVendoredRows } from './idna-test-file';
 
 // Expected values here come from Unicode's UTS #46 (the validity criteria and the processing steps), from RFC 5893 for
@@ -144,16 +144,14 @@ it('hyphens, STD3 characters, joiners and combining marks are named with their l
   expect(twice.problems[0]?.message).toContain('1 more label');
 });
 
-it('an empty label or a lone dot is explained as an empty label and never converted silently', () => {
+it('an empty label or a lone dot is explained as an empty label when strict and never converted silently', () => {
   for (const name of ['a..b', '.', '..', '.a', cp(0x3002)]) {
-    for (const profile of ['strict', 'browser'] as const) {
-      for (const direction of ['to-ascii', 'to-unicode'] as const) {
-        const result = convertName(name, { direction, profile });
-        expect(result.valid, name + ' ' + profile + ' ' + direction).toBe(false);
-        expect(result.ascii).toBeNull();
-        expect(result.unicode).toBeNull();
-        expect(result.problems.some((problem) => problem.family === 'empty-label')).toBe(true);
-      }
+    for (const direction of ['to-ascii', 'to-unicode'] as const) {
+      const result = convertName(name, { direction, profile: 'strict' });
+      expect(result.valid, name + ' ' + direction).toBe(false);
+      expect(result.ascii).toBeNull();
+      expect(result.unicode).toBeNull();
+      expect(result.problems.some((problem) => problem.family === 'empty-label')).toBe(true);
     }
   }
   const middle = toAscii('a..b');
@@ -171,6 +169,38 @@ it('an empty label or a lone dot is explained as an empty label and never conver
     unicode: 'example.com.',
   });
   expect(toUnicode('example.com.').valid).toBe(true);
+});
+
+it('the browser profile accepts an empty label as UTS 46 and the URL Standard do when lengths are not verified', () => {
+  // The browser profile has VerifyDnsLength off, and an empty label is a length problem (the data lists it as A4_1 or
+  // A4_2 for ToASCII), so the browser profile converts these names exactly as tr46 does and as a browser address bar
+  // does; only the strict profile refuses them. The expected forms are what tr46 gives with the same options.
+  const cases: [string, string][] = [
+    ['a..b', 'a..b'],
+    ['.a', '.a'],
+    ['.', '.'],
+    ['..', '..'],
+    [cp(0x3002), '.'],
+    ['a.' + cp(0xad) + '.b', 'a..b'],
+    [cp(0xfc) + cp(0xfc) + '..de', 'xn--tdaa..de'],
+  ];
+  for (const [name, ascii] of cases) {
+    for (const direction of ['to-ascii', 'to-unicode'] as const) {
+      const result = convertName(name, { direction, profile: 'browser' });
+      expect(result.valid, name + ' ' + direction).toBe(true);
+      expect(result.problems).toEqual([]);
+      expect(result.ascii).toBe(ascii);
+      expect(tr46ToASCII(name, BROWSER), name).toBe(ascii);
+    }
+  }
+  // A label that Punycode decodes to nothing is still a processing problem in every profile, not an empty label.
+  for (const name of ['xn--.a', 'a.xn--']) {
+    const result = toAscii(name, 'browser');
+    expect(result.valid, name).toBe(false);
+    expect(result.problems.map((problem) => problem.family)).toEqual(['processing']);
+  }
+  // The meta text says so.
+  expect(meta.ambiguities.join(' ')).toMatch(/empty label/i);
 });
 
 it('every explanation is short plain ASCII that repeats nothing pasted', () => {
@@ -293,7 +323,9 @@ it('a name is explained exactly when conversion refuses it, for 6,000 seeded ran
         const labels = unicode.domain.split('.');
         const body = labels.length > 1 && labels[labels.length - 1] === '' ? labels.slice(0, -1) : labels;
         const emptyLabel = body.includes('');
-        const refused = emptyLabel || (direction === 'to-ascii' ? tr46ToASCII(name, profile) === null : unicode.error);
+        const refused =
+          (emptyLabel && profile.verifyDNSLength) ||
+          (direction === 'to-ascii' ? tr46ToASCII(name, profile) === null : unicode.error);
         if (explained !== refused) {
           throw new Error(
             'seeded name ' +

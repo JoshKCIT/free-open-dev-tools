@@ -5,7 +5,7 @@
   "about": "Converts international domain names between their Unicode form and the ASCII form that DNS carries (Punycode, the xn-- labels), one name per line, using the Unicode UTS #46 rules with Unicode 17 data. Each name that is not valid is explained label by label in plain words, with every offending code point shown as a U+ value. Nothing is looked up: the page only changes how a name is written.",
   "supports": [
     "Unicode to ASCII, ASCII to Unicode, or automatic (a name with a non-ASCII character goes to ASCII, a name with an xn-- label goes to Unicode, any other name is shown both ways)",
-    "A strict profile, as for registering a name (hyphen rules, ASCII letters, digits and hyphens only, label and name lengths), and a browser address bar profile with the hyphen, character and length checks switched off",
+    "A strict profile, as for registering a name (hyphen rules, ASCII letters, digits and hyphens only, label and name lengths), and a browser address bar profile with the hyphen, character, length and empty label checks switched off",
     "Mapping and normalisation as UTS #46 defines them, so capitals, full-width letters and the ideographic full stop are read the way a browser reads them, characters UTS #46 ignores (a soft hyphen, a zero width space) are removed, and the Unicode form shown is the mapped and normalised one, not the pasted spelling",
     "Explanations by the rule families the Unicode conformance data uses: hyphens, bidirectional text, joiners, characters not allowed in a host name, label and name length, characters or xn-- labels that cannot be processed, and empty labels",
     "Lengths measured in octets of the ASCII form, as UTS #46 says"
@@ -22,6 +22,7 @@
     "The strict and browser profiles give different answers for the same name: a name with hyphens in the third and fourth positions, a space or an underscore, or a label over 63 octets is invalid when strict and converts under the browser profile.",
     "The page shows the first label that fails each rule family; a name can break more than one rule, and a name whose characters cannot be processed at all is explained by that alone.",
     "UTS #46 judges bidirectional text on the whole name: a name is a bidirectional name if any of its labels has a right-to-left character, and then every label is held to the bidirectional rules.",
+    "The browser profile accepts an empty label (a name such as a..b or .a), because UTS #46 lists an empty label with the length problems and the browser profile does not verify lengths, as a browser address bar does not; the strict profile refuses it. A label that Punycode decodes to nothing (xn-- alone) is refused by both.",
     "The browser profile is the UTS #46 half of what a browser does. A browser also keeps an all-ASCII host as typed and refuses a host that holds a space, a slash, a percent sign or another forbidden host character; this page does not apply those URL parser steps, so such a name can show as converted here and still be refused by an address bar."
   ],
   "standards": [

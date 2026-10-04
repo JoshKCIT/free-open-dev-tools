@@ -153,12 +153,12 @@ it('each invalid label is explained by the status families IdnaTestV2 lists and 
   expect(withoutProcessingCode).toBe(1661);
 });
 
-it('the strict and browser profiles differ only in hyphen, STD3 and length checks', () => {
-  // The five options UTS 46 lets an application switch off are checkHyphens (V2, V3), useSTD3ASCIIRules (U1) and
+it('the strict and browser profiles differ only in hyphen, STD3, length and empty label checks', () => {
+  // The options UTS 46 lets an application switch off are checkHyphens (V2, V3), useSTD3ASCIIRules (U1) and
   // verifyDNSLength (A4_1, A4_2); the browser profile (the URL Standard's domain parser ToASCII with beStrict false)
-  // switches exactly those three off and keeps bidi and joiners on. An empty label inside a name is still reported
-  // (the data's X4_2), and a final full stop passes (UTS 46 section 4.2: the empty root label is passed through when
-  // VerifyDnsLength is false).
+  // switches exactly those three off and keeps bidi and joiners on. An empty label is a length problem (the data's X4_2,
+  // listed with A4_1 and A4_2), so it is accepted when lengths are not verified, and a final full stop passes (UTS 46
+  // section 4.2: the empty root label is passed through when VerifyDnsLength is false).
   const switchedOff = new Set(['V2', 'V3', 'U1', 'A4_1', 'A4_2']);
   const rows = readVendoredRows();
   const problemsFound: string[] = [];
@@ -166,8 +166,7 @@ it('the strict and browser profiles differ only in hyphen, STD3 and length check
   for (const row of rows) {
     const strict = convertName(row.source, { direction: 'to-ascii', profile: 'strict' });
     const browser = convertName(row.source, { direction: 'to-ascii', profile: 'browser' });
-    const emptyInside = row.toUnicodeStatus.includes('X4_2');
-    const wantValid = row.toAsciiNStatus.every((code) => switchedOff.has(code)) && !emptyInside;
+    const wantValid = row.toAsciiNStatus.every((code) => switchedOff.has(code));
     if (browser.valid !== wantValid) {
       problemsFound.push('verdict ' + label(row.line, row.source));
       continue;
@@ -177,7 +176,9 @@ it('the strict and browser profiles differ only in hyphen, STD3 and length check
     if (strict.valid && !browser.valid) problemsFound.push('browser stricter ' + label(row.line, row.source));
     if (browser.valid && !strict.valid) {
       differing++;
-      const onlySwitchedOff = strict.problems.every((problem) => ['hyphen', 'std3', 'length'].includes(problem.family));
+      const onlySwitchedOff = strict.problems.every((problem) =>
+        ['hyphen', 'std3', 'length', 'empty-label'].includes(problem.family),
+      );
       if (!onlySwitchedOff) problemsFound.push('strict-only family ' + label(row.line, row.source));
     }
     // Whatever the browser profile reports, the strict profile reports too.
@@ -185,9 +186,8 @@ it('the strict and browser profiles differ only in hyphen, STD3 and length check
     for (const problem of browser.problems) {
       if (!strictFamilies.has(problem.family)) problemsFound.push('browser-only family ' + label(row.line, row.source));
     }
-    // And the families the browser profile names are never ones whose check it switched off, except for empty labels.
+    // And the families the browser profile names are never ones whose check it switched off, empty labels included.
     const allowed = new Set(row.toAsciiNStatus.filter((code) => !switchedOff.has(code)).flatMap(familiesOfCode));
-    if (emptyInside) allowed.add('empty-label');
     for (const problem of browser.problems) {
       if (!allowed.has(problem.family))
         problemsFound.push('browser wrong family ' + problem.family + ' ' + label(row.line, row.source));
