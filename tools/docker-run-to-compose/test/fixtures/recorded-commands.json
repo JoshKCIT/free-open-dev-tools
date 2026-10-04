@@ -1,0 +1,12 @@
+[
+  "docker run --rm -p 8080:80 nginx",
+  "docker run -d --name web -p 8080:80 -v $(pwd):/usr/share/nginx/html:ro --restart unless-stopped nginx:1.27",
+  "docker run -d --name db -e POSTGRES_PASSWORD=example -e POSTGRES_DB=app -v pgdata:/var/lib/postgresql/data -p 127.0.0.1:5432:5432 postgres:16",
+  "docker run --network appnet --network-alias api -e API_KEY=$API_KEY -p 3000:3000 ghcr.io/example/api:2.1",
+  "docker run -m 512m --cpus 1.5 --pids-limit 100 --memory-swap 1g --name worker busybox sleep 3600",
+  "docker run --name web --health-cmd 'curl -f http://localhost/ || exit 1' --health-interval 30s --health-timeout 5s --health-retries 3 nginx",
+  "docker run -d \\\n  --name cache \\\n  --restart=always \\\n  -p 6379:6379 \\\n  -v redis-data:/data \\\n  redis:7 redis-server --appendonly yes",
+  "docker run --ulimit nofile=1024:2048 --ulimit nproc=65535 --sysctl net.core.somaxconn=1024 --storage-opt size=1G --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 alpine",
+  "docker run --mount type=volume,source=data,target=/data,volume-nocopy --mount type=bind,source=$(pwd)/conf,target=/etc/app,readonly --tmpfs /run alpine",
+  "docker run -it --entrypoint /bin/sh --workdir /work -u 1000:1000 -e MODE=production -e 'GREETING=hello world' alpine -c 'echo $HOME'"
+]

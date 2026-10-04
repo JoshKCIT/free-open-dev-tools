@@ -48,5 +48,15 @@
   "dependencies": {
     "yaml": "2.9.1",
     "ajv": "8.20.0"
-  }
+  },
+  "bundledData": [
+    {
+      "name": "Compose Specification JSON Schema",
+      "source": "https://github.com/compose-spec/compose-spec",
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "attribution": "\"Compose Specification\" schema by the Compose Specification project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 914ec15d1fa498969c0df5c1d672306db3256089.",
+      "noticeFile": "src/compose-spec-schema-NOTICE.txt"
+    }
+  ]
 }
