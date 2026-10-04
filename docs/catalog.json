@@ -1426,5 +1426,12 @@
     "category": "css",
     "tier": 3,
     "summary": "Shape a cubic-bezier easing curve by dragging its handles or picking a preset, and preview the motion."
+  },
+  {
+    "id": "chart-maker",
+    "name": "Chart Maker (Bar, Line, Pie)",
+    "category": "media",
+    "tier": 3,
+    "summary": "Paste a table and get a bar, line or pie chart as SVG or PNG with a text description for screen readers."
   }
 ]
