@@ -28,8 +28,38 @@ export interface SortResult {
   sorted: SortedVersion[];
   /** The lines that are not versions, in pasted order. */
   invalid: InvalidLine[];
-  /** How many sets of two or more versions are equal in precedence (they differ only in build metadata). */
+  /** How many sets of two or more versions are equal in precedence. */
   equalGroups: number;
+  /**
+   * How many of those sets differ only in build metadata: the pasted text of each, without its build, is the same, and the
+   * builds are not all the same. A repeated version, a leading v, or a loose leading equals sign makes a set that is equal
+   * in precedence but is not that. Left out when there is no equal set.
+   */
+  buildOnlyGroups?: number;
+  /** A sentence about the equal sets that says only what is true of them, or left out when there is none. */
+  equalNote?: string;
+}
+
+/** The text of a pasted version up to its build metadata (the part after the first plus sign). */
+function withoutBuild(text: string): string {
+  const plus = text.indexOf('+');
+  return plus < 0 ? text : text.slice(0, plus);
+}
+
+function sets(count: number): string {
+  return count === 1 ? '1 set of versions is' : `${count} sets of versions are`;
+}
+
+/** What to say about the sets of versions that are equal in precedence, and only what is true of them. */
+function noteFor(equalGroups: number, buildOnlyGroups: number): string {
+  const kept = 'Each set keeps the order you pasted it in.';
+  if (buildOnlyGroups === equalGroups) {
+    return `${sets(equalGroups)} equal in precedence: they differ only in build metadata (the part after +), which SemVer 2.0.0 ignores when ordering. ${kept}`;
+  }
+  if (buildOnlyGroups === 0) {
+    return `${sets(equalGroups)} equal in precedence: SemVer 2.0.0 gives them the same place in the order, whether the same version is pasted twice or written two ways. ${kept}`;
+  }
+  return `${sets(equalGroups)} equal in precedence, and ${buildOnlyGroups} of them differ only in build metadata (the part after +), which SemVer 2.0.0 ignores when ordering. ${kept}`;
 }
 
 /**
@@ -51,17 +81,22 @@ export function sortVersions(versions: string, options: SortOptions): SortResult
   entries.sort((a, b) => a.version.compare(b.version));
 
   let equalGroups = 0;
-  let runLength = 1;
+  let buildOnlyGroups = 0;
+  let runStart = 0;
   for (let i = 1; i <= entries.length; i++) {
     const previous = entries[i - 1] as { version: SemVer };
     const current = entries[i];
-    if (current !== undefined && previous.version.compare(current.version) === 0) {
-      runLength += 1;
-    } else {
-      if (runLength > 1) equalGroups += 1;
-      runLength = 1;
+    if (current !== undefined && previous.version.compare(current.version) === 0) continue;
+    if (i - runStart > 1) {
+      equalGroups += 1;
+      const run = entries.slice(runStart, i);
+      const texts = new Set(run.map((entry) => withoutBuild(entry.text)));
+      const builds = new Set(run.map((entry) => entry.version.build.join('.')));
+      if (texts.size === 1 && builds.size > 1) buildOnlyGroups += 1;
     }
+    runStart = i;
   }
+  const equal = equalGroups > 0 ? { buildOnlyGroups, equalNote: noteFor(equalGroups, buildOnlyGroups) } : {};
 
   return {
     sorted: entries.map((entry) => ({
@@ -71,5 +106,6 @@ export function sortVersions(versions: string, options: SortOptions): SortResult
     })),
     invalid,
     equalGroups,
+    ...equal,
   };
 }

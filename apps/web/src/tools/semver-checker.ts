@@ -110,12 +110,8 @@ function sortOutputs(result: SortResult): ToolResult {
       });
     }
   }
-  if (result.equalGroups > 0) {
-    outputs.push({
-      kind: 'note',
-      tone: 'info',
-      value: `${result.equalGroups} ${plural(result.equalGroups, 'set of versions is', 'sets of versions are')} equal in precedence: they differ only in build metadata (the part after +), which SemVer 2.0.0 ignores when ordering. Each set keeps the order you pasted it in.`,
-    });
+  if (result.equalNote !== undefined) {
+    outputs.push({ kind: 'note', tone: 'info', value: result.equalNote });
   }
   return {
     outputs,
