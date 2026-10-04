@@ -1,6 +1,6 @@
 # Free & Open Dev Tools
 
-**[Open the live site](https://joshkcit.github.io/free-open-dev-tools/)** — 192 free developer tools and money calculators, every one running
+**[Open the live site](https://joshkcit.github.io/free-open-dev-tools/)** — 205 free developer tools and money calculators, every one running
 in your browser.
 
 Free developer tools and money calculators, published for anyone to use. Explore the source, download individual tools, and make them your own.
@@ -94,7 +94,7 @@ request happens at all during processing.
 
 ## The catalog
 
-All **192** tools in the catalog are built, tested and live.
+All **205** tools in the catalog are built, tested and live.
 
 - [`docs/LEDGER.md`](docs/LEDGER.md) — every shipped tool, by category.
 - The release manifest, mapping each shipped tool to its version and its verification result, is not a file in this
