@@ -6,7 +6,6 @@ import {
   PdfToolError,
   checkPdfFile,
   cleanCopyName,
-  findMetadataLeft,
   formatPageTexts,
 } from '@fodt/pdf-text-metadata';
 import {
@@ -72,8 +71,9 @@ async function showMetadata(file: File, ctx: RunContext): Promise<ToolResult> {
 }
 
 /**
- * Remove mode: the metadata is removed in a background worker, and the copy is offered only when two readers (PDF.js, and
- * pdf-lib reading the copy again) find no document information, no XMP metadata and none of the removed keys in it.
+ * Remove mode: the metadata is removed in a background worker, which also reloads the copy with pdf-lib, and the copy is
+ * offered only when two readers (PDF.js on this page, and pdf-lib in that worker) find no document information, no XMP
+ * metadata and none of the removed keys in it.
  */
 async function removeMetadata(file: File, ctx: RunContext): Promise<ToolResult> {
   const original = new Uint8Array(await file.arrayBuffer());
@@ -92,9 +92,8 @@ async function removeMetadata(file: File, ctx: RunContext): Promise<ToolResult> 
   }
 
   const reread = await reopenForCheck(stripped.bytes, ctx);
-  // The copy's streams were counted when the original was (in the removal worker), so they are not counted again.
-  const left = await findMetadataLeft(stripped.bytes, { skipExpansionCheck: true });
-  if (reread.info.length > 0 || reread.xmp.length > 0 || left.length > 0) throw new PdfToolError('not-clean');
+  // The second reader, pdf-lib, already reloaded the copy in the removal worker and listed what it still holds.
+  if (reread.info.length > 0 || reread.xmp.length > 0 || stripped.left.length > 0) throw new PdfToolError('not-clean');
 
   const { report } = stripped;
   const nothingFound =

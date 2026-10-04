@@ -56,6 +56,8 @@ export class PdfTextMetadataRunError extends Error {
 export interface StripResult {
   bytes: Uint8Array;
   report: StripReport;
+  /** What the copy still holds after removal, found by pdf-lib in the worker; an empty list means nothing. */
+  left: string[];
 }
 
 /**
@@ -120,7 +122,7 @@ export function stripInWorker(bytes: Uint8Array, ctx: RunContext): Promise<Strip
           settle({ ok: false, error: new PdfTextMetadataRunError(NOT_STARTED_MESSAGE) });
         }
       } else if (data.type === 'pdf-text-metadata-done') {
-        settle({ ok: true, value: { bytes: new Uint8Array(data.bytes), report: data.report } });
+        settle({ ok: true, value: { bytes: new Uint8Array(data.bytes), report: data.report, left: data.left } });
       } else {
         settle({ ok: false, error: new PdfTextMetadataRunError(data.message, data.kind) });
       }

@@ -12,10 +12,19 @@
  * starting (a module worker drops a message that arrives before its evaluation is over). The worker cannot report its own
  * timeout: it may be inside one long call, so the page owns the limit and terminates it.
  *
+ * The worker also reloads the copy with pdf-lib and lists anything the copy still holds (`findMetadataLeft`) before it posts
+ * the result, so that check runs here, inside the page's 20 second limit and off the page's thread, and the page only reads
+ * the list. The streams of the copy are not counted again: they were counted when the original was.
+ *
  * The job carries the file's bytes, transferred rather than copied; the copy comes back the same way. An error carries a
  * fixed sentence (and the kind of refusal), or the error's own name, never any byte or text of the file.
  */
-import { PdfToolError, stripMetadata, type StripReport } from '../../../../../tools/pdf-text-metadata/src/strip';
+import {
+  PdfToolError,
+  findMetadataLeft,
+  stripMetadata,
+  type StripReport,
+} from '../../../../../tools/pdf-text-metadata/src/strip';
 
 export interface PdfTextMetadataJobMessage {
   type: 'pdf-text-metadata-job';
@@ -30,6 +39,8 @@ export interface PdfTextMetadataDoneMessage {
   type: 'pdf-text-metadata-done';
   bytes: ArrayBuffer;
   report: StripReport;
+  /** What the copy still holds after removal (an empty list means none); each line names an entry or an object, never any text. */
+  left: string[];
 }
 
 export interface PdfTextMetadataErrorMessage {
@@ -58,10 +69,11 @@ const workerGlobal = self as unknown as WorkerGlobal;
 async function handleJob(job: PdfTextMetadataJobMessage): Promise<void> {
   try {
     const { bytes, report } = await stripMetadata(new Uint8Array(job.bytes));
+    const left = await findMetadataLeft(bytes, { skipExpansionCheck: true });
     // Only a buffer the copy fills exactly can be handed over whole; any other is copied first.
     const buffer = (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength ? bytes : bytes.slice())
       .buffer as ArrayBuffer;
-    workerGlobal.postMessage({ type: 'pdf-text-metadata-done', bytes: buffer, report }, [buffer]);
+    workerGlobal.postMessage({ type: 'pdf-text-metadata-done', bytes: buffer, report, left }, [buffer]);
   } catch (err) {
     if (err instanceof PdfToolError) {
       workerGlobal.postMessage({ type: 'pdf-text-metadata-error', message: err.message, kind: err.kind });
