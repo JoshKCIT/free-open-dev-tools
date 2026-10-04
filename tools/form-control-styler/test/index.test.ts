@@ -109,7 +109,8 @@ it('every control is its native element in the markup and keeps a visible focus-
 
     // The native element, and no stand-in for it: the switch role is the only role the markup carries.
     const roles = markup.match(/role="[^"]*"/g) ?? [];
-    expect(roles, label).toEqual(control === 'switch' ? ['role="switch"'] : []);
+    const switchCount = control === 'switch' ? (options.showDisabled ? 2 : 1) : 0;
+    expect(roles, label).toEqual(Array.from({ length: switchCount }, () => 'role="switch"'));
     expect(markup, label).not.toMatch(/<(div|span|a)[^>]*(tabindex|onclick|role)/);
     const inputs = markup.match(/<input [^>]*>/g) ?? [];
     const buttons = markup.match(/<button [^>]*>/g) ?? [];
@@ -373,7 +374,7 @@ it('hostile field values leave no trace in the CSS and the safety scan refuses r
   for (const size of [Number.NaN, Number.POSITIVE_INFINITY, -1e9, 1e9, -1]) {
     for (const radius of [Number.NaN, Number.NEGATIVE_INFINITY, -1e9, 1e9]) {
       const result = styleControls({ control: 'checkbox', preset: 'rounded', size, radius });
-      expect(result.css).not.toMatch(/NaN|Infinity|e\+|e-/);
+      expect(result.css).not.toMatch(/NaN|Infinity|\de[+-]?\d/);
       expect(result.warnings.length).toBeGreaterThanOrEqual(2);
       expect(findUnsafeControlCss(result.css)).toBeNull();
     }

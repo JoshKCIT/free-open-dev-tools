@@ -1,0 +1,6 @@
+{
+  "id": "form-control-styler",
+  "label": "CSS Basic UI Level 4 and WCAG 2.2: a styled switch keeps a visible focus ring",
+  "steps": [{ "action": "radio", "field": "control", "value": "switch" }],
+  "expect": [":focus-visible", "role=\"switch\""]
+}
