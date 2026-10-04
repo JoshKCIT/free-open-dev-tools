@@ -14,6 +14,10 @@
  * on the document; `loadingTask.destroy()` is the call that frees it. A read that reports no progress for 20 seconds is
  * stopped with its own message, and so is a document that does not open in that time; Cancel stops a read at once, and a
  * result that arrives after Cancel is never shown because the page ignores any run it has abandoned.
+ *
+ * Before PDF.js sees a file, the sizes its streams decode to are counted without being kept (`checkExpansion`), and a file
+ * that decodes to more than 64 MiB in one stream or 256 MiB in all is refused: a PDF under one megabyte can otherwise make
+ * PDF.js hold more than a gigabyte when a page's content stream is read.
  */
 import PdfTextMetadataPdfJsWorker from './workers/pdf-text-metadata-pdfjs.worker.ts?worker&inline';
 import {
@@ -22,6 +26,7 @@ import {
   PageRangeError,
   PasswordException,
   PdfToolError,
+  checkExpansion,
   createRefusingBinaryDataFactory,
   describeMetadata,
   extractPageTexts,
@@ -29,6 +34,7 @@ import {
   parsePageList,
   type ExtractResult,
   type MetadataRows,
+  type PDFDocumentLoadingTask,
   type PDFDocumentProxy,
 } from '@fodt/pdf-text-metadata';
 import type { RunContext } from './tool-ui';
@@ -70,35 +76,28 @@ interface OpenPdf {
 /**
  * Opens `bytes` in a new PDF.js worker, runs `work` on the document, and ends the loading task and the worker whatever
  * happens. A document that needs a password becomes `PdfToolError` kind `password` (the password callback is never
- * answered); one that cannot be read becomes kind `damaged`. The bytes are handed to PDF.js, which takes the buffer.
+ * answered); one that cannot be read becomes kind `damaged`; one that decodes to more than the memory caps becomes kind
+ * `size` before PDF.js is built (`skipExpansionCheck` leaves the count out for a copy this page's own removal worker has
+ * just written, whose streams were counted when the original was). The bytes are handed to PDF.js, which takes the buffer.
  */
-async function withPdf<T>(bytes: Uint8Array, ctx: RunContext, work: (open: OpenPdf) => Promise<T>): Promise<T> {
+async function withPdf<T>(
+  bytes: Uint8Array,
+  ctx: RunContext,
+  work: (open: OpenPdf) => Promise<T>,
+  options: { skipExpansionCheck?: boolean } = {},
+): Promise<T> {
   if (ctx.signal.aborted) throw new Error('The run was cancelled before it started.');
-
-  const worker = new PdfTextMetadataPdfJsWorker();
-  // The worker is told the verbosity here, not only through getDocument: a PDFWorker reads the global level when it is
-  // built, which is before getDocument sets it, and a worker left at the default level prints a warning for every font
-  // request that is refused.
-  const pdfWorker = new PDFWorker({ port: worker as never, verbosity: PDFJS_SAFE_OPTIONS.verbosity });
-  let characterMap = false;
-  const { Factory } = createRefusingBinaryDataFactory((request) => {
-    if (request.kind === 'cmap') characterMap = true;
-  });
-
-  const task = getDocument({
-    ...PDFJS_SAFE_OPTIONS,
-    data: bytes,
-    worker: pdfWorker,
-    BinaryDataFactory: Factory as never,
-  });
 
   // One signal for the work: the visitor's Cancel and the stall watchdog both end it, and both end the loading task so a
   // read that is waiting on the worker rejects at once.
   const internal = new AbortController();
   let stalled = false;
+  let task: PDFDocumentLoadingTask | undefined;
+  let worker: Worker | undefined;
+  let pdfWorker: InstanceType<typeof PDFWorker> | undefined;
   const stop = () => {
     internal.abort();
-    void task.destroy();
+    if (task) void task.destroy();
   };
   ctx.signal.addEventListener('abort', stop, { once: true });
 
@@ -114,6 +113,28 @@ async function withPdf<T>(bytes: Uint8Array, ctx: RunContext, work: (open: OpenP
   touch();
 
   try {
+    // Counting the decoded size comes first, so a file that would exhaust memory never reaches PDF.js. It reports
+    // progress to the stall watchdog and stops when the run is cancelled or stalls.
+    if (!options.skipExpansionCheck) await checkExpansion(bytes, { signal: internal.signal, onProgress: touch });
+
+    worker = new PdfTextMetadataPdfJsWorker();
+    // The worker is told the verbosity here, not only through getDocument: a PDFWorker reads the global level when it is
+    // built, which is before getDocument sets it, and a worker left at the default level prints a warning for every font
+    // request that is refused.
+    pdfWorker = new PDFWorker({ port: worker as never, verbosity: PDFJS_SAFE_OPTIONS.verbosity });
+    let characterMap = false;
+    const { Factory } = createRefusingBinaryDataFactory((request) => {
+      if (request.kind === 'cmap') characterMap = true;
+    });
+
+    task = getDocument({
+      ...PDFJS_SAFE_OPTIONS,
+      data: bytes,
+      worker: pdfWorker,
+      BinaryDataFactory: Factory as never,
+    });
+    if (internal.signal.aborted) void task.destroy();
+
     const doc = await task.promise;
     return await work({ doc, signal: internal.signal, touch, characterMapAsked: () => characterMap });
   } catch (err) {
@@ -127,12 +148,12 @@ async function withPdf<T>(bytes: Uint8Array, ctx: RunContext, work: (open: OpenP
     clearTimeout(stallTimer);
     ctx.signal.removeEventListener('abort', stop);
     try {
-      await task.destroy();
+      if (task) await task.destroy();
     } finally {
       try {
-        await pdfWorker.destroy();
+        if (pdfWorker) await pdfWorker.destroy();
       } finally {
-        worker.terminate();
+        worker?.terminate();
       }
     }
   }
@@ -198,8 +219,14 @@ export async function readPdfMetadata(file: File, ctx: RunContext): Promise<PdfM
  * that must find nothing before the copy is offered.
  */
 export async function reopenForCheck(bytes: Uint8Array, ctx: RunContext): Promise<PdfMetadataRead> {
-  return withPdf(bytes.slice(), ctx, ({ doc, touch }) => {
-    touch();
-    return describeOpenPdf(doc);
-  });
+  return withPdf(
+    bytes.slice(),
+    ctx,
+    ({ doc, touch }) => {
+      touch();
+      return describeOpenPdf(doc);
+    },
+    // The copy was written by this page's own removal worker, whose streams were counted when the original was.
+    { skipExpansionCheck: true },
+  );
 }

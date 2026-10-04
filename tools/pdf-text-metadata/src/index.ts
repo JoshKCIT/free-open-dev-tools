@@ -9,6 +9,7 @@ export * from './text';
 export * from './metadata';
 export * from './strip';
 export * from './page-range';
+export * from './expansion';
 
 // The PDF.js entry points the page needs, re-exported from here so this package stays the only place pnpm resolves
 // `pdfjs-dist`. This is the `legacy/build/` entry, the one every PDF page of this site uses and the one that also runs in

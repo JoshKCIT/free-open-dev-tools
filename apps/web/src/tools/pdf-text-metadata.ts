@@ -92,7 +92,8 @@ async function removeMetadata(file: File, ctx: RunContext): Promise<ToolResult> 
   }
 
   const reread = await reopenForCheck(stripped.bytes, ctx);
-  const left = await findMetadataLeft(stripped.bytes);
+  // The copy's streams were counted when the original was (in the removal worker), so they are not counted again.
+  const left = await findMetadataLeft(stripped.bytes, { skipExpansionCheck: true });
   if (reread.info.length > 0 || reread.xmp.length > 0 || left.length > 0) throw new PdfToolError('not-clean');
 
   const { report } = stripped;

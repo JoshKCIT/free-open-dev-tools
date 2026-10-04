@@ -26,6 +26,7 @@ import {
   type PDFContext,
   type PDFObject,
 } from '@cantoo/pdf-lib';
+import { checkExpansion } from './expansion';
 import { PdfToolError } from './shared';
 
 export { PdfToolError };
@@ -114,7 +115,19 @@ export function reachableRefs(context: PDFContext): Set<string> {
   return seen;
 }
 
-async function load(bytes: Uint8Array): Promise<PDFDocument> {
+/** Options of the loads this module does. */
+export interface LoadOptions {
+  /**
+   * Leave out the check of how much the file's streams decode to. Only for bytes this package has just written itself
+   * (a copy made by `stripMetadata`, whose streams were counted when the original was): the copy holds no object stream
+   * and every other stream in it is one the original had.
+   */
+  skipExpansionCheck?: boolean;
+}
+
+async function load(bytes: Uint8Array, options: LoadOptions = {}): Promise<PDFDocument> {
+  // Bound what the file decodes to before pdf-lib sees it: it decodes every object stream while it loads.
+  if (!options.skipExpansionCheck) await checkExpansion(bytes);
   let doc: PDFDocument;
   try {
     doc = await PDFDocument.load(bytes, LOAD_OPTIONS);
@@ -145,7 +158,8 @@ async function load(bytes: Uint8Array): Promise<PDFDocument> {
  * of any dictionary or stream dictionary, and every object nothing leads to any more (so the objects of an earlier saved
  * revision go too), saved without object streams. The file identifier, the pages, annotations, form data, attachments
  * and bookmarks are left as they were. An encrypted file is refused with kind `encrypted`, a file that cannot be read
- * with kind `damaged`; the messages never hold the file's name or content.
+ * with kind `damaged`, and one whose streams decode to more than the caps of `checkExpansion` (64 MiB for one stream, 256 MiB
+ * in all) with kind `size`, before pdf-lib reads it; the messages never hold the file's name or content.
  */
 export async function stripMetadata(bytes: Uint8Array): Promise<{ bytes: Uint8Array; report: StripReport }> {
   const doc = await load(bytes);
@@ -193,10 +207,11 @@ const MAX_LEFT = 100;
  * Loads a copy again with pdf-lib and lists what is still there: a trailer Info entry, every dictionary that holds a
  * Metadata, PieceInfo or LastModified entry, and every object nothing leads to. An empty list means none was found. Each
  * line names the entry or the object (such as `Metadata entry in object 5 0 R`) and never holds any text from the file.
- * A copy that cannot be read throws `PdfToolError` with kind `damaged`.
+ * A copy that cannot be read throws `PdfToolError` with kind `damaged`; one whose streams decode to more than the caps of
+ * `checkExpansion` throws kind `size`.
  */
-export async function findMetadataLeft(bytes: Uint8Array): Promise<string[]> {
-  const doc = await load(bytes);
+export async function findMetadataLeft(bytes: Uint8Array, options: LoadOptions = {}): Promise<string[]> {
+  const doc = await load(bytes, options);
   const context = doc.context;
   const found: string[] = [];
   if (context.trailerInfo.Info) found.push('Info entry in the trailer');

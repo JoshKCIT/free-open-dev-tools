@@ -12,6 +12,7 @@ import {
   type StripReport,
 } from '../src/index';
 import { buildMinimalPdf } from './minimal-pdf';
+import { objectStreamBomb } from './bombs';
 import { openWithPdfJs } from './pdfjs-node';
 import { countEverywhere, countIn, fixtureBytes } from './scan';
 import {
@@ -309,3 +310,36 @@ it('a file of 3000 pages is stripped in time and keeps all its pages', async () 
   expect(after.getPageCount()).toBe(3000);
   expect(countIn(result.bytes, 'SENTINEL')).toBe(0);
 }, 60_000);
+
+it('a PDF that expands past the memory cap is refused before pdf-lib reads it, in removal and in the check of a copy', async () => {
+  const bomb = await objectStreamBomb(800);
+  expect(bomb.length).toBeLessThan(900 * 1024);
+
+  const started = performance.now();
+  let removal: unknown;
+  try {
+    await stripMetadata(bomb);
+  } catch (err) {
+    removal = err;
+  }
+  const removalMs = performance.now() - started;
+  expect(removal).toBeInstanceOf(PdfToolError);
+  expect((removal as PdfToolError).kind).toBe('size');
+  expect((removal as PdfToolError).message).toBe('This PDF expands to more data than this page can hold in memory.');
+  expect(removalMs).toBeLessThan(20_000);
+
+  let check: unknown;
+  try {
+    await findMetadataLeft(bomb);
+  } catch (err) {
+    check = err;
+  }
+  expect(check).toBeInstanceOf(PdfToolError);
+  expect((check as PdfToolError).kind).toBe('size');
+}, 60_000);
+
+it('a copy this package has just written can be checked without counting its streams a second time', async () => {
+  const { bytes } = await stripMetadata(fixtureBytes(F1_FULL));
+  expect(await findMetadataLeft(bytes, { skipExpansionCheck: true })).toEqual([]);
+  expect(await findMetadataLeft(bytes)).toEqual([]);
+});
