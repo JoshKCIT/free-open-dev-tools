@@ -42,27 +42,46 @@ export const MAX_ROWS = 200;
 
 const BACKSLASH = String.fromCharCode(92);
 
-/** True for the code units `visible` escapes: control characters other than tab and line feed, and the direction marks. */
+/** True for the code units `visible` escapes: controls other than tab and line feed, direction marks and invisible format characters. */
 function isEscaped(unit: number): boolean {
   if (unit <= 0x1f) return unit !== 0x09 && unit !== 0x0a;
   if (unit >= 0x7f && unit <= 0x9f) return true;
-  if (unit === 0x61c || unit === 0x200e || unit === 0x200f) return true;
+  // The soft hyphen, the Arabic letter mark, the line and paragraph separators and the byte order mark.
+  if (unit === 0xad || unit === 0x61c || unit === 0x2028 || unit === 0x2029 || unit === 0xfeff) return true;
+  // The zero width marks and the direction marks LRM and RLM.
+  if (unit >= 0x200b && unit <= 0x200f) return true;
   if (unit >= 0x202a && unit <= 0x202e) return true;
+  // The word joiner and the invisible operators, then the direction isolates.
+  if (unit >= 0x2060 && unit <= 0x2064) return true;
   return unit >= 0x2066 && unit <= 0x2069;
 }
 
 /**
- * The text with U+0000 to U+001F (except tab and line feed), U+007F, U+0080 to U+009F, U+061C, U+200E, U+200F,
- * U+202A to U+202E and U+2066 to U+2069 written as the backslash, `u{`, the code point in capital hexadecimal and `}`,
- * so text read from a file cannot move the cursor, hide text or reorder what a reader sees. One pass, linear in the text.
+ * The text with U+0000 to U+001F (except tab and line feed), U+007F, U+0080 to U+009F, U+00AD, U+061C, U+200B to U+200F,
+ * U+2028, U+2029, U+202A to U+202E, U+2060 to U+2064, U+2066 to U+2069, U+FEFF and the tag characters U+E0000 to U+E007F
+ * written as the backslash, `u{`, the code point in capital hexadecimal and `}`, so text read from a file cannot move the cursor,
+ * hide text, hide a message in characters that draw nothing or reorder what a reader sees. One pass, linear in the text.
  */
 export function visible(text: string): string {
   let out = '';
   let from = 0;
   for (let i = 0; i < text.length; i++) {
     const unit = text.charCodeAt(i);
-    if (!isEscaped(unit)) continue;
-    out += text.slice(from, i) + BACKSLASH + 'u{' + unit.toString(16).toUpperCase() + '}';
+    let codePoint = -1;
+    let width = 1;
+    if (unit === 0xdb40) {
+      // A tag character is a surrogate pair: U+DB40 then U+DC00 to U+DC7F stand for U+E0000 to U+E007F.
+      const low = text.charCodeAt(i + 1);
+      if (low >= 0xdc00 && low <= 0xdc7f) {
+        codePoint = 0xe0000 + (low - 0xdc00);
+        width = 2;
+      }
+    } else if (isEscaped(unit)) {
+      codePoint = unit;
+    }
+    if (codePoint < 0) continue;
+    out += text.slice(from, i) + BACKSLASH + 'u{' + codePoint.toString(16).toUpperCase() + '}';
+    i += width - 1;
     from = i + 1;
   }
   return out + text.slice(from);

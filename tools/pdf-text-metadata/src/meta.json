@@ -21,7 +21,7 @@
     "Text that relies on a built-in Chinese, Japanese or Korean character map may be missing, because this page loads no extra data files.",
     "The copy is a rewritten file: a digital signature in it no longer validates, and it is saved without object streams, so it can be larger.",
     "Only the metadata fields ISO 32000-1 names are removed; text in page content, annotations, bookmarks, form fields or attached files can still identify an author.",
-    "Each value shown is cut at 1,000 characters, at most 200 custom keys and 200 XMP properties are listed, and control and direction-changing characters are shown escaped."
+    "Each value shown is cut at 1,000 characters, at most 200 custom keys and 200 XMP properties are listed, and control, direction-changing and invisible characters (such as zero width marks and tag characters) are shown escaped."
   ],
   "ambiguities": [
     "Text comes in the order PDF.js reports it, which follows the content order of the file and is not always the reading order; columns and tables can interleave",

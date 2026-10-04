@@ -222,3 +222,27 @@ it('a BMP or PNG with a negative, zero or unreadable size is refused with a plai
     expect(() => checkImageFile(header, 1000)).toThrow(/size of this image could not be read/);
   }
 });
+
+it('invisible format characters are shown as escapes: soft hyphen, zero width marks, line and paragraph separators, word joiners, the byte order mark and tag characters', () => {
+  const escaped = [
+    0xad, 0x200b, 0x200c, 0x200d, 0x2028, 0x2029, 0x2060, 0x2061, 0x2064, 0xfeff, 0xe0001, 0xe0041, 0xe007f,
+  ];
+  for (const cp of escaped) {
+    expect(visible(`a${String.fromCodePoint(cp)}b`)).toBe(`a${BS}u{${cp.toString(16).toUpperCase()}}b`);
+  }
+  // A run of tag characters spelling a word is escaped one by one and none is left as itself.
+  const tagged = Array.from('hidden', (c) => String.fromCodePoint(0xe0000 + c.charCodeAt(0))).join('');
+  expect(visible(tagged)).toBe(
+    Array.from('hidden', (c) => `${BS}u{${(0xe0000 + c.charCodeAt(0)).toString(16).toUpperCase()}}`).join(''),
+  );
+  // Characters next to them in the tables stay as they are: a hyphen, a no-break space, U+2065 (unassigned), a letter, an emoji.
+  const kept = [
+    '-',
+    String.fromCodePoint(0xa0),
+    String.fromCodePoint(0x2065),
+    'z',
+    String.fromCodePoint(0x1f600),
+    String.fromCodePoint(0xe0080),
+  ];
+  for (const text of kept) expect(visible(text)).toBe(text);
+});
