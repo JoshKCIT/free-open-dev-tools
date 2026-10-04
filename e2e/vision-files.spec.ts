@@ -2144,6 +2144,35 @@ test('image-converter: crop, rotate and flip give exactly the model pixels in th
   expect(offending(requests)).toEqual([]);
 });
 
+test('image-converter: a crop corner with no crop size is refused, not silently ignored', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openTool(page, 'image-converter');
+  const requests = recordRequests(page);
+  const picture = distinctPng('corner.png', 7, 5, 3);
+  await attachImage(page, 'file', picture.file);
+  await chooseOption(page, 'transform', 'edit');
+  await fillField(page, 'cropX', '3');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText(
+    'Crop left and Crop top have no effect without a crop size. Set Crop width and Crop height, or set Crop left and Crop top back to 0.',
+    { timeout: 30_000 },
+  );
+  expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+
+  // The same for the top, and with the corner back at 0 and no size the whole image is kept as before.
+  await fillField(page, 'cropX', '0');
+  await fillField(page, 'cropY', '2');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('.issue-list')).toContainText('have no effect without a crop size', {
+    timeout: 30_000,
+  });
+  await fillField(page, 'cropY', '0');
+  await runButtonOf(page).click();
+  await expect(outputArea(page).locator('li', { hasText: 'corner.png' })).toBeVisible({ timeout: 30_000 });
+  expect(decodePngBytes(await downloadNamed(page, 'corner.png')).width).toBe(7);
+  expect(offending(requests)).toEqual([]);
+});
+
 /** Four flat rectangles, 20 by 10 each, in a 40 by 20 picture: red and green on top, blue and yellow below. */
 const FLAT_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 40 20">' +

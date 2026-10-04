@@ -69,7 +69,16 @@ function readEdits(values: Values): { edits?: ImageEdits; error?: string } {
   };
   const width = read.cropW!;
   const height = read.cropH!;
-  if (width === 0 && height === 0) return { edits };
+  if (width === 0 && height === 0) {
+    // With no crop size the whole image is kept, so a corner would be ignored: say so rather than ignore it.
+    if (read.cropX! !== 0 || read.cropY! !== 0) {
+      return {
+        error:
+          'Crop left and Crop top have no effect without a crop size. Set Crop width and Crop height, or set Crop left and Crop top back to 0.',
+      };
+    }
+    return { edits };
+  }
   if (width === 0 || height === 0) {
     return { error: 'Crop width and Crop height must both be set, or both left at 0 to keep the whole image.' };
   }
@@ -179,7 +188,7 @@ const fields: Field[] = [
     min: 0,
     max: CROP_MAX,
     visible: transformIsEdit,
-    help: 'Pixels from the left edge of the upright image.',
+    help: 'Pixels from the left edge of the upright image. Used only when Crop width and Crop height are set.',
   },
   {
     name: 'cropY',
@@ -189,7 +198,7 @@ const fields: Field[] = [
     min: 0,
     max: CROP_MAX,
     visible: transformIsEdit,
-    help: 'Pixels from the top edge of the upright image.',
+    help: 'Pixels from the top edge of the upright image. Used only when Crop width and Crop height are set.',
   },
   {
     name: 'cropW',
