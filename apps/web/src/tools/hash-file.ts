@@ -125,7 +125,7 @@ export default defineTool({
     const outputs: OutputBlock[] = [];
     const expected = str(values, 'expected').trim();
     if (expected) {
-      const matched = results.filter((r) => digestsMatch(r.digest, expected));
+      const matched = results.filter((r) => digestsMatch(r.digest, expected, format));
       if (matched.length > 0) {
         outputs.push({
           kind: 'note',
@@ -133,7 +133,7 @@ export default defineTool({
           value: `That checksum matches ${matched.map((m) => m.label).join(' and ')} of this file.`,
         });
       } else {
-        const normalizedExpectedLength = expectedDigestLength(expected);
+        const normalizedExpectedLength = expectedDigestLength(expected, format);
         const anyLengthMatches = results.some((r) => r.digest.length === normalizedExpectedLength);
         outputs.push({
           kind: 'note',

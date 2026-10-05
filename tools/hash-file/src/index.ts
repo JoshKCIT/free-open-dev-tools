@@ -249,14 +249,24 @@ function isHexLike(text: string): boolean {
   return true;
 }
 
+/** True for the two hexadecimal output formats. */
+function isHexOutput(output: OutputFormat): boolean {
+  return output === 'hex' || output === 'HEX';
+}
+
 /**
  * Constant-time-ish comparison of two checksum strings. Two hexadecimal checksums are compared ignoring case and the
  * separators people put between bytes (white space, colon, hyphen, underscore). Anything else is a Base64 or Base64url
  * checksum, whose letters are case sensitive and whose alphabets use the hyphen and the underscore, so it is compared
  * character by character with only white space (a wrapped line) left out.
+ *
+ * Pass `output`, the format `a` (the computed digest) was written in, and that format decides: only the two hexadecimal
+ * formats ignore case and separators, so a short Base64url checksum that happens to be made only of hexadecimal digits,
+ * hyphens and underscores is still compared exactly. Without `output` the pair is read as hexadecimal whenever both texts
+ * look hexadecimal, as it always was for callers that do not say which format they hold.
  */
-export function digestsMatch(a: string, b: string): boolean {
-  const hex = isHexLike(a) && isHexLike(b);
+export function digestsMatch(a: string, b: string, output?: OutputFormat): boolean {
+  const hex = output === undefined ? isHexLike(a) && isHexLike(b) : isHexOutput(output) && isHexLike(a) && isHexLike(b);
   const x = hex ? stripped(a, true).toLowerCase() : stripped(a, false);
   const y = hex ? stripped(b, true).toLowerCase() : stripped(b, false);
   if (x.length !== y.length) return false;
@@ -268,9 +278,11 @@ export function digestsMatch(a: string, b: string): boolean {
 /**
  * How many characters a pasted checksum counts as when it is compared: white space is never counted, and the colon,
  * underscore and hyphen are left out only when the text is hexadecimal (in Base64url they are letters of the value).
+ * With `output` named, only the two hexadecimal formats leave the separators out, matching `digestsMatch`.
  */
-export function expectedDigestLength(text: string): number {
-  return stripped(text, isHexLike(text)).length;
+export function expectedDigestLength(text: string, output?: OutputFormat): number {
+  const hex = output === undefined ? isHexLike(text) : isHexOutput(output) && isHexLike(text);
+  return stripped(text, hex).length;
 }
 
 export class HashFileError extends Error {

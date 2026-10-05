@@ -2,14 +2,14 @@
   "id": "hash-file",
   "name": "File Hash & Checksum",
   "summary": "Hash files of any size in a worker and compare against an expected checksum.",
-  "about": "Streams a file through every selected digest algorithm in a single pass, in a background thread, so a file of any size can be hashed without loading the whole thing into memory or freezing the tab. Paste a checksum you were given and it tells you whether it matches; a hexadecimal checksum is compared ignoring case and separators, a Base64 or Base64url one exactly.",
+  "about": "Streams a file through every selected digest algorithm in a single pass, in a background thread, so a file of any size can be hashed without loading the whole thing into memory or freezing the tab. Paste a checksum you were given and it tells you whether it matches; with a hexadecimal output the checksum is compared ignoring case and separators, with Base64 or Base64url exactly.",
   "supports": [
     "MD5, SHA-1, SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256, SHA3-224, SHA3-256, SHA3-384, SHA3-512, Keccak-256, BLAKE2b-512, BLAKE2s-256, BLAKE3, RIPEMD-160 and CRC-32",
     "Files of any size, read in fixed-size chunks so memory use stays flat regardless of file size",
     "Every selected algorithm computed in a single pass over the file, so the file is never read twice",
     "A progress bar driven by bytes actually read, and a Cancel button that really stops the background work",
     "Output as lowercase hex, uppercase hex, Base64 or Base64url",
-    "Comparing a computed digest against one you paste in: hexadecimal ignores case and separators, Base64 and Base64url are compared exactly",
+    "Comparing a computed digest against one you paste in, by the output format you chose: hexadecimal ignores case and separators, Base64 and Base64url are compared exactly",
     "Keccak-256 as distinct from SHA3-256, which matters if you work with Ethereum",
     "BLAKE2b-512 and BLAKE2s-256 unkeyed at their full default output length; BLAKE3 in its plain hashing mode at its default 256-bit output, streamed incrementally through its own `.create()` the same way every other algorithm here is"
   ],
@@ -24,7 +24,7 @@
   ],
   "ambiguities": [
     "What Ethereum calls sha3 is original Keccak, not the FIPS 202 SHA-3 that was standardised later with different padding. Both are offered and labelled separately.",
-    "Comparison against a pasted checksum ignores white space. A hexadecimal checksum also ignores letter case and the separators colon, underscore and hyphen; a Base64 or Base64url checksum is compared exactly, because its letter case and its hyphen and underscore are part of the value. A Base64url value made only of hexadecimal digits and hyphens is read as hexadecimal.",
+    "Comparison against a pasted checksum ignores white space. The output format you chose decides how the rest is compared, not what the pasted text looks like: with Lowercase hex or Uppercase hex the comparison also ignores letter case and the separators colon, underscore and hyphen; with Base64 or Base64url it is exact, because the letter case and the hyphen and underscore are part of the value, even when a short Base64url checksum happens to be made only of hexadecimal digits, hyphens and underscores.",
     "SHA-512/224 and SHA-512/256 are not the same digest as SHA-224 and SHA-256, even though the bit lengths match: they use SHA-512's compression function with their own distinct initial values, defined alongside it in FIPS 180-4."
   ],
   "standards": [

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { crc32 } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
 /**
@@ -1438,4 +1439,50 @@ test('hash-file: a Base64url checksum with a wrong letter case does not match an
   await page.locator('#f-output').selectOption('HEX');
   await checkChecksum(page, ABC_HEX.match(/.{8}/g)!.join('_'), MATCH_NOTE);
   await checkChecksum(page, ABC_HEX.match(/.{8}/g)!.join('-').toUpperCase(), MATCH_NOTE);
+});
+
+/** A short text whose CRC-32 written in Base64url is only hexadecimal digits, hyphens and underscores (about 0.06 percent do). */
+function crcLookAlikeText(): { text: string; hex: string; base64url: string } {
+  for (let n = 0; n < 1_000_000; n++) {
+    const text = `crc-look-alike-${n}`;
+    const hex = (crc32(text) >>> 0).toString(16).padStart(8, '0');
+    const base64url = Buffer.from(hex, 'hex').toString('base64url');
+    if (/^[0-9a-fA-F_-]{6}$/.test(base64url) && /[a-fA-F]/.test(base64url)) return { text, hex, base64url };
+  }
+  throw new Error('no look-alike text found');
+}
+
+test('hash-file: a short Base64url checksum that looks hexadecimal is still compared exactly', async ({ page }) => {
+  const sample = crcLookAlikeText();
+  await openTool(page, 'hash-file');
+  await page
+    .locator('#f-file')
+    .setInputFiles({ name: 'look-alike.txt', mimeType: 'text/plain', buffer: Buffer.from(sample.text, 'utf8') });
+  await page.locator('#f-algo-sha256').setChecked(false);
+  await page.locator('#f-algo-crc32').setChecked(true);
+  const match = 'That checksum matches CRC-32 of this file.';
+
+  // Hexadecimal output: the page shows the CRC-32 Node's zlib made, and case and separators are still ignored.
+  await page.locator('#f-output').selectOption('hex');
+  await checkChecksum(page, sample.hex.toUpperCase(), match);
+  expect((await readCodeBlocks(page))['CRC-32']).toBe(sample.hex);
+  await checkChecksum(page, sample.hex.match(/.{2}/g)!.join(':').toUpperCase(), match);
+
+  // Base64url output: the same bytes written in Base64url match only as written, never in another case or without
+  // their hyphens and underscores, though every character of the text is a hexadecimal digit, a hyphen or an underscore.
+  await page.locator('#f-output').selectOption('base64url');
+  await checkChecksum(page, sample.base64url, match);
+  expect((await readCodeBlocks(page))['CRC-32']).toBe(sample.base64url);
+  const swapped = sample.base64url.replace(/[a-zA-Z]/g, (ch) =>
+    ch === ch.toLowerCase() ? ch.toUpperCase() : ch.toLowerCase(),
+  );
+  expect(swapped).not.toBe(sample.base64url);
+  await checkChecksum(page, swapped, NO_MATCH_NOTE);
+  await checkChecksum(
+    page,
+    sample.base64url.toLowerCase() === sample.base64url
+      ? sample.base64url.toUpperCase()
+      : sample.base64url.toLowerCase(),
+    NO_MATCH_NOTE,
+  );
 });
