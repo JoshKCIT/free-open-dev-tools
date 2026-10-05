@@ -1,5 +1,4 @@
-import { Routes, Route, Link, NavLink, useLocation } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import ToolsIndex from './pages/ToolsIndex';
 import ToolView from './pages/ToolView';
@@ -8,6 +7,7 @@ import About from './pages/About';
 import Catalog from './pages/Catalog';
 import NotFound from './pages/NotFound';
 import ThemeToggle from './components/ThemeToggle';
+import { SiteLink, SiteNavLink } from './components/SiteLink';
 import { REPO_URL } from './lib/site';
 
 function Logo() {
@@ -26,23 +26,6 @@ function Logo() {
   );
 }
 
-/** Moves keyboard focus to the page heading on navigation. */
-function FocusOnRouteChange() {
-  const { pathname } = useLocation();
-  const first = useRef(true);
-  useEffect(() => {
-    // Not on first paint: taking focus there would put it past the skip link,
-    // so the first Tab press would miss it.
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    document.getElementById('main')?.focus({ preventScroll: true });
-    window.scrollTo(0, 0);
-  }, [pathname]);
-  return null;
-}
-
 export default function App() {
   return (
     <div className="shell">
@@ -51,17 +34,17 @@ export default function App() {
       </a>
       <header className="site-header">
         <div className="wrap">
-          <Link className="brand" to="/">
+          <SiteLink className="brand" to="/">
             <span style={{ color: 'var(--accent)', display: 'flex' }}>
               <Logo />
             </span>
             Free &amp; Open Dev Tools
-          </Link>
+          </SiteLink>
           <nav className="nav" aria-label="Main">
-            <NavLink to="/tools">Tools</NavLink>
-            <NavLink to="/catalog">Catalog</NavLink>
-            <NavLink to="/privacy">Privacy</NavLink>
-            <NavLink to="/about">About</NavLink>
+            <SiteNavLink to="/tools">Tools</SiteNavLink>
+            <SiteNavLink to="/catalog">Catalog</SiteNavLink>
+            <SiteNavLink to="/privacy">Privacy</SiteNavLink>
+            <SiteNavLink to="/about">About</SiteNavLink>
             <a href={REPO_URL} rel="noreferrer noopener">
               Source
             </a>
@@ -69,8 +52,6 @@ export default function App() {
           </nav>
         </div>
       </header>
-
-      <FocusOnRouteChange />
 
       <main id="main" tabIndex={-1}>
         <div className="wrap">
@@ -90,8 +71,8 @@ export default function App() {
         <div className="wrap">
           <span>Free &amp; Open Dev Tools. MIT licensed. Every tool runs in your browser.</span>
           <nav aria-label="Footer">
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/about">About</Link>
+            <SiteLink to="/privacy">Privacy</SiteLink>
+            <SiteLink to="/about">About</SiteLink>
             <a href={REPO_URL} rel="noreferrer noopener">
               GitHub
             </a>
