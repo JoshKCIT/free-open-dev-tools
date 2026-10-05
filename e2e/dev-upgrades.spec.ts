@@ -373,7 +373,14 @@ test('uuid: a hidden setting of one format never changes another format output',
   await page.locator('#f-wrapper').selectOption('urn');
   await generate(page, 'objectid', 4, /^[0-9a-f]{24}$/); // lower case, no wrapper, whatever the hidden settings hold
   await generate(page, 'ulid', 4, ULID_SHAPE);
-  await generate(page, 'ksuid', 4, KSUID_SHAPE);
+  // A KSUID shape accepts upper case too, so the shape alone cannot show a leak of the Uppercase setting. A batch of 20
+  // (540 letters and digits) holds lower-case letters unless the ids were upper-cased, and each still decodes to now.
+  const ksuids = await generate(page, 'ksuid', 20, KSUID_SHAPE);
+  expect(ksuids.join('')).toMatch(/[a-z]/);
+  for (const id of ksuids) {
+    const seconds = ksuidUnixSeconds(id);
+    expectNear(new Date(seconds * 1000).toISOString(), seconds * 1000, 120_000);
+  }
 
   // Snowflake settings are set, then another format is run, then the snowflake is run again with them kept.
   await page.locator('#f-version').selectOption('snowflake');
