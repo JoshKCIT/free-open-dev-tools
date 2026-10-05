@@ -121,5 +121,6 @@
   "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The date and time examples of WHATWG 2.3.5, 4.5.14 and 4.7.3 are checked literally and impossible values must be refused; each of the five meter ordering rules and the progress rules is tested on its own; a dialog must carry no attribute other than id, open and closedby; a meter or progress bar must get its name from a label tied by for and id; a quotation must keep its attribution outside the blockquote and a figure caption must be its first or last child; and hostile text typed into every free-text field of every element must leave the parsed element tree unchanged.",
   "devDependencies": {
     "parse5": "8.0.1"
-  }
+  },
+  "needs": ["sandboxed-html"]
 }

@@ -95,5 +95,6 @@
   "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The examples that RFC 6068 sections 6.1 to 6.3, RFC 3966 sections 6 and 8 and RFC 5724 section 2.5 print are checked literally, so the encoding is reproduced byte for byte, and a line break typed into a header field must be refused. The 16 link types, the two registered extensions and their dates are asserted, the rel values written are exactly those chosen, opener with noopener is flagged, and hostile text typed into every field must leave the parsed element tree unchanged.",
   "devDependencies": {
     "parse5": "8.0.1"
-  }
+  },
+  "needs": ["sandboxed-html"]
 }

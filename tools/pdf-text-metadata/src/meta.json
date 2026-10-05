@@ -77,5 +77,6 @@
       "attribution": "Copyright (C) 2009-2024 Mozilla Corporation; Copyright (C) 1998-2007 Marti Maria. The module ships in pdfjs-dist 6.3.289.",
       "noticeFile": "src/qcms-NOTICE.txt"
     }
-  ]
+  ],
+  "needs": ["workers"]
 }

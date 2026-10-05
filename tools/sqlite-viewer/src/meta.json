@@ -56,5 +56,6 @@
       "attribution": "Copyright (c) 2010-2014 Emscripten authors. The Makefile of sql.js 1.14.2 says its WebAssembly was last built with Emscripten 2.0.15, and the Emscripten runtime and C library are part of that module. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.",
       "noticeFile": "src/emscripten-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["wasm", "workers"]
 }

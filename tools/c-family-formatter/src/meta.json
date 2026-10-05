@@ -59,5 +59,6 @@
       "attribution": "The LLVM Project is under the Apache License v2.0 with LLVM Exceptions. The clang-format library is compiled into the WebAssembly module that @wasm-fmt/clang-format 23.1.1 ships.",
       "noticeFile": "src/llvm-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["wasm", "workers"]
 }

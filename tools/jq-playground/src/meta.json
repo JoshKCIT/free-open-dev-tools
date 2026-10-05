@@ -63,5 +63,6 @@
       "attribution": "Copyright (c) 2010-2014 Emscripten authors. The Dockerfile of jq-wasm 3.0.0-jq-1.8.2 builds with Emscripten 6.0.0, and the Emscripten runtime and C library are part of the module that jq-wasm 3.0.0-jq-1.8.2 ships. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.",
       "noticeFile": "src/emscripten-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["wasm", "workers"]
 }

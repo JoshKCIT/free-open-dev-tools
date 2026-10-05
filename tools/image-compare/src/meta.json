@@ -56,5 +56,6 @@
   "testNotes": "Boundary values come from pixelmatch's own source at 7.2.0: a pixel counts when the absolute YIQ delta, 0.5053 * y * y + 0.299 * i * i + 0.1957 * q * q, is greater than maxDelta = 35215 * threshold * threshold, where 35215 is the most the metric can reach. Black against white has delta 32857.13, so it counts at 0.9659 (maxDelta 32854.29) and not at 0.966 (32861.09); gray 100 against 110 has delta 50.53, so it counts at 0.0378 (50.3166) and not at 0.0379 (50.5832); gray 128 against 129 has delta 0.5053, so it counts at 0.0037 (0.4821) and not at 0.0038 (0.5085); at the default 0.1 (maxDelta 352.15) a gray difference of 26 (delta 341.58) does not count and one of 27 (delta 368.36) does. Each literal is checked one step either side, and the formula is written out a second time in the test from the YIQ coefficients rather than taken from the library. pixelmatch's own published test images 1a and 1b (test/fixtures at the tag v7.2.0, kept as base64 in test/fixtures/pixelmatch-vectors.ts) must differ in 143 pixels at threshold 0.05 and 106 at 0.1, as its own test suite states. The anti-aliasing case is a 5 by 5 image built by hand from the detector's published rules.",
   "dependencies": {
     "pixelmatch": "7.2.0"
-  }
+  },
+  "needs": ["workers"]
 }

@@ -28,5 +28,6 @@
   "testNotes": "No publishing body defines SQL formatting or minification as a single interchange format across dialects; this tool's grammar-level behaviour is proven against the installed sql-formatter package's own documented example, and its minifier is proven against the vendor lexical documentation for quoting in PostgreSQL, MySQL, SQLite and SQL Server with format(minify(x)) === format(x) as the token-preservation oracle across a corpus of queries in every tested dialect.",
   "dependencies": {
     "sql-formatter": "15.9.0"
-  }
+  },
+  "needs": ["workers"]
 }

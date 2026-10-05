@@ -44,5 +44,6 @@
   "dependencies": {
     "@prettier/plugin-php": "0.25.0",
     "prettier": "3.9.9"
-  }
+  },
+  "needs": ["workers"]
 }

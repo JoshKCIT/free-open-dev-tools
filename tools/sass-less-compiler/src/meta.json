@@ -44,5 +44,6 @@
   "dependencies": {
     "sass": "1.103.1",
     "less": "4.9.1"
-  }
+  },
+  "needs": ["eval", "workers"]
 }

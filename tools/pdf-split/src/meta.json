@@ -40,5 +40,6 @@
   "primaryExport": "organizePdf",
   "usage": "import { organizePdf } from '@fodt/pdf-split';\n\nconst result = await organizePdf(bytes, 'document.pdf', { kind: 'split-ranges', ranges: '1-2;3' }, {\n  onProgress: (fraction, detail) => {},\n  signal: controller.signal,\n});\n// result.files is one entry per output document.",
   "apiNotes": "This package takes only byte arrays and plain values, and names no browser-only type anywhere, not even in a comment: it is built and tested in plain Node by a release gate that has no such type available. Every input is loaded with its own loadPdf (a small file this package owns outright, not shared code), which checks the file header before the PDF library ever sees the bytes and refuses any encrypted document by name.",
-  "testNotes": "Every test runs the real, installed @cantoo/pdf-lib end to end against fixtures this package's own test/build-pdfs.ts builds with the same library, then checks results with an independent reader (the same pdfjs-dist version this catalog already pins elsewhere for rendering PDF pages) so the same library that wrote a file is never the only thing that reads it back."
+  "testNotes": "Every test runs the real, installed @cantoo/pdf-lib end to end against fixtures this package's own test/build-pdfs.ts builds with the same library, then checks results with an independent reader (the same pdfjs-dist version this catalog already pins elsewhere for rendering PDF pages) so the same library that wrote a file is never the only thing that reads it back.",
+  "needs": ["workers"]
 }

@@ -104,5 +104,6 @@
   "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The track example of WHATWG 4.8.10 is checked literally; a video with src must have no source children and without src the sources come before the tracks; audio must refuse a poster and a size; each track rule is tested on its own, including the five kinds, the language for subtitles, one default per kind group and duplicates; preload, loading and crossorigin take only their keywords; srcset descriptors are tested for mixing, repeats, zero and negative values and stray commas; sizes is tested for percentages, negative lengths, a missing fallback length and auto without lazy loading; a picture source followed by another source or by an img with srcset must carry media or type; an image must carry alt text unless decorative; hostile text typed into every free-text field of every media must leave the parsed element tree unchanged; and the preview must carry no address the visitor typed and must always show controls.",
   "devDependencies": {
     "parse5": "8.0.1"
-  }
+  },
+  "needs": ["sandboxed-html"]
 }

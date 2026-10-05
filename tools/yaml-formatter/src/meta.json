@@ -30,5 +30,6 @@
   "testNotes": "Every quoted example is taken from YAML 1.2.2 chapter 2 and checked by parsing the exact quoted text and comparing the resolved value, not by re-typing the example by hand into an assertion.",
   "dependencies": {
     "yaml": "2.9.1"
-  }
+  },
+  "needs": ["workers"]
 }

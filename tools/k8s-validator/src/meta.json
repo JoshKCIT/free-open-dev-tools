@@ -51,5 +51,6 @@
       "attribution": "\"Kubernetes JSON Schema\" by Gareth Rushgrove and Yann Hamon, licensed under the Apache License, Version 2.0. Snapshot taken at commit a6f9a32d2ccb64b6e4f5b41419b9c2e8ee0cce18, Kubernetes v1.35.0, rewritten to a self-contained local-reference subset by this project's own committed generator (see src/k8s-schema-subset-NOTICE.txt).",
       "noticeFile": "src/k8s-schema-subset-NOTICE.txt"
     }
-  ]
+  ],
+  "needs": ["eval", "workers"]
 }

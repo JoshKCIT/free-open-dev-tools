@@ -62,5 +62,6 @@
       "attribution": "\"GitHub Actions Workflow\" schema by the SchemaStore project, licensed under the Apache License, Version 2.0. Snapshot taken at commit 314154a4c71665df725986ad334f6f0846d486d3.",
       "noticeFile": "src/github-workflow-schema-NOTICE.txt"
     }
-  ]
+  ],
+  "needs": ["eval", "workers"]
 }

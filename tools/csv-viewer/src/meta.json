@@ -28,5 +28,6 @@
   "primaryExport": "viewCsv",
   "usage": "import { viewCsv } from '@fodt/csv-viewer';\n\nviewCsv(text, { delimiter: 'auto', header: true, sortColumn: 'age', sortDirection: 'desc' });",
   "apiNotes": "`detectDelimiter` is exported on its own for anything that only needs the guess; `viewCsv` calls it internally whenever `delimiter` is 'auto' or omitted. `MAX_DISPLAY_ROWS` (500) is the fixed cap this package itself enforces, exported so a page can explain a truncated result without hard-coding the number twice.",
-  "testNotes": "Delimiter detection is proven against hand-built fixtures for each candidate, including one with a delimiter character living inside an RFC 4180 quoted field, and against a genuinely single-column file. Sorting and filtering are proven with a seeded 1200-row fixture generated in the test file itself, checking the returned row and match counts as well as the 500-row cap."
+  "testNotes": "Delimiter detection is proven against hand-built fixtures for each candidate, including one with a delimiter character living inside an RFC 4180 quoted field, and against a genuinely single-column file. Sorting and filtering are proven with a seeded 1200-row fixture generated in the test file itself, checking the returned row and match counts as well as the 500-row cap.",
+  "needs": ["workers"]
 }

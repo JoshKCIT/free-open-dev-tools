@@ -81,5 +81,6 @@
       "attribution": "Copyright (c) 2010-2014 Emscripten authors. The build workflow of libxml2-wasm 0.7.2 names Emscripten 5.0.2, and the Emscripten runtime and C library are part of the module that libxml2-wasm 0.7.2 embeds. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.",
       "noticeFile": "src/emscripten-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["sandboxed-html", "wasm", "workers"]
 }

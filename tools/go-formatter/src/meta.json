@@ -50,5 +50,6 @@
       "attribution": "Copyright (c) 2018-2025 The TinyGo Authors. TinyGo v0.40.1 compiled the Go source into the WebAssembly module and its runtime is part of that module.",
       "noticeFile": "src/tinygo-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["wasm", "workers"]
 }

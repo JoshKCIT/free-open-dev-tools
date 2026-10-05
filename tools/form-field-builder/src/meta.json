@@ -67,5 +67,6 @@
   "testNotes": "Every generated snippet is parsed with parse5 and must report zero parse errors. The label rule of the HTML Living Standard (4.10.4), the autofill examples of 4.10.19.7.1 (section-blue shipping street-address and the others), the applicability table of 4.10.5, the number and date and time examples of 2.3.4 and 2.3.5, and the label rules of HTML-AAM 4.1.1 are checked literally, and hostile text typed into every field must leave the parsed element tree unchanged. The counts of the copied tables (22 input types, 44 normal and 10 contact autofill field names) are asserted.",
   "devDependencies": {
     "parse5": "8.0.1"
-  }
+  },
+  "needs": ["sandboxed-html"]
 }

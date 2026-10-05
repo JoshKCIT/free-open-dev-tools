@@ -60,5 +60,6 @@
       "attribution": "Copyright the Dart project authors. analyzer 10.0.1, _fe_analyzer_shared 93.0.0, collection 1.19.1, path 1.9.1, pub_semver 2.2.0, source_span 1.10.1 and term_glyph 1.2.2, the packages the engine's source map lists next to dart_style.",
       "noticeFile": "src/dart-pub-packages-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["wasm", "workers"]
 }

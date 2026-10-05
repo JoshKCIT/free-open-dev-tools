@@ -50,5 +50,6 @@
   "apiNotes": "buildReadme({ name, description?, badges?, toc?, packageManager?, packageName?, sections?, license? }) returns { markdown, headings }. renderPreview(markdown, win) returns { html, removed } -- html is already sanitised and safe to render in a sandboxed frame; win is the caller's own window, never read from a DOM global inside this package. badgeMarkdown(id, params) builds one badge's own Markdown line and throws ReadmeBadgeError when a badge's required parameters are missing (buildReadme catches this per badge and simply omits it).",
   "testNotes": "OWASP XSS Filter Evasion Cheat Sheet payloads (107 vectors, shared canonically across this project's markup-rendering tools) are typed into every field this tool renders and checked to leave no active content, using the same independent active-content checker those tools use. Badge URL building is checked against a battery of hostile owner/package names (spaces, parentheses, slashes, unicode) for both encodeURIComponent's own path-segment form and shields.io's dash/underscore/space static-badge form.",
   "dependencies": { "micromark": "4.0.2", "micromark-extension-gfm": "3.0.0", "dompurify": "3.4.16" },
-  "devDependencies": { "jsdom": "^29.1.1", "@types/jsdom": "^30.0.0" }
+  "devDependencies": { "jsdom": "^29.1.1", "@types/jsdom": "^30.0.0" },
+  "needs": ["sandboxed-html"]
 }

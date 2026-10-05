@@ -53,5 +53,6 @@
       "attribution": "Copyright (c) 2022 Charles Marsh. The Ruff Python formatter is compiled into the WebAssembly module that @wasm-fmt/ruff_fmt 0.15.20 ships.",
       "noticeFile": "src/ruff-LICENSE.txt"
     }
-  ]
+  ],
+  "needs": ["wasm", "workers"]
 }
