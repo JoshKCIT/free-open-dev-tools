@@ -682,6 +682,52 @@ input[type='file'] {
   }
 }
 
+.tree-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tree,
+.tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tree {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  max-height: 460px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+.tree ul {
+  margin-left: 0.6rem;
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--border);
+}
+.tree summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.tree-leaf {
+  display: inline-block;
+  padding-left: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.tree-detail {
+  color: var(--text-muted);
+}
+.tree-cap,
+.tree-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 .output-block + .output-block {
   margin-top: 14px;
 }

@@ -56,6 +56,18 @@ export interface PreviewNode {
   children?: PreviewNode[];
 }
 
+/**
+ * One entry of a `tree` output block. `label` and `detail` are plain text: the block draws them as text and never as
+ * markup. A node with `children` can be opened and closed; `open` asks for it to start open (without it, only the first
+ * level starts open).
+ */
+export interface TreeNode {
+  label: string;
+  detail?: string;
+  children?: TreeNode[];
+  open?: boolean;
+}
+
 export interface OutputTable {
   headers: string[];
   rows: (string | number)[][];
@@ -111,6 +123,14 @@ export type OutputBlock =
    * hidden for visitors who ask for less motion. It never announces: the wrapper is a timer with live updates off.
    */
   | { kind: 'countdown'; label?: string; endsAt: number; periodMs: number }
+  /**
+   * Nested entries drawn as native expandable sections, in the order given, depth first. Text only: labels and details
+   * are never read as markup. The block draws at most 5,000 nodes and 64 levels and says so when it cuts; Copy always
+   * gives the whole tree, as `copyText` when the page supplies it and otherwise as indented text (two spaces per level,
+   * a tab before a detail). `download` names a file that saves the same text. Keep the page's own tree under the size
+   * the tool can hold in memory: the block caps what it draws, not what the page builds.
+   */
+  | { kind: 'tree'; label?: string; nodes: TreeNode[]; copyText?: string; download?: string }
   | { kind: 'diff'; label?: string; lines: { type: 'add' | 'del' | 'ctx' | 'meta'; text: string }[] };
 
 export interface ToolIssue {

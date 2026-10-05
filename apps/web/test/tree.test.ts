@@ -82,7 +82,7 @@ describe('tree helpers', () => {
     expect(out.nodeCut).toBe(false);
     const lines = treeText(out.nodes).split('\n');
     expect(lines).toHaveLength(64);
-    expect(lines[63].trim()).toBe('level63');
+    expect(lines[63]?.trim()).toBe('level63');
     expect(capTree(chain(64)).depthCut).toBe(false);
   });
 

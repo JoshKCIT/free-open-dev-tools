@@ -3,8 +3,11 @@ import type { OutputBlock, DownloadableFile } from '../lib/tool-ui';
 import { downloadMime } from '../lib/download-mime';
 import Countdown from './Countdown';
 import CssPreview from './CssPreview';
+import TreeView from './TreeView';
+import { copyTextOf } from '../lib/tree';
 
-function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+/** `text` may be a function, so a big text (the whole of a tree) is built only when Copy is pressed. */
+function CopyButton({ text, label = 'Copy' }: { text: string | (() => string); label?: string }) {
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle');
   useEffect(() => {
     if (state === 'idle') return;
@@ -19,7 +22,7 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
       style={{ padding: '3px 9px', fontSize: '0.78rem' }}
       onClick={async () => {
         try {
-          await navigator.clipboard.writeText(text);
+          await navigator.clipboard.writeText(typeof text === 'function' ? text() : text);
           setState('done');
         } catch {
           setState('failed');
@@ -38,13 +41,20 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
  * Builds the download from an in-memory blob. Nothing is uploaded, and the
  * object URL is revoked as soon as the click is handled.
  */
-function DownloadButton({ file, label = 'Download' }: { file: DownloadableFile; label?: string }) {
+function DownloadButton({
+  file: fileOrMaker,
+  label = 'Download',
+}: {
+  file: DownloadableFile | (() => DownloadableFile);
+  label?: string;
+}) {
   return (
     <button
       type="button"
       className="button"
       style={{ padding: '3px 9px', fontSize: '0.78rem' }}
       onClick={() => {
+        const file = typeof fileOrMaker === 'function' ? fileOrMaker() : fileOrMaker;
         const body: BlobPart =
           typeof file.content === 'string' ? file.content : (file.content.slice().buffer as ArrayBuffer);
         const url = URL.createObjectURL(new Blob([body], { type: file.mime }));
@@ -307,6 +317,27 @@ export default function OutputView({ block }: { block: OutputBlock }) {
           <Countdown label={block.label} endsAt={block.endsAt} periodMs={block.periodMs} />
         </div>
       );
+
+    case 'tree': {
+      const { nodes, copyText, download } = block;
+      const hasText = copyText !== undefined || nodes.length > 0;
+      const actions = hasText ? (
+        <>
+          <CopyButton text={() => copyTextOf(copyText, nodes)} />
+          {download ? (
+            <DownloadButton
+              file={() => ({ name: download, mime: downloadMime(download), content: copyTextOf(copyText, nodes) })}
+            />
+          ) : null}
+        </>
+      ) : null;
+      return (
+        <div className="output-block">
+          {head(actions)}
+          <TreeView nodes={nodes} />
+        </div>
+      );
+    }
 
     case 'diff':
       return (
