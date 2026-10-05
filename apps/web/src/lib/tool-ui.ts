@@ -134,6 +134,14 @@ export interface ToolResult {
    * the wrong order). `'after-first-output'` says exactly that.
    */
   statsPosition?: 'before-outputs' | 'after-first-output' | 'after-outputs';
+  /**
+   * Asks the runner to run the tool once more after this many milliseconds, with the values then in the form. The wait
+   * is clamped to 250 to 60,000. There is one timer per result: a new result, an edit, Reset or leaving the page clears
+   * it first, and a tool whose `autoRun` is false never gets one. A page that wants the timer again returns the field
+   * again from the next run. A tab that was hidden or a page restored from the back-forward cache runs at once when it
+   * becomes visible after the due time.
+   */
+  refreshAfterMs?: number;
 }
 
 export interface RunContext {

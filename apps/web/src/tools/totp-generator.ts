@@ -14,9 +14,9 @@ import {
 } from '@fodt/totp-generator';
 import { defineTool, num, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
-/** The one time in a run: this device's clock, read once, or the time the visitor typed. */
-function secondsForRun(at: string): { seconds: number; typed: boolean } {
-  if (at.trim() === '') return { seconds: Math.floor(Date.now() / 1000), typed: false };
+/** The one time in a run: this device's clock (`nowMs`, read once by the caller), or the time the visitor typed. */
+function secondsForRun(at: string, nowMs: number): { seconds: number; typed: boolean } {
+  if (at.trim() === '') return { seconds: Math.floor(nowMs / 1000), typed: false };
   return { seconds: parseTimeInput(at), typed: true };
 }
 
@@ -263,6 +263,8 @@ export default defineTool({
       const issuer = str(values, 'issuer');
       const account = str(values, 'account');
       // Only the fields of the chosen mode are read; a hidden field keeps its value but is never looked at.
+      // The device clock is read once for the whole run, so the codes and the wait for the next step agree.
+      const nowMs = Date.now();
       let seconds = 0;
       let typed = false;
       let period = 30;
@@ -271,7 +273,7 @@ export default defineTool({
         result = computeCodes({ mode, secret, algorithm, digits, counter: num(values, 'counter', 0), issuer, account });
       } else {
         period = num(values, 'period', 30);
-        ({ seconds, typed } = secondsForRun(str(values, 'at')));
+        ({ seconds, typed } = secondsForRun(str(values, 'at'), nowMs));
         result = computeCodes({ mode, secret, algorithm, digits, period, seconds, issuer, account });
       }
       const outputs: OutputBlock[] = codeBlocks(result, period);
@@ -286,7 +288,11 @@ export default defineTool({
         stats.push(['Unix seconds', String(seconds)]);
       }
       stats.push(['Secret size', `${result.secretBits} bits`]);
-      return { outputs, warnings: result.warnings, stats };
+      // Steps are floor(unix seconds / period), so a boundary is a multiple of the period in epoch time. The 25 ms keeps
+      // the refresh just after the boundary, never before it. Only codes made from this device's clock keep themselves
+      // current: a typed time and a counter never change by themselves.
+      const refreshAfterMs = mode === 'totp' && !typed ? period * 1000 - (nowMs % (period * 1000)) + 25 : undefined;
+      return { outputs, warnings: result.warnings, stats, ...(refreshAfterMs === undefined ? {} : { refreshAfterMs }) };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       return failure(err, secret);

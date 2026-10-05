@@ -397,8 +397,31 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Timed refresh (a result may ask for one run more through `refreshAfterMs`). One timer, armed from the latest result
+  // and cleared by the effect's own cleanup when a new result arrives, Reset empties the result or the page is left;
+  // an edit clears it at once through `clearRefresh`. The run itself is the ordinary `execute` with the values the form
+  // holds at that moment, so it takes the same path as a typed change.
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearRefresh = useCallback(() => {
+    if (refreshTimer.current !== null) clearTimeout(refreshTimer.current);
+    refreshTimer.current = null;
+  }, []);
+  useEffect(() => {
+    const wait = result?.refreshAfterMs;
+    if (!wait || tool.autoRun === false) return;
+    const ms = Math.min(Math.max(wait, 250), 60_000);
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null;
+      void execute(valuesRef.current);
+    }, ms);
+    return clearRefresh;
+  }, [result, execute, tool.autoRun, clearRefresh]);
+
   const visibleFields = tool.fields.filter((f) => !f.visible || f.visible(values));
   const set = (name: string, v: unknown) => {
+    clearRefresh();
     if (tool.cancellable && running) abandonRun('edit');
     setValues((prev) => ({ ...prev, [name]: v }));
   };
@@ -436,6 +459,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
                     // visitor who picks a different example mid-run could
                     // be handed the old run's result into the new example's
                     // fields.
+                    clearRefresh();
                     if (tool.cancellable && running) abandonRun('edit');
                     setValues({ ...base, ...ex.values });
                   }}
@@ -476,6 +500,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
               type="button"
               className="button"
               onClick={() => {
+                clearRefresh();
                 if (tool.cancellable && running) abandonRun('reset');
                 // A shallow copy, not `base` itself: when a visitor presses
                 // Reset without ever having changed a field, `values` is
