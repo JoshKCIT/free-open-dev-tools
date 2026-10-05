@@ -347,5 +347,5 @@ export { SNOWFLAKE_DEFAULT_EPOCH, parseEpoch, generateSnowflakes, decodeSnowflak
 export type { DecodedSnowflake, SnowflakeOptions, SnowflakeParts } from './snowflake';
 export { NANOID_URL_ALPHABET, NANOID_DEFAULT_SIZE, generateNanoIds, pickAlphabetIndex } from './nanoid';
 export type { ByteSource, NanoIdOptions } from './nanoid';
-export { detectIdentifier } from './detect';
+export { TRUNCATED_UUID_NOTE, detectIdentifier, truncatedUuidNote } from './detect';
 export type { DetectedIdentifier } from './detect';

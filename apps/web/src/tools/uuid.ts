@@ -15,6 +15,7 @@ import {
   generateSnowflakes,
   generateUlids,
   parseEpoch,
+  truncatedUuidNote,
   type UuidVersion,
 } from '@fodt/uuid';
 import { defineTool, str, bool, num, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
@@ -160,6 +161,9 @@ function inspectIdentifier(input: string, values: Values): ToolResult | null {
         });
         break;
     }
+    // A UUID missing its last digits has a ULID, KSUID or ObjectId shape: the decode stays and a warning is added.
+    const truncated = truncatedUuidNote(input);
+    if (truncated !== null) outputs.push({ kind: 'note', tone: 'warn', value: truncated });
     return { outputs: [{ kind: 'keyvalue', label: 'Fields', pairs }, ...outputs] };
   } catch (error) {
     if (error instanceof IdentifierError) return { outputs: [], errors: [{ message: error.message }] };

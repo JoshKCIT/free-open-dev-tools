@@ -249,6 +249,39 @@ test('uuid: every new format generates and the inspect box decodes what it gener
   expect((await readPairs(page))['Version']).toBe('5');
 });
 
+test('uuid: a UUID cut to 24, 26 or 27 digits is decoded with a note that it may be a UUID missing digits', async ({
+  page,
+}) => {
+  await openTool(page, 'uuid');
+  await page.locator('input[name="mode"][value="inspect"]').click();
+  const full = '2ed6657de927568b95e12665a8aea6a2';
+  const note = 'These characters are also a UUID missing digits: a UUID has 32 hexadecimal digits.';
+  for (const [length, format] of [
+    [24, 'MongoDB ObjectId'],
+    [26, 'ULID'],
+    [27, 'KSUID'],
+  ] as const) {
+    await fillAndHold(page, 'toInspect', full.slice(0, length));
+    await run(page);
+    await expect.poll(async () => (await readPairs(page))['Format'], `${length} digits`).toBe(format);
+    await expect(outputArea(page), `${length} digits`).toContainText(note);
+  }
+  // The decode is kept: the 24 digits still read as an ObjectId made on 1994-11-25.
+  await fillAndHold(page, 'toInspect', full.slice(0, 24));
+  await run(page);
+  await expect.poll(async () => (await readPairs(page))['ISO time']).toBe('1994-11-25T22:30:21.000Z');
+
+  // Real identifiers that are not made only of hexadecimal digits carry no such note.
+  await fillAndHold(page, 'toInspect', '01ARZ3NDEKTSV4RRFFQ69G5FAV');
+  await run(page);
+  await expect.poll(async () => (await readPairs(page))['Format']).toBe('ULID');
+  expect(await outputArea(page).innerText()).not.toContain('missing digits');
+  await fillAndHold(page, 'toInspect', '1888944671579078978');
+  await run(page);
+  await expect.poll(async () => (await readPairs(page))['Format']).toBe('Snowflake ID');
+  expect(await outputArea(page).innerText()).not.toContain('missing digits');
+});
+
 test('uuid: the default page still generates five version 4 UUIDs', async ({ page }) => {
   await openTool(page, 'uuid');
   // First paint: Generate, version 4, five ids, and none of the new formats' settings on screen.
