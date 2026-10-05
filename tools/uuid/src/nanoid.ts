@@ -69,6 +69,18 @@ function bytePool(source: ByteSource): () => number {
 // Control characters, direction controls and other format characters, paragraph and line separators, lone surrogates.
 const FORBIDDEN = /^[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]$/u;
 
+// Spaces (Zs), combining marks (Mn, Me) and the characters that draw nothing although they are letters or symbols: the
+// Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, the variation selectors U+FE00 to U+FE0F and the blank braille cell
+// U+2800. An id built from them can look shorter than it is, or blank.
+const SPACE_MARK_PATTERN = /^[\p{Zs}\p{Mn}\p{Me}]$/u;
+const DRAWS_NOTHING = new Set([0x115f, 0x1160, 0x3164, 0xffa0, 0x2800]);
+
+function isSpaceOrInvisible(symbol: string): boolean {
+  if (SPACE_MARK_PATTERN.test(symbol)) return true;
+  const code = symbol.codePointAt(0)!;
+  return DRAWS_NOTHING.has(code) || (code >= 0xfe00 && code <= 0xfe0f);
+}
+
 function readAlphabet(alphabet: string): string[] {
   // 255 symbols are at most 510 UTF-16 units; anything longer is refused before it is split.
   if (alphabet.length > 510) throw new IdentifierError('Alphabet must hold 2 to 255 different characters.');
@@ -79,6 +91,11 @@ function readAlphabet(alphabet: string): string[] {
   for (const symbol of symbols) {
     if (FORBIDDEN.test(symbol)) {
       throw new IdentifierError('Alphabet holds a control or direction character, which is not allowed.');
+    }
+  }
+  for (const symbol of symbols) {
+    if (isSpaceOrInvisible(symbol)) {
+      throw new IdentifierError('Alphabet holds a space, combining mark or invisible character, which is not allowed.');
     }
   }
   if (new Set(symbols).size !== symbols.length) {

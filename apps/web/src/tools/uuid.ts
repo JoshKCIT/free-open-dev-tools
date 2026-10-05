@@ -286,7 +286,7 @@ export default defineTool({
       type: 'text',
       mono: true,
       default: NANOID_URL_ALPHABET,
-      help: 'From 2 to 255 different characters. The default is the 64 character URL-safe alphabet.',
+      help: 'From 2 to 255 different characters, with no spaces, combining marks or invisible characters. The default is the 64 character URL-safe alphabet.',
       visible: (v) => v.mode === 'generate' && v.version === 'nanoid',
     },
     {
