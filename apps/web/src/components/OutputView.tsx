@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputBlock, DownloadableFile } from '../lib/tool-ui';
+import { downloadMime } from '../lib/download-mime';
 import CssPreview from './CssPreview';
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
@@ -116,7 +117,7 @@ export default function OutputView({ block }: { block: OutputBlock }) {
             <DownloadButton
               file={{
                 name: block.download,
-                mime: block.kind === 'code' ? 'text/plain;charset=utf-8' : 'text/plain;charset=utf-8',
+                mime: downloadMime(block.download),
                 content: block.value,
               }}
             />
