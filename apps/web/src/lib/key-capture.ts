@@ -17,8 +17,9 @@ import {
  *    window, so nothing is read while focus is anywhere else.
  *  - The history lives in this module's memory, is bounded by the package's KeyHistory (200 rows), is emptied by
  *    Clear history and is forgotten the moment the capture area leaves the page (a MutationObserver on the document
- *    body notices that the area is no longer connected, which happens when the visitor follows a link to another tool,
- *    because the site never reloads). Nothing is logged, stored, put in the address, the title or a file name, or sent.
+ *    body notices that the area is no longer connected) and when the page is hidden (a pagehide listener: a link of the
+ *    site loads a new document, and the browser may show the old page again from its back-forward cache on Back).
+ *    Nothing is logged, stored, put in the address, the title or a file name, or sent.
  *  - Cells are written with textContent only, and the shown text has control, invisible and direction-changing characters escaped.
  *  - Tab, Shift+Tab and Escape are never prevented, so focus can always leave the box (no keyboard trap).
  *  - The box is an ordinary editable text area: an input method only starts in an editable element.
@@ -308,12 +309,25 @@ function build(): Area {
   container.append(heading, warning, box, clear, notice, scroller);
 
   // Forget everything the moment the area is no longer on the page: clear the history, empty the box and the table the
-  // area still holds, drop the area and stop watching. The visitor leaving the tool through the site's own links removes
-  // the area without touching this module, so this is how what was typed stops being held at once, not on a later visit.
-  // An area that was only replaced (it is not the current one) just stops watching.
+  // area still holds, drop the area and stop watching. The area leaving the page without this module being told (the
+  // panel being replaced, a tool page swapped for another) is how what was typed stops being held at once, not on a
+  // later visit. An area that was only replaced (it is not the current one) just stops watching.
+  //
+  // Following any link of the site loads a new document, so leaving the tool also ends the page. A browser may keep the
+  // page it left in its back-forward cache and show it again, with its box and table, when the visitor presses Back.
+  // So the page hiding forgets too: the history, the box and the table are emptied while the area stays, and a page
+  // restored from the cache shows nothing typed. The listener is removed with the area.
+  const onPageHide = () => {
+    if (!area || area.container !== container) return;
+    history.clear();
+    box.value = '';
+    render();
+  };
+  window.addEventListener('pagehide', onPageHide);
   const watcher = new MutationObserver(() => {
     if (container.isConnected) return;
     watcher.disconnect();
+    window.removeEventListener('pagehide', onPageHide);
     if (!area || area.container !== container) return;
     history.clear();
     box.value = '';
