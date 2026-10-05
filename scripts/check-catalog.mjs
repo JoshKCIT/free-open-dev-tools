@@ -9,6 +9,7 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, loadCatalog } from './lib/catalog.mjs';
+import { NEEDS } from './lib/csp.mjs';
 
 const problems = [];
 const note = (msg) => problems.push(msg);
@@ -112,6 +113,29 @@ for (const id of packageIds) {
       const text = JSON.stringify(meta[field] ?? '');
       // Word boundaries matter: "\uXXXX" is legitimate documentation, "TODO" is not.
       if (/\b(TODO|FIXME|TBD)\b/i.test(text)) note(`tools/${id}: "${field}" still contains a placeholder.`);
+    }
+    // What the page's policy widens beyond the baseline. The build gate (scripts/check-csp.mjs) compares it with the
+    // built code; this check only refuses a declaration that is malformed, so a typo never reaches the policy.
+    if (meta.needs !== undefined) {
+      const where = `tools/${id}/src/meta.json`;
+      const closed = `The closed list is: ${NEEDS.join(', ')}.`;
+      if (!Array.isArray(meta.needs) || meta.needs.length === 0) {
+        note(
+          `${where}: "needs" must be a non-empty array drawn from the closed list, or left out. ${closed} A page with no needs gets the baseline.`,
+        );
+      } else {
+        for (const term of meta.needs) {
+          if (typeof term !== 'string' || !NEEDS.includes(term)) {
+            note(`${where}: "needs" holds ${JSON.stringify(term)}, which is not a need this site knows. ${closed}`);
+          }
+        }
+        const sorted = [...meta.needs].sort();
+        if (new Set(meta.needs).size !== meta.needs.length) {
+          note(`${where}: "needs" repeats a term. Write each term once.`);
+        } else if (meta.needs.some((term, i) => term !== sorted[i])) {
+          note(`${where}: "needs" is not sorted. Write it as ${JSON.stringify(sorted)}.`);
+        }
+      }
     }
     if (Array.isArray(meta.standards)) {
       for (const s of meta.standards) {
@@ -232,7 +256,21 @@ for (const id of pageIds) {
 }
 
 // The shared site code is held to the same rule, minus the theme storage.
-for (const file of ['components/ToolRunner.tsx', 'components/OutputView.tsx', 'lib/tool-ui.ts', 'lib/registry.ts']) {
+// Every file of the shared components folder is scanned, so a component added later is covered without another edit.
+const componentsDir = join(webSrcRoot, 'components');
+const sharedFiles = [
+  ...(existsSync(componentsDir)
+    ? readdirSync(componentsDir)
+        .filter((f) => /\.tsx?$/.test(f))
+        .sort()
+        .map((f) => `components/${f}`)
+    : []),
+  'lib/tool-ui.ts',
+  'lib/registry.ts',
+  'lib/tree.ts',
+  'lib/download-mime.ts',
+];
+for (const file of sharedFiles) {
   const full = join(webSrcRoot, file);
   if (!existsSync(full)) continue;
   const code = stripStringsAndComments(readFileSync(full, 'utf8'));
