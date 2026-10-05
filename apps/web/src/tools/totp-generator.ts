@@ -68,10 +68,13 @@ function failure(err: unknown, secret: string): ToolResult {
 }
 
 /**
- * `live` is set only for codes made from this device's clock: it carries the end of the current step in device-clock
- * milliseconds. Codes for a typed time and counter based codes have none.
+ * How the time of a TOTP run came about. `live` is a run on this device's clock that keeps itself current, and carries the
+ * end of the current step in device-clock milliseconds. `paused` is a run on this device's clock while the visitor has
+ * ticked Pause refreshing. `typed` is a time the visitor typed. Counter based codes have none of these.
  */
-function codeBlocks(result: ComputeResult, period: number, live: { endsAt: number } | null): OutputBlock[] {
+type Timing = { kind: 'live'; endsAt: number } | { kind: 'paused' } | { kind: 'typed' };
+
+function codeBlocks(result: ComputeResult, period: number, timing: Timing): OutputBlock[] {
   if (result.mode === 'hotp') {
     return [
       {
@@ -108,7 +111,7 @@ function codeBlocks(result: ComputeResult, period: number, live: { endsAt: numbe
       },
     },
   ];
-  if (live) {
+  if (timing.kind === 'live') {
     blocks.push({
       kind: 'note',
       tone: 'info',
@@ -118,8 +121,14 @@ function codeBlocks(result: ComputeResult, period: number, live: { endsAt: numbe
     blocks.push({
       kind: 'countdown',
       label: 'Time left in the current step',
-      endsAt: live.endsAt,
+      endsAt: timing.endsAt,
       periodMs: period * 1000,
+    });
+  } else if (timing.kind === 'paused') {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `Refreshing is paused. ${result.secondsLeft} of ${period} seconds were left in the current step when these codes were made.`,
     });
   } else {
     blocks.push({
@@ -206,6 +215,14 @@ export default defineTool({
       visible: (values) => values.mode !== 'hotp',
     },
     {
+      name: 'pause',
+      label: 'Pause refreshing',
+      type: 'checkbox',
+      default: false,
+      help: "Stops the codes changing by themselves, for example to copy one. Shown only when the codes come from this device's clock.",
+      visible: (values) => values.mode !== 'hotp' && str(values, 'at').trim() === '',
+    },
+    {
       name: 'issuer',
       label: 'Issuer',
       type: 'text',
@@ -289,8 +306,13 @@ export default defineTool({
       }
       // Steps are floor(unix seconds / period), so a boundary is a multiple of the period in epoch time. Only codes made
       // from this device's clock keep themselves current: a typed time and a counter never change by themselves.
-      const live = mode === 'totp' && !typed ? { endsAt: nowMs - (nowMs % (period * 1000)) + period * 1000 } : null;
-      const outputs: OutputBlock[] = codeBlocks(result, period, live);
+      const paused = values.pause === true;
+      const timing: Timing = typed
+        ? { kind: 'typed' }
+        : paused
+          ? { kind: 'paused' }
+          : { kind: 'live', endsAt: nowMs - (nowMs % (period * 1000)) + period * 1000 };
+      const outputs: OutputBlock[] = codeBlocks(result, period, timing);
       if (result.uri !== undefined) outputs.push(...linkBlocks(result.uri));
       for (const note of result.notes) outputs.push({ kind: 'note', tone: 'info', value: note });
       const stats: [string, string][] = [];
@@ -307,7 +329,7 @@ export default defineTool({
         outputs,
         warnings: result.warnings,
         stats,
-        ...(live ? { refreshAfterMs: live.endsAt - nowMs + 25 } : {}),
+        ...(mode === 'totp' && timing.kind === 'live' ? { refreshAfterMs: timing.endsAt - nowMs + 25 } : {}),
       };
     } catch (err) {
       if (ctx.signal.aborted) throw err;

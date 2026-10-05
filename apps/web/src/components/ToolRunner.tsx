@@ -404,20 +404,41 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const valuesRef = useRef(values);
   valuesRef.current = values;
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When the armed timer is due, in device-clock milliseconds; null when no timer is armed. A tab that was hidden has its
+  // timers held back, so the catch-up below compares this with the clock when the tab is shown again.
+  const dueAt = useRef<number | null>(null);
   const clearRefresh = useCallback(() => {
     if (refreshTimer.current !== null) clearTimeout(refreshTimer.current);
     refreshTimer.current = null;
+    dueAt.current = null;
   }, []);
   useEffect(() => {
     const wait = result?.refreshAfterMs;
     if (!wait || tool.autoRun === false) return;
     const ms = Math.min(Math.max(wait, 250), 60_000);
+    dueAt.current = Date.now() + ms;
     refreshTimer.current = setTimeout(() => {
       refreshTimer.current = null;
+      dueAt.current = null;
       void execute(valuesRef.current);
     }, ms);
     return clearRefresh;
   }, [result, execute, tool.autoRun, clearRefresh]);
+  // Catch-up: when the tab becomes visible again, or the page comes back from the back-forward cache, after the due time
+  // has passed, run once at once. The run's own result arms the timer for the next boundary.
+  useEffect(() => {
+    const catchUp = () => {
+      if (document.visibilityState !== 'visible' || dueAt.current === null || Date.now() < dueAt.current) return;
+      clearRefresh();
+      void execute(valuesRef.current);
+    };
+    document.addEventListener('visibilitychange', catchUp);
+    window.addEventListener('pageshow', catchUp);
+    return () => {
+      document.removeEventListener('visibilitychange', catchUp);
+      window.removeEventListener('pageshow', catchUp);
+    };
+  }, [execute, clearRefresh]);
 
   const visibleFields = tool.fields.filter((f) => !f.visible || f.visible(values));
   const set = (name: string, v: unknown) => {
