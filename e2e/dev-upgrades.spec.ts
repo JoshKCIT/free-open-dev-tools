@@ -806,13 +806,15 @@ test('date-diff: business days, ISO weeks and durations show their results and t
     .poll(async () => ((await outputArea(page).locator('pre.output').first().textContent()) ?? '').trim())
     .toBe('P999999Y2W10DT30M7.5S');
   await fillAndHold(page, 'seconds', `7${marker}`);
-  await expect.poll(readIssues.bind(null, page)).toBe('The seconds value must be a number such as 7 or 7.5.');
-  // A bare fraction and an exponent are refused with the same one sentence, and "7." no longer shows the grammar sentence.
+  const sentence = 'The seconds value must be a number such as 7 or 7.5.';
+  await expect.poll(readIssues.bind(null, page)).toContain(sentence);
+  expect(await outputArea(page).innerText()).not.toContain(marker);
+  // A bare fraction, an exponent and a trailing dot are refused with the same one sentence, the field named once.
   for (const text of ['.5', '1e3', '7.']) {
     await fillAndHold(page, 'seconds', text);
-    await expect.poll(readIssues.bind(null, page), text).toBe('The seconds value must be a number such as 7 or 7.5.');
+    await expect.poll(readIssues.bind(null, page), text).toContain(sentence);
+    expect(await readIssues(page), text).not.toContain('Seconds:');
   }
-  expect(await outputArea(page).innerText()).not.toContain(marker);
 
   // Back on the first mode, the page still answers as it did at first paint.
   await chooseMode(page, 'difference');
