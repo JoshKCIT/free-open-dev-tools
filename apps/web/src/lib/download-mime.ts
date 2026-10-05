@@ -23,3 +23,11 @@ export function downloadMime(name: string): string {
   if (KEY_FILE_NAMES.includes(name)) return BINARY_TYPE;
   return HAS_EXTENSION.test(name) ? TEXT_TYPE : BINARY_TYPE;
 }
+
+/**
+ * The text with exactly one line feed at its end: one is added when there is none, and extra ones are cut back to one.
+ * An OpenSSH key file is read line by line by ssh, which expects the last line to be ended.
+ */
+export function endWithOneLineFeed(text: string): string {
+  return text.replace(/\n+$/, '') + '\n';
+}

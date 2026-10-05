@@ -23,6 +23,7 @@ import {
   KeyConverterRunError,
   keyConverterInWorker,
 } from '../lib/run-key-converter-in-worker';
+import { endWithOneLineFeed } from '../lib/download-mime';
 import { defineTool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 const PRIVATE_NOTE =
@@ -70,24 +71,29 @@ function codeBlock(block: KeyOutputBlock, family: KeyModel['type']): OutputBlock
       return { ...base, download: 'private-key.jwk' };
     case 'jwk-public':
       return { ...base, download: 'public-key.jwk' };
-    case 'ssh-private':
+    // An OpenSSH file is read line by line by ssh, so each one ends with exactly one line feed.
+    case 'ssh-private': {
+      const file = { ...base, value: endWithOneLineFeed(base.value) };
       switch (family) {
         case 'ec':
-          return { ...base, download: 'id_ecdsa' };
+          return { ...file, download: 'id_ecdsa' };
         case 'ed25519':
-          return { ...base, download: 'id_ed25519' };
+          return { ...file, download: 'id_ed25519' };
         default:
-          return { ...base, download: 'id_rsa' };
+          return { ...file, download: 'id_rsa' };
       }
-    case 'ssh-public':
+    }
+    case 'ssh-public': {
+      const file = { ...base, value: endWithOneLineFeed(base.value) };
       switch (family) {
         case 'ec':
-          return { ...base, download: 'id_ecdsa.pub' };
+          return { ...file, download: 'id_ecdsa.pub' };
         case 'ed25519':
-          return { ...base, download: 'id_ed25519.pub' };
+          return { ...file, download: 'id_ed25519.pub' };
         default:
-          return { ...base, download: 'id_rsa.pub' };
+          return { ...file, download: 'id_rsa.pub' };
       }
+    }
     default:
       return { ...base, download: 'public-key-rfc4716.pub' };
   }
@@ -100,7 +106,19 @@ function outputBlocks(result: KeyOutputs, family: KeyModel['type'], source?: str
   } else if (source !== undefined) {
     outputs.push({ kind: 'note', tone: 'info', value: 'This is a public key; there is no private key to show.' });
   }
-  for (const block of result.blocks) outputs.push(codeBlock(block, family));
+  for (const block of result.blocks) {
+    const shown = codeBlock(block, family);
+    outputs.push(shown);
+    // The reminder sits right after the private key file it is about, and only when that file is shown. The file name in
+    // it is the block's own fixed download name.
+    if (block.id === 'ssh-private' && shown.kind === 'code' && shown.download !== undefined) {
+      outputs.push({
+        kind: 'note',
+        tone: 'info',
+        value: `On macOS and Linux, run chmod 600 ${shown.download} before ssh will use this private key.`,
+      });
+    }
+  }
   outputs.push({ kind: 'keyvalue', label: 'Fingerprints', pairs: result.fingerprints });
   outputs.push({
     kind: 'keyvalue',
