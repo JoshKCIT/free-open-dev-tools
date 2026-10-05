@@ -19,8 +19,8 @@ running Python. Python was run once, by hand, and its answers are stored here. T
 A plain loop over `date.toordinal()` from the first day to the last day. A day is a weekend day when
 `date.isoweekday()` (1 Monday to 7 Sunday) is in the weekend set; otherwise it is skipped when it is one of the holidays;
 otherwise it is a business day. The start day is counted; the end day only when the end rule says so. An end before the
-start counts the days of the range from the end to the start, with the same end rule applied to the later date, and the
-sign is -1. Each row also records the calendar days in the range, the weekend days, the different holidays that took a
+start still counts the start day: the days counted run from the day after the end (the end itself when the end rule says
+so) up to and including the start, and the sign is -1. Each row also records the calendar days in the range, the weekend days, the different holidays that took a
 business day away (`holidaysSkipped`) and the different holidays that fell on a weekend day (`holidaysOnWeekend`).
 
 ## How ISO weeks were recorded

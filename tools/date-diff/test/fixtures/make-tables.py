@@ -11,9 +11,9 @@ Standard library only (no packages). Python writes down what its own date arithm
 * iso-weeks.json: date.isocalendar() for each year 1900 to 2200 (week count and the Monday that starts week 1),
   for 5,000 seeded dates, for the days around every year end and for a few extreme dates.
 
-The rule for a range whose end is before its start is written here, not borrowed from the code under test: the same days
-are counted as for the range from the earlier date to the later one, with the end rule applied to the later date, and
-the sign is -1.
+The rule for a range whose end is before its start is written here, not borrowed from the code under test: the start day
+is always counted, so the days counted run from the day after the end (the end itself when the end is counted) up to and
+including the start, and the sign is -1.
 """
 
 import json
@@ -36,9 +36,13 @@ MAX_ORDINAL = date(9999, 12, 31).toordinal()
 def count_business_days(start, end, weekend, holidays, include_end):
     """An independent day-by-day count. Dates are compared as ordinals so 0001 and 9999 never overflow."""
     sign = -1 if end < start else 1
-    lo, hi = (start, end) if start <= end else (end, start)
-    first = lo.toordinal()
-    last = hi.toordinal() if include_end else hi.toordinal() - 1
+    if end < start:
+        # The start day is always counted: from the day after the end (the end itself when counted) up to the start.
+        first = end.toordinal() if include_end else end.toordinal() + 1
+        last = start.toordinal()
+    else:
+        first = start.toordinal()
+        last = end.toordinal() if include_end else end.toordinal() - 1
     held = {h.toordinal() for h in holidays}
     calendar = weekend_days = skipped = business = 0
     for n in range(first, last + 1):
@@ -243,8 +247,8 @@ def main():
                 "A day-by-day loop over date.toordinal() with date.isoweekday(). The start day is counted, the end "
                 "day only when includeEnd is true. A day is a weekend day when its ISO weekday (1 Monday to 7 Sunday) "
                 "is in weekend; otherwise it is skipped when it is in holidays; otherwise it is a business day. An "
-                "end before the start counts the days of the range from the end to the start with the same end rule "
-                "on the later date, and sign is -1."
+                "end before the start still counts the start day: the days counted run from the day after the end "
+                "(the end itself when includeEnd is true) up to and including the start, and sign is -1."
             ),
             "rows": business,
         },

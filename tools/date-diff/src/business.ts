@@ -90,17 +90,19 @@ export interface BusinessDayCount {
 }
 
 /**
- * Counts the days from `start` to `end` that are neither weekend days nor holidays. The start is counted; the end only
- * with `includeEnd`. An end before the start counts the days of the range from the end to the start, with the end rule
- * applied to the later date, and reports `sign: -1`. A start equal to the end gives 1 or 0 for a business day (by the
- * end rule) and 0 for a weekend day or a holiday.
+ * Counts the days from `start` to `end` that are neither weekend days nor holidays. The start is always counted; the
+ * end only with `includeEnd`. With the end before the start the range is mirrored and still counts the start: it covers
+ * the day after the end (the end itself with `includeEnd`) up to and including the start, and reports `sign: -1`. A
+ * start equal to the end gives 1 or 0 for a business day (by the end rule) and 0 for a weekend day or a holiday.
  */
 export function countBusinessDays(input: BusinessDayInput): BusinessDayCount {
   const { start, end, weekend, holidays, includeEnd } = input;
-  const sign: 1 | -1 = end < start ? -1 : 1;
-  const low = Math.min(start, end);
-  const high = Math.max(start, end);
-  const last = includeEnd ? high : high - 1;
+  const reversed = end < start;
+  const sign: 1 | -1 = reversed ? -1 : 1;
+  // The first and last day counted. Forward: the start up to the end (the end only when counted). Reversed: from the
+  // day after the end (the end when counted) up to and including the start, so the start day is never dropped.
+  const low = reversed ? (includeEnd ? end : end + 1) : start;
+  const last = reversed ? start : includeEnd ? end : end - 1;
   const calendarDays = last < low ? 0 : last - low + 1;
 
   // Whole weeks hold the same number of weekend days; the remainder is looked at one day at a time.

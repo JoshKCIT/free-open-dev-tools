@@ -151,7 +151,8 @@ it('a start equal to the end and an end before the start follow the stated rule'
   expect(count('2024-01-01', '2024-01-01', SAT_SUN, ['2024-01-01'], true).count).toBe(0);
   expect(count('2024-01-01', '2024-01-01', SAT_SUN, [], true).sign).toBe(1);
 
-  // An end before the start counts the same days as the range from the earlier date to the later one, with a minus sign.
+  // An end before the start still counts the start day: here 2024-01-02 to 2024-01-08 (Tuesday to Monday), with a minus
+  // sign. The forward range has the same count here only by chance; the mirror test below states the exact relation.
   const forward = count('2024-01-01', '2024-01-08', SAT_SUN, ['2024-01-03'], false);
   const backward = count('2024-01-08', '2024-01-01', SAT_SUN, ['2024-01-03'], false);
   expect(forward.sign).toBe(1);
@@ -176,6 +177,99 @@ it('a start equal to the end and an end before the start follow the stated rule'
     expect([got.count, got.sign]).toEqual([row.count, row.sign]);
   }
 });
+
+it('an end before the start still counts the start day: a Monday start with the Sunday before as the end gives 1', () => {
+  // 2024-01-08 is a Monday and 2024-01-07 the Sunday before it (date.isoweekday() gives 1 and 7).
+  const notCounted = count('2024-01-08', '2024-01-07', SAT_SUN, [], false);
+  expect(notCounted.count).toBe(1);
+  expect(notCounted.sign).toBe(-1);
+  expect(notCounted.calendarDays).toBe(1);
+  const counted = count('2024-01-08', '2024-01-07', SAT_SUN, [], true);
+  expect(counted.count).toBe(1);
+  expect(counted.sign).toBe(-1);
+  expect(counted.calendarDays).toBe(2);
+  expect(counted.weekendDays).toBe(1);
+  // The start day as a holiday takes it away, as it does in a forward range.
+  expect(count('2024-01-08', '2024-01-07', SAT_SUN, ['2024-01-08'], false).count).toBe(0);
+  // A Friday start with the Monday before as the end: Tuesday to Friday (End day not counted), Monday to Friday (counted).
+  expect(count('2024-01-12', '2024-01-08', SAT_SUN, [], false).count).toBe(4);
+  expect(count('2024-01-12', '2024-01-08', SAT_SUN, [], true).count).toBe(5);
+});
+
+it('a reversed range equals the forward count of its mirrored range with a minus sign, across weekends and holidays', () => {
+  // The mirror of start S and end E before it: with End day not counted it is the forward range from E+1 to S+1 (its
+  // start day E+1 is counted, its end day S+1 is not); with End day counted it is the forward range from E to S.
+  let state = 20261004;
+  const next = (below: number): number => {
+    state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+    return state % below;
+  };
+  const base = day('2024-01-01');
+  let checked = 0;
+  for (let round = 0; round < 3000; round++) {
+    const end = base + next(400) - 200;
+    const start = end + 1 + next(60);
+    const weekend = new Set<number>();
+    const weekendSize = next(4) === 0 ? 0 : 1 + next(3);
+    while (weekend.size < weekendSize) weekend.add(1 + next(7));
+    const holidays = Array.from({ length: next(6) }, () => end - 5 + next(75));
+    for (const includeEnd of [false, true]) {
+      const reversed = countBusinessDays({ start, end, weekend, holidays, includeEnd });
+      const mirror = includeEnd
+        ? countBusinessDays({ start: end, end: start, weekend, holidays, includeEnd: true })
+        : countBusinessDays({ start: end + 1, end: start + 1, weekend, holidays, includeEnd: false });
+      expect(mirror.sign).toBe(1);
+      expect(reversed.sign).toBe(-1);
+      expect({ ...reversed, sign: 1 }).toEqual(mirror);
+      checked++;
+    }
+  }
+  expect(checked).toBe(6000);
+  // Across a weekend and a holiday: Monday 2024-01-15 back to the Friday 2024-01-12 before it, with Monday 2024-01-15
+  // a holiday, counts Saturday and Sunday as weekend days and the start day as a skipped holiday.
+  const holidayStart = count('2024-01-15', '2024-01-12', SAT_SUN, ['2024-01-15'], false);
+  expect(holidayStart).toMatchObject({ count: 0, sign: -1, calendarDays: 3, weekendDays: 2, holidaysSkipped: 1 });
+});
+
+it('20,000 seeded cases agree with a day-by-day count of the rule: the start day always, the end day by the end rule', () => {
+  let state = 31415926;
+  const next = (below: number): number => {
+    state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+    return state % below;
+  };
+  // The weekday comes from the platform's own Date in UTC, not from the code under test.
+  const weekdayOf = (n: number): number => {
+    const date = fromDayNumber(n);
+    const weekday = new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay();
+    return weekday === 0 ? 7 : weekday;
+  };
+  const base = day('2020-01-01');
+  const disagreements: string[] = [];
+  for (let round = 0; round < 20_000; round++) {
+    const start = base + next(500) - 250;
+    const end = start + next(120) - 60;
+    const weekend = new Set<number>();
+    const weekendSize = next(5) === 0 ? 0 : 1 + next(3);
+    while (weekend.size < weekendSize) weekend.add(1 + next(7));
+    const holidays = Array.from({ length: next(8) }, () => start - 30 + next(160));
+    const includeEnd = next(2) === 0;
+    // The days counted: forward is start..end (end only when counted); reversed is end..start (the start always,
+    // the end only when counted).
+    const reversed = end < start;
+    const first = reversed ? (includeEnd ? end : end + 1) : start;
+    const last = reversed ? start : includeEnd ? end : end - 1;
+    const held = new Set(holidays);
+    let business = 0;
+    for (let n = first; n <= last; n++) {
+      if (!weekend.has(weekdayOf(n)) && !held.has(n)) business++;
+    }
+    const got = countBusinessDays({ start, end, weekend, holidays, includeEnd });
+    if (got.count !== business || got.sign !== (reversed ? -1 : 1)) {
+      disagreements.push(`${start} ${end} [${[...weekend]}] ${includeEnd}: ${got.count} not ${business}`);
+    }
+  }
+  expect(disagreements).toEqual([]);
+}, 60_000);
 
 it('dates outside years 1 to 9999 and holiday lists over 5000 lines are refused with fixed messages', () => {
   const refusal = (text: string): CalendarDateError | undefined => {

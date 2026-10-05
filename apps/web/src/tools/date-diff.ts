@@ -124,7 +124,7 @@ function runBusiness(values: Values): ToolResult {
       kind: 'note',
       tone: 'info',
       value:
-        'The end is before the start, so the count has a minus sign. It counts the same days as the range from the earlier date to the later one.',
+        'The end is before the start, so the count has a minus sign. The start day is still counted: the days counted run from the day after the end (or the end itself when End day is Counted) up to and including the start.',
     });
   }
   return { outputs };
@@ -308,7 +308,7 @@ export default defineTool({
         { value: 'excluded', label: 'Not counted' },
         { value: 'included', label: 'Counted' },
       ],
-      help: 'Business days read the start and end as plain dates, YYYY-MM-DD. The start day is always counted.',
+      help: 'Business days read the start and end as plain dates, YYYY-MM-DD. The start day is always counted, also when the end is before the start; the end day is counted only when you choose Counted.',
       visible: modeIs('business'),
     },
     {
