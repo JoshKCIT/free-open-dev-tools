@@ -9,10 +9,14 @@
  *
  * This does not server-render the app. The body is still hydrated by the same
  * bundle; only the head differs per route.
+ *
+ * The head carries each page's own content security policy as its first element (the host sends no headers), built
+ * from what the page's tool declares in `tools/<id>/src/meta.json` under `needs`. See `lib/csp.mjs`.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, loadCatalog } from './lib/catalog.mjs';
+import { inlineScriptHashes, mermaidFrameHashes, metaTag, policyFor } from './lib/csp.mjs';
 
 const dist = join(ROOT, 'apps', 'web', 'dist');
 const indexPath = join(dist, 'index.html');
@@ -21,7 +25,11 @@ if (!existsSync(indexPath)) {
   process.exit(1);
 }
 
-const template = readFileSync(indexPath, 'utf8');
+// A template that already carries a policy (this step run twice over one build) would otherwise gain a second one.
+const template = readFileSync(indexPath, 'utf8').replace(
+  /<meta\s[^>]*http-equiv="Content-Security-Policy"[^>]*>[ \t]*\r?\n?[ \t]*/i,
+  '',
+);
 const SITE = 'Free & Open Dev Tools';
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -39,38 +47,55 @@ const canonical = loadCatalog();
 const routes = [
   {
     path: '',
+    needs: [],
     title: `${SITE} — browser-local developer utilities and money calculators`,
     description:
       'Free developer tools and money calculators, published for anyone to use. Explore the source, download individual tools, and make them your own. Everything runs in your browser.',
   },
   {
     path: 'tools',
+    needs: [],
     title: `All tools — ${SITE}`,
     description:
       'Search and browse every developer tool and money calculator on the site. All of them process your input in the browser.',
   },
   {
     path: 'catalog',
+    needs: [],
     title: `Catalog — ${SITE}`,
     description:
       'The full catalog of every developer tool and money calculator, showing which are built and usable today. Every one of them runs entirely in your browser.',
   },
   {
     path: 'privacy',
+    needs: [],
     title: `Privacy — ${SITE}`,
     description: 'Exactly what happens to what you type, and what the hosting provider can still see. No vague claims.',
   },
   {
     path: 'about',
+    needs: [],
     title: `About — ${SITE}`,
     description: 'Why this exists, how each tool is built and tested, and how to contribute.',
   },
 ];
 
+// What a built tool page needs beyond the baseline policy. A page with no meta file fails the step, so a page can never
+// ship with a policy nobody chose.
+function needsOf(id) {
+  const metaPath = join(ROOT, 'tools', id, 'src', 'meta.json');
+  if (!existsSync(metaPath)) {
+    throw new Error(`tools/${id}/src/meta.json is missing for a built tool page (${id}).`);
+  }
+  const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+  return meta.needs === undefined ? [] : meta.needs;
+}
+
 for (const tool of canonical) {
   if (!implemented.has(tool.id)) continue;
   routes.push({
     path: `tools/${tool.id}`,
+    needs: needsOf(tool.id),
     title: `${tool.name} — ${SITE}`,
     description: `${tool.summary} Runs entirely in your browser.`,
   });
@@ -81,6 +106,13 @@ for (const tool of canonical) {
 // nothing and leave every page with the same description.
 const TITLE_TAG = /<title>[\s\S]*?<\/title>/;
 const DESCRIPTION_TAG = /<meta\s[^>]*name="description"[^>]*>/;
+// The anchor the policy goes in front of: Vite writes the encoding declaration first in the head.
+const CHARSET_TAG = /<meta\s+charset="utf-8"\s*\/?>/i;
+
+// The inline scripts of the template are the same on every page, so their hashes are computed once. The Mermaid frame
+// hashes cost a compile of two files, so they are computed only when some page declares the frame.
+const scriptHashes = inlineScriptHashes(template);
+const frameHashes = routes.some((r) => r.needs.includes('mermaid-frame')) ? mermaidFrameHashes(ROOT) : [];
 
 function render(route) {
   // Replacer functions, not replacement strings: a string is read for `$&`, `$1`, `$$` and so on, which would
@@ -99,7 +131,19 @@ function render(route) {
   if (withDescription === withTitle) {
     throw new Error('Could not find a description meta tag in apps/web/index.html to replace.');
   }
-  return withDescription;
+  // Put the policy in front of the encoding declaration, so it is the first element of the head. The encoding
+  // declaration stays well inside the first 1,024 bytes the browser reads to find it.
+  const indent = (template.match(/^([ \t]*)<meta\s+charset=/im) ?? ['', ''])[1];
+  const withPolicy = withDescription.replace(
+    CHARSET_TAG,
+    (charset) => `${metaTag(policyFor({ needs: route.needs, scriptHashes, frameHashes }))}\n${indent}${charset}`,
+  );
+  if (withPolicy === withDescription) {
+    throw new Error(
+      'Could not find the charset meta in apps/web/index.html to put the content security policy before.',
+    );
+  }
+  return withPolicy;
 }
 
 let written = 0;
@@ -128,6 +172,7 @@ writeFileSync(
   join(dist, '404.html'),
   render({
     path: '404',
+    needs: [],
     title: `Page not found — ${SITE}`,
     description: 'That address does not match a tool or a page here.',
   }),

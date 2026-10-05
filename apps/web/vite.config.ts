@@ -39,6 +39,11 @@ export default defineConfig({
     sourcemap: true,
     // Everything ships from our own origin. Nothing is fetched from a CDN at runtime.
     assetsInlineLimit: 4096,
+    // The manifest lists every chunk's imports, which the build gate reads to check what each page declares. The
+    // preload polyfill is switched off because it is the only place the entry chunk makes a network call, and the
+    // browsers this site supports preload modules natively.
+    manifest: true,
+    modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
         manualChunks(id) {

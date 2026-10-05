@@ -42,5 +42,6 @@
   "testNotes": "Test mode is checked against ECMA-262 section 22.2's own defined matching behaviour: every match's index and capture groups, the global flag's defined advance-past-zero-length-match rule, the display cap counting past 1000 while still reporting the true total, and the engine's own SyntaxError message surfacing for an invalid pattern or an unsupported or repeated flag. Replace mode is checked against ECMA-262 section 22.1.3.19.1 (GetSubstitution): the whole match, a named group, a numbered group and a literal dollar sign each substitute exactly as that algorithm defines, and replacing without the global flag changes only the first match. Explain mode is checked against the AST @eslint-community/regexpp's own parser produces (printed and read directly this session before the assertions were written): a named capturing group, a character class, an exact-count quantifier, a lazy quantifier and both string anchors from one pattern, and lookahead, lookbehind, a named backreference and a Unicode property escape from another; an invalid pattern is checked to still throw RegexToolError. The time-limit browser spec feeds a known catastrophic-backtracking pattern, quoted from OWASP's own Regular Expression Denial of Service page, and asserts the 1.5 second time-limit message.",
   "dependencies": {
     "@eslint-community/regexpp": "4.12.2"
-  }
+  },
+  "needs": ["workers"]
 }
