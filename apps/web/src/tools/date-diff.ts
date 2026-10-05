@@ -250,7 +250,11 @@ function runBuild(values: Values): ToolResult {
     const text = buildIsoDuration({ ...parts, seconds: seconds === '' ? '0' : seconds });
     return { outputs: durationOutputs(parseIsoDuration(text)) };
   } catch (error) {
-    if (error instanceof IsoDurationError) return { outputs: [], errors: [{ message: `Seconds: ${error.message}` }] };
+    if (error instanceof IsoDurationError) {
+      // A sentence that already names the part (the seconds text is the only free text here) is shown as it is.
+      const named = error.message.startsWith('The seconds value ');
+      return { outputs: [], errors: [{ message: named ? error.message : `Seconds: ${error.message}` }] };
+    }
     throw error;
   }
 }
@@ -374,7 +378,7 @@ export default defineTool({
       mono: true,
       default: '0',
       placeholder: '7.5',
-      help: 'Digits with an optional decimal fraction, such as 7.5. Zero parts are left out of the result.',
+      help: 'Digits with an optional decimal fraction, such as 7.5 or 7,5. A bare fraction such as .5, a sign and an exponent such as 1e3 are refused. Zero parts are left out of the result.',
       visible: modeIs('build'),
     },
   ],

@@ -2,7 +2,7 @@
   "id": "date-diff",
   "name": "Date & Duration Calculator",
   "summary": "Measure the gap between two moments, add or subtract durations, count business days, find ISO week numbers and build ISO 8601 durations.",
-  "about": "Measures the gap between two moments, both as an exact elapsed time and as a calendar breakdown of years, months and days, and adds or subtracts an ISO 8601 duration from a moment. Calendar-month arithmetic has no single right answer once you add a month to the 31st, so this tool states its choice plainly instead of hiding it in the result. It also counts business days between two dates with the weekend days you choose and the holidays you paste, gives the ISO 8601 week number of every date in a pasted list, and reads and writes ISO 8601 durations, keeping every digit exactly as typed.",
+  "about": "Measures the gap between two moments, both as an exact elapsed time and as a calendar breakdown of years, months and days, and adds or subtracts an ISO 8601 duration from a moment. Calendar-month arithmetic has no single right answer once you add a month to the 31st, so this tool states its choice plainly instead of hiding it in the result. It also counts business days between two dates with the weekend days you choose and the holidays you paste, gives the ISO 8601 week number of every date in a pasted list, and reads and writes ISO 8601 durations, keeping every digit as exact decimal text (leading and trailing zeros dropped, a dot for a comma).",
   "supports": [
     "ISO 8601 / RFC 3339 dates and date-times, with or without a time and with or without a UTC offset",
     "RFC 3339 Appendix A durations in the combined PnYnMnDTnHnMnS form and the PnW week form",

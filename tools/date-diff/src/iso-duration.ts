@@ -1,7 +1,8 @@
 /**
  * ISO 8601 durations: read and write `PnYnMnWnDTnHnMnS`, with the digits kept as text.
  *
- * Every part is decimal text, never a floating point number, so what was typed is what is shown. Weeks may be combined
+ * Every part is exact decimal text, never a floating point number, so no digit is rounded: the value is shown with its
+ * leading and trailing zeros dropped and a dot for a comma (`P007Y` is `P7Y`, `P0,5D` is `P0.5D`). Weeks may be combined
  * with other parts, and the smallest part present may carry a decimal fraction written with a dot or a comma. A sign is
  * not accepted. Years, months, weeks and days are calendar units whose length depends on the date they start from, so
  * nothing here turns them into an exact number of seconds; only the time part (hours, minutes, seconds) has an exact
@@ -78,7 +79,10 @@ function readDecimal(text: string, at: number): Decimal | null {
     fraction = text.slice(from, j);
     i = j;
   }
-  if (integer.length > MAX_INTEGER_DIGITS || fraction.length > MAX_FRACTION_DIGITS) {
+  // The limit counts the digits of the value, so zeros written in front of it do not use it up.
+  let zeros = 0;
+  while (zeros < integer.length - 1 && integer.charCodeAt(zeros) === 48) zeros++;
+  if (integer.length - zeros > MAX_INTEGER_DIGITS || fraction.length > MAX_FRACTION_DIGITS) {
     throw new IsoDurationError(MESSAGE_DIGITS);
   }
   return { integer, fraction, end: i };
@@ -176,7 +180,17 @@ export function buildIsoDuration(parts: Partial<IsoDuration>): string {
   for (const key of KEYS) {
     const given = parts[key];
     if (given === undefined) continue;
-    const decimal = given === '' ? null : readDecimal(given, 0);
+    let decimal: Decimal | null = null;
+    try {
+      decimal = given === '' ? null : readDecimal(given, 0);
+    } catch (error) {
+      // Too many digits keeps its own sentence, with the part named; any other reading problem is "not a number".
+      if (error instanceof IsoDurationError && error.message === MESSAGE_DIGITS) {
+        throw new IsoDurationError(
+          `The ${key} value has at most ${MAX_INTEGER_DIGITS} digits before the decimal point and ${MAX_FRACTION_DIGITS} after it.`,
+        );
+      }
+    }
     if (decimal === null || decimal.end !== given.length) {
       throw new IsoDurationError(`The ${key} value must be a number such as 7 or 7.5.`);
     }

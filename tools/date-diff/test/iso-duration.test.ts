@@ -80,7 +80,7 @@ it('ISO 8601 durations with weeks and a decimal fraction on the smallest unit pa
   expect(buildIsoDuration(parseIsoDuration('PT0.0S'))).toBe('PT0S');
   expect(parseIsoDuration('  P1D  ')).toEqual(parts({ days: '1' }));
 
-  // Digits are kept exactly as typed, never through floating point: these values cannot be held by a double.
+  // Digits are kept as exact decimal text, never through floating point: these values cannot be held by a double.
   expect(parseIsoDuration('PT999999999999999.999999999S').seconds).toBe('999999999999999.999999999');
   expect(buildIsoDuration(parseIsoDuration('PT999999999999999.999999999S'))).toBe('PT999999999999999.999999999S');
   expect(parseIsoDuration('P123456789012345D').days).toBe('123456789012345');
