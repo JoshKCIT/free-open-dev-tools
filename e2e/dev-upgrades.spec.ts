@@ -145,6 +145,8 @@ test('uuid: every new format generates and the inspect box decodes what it gener
   expect(new Set(ulids).size).toBe(7);
   expect([...ulids].sort()).toEqual(ulids); // ids made together count up, so they already sort
   expect(await readLabel(page)).toBe('7 ULIDs');
+  // The note says what ids made together look like: only their last characters differ.
+  await expect(outputArea(page)).toContainText('ULIDs made together differ only in their last characters');
   // Anything that is not a UUID version hides the UUID-only settings, so generating changed no UUID setting.
   await page.locator('input[name="mode"][value="inspect"]').click();
   await fillAndHold(page, 'toInspect', ulids[3]!);

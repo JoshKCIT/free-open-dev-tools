@@ -25,7 +25,7 @@
     "A version 1 or version 7 UUID reveals roughly when it was created. If that matters for your data, use version 4.",
     "Version 3 uses MD5, which is broken. It exists for compatibility with systems that already use it; choose version 5 for anything new.",
     "Version 1 can produce at most 10,000 ids per millisecond before the sub-millisecond tick field wraps. Bulk generation past that rate should use version 7.",
-    "ULIDs made in the same millisecond count up from the first one, as the ULID specification describes for monotonic order; more than 2^80 in one millisecond is refused.",
+    "ULIDs made in the same millisecond count up from the first one, as the ULID specification describes for monotonic order, so ids made together differ only in their last characters; more than 2^80 in one millisecond is refused.",
     "KSUID times have one-second resolution and ObjectId times one second; a ULID or Snowflake time has one millisecond.",
     "Snowflake ids use 41 bits of milliseconds since the chosen epoch, 5 datacenter bits, 5 worker bits and a 12-bit sequence; more than 4,096 ids in one millisecond move to the next millisecond.",
     "NanoID alphabets hold 2 to 255 distinct characters and sizes run from 1 to 255; letters are drawn with rejection sampling so no character is favoured.",

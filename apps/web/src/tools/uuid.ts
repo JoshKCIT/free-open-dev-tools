@@ -34,6 +34,9 @@ const DEFAULT_EPOCH_TEXT = String(SNOWFLAKE_DEFAULT_EPOCH);
 const TIME_NOTE =
   'This id carries the time it was made, so anyone holding it can read roughly when. Use a NanoID or a version 4 UUID if that matters.';
 
+const ULID_ORDER_NOTE =
+  'ULIDs made together differ only in their last characters: each one made in the same millisecond counts up from the one before it.';
+
 /** Generates one of the five formats. Reads only the fields that are visible for that format. */
 function runNewFormat(format: NewFormat, values: Values): ToolResult {
   const count = Math.trunc(Math.min(Math.max(num(values, 'count', 5), 1), 10000));
@@ -46,7 +49,7 @@ function runNewFormat(format: NewFormat, values: Values): ToolResult {
       case 'ulid':
         ids = generateUlids(count);
         name = 'ULID';
-        notes.push({ kind: 'note', tone: 'info', value: TIME_NOTE });
+        notes.push({ kind: 'note', tone: 'info', value: `${TIME_NOTE} ${ULID_ORDER_NOTE}` });
         break;
       case 'ksuid':
         ids = generateKsuids(count);
