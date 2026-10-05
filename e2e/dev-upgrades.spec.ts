@@ -868,7 +868,7 @@ test('date-diff: the business days Start box has its own text and boxes typed fo
   expect(await readIssues(page)).toBe('');
 });
 
-test('date-diff: business days and ISO weeks give the same answers in time zones 14 hours apart', async ({
+test('date-diff: business days and ISO weeks give the same answers in time zones from UTC+14 to UTC-11', async ({
   browser,
 }, testInfo) => {
   // The new modes use whole day numbers, never the machine's clock or time zone. The same questions are asked in a zone
