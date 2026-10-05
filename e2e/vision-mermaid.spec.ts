@@ -24,7 +24,8 @@ declare global {
      * What the observer saw. `added` lists every iframe the page put into its document, in order, by the sandbox
      * attribute it was given, whether its document begins with the policy, and its position; `removed` counts the
      * iframes taken out again. `hook` asks the observer to do something the moment a frame is added: `leave`
-     * follows the site's home link (the page unmounts, which abandons the run) and `pagehide` dispatches a pagehide event.
+     * follows the site's home link (a new document starts, so the record and the run end with the old one) and `pagehide`
+     * dispatches a pagehide event.
      */
     __FODT_MERMAID_FRAMES__?: {
       added: { sandbox: string | null; policyFirst: boolean; position: number }[];
@@ -531,22 +532,22 @@ test('mermaid-renderer: each Run uses a fresh frame that is gone afterwards', as
   expect(frames.removed).toBe(2);
   expect(await frameCount(page)).toBe(0);
 
-  // Leaving the page while the frame is starting abandons the run, and the frame goes with it. The observer follows the
-  // site's home link the moment the frame is added, so the tool page unmounts before the engine has started.
+  // Following the site's home link while the frame is starting ends the run with the document: every in-site link loads a
+  // new document, so the observer's record, the frame and the run all belong to the old one. The observer follows the
+  // link the moment the frame is added; the new document starts with a fresh record and no frame, and the tool page
+  // loaded again afterwards works.
   await fillAndHold(page, 'flowchart LR\n  C --> D');
   await page.evaluate(() => {
     window.__FODT_MERMAID_FRAMES__!.hook = 'leave';
   });
   await runButtonOf(page).click();
-  await expect.poll(() => page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.removed), { timeout: 30_000 }).toBe(3);
-  expect(await frameCount(page)).toBe(0);
-  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.added.length)).toBe(3);
+  await page.waitForURL((url) => !url.pathname.includes('/tools/'));
+  await page.waitForLoadState('load');
   await expect(page.getByRole('button', { name: 'Reset', exact: true })).toHaveCount(0);
-  await page.evaluate(() => {
-    window.__FODT_MERMAID_FRAMES__!.hook = 'none';
-  });
-  await page.goBack();
-  await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__)).toEqual({ added: [], removed: 0, hook: 'none' });
+  expect(await frameCount(page)).toBe(0);
+  await openTool(page);
+  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__)).toEqual({ added: [], removed: 0, hook: 'none' });
 
   // A pagehide while the frame is starting removes it too, and a later run works.
   await page.evaluate(() => {
@@ -554,7 +555,7 @@ test('mermaid-renderer: each Run uses a fresh frame that is gone afterwards', as
   });
   await fillAndHold(page, 'flowchart LR\n  E --> F');
   await runAndWait(page);
-  await expect.poll(() => page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.removed), { timeout: 30_000 }).toBe(4);
+  await expect.poll(() => page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.removed), { timeout: 30_000 }).toBe(1);
   await expect(outputArea(page).locator('img')).toHaveCount(0);
   expect(await frameCount(page)).toBe(0);
   await page.evaluate(() => {
@@ -564,8 +565,8 @@ test('mermaid-renderer: each Run uses a fresh frame that is gone afterwards', as
   await expect(outputArea(page).locator('img').first()).toHaveAttribute('alt', /^Mermaid flowchart diagram/, {
     timeout: 30_000,
   });
-  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.added.length)).toBe(5);
-  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.removed)).toBe(5);
+  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.added.length)).toBe(2);
+  expect(await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!.removed)).toBe(2);
   expect(await frameCount(page)).toBe(0);
 });
 

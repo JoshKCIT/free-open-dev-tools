@@ -54,8 +54,8 @@ declare global {
     __FODT_DOCUMENT_KEYS__?: number;
     /** What the capture-phase listener of the test saw, before the capture box's own listeners: key and defaultPrevented. */
     __FODT_KEY_BEFORE__?: { key: string; defaultPrevented: boolean }[];
-    /** The capture box and the history table body as they were before the visitor left the tool. */
-    __FODT_KEY_OLD__?: { box: HTMLTextAreaElement; body: HTMLElement };
+    /** Set on a window before a link is followed; a new document does not have it. */
+    __FODT_DOC_MARKER__?: number;
   }
 }
 
@@ -665,30 +665,34 @@ test('keyboard-event-viewer: leaving the tool inside the site forgets the keys a
   await page.keyboard.type('abc');
   await expect(box).toHaveValue('abc');
   await expect.poll(async () => (await historyRows(page)).length).toBe(9);
-  // Keep hold of the capture box and the body of the history table, to look at them after the page has left them.
+  // A marker on this window: every in-site link loads a new document, so the marker is gone on the next page and
+  // nothing typed here is held by any window the visitor can come back to.
   await page.evaluate(() => {
-    window.__FODT_KEY_OLD__ = {
-      box: document.querySelector('textarea[aria-label="Key capture box"]') as HTMLTextAreaElement,
-      body: document.querySelector('#fodt-key-capture tbody') as HTMLElement,
-    };
+    window.__FODT_DOC_MARKER__ = 1;
   });
 
-  // Another tool, reached through the site's own links (the single page app never reloads).
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click();
-  await page.locator('a[href$="/tools/base64"]').first().click();
-  await expect(page).toHaveURL(/\/tools\/base64$/);
+  // Another tool, reached through the site's own links.
+  await Promise.all([
+    page.waitForURL(/\/tools$/),
+    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click(),
+  ]);
+  expect(await page.evaluate(() => window.__FODT_DOC_MARKER__)).toBeUndefined();
+  await page.evaluate(() => {
+    window.__FODT_DOC_MARKER__ = 1;
+  });
+  await Promise.all([page.waitForURL(/\/tools\/base64$/), page.locator('a[href$="/tools/base64"]').first().click()]);
+  expect(await page.evaluate(() => window.__FODT_DOC_MARKER__)).toBeUndefined();
   await expect(page.locator('#fodt-key-capture')).toHaveCount(0);
 
-  // The old box and table were emptied when the area left the page, not when a visitor comes back: what was typed is
-  // no longer held by anything this page keeps.
-  await expect
-    .poll(() => page.evaluate(() => window.__FODT_KEY_OLD__?.box.value ?? 'missing'), { timeout: 5000 })
-    .toBe('');
-  expect(await page.evaluate(() => window.__FODT_KEY_OLD__?.body.children.length ?? -1)).toBe(0);
-
-  // Back at the tool, the box and the history are empty.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click();
-  await page.locator('a[href$="/tools/keyboard-event-viewer"]').first().click();
+  // Back at the tool by the site's own links, the box and the history are empty.
+  await Promise.all([
+    page.waitForURL(/\/tools$/),
+    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click(),
+  ]);
+  await Promise.all([
+    page.waitForURL(/\/tools\/keyboard-event-viewer$/),
+    page.locator('a[href$="/tools/keyboard-event-viewer"]').first().click(),
+  ]);
   await expect(captureBox(page)).toBeVisible();
   await expect(captureBox(page)).toHaveValue('');
   expect(await historyRows(page)).toEqual([['No key events yet.']]);
@@ -696,6 +700,51 @@ test('keyboard-event-viewer: leaving the tool inside the site forgets the keys a
   // And the new box reads keys as before.
   await captureBox(page).focus();
   await page.keyboard.press('q');
+  await expect.poll(async () => (await historyRows(page)).length).toBe(3);
+
+  // The Back button too: type again, leave for another tool, then go back twice. A page the browser restores from its
+  // back-forward cache must show nothing typed, because the capture area forgets when the page is left.
+  await captureBox(page).fill('');
+  await captureBox(page).focus();
+  await page.keyboard.type('xyz');
+  await expect(captureBox(page)).toHaveValue('xyz');
+  await Promise.all([
+    page.waitForURL(/\/tools$/),
+    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Tools', exact: true }).click(),
+  ]);
+  await Promise.all([page.waitForURL(/\/tools\/base64$/), page.locator('a[href$="/tools/base64"]').first().click()]);
+  await page.goBack();
+  await page.waitForURL(/\/tools$/);
+  await page.goBack();
+  await page.waitForURL(/\/tools\/keyboard-event-viewer$/);
+  await expect(captureBox(page)).toBeVisible();
+  await expect(captureBox(page)).toHaveValue('');
+  expect(await historyRows(page)).toEqual([['No key events yet.']]);
+  // The restored page still works.
+  await captureBox(page).focus();
+  await page.keyboard.press('w');
+  await expect.poll(async () => (await historyRows(page)).length).toBe(3);
+});
+
+test('keyboard-event-viewer: the page being hidden forgets the keys and the box, and the area keeps working', async ({
+  page,
+}) => {
+  // None of the four test browsers restores a page from its back-forward cache under automation, so the Back check above
+  // passes by a plain reload. This test fires the same signal the browser sends when it keeps a page for Back: the page
+  // hiding must empty the box and the history while leaving the area in place and working.
+  const box = await openViewer(page);
+  await page.keyboard.type('abc');
+  await expect(box).toHaveValue('abc');
+  await expect.poll(async () => (await historyRows(page)).length).toBe(9);
+
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+
+  await expect(box).toHaveValue('');
+  expect(await historyRows(page)).toEqual([['No key events yet.']]);
+  await expect(page.locator('#fodt-key-capture')).toHaveCount(1);
+
+  await box.focus();
+  await page.keyboard.press('d');
   await expect.poll(async () => (await historyRows(page)).length).toBe(3);
 });
 
