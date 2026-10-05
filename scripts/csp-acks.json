@@ -1,0 +1,24 @@
+{
+  "wasm": {
+    "pdf-text-metadata": "The PDF reader library has an optional image decoder that compiles a module from bytes, and this page never reaches it.",
+    "pdf-to-image": "The PDF reader library has an optional image decoder that compiles a module from bytes, and this page never reaches it."
+  },
+  "eval": {
+    "mermaid-renderer": "Bundled library code looks up the global object with a Function call only after two safe lookups fail, which never happens in a browser.",
+    "pdf-text-metadata": "The PDF reader library looks up the global object with a Function call only after two safe lookups fail, which never happens in a browser.",
+    "pdf-to-image": "The PDF reader library looks up the global object with a Function call only after two safe lookups fail, which never happens in a browser.",
+    "php-formatter": "The match is the PHP eval construct being printed back as formatted text by the formatter, not a call the page makes.",
+    "python-formatter": "The match is a template string that prints the name of a Function type in formatted output, not a call.",
+    "xml-formatter": "The match is a method named eval on the XML engine's XPath wrapper, which evaluates XPath and not script.",
+    "xsd-validator": "The match is a method named eval on the XML engine's XPath wrapper, which evaluates XPath and not script."
+  },
+  "fetch": {
+    "curl-converter": "The match is sample code the page prints for the visitor to copy, not a call the page makes.",
+    "jq-playground": "The engine loader has a fetch path for its module bytes that is not taken, because the bytes are inlined in the page.",
+    "mermaid-renderer": "The match is a method named fetch on the diagram engine's math token reader, which reads text and makes no request.",
+    "pdf-text-metadata": "The PDF reader library has a fetch path for loading a document by address that this page never takes, because it hands over bytes.",
+    "pdf-to-image": "The PDF reader library has a fetch path for loading a document by address that this page never takes, because it hands over bytes.",
+    "qr-barcode-reader": "The engine loader has a fetch path for its module bytes that is not taken, because the bytes are inlined in the page.",
+    "sqlite-viewer": "The engine loader has a fetch path for its module bytes that is not taken, because the bytes are inlined in the page."
+  }
+}
