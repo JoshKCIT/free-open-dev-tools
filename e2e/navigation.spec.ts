@@ -30,6 +30,20 @@ function addressOf(path: string, baseURL: string | undefined): string {
   return new URL(rel(path), baseURL).toString();
 }
 
+/**
+ * Two addresses that differ only by a trailing slash are the same place. At the deploy base the router writes the home
+ * link as the base path without its closing slash, and the host answers that with a redirect to the slash form.
+ */
+const sameAddress = (a: string, b: string) => a.replace(/\/$/, '') === b.replace(/\/$/, '');
+
+/** The path a link points to, below the base path (so it can be passed back to `addressOf`). */
+async function pathBelowBase(link: ReturnType<Page['locator']>, page: Page, baseURL: string | undefined) {
+  const href = new URL((await link.getAttribute('href')) ?? '', page.url());
+  const base = new URL(baseURL ?? '').pathname;
+  expect(href.pathname.startsWith(base), `${href.pathname} starts with ${base}`).toBe(true);
+  return `/${href.pathname.slice(base.length)}${href.search}`;
+}
+
 async function setMarker(page: Page) {
   await page.evaluate(() => {
     window.__fodtDocMarker = 1;
@@ -50,17 +64,19 @@ async function followAndExpectFreshDocument(
   await setMarker(page);
   expect(await markerOf(page)).toBe(1);
   const want = addressOf(target, baseURL);
-  await Promise.all([page.waitForURL(want), link.click()]);
+  await Promise.all([page.waitForURL((url) => sameAddress(url.toString(), want)), link.click()]);
   await page.waitForLoadState('load');
   expect(await markerOf(page)).toBeUndefined();
-  expect(page.url()).toBe(want);
+  expect(sameAddress(page.url(), want), `${page.url()} is ${want}`).toBe(true);
 }
 
 test.describe('every in-site link loads a fresh document', () => {
   test('the brand link from a tool page loads the home page as a new document', async ({ page, baseURL }) => {
     await page.goto(rel('/tools/base64'));
+    // No heading check here: at the deploy base the link is the base path without its closing slash, which the host
+    // answers with a redirect to the slash form. A static preview server has no such redirect, so the document check
+    // (marker gone, address right) is what this test proves, and the deployed-site run proves the redirect.
     await followAndExpectFreshDocument(page, baseURL, page.locator('a.brand'), '/');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   for (const [name, path] of [
@@ -82,6 +98,8 @@ test.describe('every in-site link loads a fresh document', () => {
   }) => {
     // The catalog is the longest page, so there is always something to scroll past.
     await page.goto(rel('/catalog'));
+    // Wait for the page to be drawn, or the scroll below lands on a short page and goes nowhere.
+    await expect(page.locator('a.tool-card').first()).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
 
@@ -91,5 +109,238 @@ test.describe('every in-site link loads a fresh document', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     // Focus starts at the body, so the first Tab press reaches the skip link.
     expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  });
+});
+
+test.describe('every other kind of in-site link loads a fresh document too', () => {
+  test('both footer links load a new document', async ({ page, baseURL }) => {
+    for (const [name, path] of [
+      ['Privacy', '/privacy'],
+      ['About', '/about'],
+    ] as const) {
+      await page.goto(rel('/tools/base64'));
+      const link = page.getByRole('navigation', { name: 'Footer' }).getByRole('link', { name, exact: true });
+      await followAndExpectFreshDocument(page, baseURL, link, path);
+    }
+  });
+
+  test('a card on the catalog page loads its tool page as a new document', async ({ page, baseURL }) => {
+    await page.goto(rel('/catalog'));
+    const card = page.locator('a.tool-card').first();
+    const target = await pathBelowBase(card, page, baseURL);
+    expect(target).toMatch(/^\/tools\/[a-z0-9-]+$/);
+    await followAndExpectFreshDocument(page, baseURL, card, target);
+  });
+
+  test('a card on the tools index loads its tool page as a new document', async ({ page, baseURL }) => {
+    await page.goto(rel('/tools'));
+    const card = page.locator('a.tool-card').first();
+    const target = await pathBelowBase(card, page, baseURL);
+    expect(target).toMatch(/^\/tools\/[a-z0-9-]+$/);
+    await followAndExpectFreshDocument(page, baseURL, card, target);
+  });
+
+  test('a category card on the home page keeps its query and loads a new document', async ({ page, baseURL }) => {
+    await page.goto(rel('/'));
+    const card = page.locator('a.tool-card[href*="/tools?category="]').first();
+    const target = await pathBelowBase(card, page, baseURL);
+    const category = new URL(target, 'http://site.invalid').searchParams.get('category');
+    expect(category).toBeTruthy();
+    await followAndExpectFreshDocument(page, baseURL, card, `/tools?category=${category}`);
+    expect(new URL(page.url()).searchParams.get('category')).toBe(category);
+    // The chip for that category is the pressed one on the new document.
+    await expect(page.getByRole('group', { name: 'Filter by category' }).locator('[aria-pressed="true"]')).toHaveCount(
+      1,
+    );
+  });
+
+  test('the breadcrumb links on a tool page load new documents and the category one keeps its query', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto(rel('/tools/base64'));
+    const crumbs = page.locator('.breadcrumbs');
+    await followAndExpectFreshDocument(
+      page,
+      baseURL,
+      crumbs.getByRole('link', { name: 'Tools', exact: true }),
+      '/tools',
+    );
+
+    await page.goto(rel('/tools/base64'));
+    const category = crumbs.locator('a').nth(1);
+    const target = await pathBelowBase(category, page, baseURL);
+    const id = new URL(target, 'http://site.invalid').searchParams.get('category');
+    expect(id).toBeTruthy();
+    await followAndExpectFreshDocument(page, baseURL, category, `/tools?category=${id}`);
+    expect(new URL(page.url()).searchParams.get('category')).toBe(id);
+  });
+
+  test('both links on the not-found page load new documents', async ({ page, baseURL }) => {
+    await page.goto(rel('/404.html'));
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+    await followAndExpectFreshDocument(page, baseURL, page.getByRole('link', { name: 'Browse all tools' }), '/tools');
+
+    await page.goto(rel('/404.html'));
+    await followAndExpectFreshDocument(
+      page,
+      baseURL,
+      page.getByRole('link', { name: 'see the full catalog' }),
+      '/catalog',
+    );
+  });
+
+  test('a link to the page already shown still loads a fresh document', async ({ page }) => {
+    await page.goto(rel('/privacy'));
+    await setMarker(page);
+    const link = page.getByRole('navigation', { name: 'Footer' }).getByRole('link', { name: 'Privacy', exact: true });
+    // The address does not change, so the load event is what shows a new document.
+    await Promise.all([page.waitForEvent('load'), link.click()]);
+    expect(await markerOf(page)).toBeUndefined();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
+  test('the tools index category chips change the query inside one document and are not links', async ({ page }) => {
+    await page.goto(rel('/tools'));
+    const chips = page.getByRole('group', { name: 'Filter by category' });
+    expect(await chips.locator('a').count()).toBe(0);
+    await setMarker(page);
+    await chips.getByRole('button').nth(1).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('category')).toBeTruthy();
+    expect(await markerOf(page)).toBe(1);
+
+    await chips.getByRole('button').first().click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('category')).toBeNull();
+    expect(await markerOf(page)).toBe(1);
+  });
+});
+
+test.describe('in-site addresses keep the base path', () => {
+  const SITE_PAGES = ['/', '/tools', '/catalog', '/privacy', '/about', '/404.html'];
+  const TOOL_PAGES = [
+    '/tools/base64',
+    '/tools/regex-tester',
+    '/tools/mermaid-renderer',
+    '/tools/totp-generator',
+    '/tools/key-converter',
+  ];
+
+  test('every in-site link on the site pages, the 404 shell and five tool pages starts with the base path and answers 200', async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    const base = new URL(baseURL ?? '');
+    const seen = new Set<string>();
+    for (const path of [...SITE_PAGES, ...TOOL_PAGES]) {
+      await page.goto(rel(path));
+      await expect(page.locator('main')).toBeVisible();
+      const hrefs = await page
+        .locator('a[href]')
+        .evaluateAll((anchors) => anchors.map((a) => (a as HTMLAnchorElement).href));
+      expect(hrefs.length, `${path} has links`).toBeGreaterThan(0);
+      for (const href of hrefs) {
+        const url = new URL(href);
+        // Links that leave the site are not in scope.
+        if (url.origin !== base.origin) continue;
+        // The home link is the base path itself, written without its closing slash (see sameAddress).
+        const inBase = url.pathname.startsWith(base.pathname) || url.pathname === base.pathname.replace(/\/$/, '');
+        expect(inBase, `${href} on ${path} starts with ${base.pathname}`).toBe(true);
+        url.hash = '';
+        url.search = '';
+        seen.add(url.toString());
+      }
+    }
+    // Enough distinct addresses that the check cannot pass by finding nothing.
+    expect(seen.size).toBeGreaterThan(15);
+    // A static preview server does not do the host's redirect from the base path without its closing slash to the slash
+    // form, so on a local address the slash form is asked for. On the deployed site the exact address is asked for.
+    const local = ['127.0.0.1', 'localhost'].includes(base.hostname);
+    const bare = new URL(base.origin + base.pathname.replace(/\/$/, '')).toString();
+    for (const address of seen) {
+      const asked = local && base.pathname !== '/' && address === bare ? base.toString() : address;
+      const response = await request.get(asked);
+      expect(response.status(), asked).toBe(200);
+    }
+  });
+});
+
+declare global {
+  interface Window {
+    __fodtThemeValues?: string[];
+    __fodtPaintTheme?: string | null;
+    __fodtPaintSeen?: boolean;
+  }
+}
+
+test.describe('the light theme on a full page load', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('fodt-theme', 'light');
+      } catch {
+        /* the test then fails on its own assertions */
+      }
+      window.__fodtThemeValues = [];
+      window.__fodtPaintTheme = null;
+      window.__fodtPaintSeen = false;
+      // The document may have no root element yet when this runs, so watch the whole document.
+      new MutationObserver((records) => {
+        for (const r of records) {
+          if (r.attributeName === 'data-theme') {
+            window.__fodtThemeValues?.push((r.target as HTMLElement).getAttribute('data-theme') ?? 'none');
+          }
+        }
+      }).observe(document, { attributes: true, attributeFilter: ['data-theme'], subtree: true });
+      try {
+        new PerformanceObserver((list) => {
+          if (list.getEntries().length > 0 && !window.__fodtPaintSeen) {
+            window.__fodtPaintSeen = true;
+            window.__fodtPaintTheme = document.documentElement.getAttribute('data-theme');
+          }
+        }).observe({ type: 'paint', buffered: true });
+      } catch {
+        /* this engine exposes no paint timing; the test says so by name */
+      }
+    });
+  });
+
+  const readTheme = (page: Page) =>
+    page.evaluate(() => ({
+      values: window.__fodtThemeValues ?? [],
+      current: document.documentElement.getAttribute('data-theme'),
+    }));
+
+  test('a visitor who chose light is never shown dark on load, on a first load and on one reached by a link', async ({
+    page,
+  }) => {
+    await page.goto(rel('/'));
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    let seen = await readTheme(page);
+    expect(seen.current).toBe('light');
+    expect(seen.values.length).toBeGreaterThan(0);
+    expect(seen.values.every((v) => v === 'light')).toBe(true);
+
+    const link = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'About', exact: true });
+    await Promise.all([page.waitForURL(/\/about$/), link.click()]);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    seen = await readTheme(page);
+    expect(seen.current).toBe('light');
+    expect(seen.values.length).toBeGreaterThan(0);
+    expect(seen.values.every((v) => v === 'light')).toBe(true);
+  });
+
+  test('the value at the first paint is light, on a first load and on one reached by a link', async ({ page }) => {
+    await page.goto(rel('/'));
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    const hasPaint = await page.evaluate(() => performance.getEntriesByType('paint').length > 0);
+    test.skip(!hasPaint, 'this engine exposes no paint timing entry, so the first-paint half cannot run here');
+    await expect.poll(() => page.evaluate(() => window.__fodtPaintSeen)).toBe(true);
+    expect(await page.evaluate(() => window.__fodtPaintTheme)).toBe('light');
+
+    const link = page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Catalog', exact: true });
+    await Promise.all([page.waitForURL(/\/catalog$/), link.click()]);
+    await expect.poll(() => page.evaluate(() => window.__fodtPaintSeen)).toBe(true);
+    expect(await page.evaluate(() => window.__fodtPaintTheme)).toBe('light');
   });
 });
