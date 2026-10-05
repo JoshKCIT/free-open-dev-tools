@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['tools/*/test/**/*.test.ts', 'scripts/test/**/*.test.mjs'],
+    include: ['tools/*/test/**/*.test.ts', 'scripts/test/**/*.test.mjs', 'apps/web/test/**/*.test.{ts,tsx}'],
     environment: 'node',
     reporters: ['default'],
     coverage: {
