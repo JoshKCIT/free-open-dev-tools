@@ -1345,15 +1345,32 @@ test('random-number: the default integer mode still answers 7 first for a range 
   const decimals = await readIds(page);
   expect(decimals).toHaveLength(4);
   for (const value of decimals) expect(value).toMatch(/^[01]\.\d{3}$/);
+  // A spy on Math.random inside the page: the older mode with the non-cryptographic source calls it (the control, so
+  // the spy is known to see calls), and the newer modes below must not call it at all.
+  await page.evaluate(() => {
+    const holder = window as unknown as { __fodtMathRandomCalls: number };
+    holder.__fodtMathRandomCalls = 0;
+    const original = Math.random;
+    Math.random = () => {
+      holder.__fodtMathRandomCalls++;
+      return original.call(Math);
+    };
+  });
+  const mathRandomCalls = (): Promise<number> =>
+    page.evaluate(() => (window as unknown as { __fodtMathRandomCalls: number }).__fodtMathRandomCalls);
   await page.locator('#f-source').selectOption('math');
   await run(page);
   await expect.poll(async () => (await readStats(page))['Source']).toBe('Math.random');
+  expect(await mathRandomCalls(), 'the older mode with the Math.random source calls it').toBeGreaterThan(0);
 
   // A hidden setting of the older modes never changes a newer mode: with the non-cryptographic source chosen and a
   // range of 7 to 7 left behind, a lottery draw still comes from the cryptographic source and is not all sevens.
   await page.locator('input[name="mode"][value="integer"]').click();
   await fillAndHold(page, 'min', '7');
   await fillAndHold(page, 'max', '7');
+  await page.evaluate(() => {
+    (window as unknown as { __fodtMathRandomCalls: number }).__fodtMathRandomCalls = 0;
+  });
   await page.locator('input[name="mode"][value="lottery"]').click();
   await expect(page.locator('#f-source')).toHaveCount(0);
   await run(page);
@@ -1361,6 +1378,18 @@ test('random-number: the default integer mode still answers 7 first for a range 
   expect((await readStats(page))['Source']).toBe('crypto.getRandomValues');
   const lottery = (await readCodeBlocks(page))['Sorted']!.split(', ');
   expect(new Set(lottery).size).toBe(6);
+  // The other newer modes as well: a dice roll, coin flips and a pick, all with the Math.random source left behind.
+  await chooseRandomMode(page, 'dice', ['notation']);
+  await run(page);
+  await expect.poll(async () => (await readStats(page))['Source']).toBe('crypto.getRandomValues');
+  await chooseRandomMode(page, 'coin', ['flips']);
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('10 coin flips');
+  await chooseRandomMode(page, 'pick', ['items', 'pickCount', 'withReplacement']);
+  await fillAndHold(page, 'items', 'a\nb\nc');
+  await run(page);
+  await expect.poll(() => readLabel(page)).toBe('1 pick');
+  expect(await mathRandomCalls(), 'no newer mode calls Math.random').toBe(0);
 
   // Back in the integer mode the settings it had are still there, and 7 to 7 still answers 7.
   await page.locator('input[name="mode"][value="integer"]').click();
