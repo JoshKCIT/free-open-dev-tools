@@ -3,7 +3,6 @@ import {
   TimeError,
   TotpError,
   computeCodes,
-  countdownHtml,
   formatUtc,
   meta,
   parseTimeInput,
@@ -68,7 +67,11 @@ function failure(err: unknown, secret: string): ToolResult {
   return { outputs: [], errors: issues };
 }
 
-function codeBlocks(result: ComputeResult, period: number): OutputBlock[] {
+/**
+ * `live` is set only for codes made from this device's clock: it carries the end of the current step in device-clock
+ * milliseconds. Codes for a typed time and counter based codes have none.
+ */
+function codeBlocks(result: ComputeResult, period: number, live: { endsAt: number } | null): OutputBlock[] {
   if (result.mode === 'hotp') {
     return [
       {
@@ -88,7 +91,7 @@ function codeBlocks(result: ComputeResult, period: number): OutputBlock[] {
       },
     ];
   }
-  return [
+  const blocks: OutputBlock[] = [
     {
       kind: 'table',
       label: 'Codes',
@@ -104,20 +107,28 @@ function codeBlocks(result: ComputeResult, period: number): OutputBlock[] {
         mono: [1, 2, 3, 4],
       },
     },
-    {
+  ];
+  if (live) {
+    blocks.push({
       kind: 'note',
       tone: 'info',
-      value: `${result.secondsLeft} of ${period} seconds were left in the current step when these codes were made. The page does not refresh by itself; edit any field for fresh codes.`,
-    },
-    // The sandboxed frame allows inline styles and no script, so the bar is markup and style only. The Copy HTML button
-    // is hidden because this is a picture of the time left, not output anyone would copy.
-    {
-      kind: 'sandboxed-html',
+      value: "The codes refresh by themselves at the start of each step, from this device's clock.",
+    });
+    // The block counts down to the end of the current step on its own; it is not inside the codes and never announces.
+    blocks.push({
+      kind: 'countdown',
       label: 'Time left in the current step',
-      html: countdownHtml(result.secondsLeft ?? 1, period),
-      copy: false,
-    },
-  ];
+      endsAt: live.endsAt,
+      periodMs: period * 1000,
+    });
+  } else {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `${result.secondsLeft} of ${period} seconds were left in the current step at the time you typed. A typed time does not refresh.`,
+    });
+  }
+  return blocks;
 }
 
 export default defineTool({
@@ -276,7 +287,10 @@ export default defineTool({
         ({ seconds, typed } = secondsForRun(str(values, 'at'), nowMs));
         result = computeCodes({ mode, secret, algorithm, digits, period, seconds, issuer, account });
       }
-      const outputs: OutputBlock[] = codeBlocks(result, period);
+      // Steps are floor(unix seconds / period), so a boundary is a multiple of the period in epoch time. Only codes made
+      // from this device's clock keep themselves current: a typed time and a counter never change by themselves.
+      const live = mode === 'totp' && !typed ? { endsAt: nowMs - (nowMs % (period * 1000)) + period * 1000 } : null;
+      const outputs: OutputBlock[] = codeBlocks(result, period, live);
       if (result.uri !== undefined) outputs.push(...linkBlocks(result.uri));
       for (const note of result.notes) outputs.push({ kind: 'note', tone: 'info', value: note });
       const stats: [string, string][] = [];
@@ -288,11 +302,13 @@ export default defineTool({
         stats.push(['Unix seconds', String(seconds)]);
       }
       stats.push(['Secret size', `${result.secretBits} bits`]);
-      // Steps are floor(unix seconds / period), so a boundary is a multiple of the period in epoch time. The 25 ms keeps
-      // the refresh just after the boundary, never before it. Only codes made from this device's clock keep themselves
-      // current: a typed time and a counter never change by themselves.
-      const refreshAfterMs = mode === 'totp' && !typed ? period * 1000 - (nowMs % (period * 1000)) + 25 : undefined;
-      return { outputs, warnings: result.warnings, stats, ...(refreshAfterMs === undefined ? {} : { refreshAfterMs }) };
+      // The 25 ms keeps the refresh just after the boundary, never before it.
+      return {
+        outputs,
+        warnings: result.warnings,
+        stats,
+        ...(live ? { refreshAfterMs: live.endsAt - nowMs + 25 } : {}),
+      };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       return failure(err, secret);

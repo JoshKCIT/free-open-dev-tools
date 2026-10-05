@@ -104,6 +104,13 @@ export type OutputBlock =
       backdrop?: 'plain' | 'pattern';
       download?: string;
     }
+  /**
+   * The time left until `endsAt`, counted down on the page by the block itself (a 250 ms timer of its own, so nothing
+   * else on the page re-renders). `endsAt` is a device-clock time in milliseconds since 1970 and `periodMs` the length of
+   * the whole step, which sets the bar's full length. Shows whole seconds left, floored, and a native progress bar that is
+   * hidden for visitors who ask for less motion. It never announces: the wrapper is a timer with live updates off.
+   */
+  | { kind: 'countdown'; label?: string; endsAt: number; periodMs: number }
   | { kind: 'diff'; label?: string; lines: { type: 'add' | 'del' | 'ctx' | 'meta'; text: string }[] };
 
 export interface ToolIssue {

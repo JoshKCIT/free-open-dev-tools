@@ -656,6 +656,32 @@ input[type='file'] {
   accent-color: var(--accent);
 }
 
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.86rem;
+}
+.countdown-text {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.countdown progress {
+  flex: 1;
+  min-width: 60px;
+  height: 8px;
+  accent-color: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .countdown progress {
+    display: none;
+  }
+}
+
 .output-block + .output-block {
   margin-top: 14px;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputBlock, DownloadableFile } from '../lib/tool-ui';
 import { downloadMime } from '../lib/download-mime';
+import Countdown from './Countdown';
 import CssPreview from './CssPreview';
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
@@ -296,6 +297,14 @@ export default function OutputView({ block }: { block: OutputBlock }) {
       return (
         <div className="output-block">
           <div className={`note note-${block.tone}`}>{block.value}</div>
+        </div>
+      );
+
+    case 'countdown':
+      return (
+        <div className="output-block">
+          {head(null)}
+          <Countdown label={block.label} endsAt={block.endsAt} periodMs={block.periodMs} />
         </div>
       );
 

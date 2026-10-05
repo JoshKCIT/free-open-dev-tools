@@ -13,7 +13,7 @@ Turns a Base32 secret, the kind an authenticator app is given when you turn on t
 
 - A Base32 secret as RFC 4648 section 6 writes it, in upper or lower case, with spaces and hyphens between groups and with or without the = padding, of up to 1,024 characters; the characters 0, 1, 8 and 9 and any other character are refused with the position of the first one and never the character itself, and text that looks like hexadecimal or Base64 is called that
 - Time based codes (TOTP, RFC 6238) with HMAC-SHA-1, HMAC-SHA-256 or HMAC-SHA-512, 6, 7 or 8 digits, and a period of 1 to 86,400 seconds (30 is the usual one), counted from 1970-01-01 00:00:00 UTC
-- The previous, current, next and following step for the moment of the run, each with the time it starts and the last second it is valid in UTC and in this device's time, the seconds that were left in the current step at that moment, and a countdown bar made of style only that drains over those seconds
+- The previous, current, next and following step for the moment of the run, each with the time it starts and the last second it is valid in UTC and in this device's time, the seconds that were left in the current step at that moment, and, for codes made from this device's clock, a countdown on the page itself that shows the whole seconds left in the current step with a progress bar (the bar is hidden when the visitor asks for less motion)
 - An At this time value as whole Unix seconds (0 to 253402300799) or an ISO 8601 date written YYYY-MM-DD or YYYY-MM-DDTHH:MM with optional :SS, an optional fraction and a Z or +HH:MM offset (read as UTC when no offset is written); left empty, this device's clock is read once for each run
 - Counter based codes (HOTP, RFC 4226): the codes for a counter from 0 to 9007199254740991 and the four after it, written as an 8 byte counter
 - The otpauth link of the Key Uri Format and a QR code of it, when an account name is given, with an issuer, the algorithm, digits, period or counter written into it when they are not the defaults; notes for a secret under 128 bits, for 7 digits and for settings some apps ignore
@@ -21,7 +21,7 @@ Turns a Base32 secret, the kind an authenticator app is given when you turn on t
 ## Limits
 
 - The page uses this device's clock or the time you type, and never fetches network time.
-- The page does not refresh by itself: it shows the codes for the moment you last changed a field (the previous, current, next and following step) and the seconds that were left then; edit any field for fresh codes.
+- Codes made from this device's clock refresh by themselves just after each step ends, and the page shows the seconds left in the current step; a time you typed and counter based codes never change by themselves. The page does not fetch network time, so a device clock that is wrong gives wrong codes.
 - Secrets of up to 1,024 Base32 characters are read; a longer secret is refused.
 - A secret shorter than 128 bits is shown with a warning, because RFC 4226 requires at least 128 bits.
 - Times from 1970-01-01 to 9999-12-31 are read (near the end of that range a step that would start after 9999-12-31 is left out of the codes, and the last step is shown as ending at 23:59:59), a period must be a whole number of seconds from 1 to 86,400, and a counter a whole number from 0 to 9,007,199,254,740,991.
@@ -36,7 +36,7 @@ Turns a Base32 secret, the kind an authenticator app is given when you turn on t
 - 7 digits is allowed by RFC 4226 (6 or more) but many authenticator apps accept only 6 or 8
 - The RFC 6238 test table uses the 20 byte secret with SHA-1, a 32 byte secret with SHA-256 and a 64 byte secret with SHA-512, so SHA-256 and SHA-512 codes made from the 20 byte secret differ from the table
 - In the link, a space is written %20 and a slash %2F, and the characters ! ' ( ) * are written as percent forms, so the link can be longer than the shortest form other generators write; apps decode every form to the same names
-- The countdown bar and the seconds left are those of the moment the codes were made: an app's own bar keeps moving after that
+- The seconds left count down from this device's clock and the codes refresh about 25 milliseconds after each step ends, so an app whose clock is a little ahead or behind can show the next code a moment earlier or later than this page
 
 ## Defined by
 

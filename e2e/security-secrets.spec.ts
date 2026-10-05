@@ -573,9 +573,11 @@ test('totp-generator: the secret, the otpauth link and the QR code never reach a
   expect(await outputArea(page).locator('[download], a[href]').count(), 'something offers a download or a link').toBe(
     0,
   );
-  const frames = outputArea(page).locator('iframe');
-  expect(await frames.count(), 'one frame, the countdown bar').toBe(1);
-  expect(await frames.first().getAttribute('sandbox'), 'the frame allows something').toBe('');
+  // The seconds left are a countdown on the page itself (a timer with no live region), not a preview frame.
+  expect(await outputArea(page).locator('iframe').count(), 'the output holds a frame').toBe(0);
+  const countdown = outputArea(page).locator('.countdown');
+  expect(await countdown.count(), 'one countdown').toBe(1);
+  expect(await countdown.getAttribute('role'), 'the countdown is a timer').toBe('timer');
   expect(await outputArea(page).locator('script, link, form, object, embed').count()).toBe(0);
 
   await page.waitForTimeout(500);
