@@ -1,4 +1,4 @@
-import { drawUniformInt, newModeByteReader } from './sampler';
+import { drawUniformIntBounded, newModeByteReader } from './sampler';
 
 /** Most dice one term may roll, and most one whole expression may roll. */
 export const MAX_DICE_PER_TERM = 1_000;
@@ -242,7 +242,7 @@ function rollTerm(term: DiceDiceTerm, readByte: () => number): RolledTerm {
   const span = fudge ? 3 : (term.sides as number);
   const offset = fudge ? -1 : 1;
   const rolls: number[] = [];
-  for (let i = 0; i < term.count; i++) rolls.push(drawUniformInt(span, readByte) + offset);
+  for (let i = 0; i < term.count; i++) rolls.push(drawUniformIntBounded(span, readByte) + offset);
 
   const { keep, highest } = keepPlan(term.modifier, term.count);
   // Order the dice from the ones that count first; equal dice keep their roll order, so the earliest rolled is kept.

@@ -28,20 +28,26 @@ function cryptoBytes(n: number): Uint8Array {
   return out;
 }
 
+/** Most bytes one pick looks at before it gives up. With real random bytes (each usable at least half the time) it is never reached. */
+const MAX_PICK_TRIES = 1000;
+
 /**
  * A uniformly distributed index from 0 to size - 1 by rejection sampling. Own code, the same shape as this
  * repository's other picking functions: a byte at or above floor(256 / size) * size is thrown away before the
  * remainder is taken, because 256 is not a multiple of every size and a plain remainder would favour the first symbols.
+ * A byte source that never gives a usable byte (a constant 255 over 3 symbols) ends the pick after 1,000 tries with a
+ * fixed sentence instead of looping for ever.
  */
 export function pickAlphabetIndex(size: number, nextByte: () => number): number {
   if (!Number.isInteger(size) || size < 1 || size > 256)
     throw new IdentifierError('Alphabet must hold 2 to 255 different characters.');
   if (size === 1) return 0;
   const limit = Math.floor(256 / size) * size;
-  for (;;) {
+  for (let tries = 0; tries < MAX_PICK_TRIES; tries++) {
     const byte = nextByte();
     if (byte < limit) return byte % size;
   }
+  throw new IdentifierError('The byte source does not produce usable values.');
 }
 
 const CHUNK = 1024;

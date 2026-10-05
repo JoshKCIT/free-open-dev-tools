@@ -47,6 +47,27 @@ export function drawUniformInt(span: number, readByte: () => number): number {
   }
 }
 
+/** Most tries one draw of the newer modes makes before it gives up. With real random bytes it is never reached. */
+export const MAX_DRAW_TRIES = 1000;
+
+/**
+ * `drawUniformInt` with a bound on its redraws, used by every draw of the newer modes. A draw makes at most
+ * `MAX_DRAW_TRIES` tries; a byte source that never gives a usable value (a constant 255 over a span of 3, say) then ends
+ * the draw with a fixed sentence instead of an endless loop. The sampler itself is the one above, unchanged, so the
+ * outcome of every draw that finishes is exactly what `drawUniformInt` gives for the same bytes. The chance that real
+ * random bytes need 1,000 tries is below 2^-1000, since each try is usable at least half the time.
+ */
+export function drawUniformIntBounded(span: number, readByte: () => number): number {
+  if (span <= 1) return 0;
+  let bytesNeeded = 1;
+  for (let wordSize = 256; wordSize < span; wordSize *= 256) bytesNeeded++;
+  let budget = MAX_DRAW_TRIES * bytesNeeded;
+  return drawUniformInt(span, () => {
+    if (budget-- <= 0) throw new RandomDrawError('The byte source does not produce usable values.');
+    return readByte();
+  });
+}
+
 /**
  * The byte reader of the newer modes: one byte at a time from `crypto.getRandomValues`, and from nowhere else.
  *

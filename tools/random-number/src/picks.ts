@@ -1,4 +1,4 @@
-import { drawUniformInt, newModeByteReader, RandomDrawError } from './sampler';
+import { drawUniformIntBounded, newModeByteReader, RandomDrawError } from './sampler';
 
 /** Coin flips and list picks run from 1 to 10,000. */
 export const MAX_FLIPS = 10_000;
@@ -46,7 +46,7 @@ export function flipCoins(count: number, options?: PickOptions): CoinFlips {
   const flips: CoinSide[] = [];
   let heads = 0;
   for (let i = 0; i < count; i++) {
-    if (drawUniformInt(2, readByte) === 0) {
+    if (drawUniformIntBounded(2, readByte) === 0) {
       flips.push('heads');
       heads++;
     } else {
@@ -78,7 +78,7 @@ export function drawLottery(request: { poolSize: number; drawSize: number }, opt
   const moved = new Map<number, number>();
   const drawOrder: number[] = [];
   for (let i = 0; i < drawSize; i++) {
-    const j = i + drawUniformInt(poolSize - i, readByte);
+    const j = i + drawUniformIntBounded(poolSize - i, readByte);
     const atJ = moved.get(j) ?? j + 1;
     const atI = moved.get(i) ?? i + 1;
     drawOrder.push(atJ);
@@ -163,12 +163,12 @@ export function pickItems(
   const readByte = newModeByteReader(options?.byteSource);
   const picks: string[] = [];
   if (replace) {
-    for (let i = 0; i < count; i++) picks.push(list[drawUniformInt(list.length, readByte)]!);
+    for (let i = 0; i < count; i++) picks.push(list[drawUniformIntBounded(list.length, readByte)]!);
     return picks;
   }
   const order = Array.from({ length: list.length }, (_, index) => index);
   for (let i = 0; i < count; i++) {
-    const j = i + drawUniformInt(list.length - i, readByte);
+    const j = i + drawUniformIntBounded(list.length - i, readByte);
     const chosen = order[j]!;
     order[j] = order[i]!;
     order[i] = chosen;
