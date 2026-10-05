@@ -1261,7 +1261,7 @@ test('date-diff: ISO week numbers agree with this browser Temporal for 2,000 see
 
   // Values typed for the other modes are kept while hidden and must not change the week table.
   await page.locator('input[name="mode"][value="business"]').click();
-  await fillAndHold(page, 'start', '2024-01-01');
+  await fillAndHold(page, 'businessStart', '2024-01-01');
   await fillAndHold(page, 'end', '2024-12-31');
   await fillAndHold(page, 'holidays', '2024-01-03\n2024-01-04');
   await fillAndHold(page, 'weekend', 'Fri, Sat');

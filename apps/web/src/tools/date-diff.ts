@@ -63,7 +63,7 @@ function listIssues(
 }
 
 function runBusiness(values: Values): ToolResult {
-  const startText = str(values, 'start');
+  const startText = str(values, 'businessStart');
   const endText = str(values, 'end');
   if (!startText.trim() || !endText.trim()) return { outputs: [] };
 
@@ -281,7 +281,16 @@ export default defineTool({
       mono: true,
       placeholder: '2024-01-31 or 2024-01-31T12:00:00Z',
       help: 'A moment with no offset is read as UTC.',
-      visible: modeIs(...OLD_MODES, 'business'),
+      visible: modeIs(...OLD_MODES),
+    },
+    {
+      name: 'businessStart',
+      label: 'Start',
+      type: 'text',
+      mono: true,
+      placeholder: '2024-01-08',
+      help: 'A plain date written YYYY-MM-DD, with no time and no offset.',
+      visible: modeIs('business'),
     },
     {
       name: 'end',
@@ -375,7 +384,13 @@ export default defineTool({
     { label: 'Subtract a week', values: { mode: 'subtract', start: '2024-11-03T01:30', duration: 'P1W' } },
     {
       label: 'Business days in a week',
-      values: { mode: 'business', start: '2024-01-01', end: '2024-01-08', weekend: 'Sat, Sun', holidays: '2024-01-03' },
+      values: {
+        mode: 'business',
+        businessStart: '2024-01-01',
+        end: '2024-01-08',
+        weekend: 'Sat, Sun',
+        holidays: '2024-01-03',
+      },
     },
     { label: 'Week 53 of 2020', values: { mode: 'weeks', dates: '2021-01-03\n2024-12-30\n2026-12-31' } },
     { label: 'Read a duration', values: { mode: 'duration', isoDuration: 'P1Y2M3W4DT5H6M7.5S' } },

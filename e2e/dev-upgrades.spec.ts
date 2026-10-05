@@ -452,13 +452,13 @@ async function businessAnswer(
 ): Promise<void> {
   // The start is blanked first, so the page shows no result until the whole question is typed (no earlier answer can
   // be mistaken for this one), and typed last.
-  await fillAndHold(page, 'start', '');
+  await fillAndHold(page, 'businessStart', '');
   await expect(outputArea(page).locator('dl.kv')).toHaveCount(0);
   await fillAndHold(page, 'end', question.end);
   await fillAndHold(page, 'weekend', question.weekend);
   await fillAndHold(page, 'holidays', question.holidays);
   await page.locator(`input[name="endDay"][value="${question.includeEnd ? 'included' : 'excluded'}"]`).click();
-  await fillAndHold(page, 'start', question.start);
+  await fillAndHold(page, 'businessStart', question.start);
   await expect(async () => {
     const pairs = await readPairs(page);
     for (const [name, value] of Object.entries(want)) expect(pairs[name], `${label}: ${name}`).toBe(value);
@@ -479,7 +479,17 @@ test('date-diff: business days, ISO weeks and durations show their results and t
   ).toEqual(['difference', 'add', 'subtract', 'business', 'weeks', 'duration', 'build']);
   await expect(page.locator('#f-start')).toBeVisible();
   await expect(page.locator('#f-end')).toBeVisible();
-  for (const name of ['duration', 'weekend', 'holidays', 'dates', 'isoDuration', 'years', 'minutes', 'seconds']) {
+  for (const name of [
+    'businessStart',
+    'duration',
+    'weekend',
+    'holidays',
+    'dates',
+    'isoDuration',
+    'years',
+    'minutes',
+    'seconds',
+  ]) {
     await expect(page.locator(`#f-${name}`), `${name} is hidden at first paint`).toHaveCount(0);
   }
   await expect(page.locator('input[name="endDay"]')).toHaveCount(0);
@@ -562,6 +572,20 @@ test('date-diff: business days, ISO weeks and durations show their results and t
     'end before the start',
   );
   await expect(outputArea(page)).toContainText('The end is before the start, so the count has a minus sign.');
+  await expect(outputArea(page)).toContainText('The start day is still counted');
+  // A Monday start with the Sunday before it as the end: the Monday is still counted (1), with a minus sign (C-WR-01).
+  await businessAnswer(
+    page,
+    { ...monday, start: '2024-01-08', end: '2024-01-07' },
+    { 'Business days': '-1', 'Calendar days': '1', 'Weekend days skipped': '0' },
+    'a Monday start, the Sunday before as the end',
+  );
+  await businessAnswer(
+    page,
+    { ...monday, start: '2024-01-08', end: '2024-01-07', includeEnd: true },
+    { 'Business days': '-1', 'Calendar days': '2', 'Weekend days skipped': '1' },
+    'a Monday start, the Sunday before as the end, end counted',
+  );
   await businessAnswer(
     page,
     { ...same, start: '0001-01-01', end: '0001-01-08', includeEnd: false },
@@ -605,16 +629,16 @@ test('date-diff: business days, ISO weeks and durations show their results and t
   await fillAndHold(page, 'holidays', '');
   await fillAndHold(page, 'weekend', 'Sat, Sun');
   await fillAndHold(page, 'end', '2024-01-08');
-  await fillAndHold(page, 'start', '0000-01-01');
+  await fillAndHold(page, 'businessStart', '0000-01-01');
   await expect.poll(readIssues.bind(null, page)).toContain('Start: The year must be from 0001 to 9999.');
-  await fillAndHold(page, 'start', '10000-01-01');
+  await fillAndHold(page, 'businessStart', '10000-01-01');
   await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
-  await fillAndHold(page, 'start', '2024-01-01T12:00:00Z');
+  await fillAndHold(page, 'businessStart', '2024-01-01T12:00:00Z');
   await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
-  await fillAndHold(page, 'start', `2024-01-${marker}`);
+  await fillAndHold(page, 'businessStart', `2024-01-${marker}`);
   await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
   expect(await outputArea(page).innerText()).not.toContain(marker);
-  await fillAndHold(page, 'start', '2024-01-01');
+  await fillAndHold(page, 'businessStart', '2024-01-01');
   await fillAndHold(page, 'end', '2023-02-29');
   await expect.poll(readIssues.bind(null, page)).toContain('End: That day does not exist in that month.');
   await fillAndHold(page, 'end', '2024-01-08');
@@ -635,7 +659,9 @@ test('date-diff: business days, ISO weeks and durations show their results and t
   // ISO week numbers (Python: 2021-01-03 is 2020, week 53, weekday 7; 2024-12-30 is 2025, week 1, weekday 1). The Start,
   // End and Holidays typed above are still in their fields, hidden, and change nothing.
   await chooseMode(page, 'weeks');
-  for (const name of ['start', 'end', 'weekend', 'holidays']) await expect(page.locator(`#f-${name}`)).toHaveCount(0);
+  for (const name of ['start', 'businessStart', 'end', 'weekend', 'holidays']) {
+    await expect(page.locator(`#f-${name}`)).toHaveCount(0);
+  }
   await expect(page.locator('#f-dates')).toBeVisible();
   const weekDates = '2021-01-03\n2020-12-28\n2024-01-04\n\n2024-12-30\n0001-01-01\n9999-12-31\nnope';
   await fillAndHold(page, 'dates', weekDates);
@@ -747,6 +773,58 @@ test('date-diff: business days, ISO weeks and durations show their results and t
   await expect.poll(async () => (await readPairs(page))['As an ISO 8601 duration']).toBe('P1M1D');
   pairs = await readPairs(page);
   expect(pairs['Total seconds']).toBe('2592000');
+});
+
+test('date-diff: the business days Start box has its own text and boxes typed for other modes change nothing', async ({
+  page,
+}) => {
+  await openTool(page, 'date-diff');
+  // First paint: the Start box says what it always said, about a moment with or without an offset.
+  await expect(page.locator('#f-start')).toHaveAttribute('placeholder', '2024-01-31 or 2024-01-31T12:00:00Z');
+  await expect(page.locator('#f-start-help')).toHaveText('A moment with no offset is read as UTC.');
+  await expect(page.locator('#f-businessStart')).toHaveCount(0);
+
+  // The old Start box, answering as before, with its value kept while the mode changes.
+  await fillAndHold(page, 'start', '2024-01-31');
+  await fillAndHold(page, 'end', '2024-03-01');
+  await expect.poll(async () => (await readPairs(page))['As an ISO 8601 duration']).toBe('P1M1D');
+
+  // Business days read their own Start box: it asks for a plain date, and the old box is neither shown nor read.
+  await chooseMode(page, 'business');
+  await expect(page.locator('#f-start')).toHaveCount(0);
+  const businessStart = page.locator('#f-businessStart');
+  await expect(businessStart).toBeVisible();
+  const placeholder = (await businessStart.getAttribute('placeholder')) ?? '';
+  expect(placeholder).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  await expect(page.locator('#f-businessStart-help')).toHaveText(
+    'A plain date written YYYY-MM-DD, with no time and no offset.',
+  );
+  // 2024-01-31 sits in the hidden old box and 2024-03-01 in End: with no business start there is no answer.
+  await expect(outputArea(page).locator('dl.kv')).toHaveCount(0);
+  // The placeholder itself is a date the mode accepts, and the answer comes from the new box alone.
+  await fillAndHold(page, 'businessStart', placeholder);
+  await expect(async () => {
+    expect((await readPairs(page))['Business days']).toBeDefined();
+  }).toPass({ timeout: 10_000 });
+  await fillAndHold(page, 'businessStart', '2024-01-01');
+  await expect(async () => {
+    const pairs = await readPairs(page);
+    expect([pairs['Business days'], pairs['Calendar days']]).toEqual(['44', '60']);
+  }).toPass({ timeout: 10_000 });
+  // A refusal in the new box does not follow the page into the other modes.
+  await fillAndHold(page, 'businessStart', '2024-01-01T12:00:00Z');
+  await expect.poll(readIssues.bind(null, page)).toContain('Start: A date must be written YYYY-MM-DD');
+
+  // Back in the old modes the hidden business Start box changes nothing.
+  await chooseMode(page, 'difference');
+  await expect(page.locator('#f-businessStart')).toHaveCount(0);
+  await expect(page.locator('#f-start')).toHaveValue('2024-01-31');
+  await expect.poll(async () => (await readPairs(page))['As an ISO 8601 duration']).toBe('P1M1D');
+  expect(await readIssues(page)).toBe('');
+  await chooseMode(page, 'add');
+  await fillAndHold(page, 'duration', 'P1M');
+  await expect.poll(async () => (await readPairs(page))['Date only']).toBe('2024-02-29');
+  expect(await readIssues(page)).toBe('');
 });
 
 test('date-diff: business days and ISO weeks give the same answers in time zones 14 hours apart', async ({
