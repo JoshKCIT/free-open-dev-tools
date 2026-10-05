@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { SiteLink } from '../components/SiteLink';
 import { CATALOG, byCategory } from '../lib/registry';
 import { REPO_URL } from '../lib/site';
 
@@ -46,13 +46,13 @@ export default function Catalog() {
             {g.tools.map((t) => (
               <li key={t.id}>
                 {t.implemented ? (
-                  <Link className="tool-card" to={`/tools/${t.id}`}>
+                  <SiteLink className="tool-card" to={`/tools/${t.id}`}>
                     <h3>{t.name}</h3>
                     <p>{t.summary}</p>
                     <span className="tool-card-meta">
                       <span className="pill">Built</span>
                     </span>
-                  </Link>
+                  </SiteLink>
                 ) : (
                   <div className="tool-card" style={{ opacity: 0.72 }}>
                     <h3>{t.name}</h3>

@@ -46,7 +46,45 @@ export default tseslint.config(
         { name: 'sessionStorage', message: 'A tool must never persist input.' },
         { name: 'indexedDB', message: 'A tool must never persist input.' },
         { name: 'document', message: 'Tool logic must stay free of the DOM so it can run in Node and be tested.' },
+        { name: 'RTCPeerConnection', message: 'A tool must never open a peer connection.' },
+        { name: 'webkitRTCPeerConnection', message: 'A tool must never open a peer connection.' },
+        { name: 'RTCDataChannel', message: 'A tool must never open a data channel.' },
+        { name: 'WebTransport', message: 'A tool must never open a transport connection.' },
       ],
+      'no-eval': 'error',
+      'no-new-func': 'error',
+    },
+  },
+  {
+    // Every in-site link must load a new document, so the content security
+    // policy written in the page the visitor is on is the one in force
+    // (a policy in markup belongs to one document). The shared link pair in
+    // components/SiteLink.tsx is the only place allowed to touch the router's
+    // link components. The connection globals below are not governed by the
+    // page policy's connect-src, so no app code may name them either.
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    ignores: ['apps/web/src/components/SiteLink.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['react-router-dom', 'react-router'].map((name) => ({
+            name,
+            importNames: ['Link', 'NavLink', 'useNavigate', 'Navigate', 'redirect'],
+            message:
+              'Use SiteLink or SiteNavLink: every in-site link must load a new document so the policy of the page you are on is the one in force.',
+          })),
+        },
+      ],
+      'no-restricted-globals': [
+        'error',
+        { name: 'RTCPeerConnection', message: 'App code must never open a peer connection.' },
+        { name: 'webkitRTCPeerConnection', message: 'App code must never open a peer connection.' },
+        { name: 'RTCDataChannel', message: 'App code must never open a data channel.' },
+        { name: 'WebTransport', message: 'App code must never open a transport connection.' },
+      ],
+      'no-eval': 'error',
+      'no-new-func': 'error',
     },
   },
   {

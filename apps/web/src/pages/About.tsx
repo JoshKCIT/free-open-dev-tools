@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { SiteLink } from '../components/SiteLink';
 import { REPO_URL, COMMIT, BUILD_DATE } from '../lib/site';
 import { CATALOG, LIVE_TOOLS } from '../lib/registry';
 
@@ -51,8 +51,8 @@ export default function About() {
       <p>
         {allBuilt ? (
           <>
-            All {CATALOG.length} tools in the catalog are built and tested. The <Link to="/catalog">catalog page</Link>{' '}
-            lists every one, and the{' '}
+            All {CATALOG.length} tools in the catalog are built and tested. The{' '}
+            <SiteLink to="/catalog">catalog page</SiteLink> lists every one, and the{' '}
             <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
               implementation ledger
             </a>{' '}
@@ -61,7 +61,7 @@ export default function About() {
         ) : (
           <>
             {LIVE_TOOLS.length} of {CATALOG.length} planned tools are built and tested. The{' '}
-            <Link to="/catalog">catalog page</Link> shows the rest, and the{' '}
+            <SiteLink to="/catalog">catalog page</SiteLink> shows the rest, and the{' '}
             <a href={`${REPO_URL}/blob/main/docs/LEDGER.md`} rel="noreferrer noopener">
               implementation ledger
             </a>{' '}

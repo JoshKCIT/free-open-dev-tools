@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { SiteLink } from '../components/SiteLink';
 import type { ToolPage } from '../lib/tool-ui';
 import { getEntry, loadTool, TOOL_META } from '../lib/registry';
 import { issueUrl, toolSourceUrl, COMMIT } from '../lib/site';
@@ -47,14 +48,14 @@ export default function ToolView() {
     return (
       <>
         <div className="breadcrumbs">
-          <Link to="/tools">Tools</Link> / {entry.name}
+          <SiteLink to="/tools">Tools</SiteLink> / {entry.name}
         </div>
         <h1>{entry.name}</h1>
         <p className="tool-summary">{entry.summary}</p>
         <div className="note note-warn" style={{ maxWidth: '70ch' }}>
           This tool is in the catalog but is not built yet. It has not been implemented, tested or shipped, and there is
-          no partial version behind this page. See <Link to="/catalog">the catalog</Link> for what is done and what is
-          outstanding.
+          no partial version behind this page. See <SiteLink to="/catalog">the catalog</SiteLink> for what is done and
+          what is outstanding.
         </div>
       </>
     );
@@ -64,8 +65,8 @@ export default function ToolView() {
     <>
       <header className="tool-header">
         <div className="breadcrumbs">
-          <Link to="/tools">Tools</Link> / <Link to={`/tools?category=${entry.category}`}>{entry.categoryLabel}</Link> /{' '}
-          {entry.name}
+          <SiteLink to="/tools">Tools</SiteLink> /{' '}
+          <SiteLink to={`/tools?category=${entry.category}`}>{entry.categoryLabel}</SiteLink> / {entry.name}
         </div>
         <h1>{entry.name}</h1>
         <p className="tool-summary">{entry.summary}</p>

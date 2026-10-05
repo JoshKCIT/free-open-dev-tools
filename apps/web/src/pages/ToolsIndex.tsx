@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { SiteLink } from '../components/SiteLink';
 import { LIVE_TOOLS, byCategory, searchTools, CATEGORY_ORDER, CATALOG } from '../lib/registry';
 
 export default function ToolsIndex() {
@@ -86,12 +87,12 @@ export default function ToolsIndex() {
           <p style={{ margin: '8px 0 0' }}>
             {matchesUnbuiltEntry ? (
               <>
-                It is in the catalog but not built yet. <Link to="/catalog">Check the catalog</Link> to see where it
-                stands.
+                It is in the catalog but not built yet. <SiteLink to="/catalog">Check the catalog</SiteLink> to see
+                where it stands.
               </>
             ) : (
               <>
-                Try a different word, or <Link to="/catalog">browse the full catalog</Link>.
+                Try a different word, or <SiteLink to="/catalog">browse the full catalog</SiteLink>.
               </>
             )}
           </p>
@@ -103,11 +104,11 @@ export default function ToolsIndex() {
             <ul className="tool-grid">
               {g.tools.map((t) => (
                 <li key={t.id}>
-                  <Link className="tool-card" to={`/tools/${t.id}`}>
+                  <SiteLink className="tool-card" to={`/tools/${t.id}`}>
                     <h3>{t.name}</h3>
                     <p>{t.summary}</p>
                     <span className="tool-card-meta">{t.categoryLabel}</span>
-                  </Link>
+                  </SiteLink>
                 </li>
               ))}
             </ul>

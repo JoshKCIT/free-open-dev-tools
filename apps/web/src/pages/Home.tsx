@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { SiteLink } from '../components/SiteLink';
 import { LIVE_TOOLS, CATALOG, byCategory } from '../lib/registry';
 import { REPO_URL } from '../lib/site';
 
@@ -31,15 +31,15 @@ export default function Home() {
           folder you can copy out and run on its own.
         </p>
         <div className="hero-actions">
-          <Link className="button button-primary" to="/tools">
+          <SiteLink className="button button-primary" to="/tools">
             Browse {LIVE_TOOLS.length} tools
-          </Link>
+          </SiteLink>
           <a className="button" href={REPO_URL} rel="noreferrer noopener">
             View the source
           </a>
-          <Link className="button" to="/privacy">
+          <SiteLink className="button" to="/privacy">
             What we can and cannot see
-          </Link>
+          </SiteLink>
         </div>
         <div className="stat-row">
           <div>
@@ -65,11 +65,11 @@ export default function Home() {
           <ul className="tool-grid">
             {featured.map((t) => (
               <li key={t.id}>
-                <Link className="tool-card" to={`/tools/${t.id}`}>
+                <SiteLink className="tool-card" to={`/tools/${t.id}`}>
                   <h3>{t.name}</h3>
                   <p>{t.summary}</p>
                   <span className="tool-card-meta">{t.categoryLabel}</span>
-                </Link>
+                </SiteLink>
               </li>
             ))}
           </ul>
@@ -87,7 +87,8 @@ export default function Home() {
           <li>
             <strong>Your input stays in the tab.</strong> Every tool processes input with JavaScript already running in
             your browser. There is no API to call because there is no server to call it.{' '}
-            <Link to="/privacy">The privacy page</Link> sets out exactly what the hosting provider can still see.
+            <SiteLink to="/privacy">The privacy page</SiteLink> sets out exactly what the hosting provider can still
+            see.
           </li>
           <li>
             <strong>Every tool is a folder you can take.</strong> Each one has its own package file, tests, README and
@@ -110,7 +111,7 @@ export default function Home() {
           <ul className="tool-grid">
             {groups.map((g) => (
               <li key={g.category}>
-                <Link className="tool-card" to={`/tools?category=${g.category}`}>
+                <SiteLink className="tool-card" to={`/tools?category=${g.category}`}>
                   <h3>{g.label}</h3>
                   <p>
                     {g.tools
@@ -120,7 +121,7 @@ export default function Home() {
                     {g.tools.length > 4 ? `, and ${g.tools.length - 4} more` : ''}
                   </p>
                   <span className="tool-card-meta">{g.tools.length} tools</span>
-                </Link>
+                </SiteLink>
               </li>
             ))}
           </ul>
