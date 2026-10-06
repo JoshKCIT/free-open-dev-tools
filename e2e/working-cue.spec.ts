@@ -852,6 +852,19 @@ for (const theme of ['dark', 'light'] as const) {
     const tooLow: string[] = [];
     for (const contrastCase of CONTRAST_CASES) {
       await contrastCase.prepare(page);
+      // The result as a visitor normally sees it, before any run dims it: every element must hold 4.5:1 here as well.
+      // Measured on the undimmed page itself, so a colour that changes only while dimmed cannot hide a faint one.
+      await expect(outputBody(page)).not.toHaveClass(/output-stale/);
+      await expect
+        .poll(async () => outputBody(page).evaluate((el) => Number(getComputedStyle(el).opacity)))
+        .toBeCloseTo(1, 3);
+      for (const row of await measureContrast(page, contrastCase.selectors)) {
+        expect(row.missing, `${contrastCase.name}: ${row.selector} is on screen`).toBe(false);
+        lines.push(`${theme} | ${contrastCase.name} | ${row.selector} | normal ${row.undimmed.toFixed(2)}`);
+        if (row.undimmed < MIN_CONTRAST) {
+          tooLow.push(`${contrastCase.name}: ${row.selector} reads ${row.undimmed.toFixed(2)} on a normal result`);
+        }
+      }
       // A held run over the result the case left on screen.
       await startHeldRun(page, 'input');
       await page.clock.runFor(1100);
@@ -871,10 +884,6 @@ for (const theme of ['dark', 'light'] as const) {
         if (row.dimmed < MIN_CONTRAST) {
           tooLow.push(`${contrastCase.name}: ${row.selector} reads ${row.dimmed.toFixed(2)}`);
         }
-        // The block label is on every normal result too, so its undimmed value must hold as well.
-        if (row.selector === '.output-label' && row.undimmed < MIN_CONTRAST) {
-          tooLow.push(`${contrastCase.name}: ${row.selector} reads ${row.undimmed.toFixed(2)} undimmed`);
-        }
       }
       // End the held run so the next case starts from a finished page.
       await cancelButton(page).click();
@@ -883,7 +892,7 @@ for (const theme of ['dark', 'light'] as const) {
     }
     // The measured values, for the record (printed with the test output).
     console.log(`CONTRAST\n${lines.join('\n')}`);
-    expect(tooLow, `text under ${MIN_CONTRAST}:1 once dimmed in the ${theme} theme`).toEqual([]);
+    expect(tooLow, `text under ${MIN_CONTRAST}:1, dimmed or on a normal result, in the ${theme} theme`).toEqual([]);
   });
 }
 
@@ -1005,8 +1014,19 @@ for (const theme of ['dark', 'light'] as const) {
       if (row.dimmed < MIN_CONTRAST) tooLow.push(`${row.selector} reads ${row.dimmed.toFixed(2)} dimmed`);
       if (row.undimmed < MIN_CONTRAST) tooLow.push(`${row.selector} reads ${row.undimmed.toFixed(2)} undimmed`);
     }
+    // The same blocks as a normal result: the dimming class taken off, so a colour that changes only while dimmed
+    // cannot hide a faint one.
+    await outputBody(page).evaluate((el) => el.classList.remove('output-stale'));
+    await expect
+      .poll(async () => outputBody(page).evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeCloseTo(1, 3);
+    const normal = await measureContrast(page, OTHER_SELECTORS);
+    for (const row of normal) {
+      if (row.undimmed < MIN_CONTRAST)
+        tooLow.push(`${row.selector} reads ${row.undimmed.toFixed(2)} on a normal result`);
+    }
     console.log(
-      `CONTRAST\n${rows.map((r) => `${theme} | ${r.selector} | blended ${r.dimmed.toFixed(2)} | undimmed ${r.undimmed.toFixed(2)}`).join('\n')}`,
+      `CONTRAST\n${rows.map((r, i) => `${theme} | ${r.selector} | blended ${r.dimmed.toFixed(2)} | undimmed ${r.undimmed.toFixed(2)} | normal ${normal[i]?.undimmed.toFixed(2)}`).join('\n')}`,
     );
     expect(tooLow, `text under ${MIN_CONTRAST}:1 in the ${theme} theme`).toEqual([]);
   });
