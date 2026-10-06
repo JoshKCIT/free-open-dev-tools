@@ -339,7 +339,7 @@
       "suiteResult": "neutral",
       "expect": "valid",
       "reviewed": true,
-      "why": "a bare ptr"
+      "why": "ptr alone, with no argument"
     },
     {
       "section": "A mechanism syntax",
@@ -459,7 +459,7 @@
       "suiteResult": "pass",
       "expect": "valid",
       "reviewed": true,
-      "why": "a bare a"
+      "why": "a alone, with no argument"
     },
     {
       "section": "A mechanism syntax",
