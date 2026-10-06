@@ -404,6 +404,36 @@ test('bcrypt: a page with no exported limit shows elapsed time only, and after C
   await expect(status(page)).toHaveText('Cancelled.');
 });
 
+test('bcrypt: a run started from the keyboard puts focus back on Run when it ends, unless the visitor moved it', async ({
+  page,
+}) => {
+  await openTool(page, '/tools/bcrypt');
+  await fillAndHold(page, 'password', 'correct horse');
+  await fillAndHold(page, 'cost', '13');
+  const run = page.getByRole('button', { name: 'Run', exact: true });
+
+  // Run pressed with the keyboard: the button is disabled while the held run goes, which drops focus to the page body.
+  await setHold(page, true);
+  await run.focus();
+  await page.keyboard.press('Enter');
+  await expect(output(page)).toHaveAttribute('aria-busy', 'true');
+  await expect(page.getByRole('button', { name: `Working${ELLIPSIS}`, exact: true })).toBeDisabled();
+  await expect.poll(() => page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  // The run ends by itself (a worker that cannot run), not by Cancel.
+  await page.evaluate(() => window.__failHeld?.());
+  await expect(output(page)).toHaveAttribute('aria-busy', 'false');
+  await expect(run).toBeFocused();
+
+  // The same, but the visitor moves to a field during the run: focus stays in the field.
+  await page.keyboard.press('Enter');
+  await expect(output(page)).toHaveAttribute('aria-busy', 'true');
+  await page.locator('#f-password').focus();
+  await page.evaluate(() => window.__failHeld?.());
+  await expect(output(page)).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('#f-password')).toBeFocused();
+  await expect(run).not.toBeFocused();
+});
+
 test('regex-tester: a run the helper ends at its own limit leaves no timer and says Finished. once after the start message', async ({
   page,
 }) => {

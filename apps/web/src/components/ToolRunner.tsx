@@ -292,6 +292,9 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const endedBy = useRef<'finished' | 'cancelled'>('finished');
   // Set by Cancel; honoured in an effect once `running` is false, because the Run button is disabled while it is true.
   const focusAfterCancel = useRef(false);
+  // Set when Run is pressed while it has focus (the keyboard, or a click in an engine that focuses buttons). Disabling a
+  // focused button drops focus to the page body, so the run's end puts it back on Run unless the visitor moved it.
+  const focusRunAfterRun = useRef(false);
   const runButtonRef = useRef<HTMLButtonElement>(null);
   const inputTitleRef = useRef<HTMLSpanElement>(null);
 
@@ -438,10 +441,19 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   }, [running, run.id]);
 
   // After Cancel, put focus where the visitor can carry on: the Run button, or the Input title on a page that has none.
+  // After a run that was started from a focused Run button, put focus back on Run, but only while it is still on the
+  // page body: a visitor who moved to a field or another control during the run keeps their place.
   useEffect(() => {
-    if (running || !focusAfterCancel.current) return;
+    if (running) return;
+    const afterCancel = focusAfterCancel.current;
+    const afterRun = focusRunAfterRun.current;
     focusAfterCancel.current = false;
-    (runButtonRef.current ?? inputTitleRef.current)?.focus();
+    focusRunAfterRun.current = false;
+    if (afterCancel) {
+      (runButtonRef.current ?? inputTitleRef.current)?.focus();
+    } else if (afterRun && (document.activeElement === null || document.activeElement === document.body)) {
+      runButtonRef.current?.focus();
+    }
   }, [running]);
 
   // Timed refresh (a result may ask for one run more through `refreshAfterMs`). One timer, armed from the latest result
@@ -564,7 +576,10 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
                 type="button"
                 className="button button-primary"
                 ref={runButtonRef}
-                onClick={() => void execute(values)}
+                onClick={() => {
+                  focusRunAfterRun.current = document.activeElement === runButtonRef.current;
+                  void execute(values);
+                }}
                 disabled={running}
               >
                 {running ? 'Working…' : 'Run'}
