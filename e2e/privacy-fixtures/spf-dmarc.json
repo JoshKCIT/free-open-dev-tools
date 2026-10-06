@@ -1,1 +1,12 @@
-[{ "values": { "spfText": "v=spf1 ip4:192.0.2.0/24 mx -all" }, "attachesFile": false }]
+[
+  { "values": { "spfText": "v=spf1 ip4:192.0.2.0/24 mx -all" }, "attachesFile": false },
+  {
+    "mode": { "field": "mode", "value": "build-spf" },
+    "values": {
+      "spfIp4": "192.0.2.10\n198.51.100.0/24",
+      "spfIp6": "2001:db8::/32",
+      "spfIncludes": "spf.protection.example"
+    },
+    "attachesFile": false
+  }
+]
