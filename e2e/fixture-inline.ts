@@ -106,8 +106,13 @@ export interface FixtureCoverageInput {
   builtIds: readonly string[];
   /** The id each file under `e2e/live-fixtures` declares, one per file. */
   fixtureIds: readonly string[];
-  /** The frozen set of ids the old hard-coded lists named. */
+  /** The frozen set of ids the old hard-coded lists named: each has exactly one fixture file, forever. */
   legacyIds: readonly string[];
+  /**
+   * Ids built before first-use fixture files existed, whose first-use checks live in the spec itself or in their own
+   * spec: they need no fixture file (they may have one). Frozen like `legacyIds`; a new tool is never added here.
+   */
+  exemptIds?: readonly string[];
 }
 
 function counts(ids: readonly string[]): Map<string, number> {
@@ -119,36 +124,41 @@ function counts(ids: readonly string[]): Map<string, number> {
 /**
  * The rule that replaces a hard-coded list of live fixtures. An id in the
  * frozen legacy set keeps strict equality (it must have exactly one fixture).
- * Every other catalog tool must have exactly one fixture too, every fixture id
- * must be a catalog id with a built page, and no catalog id may repeat. A new
- * tool is therefore accepted the moment its own fixture file exists, with no
- * list to edit. Returns every problem found, sorted; empty means the shape is
- * right.
+ * Every catalog tool that is in neither the legacy set nor the exempt set must
+ * have exactly one fixture too, every fixture id must be a catalog id with a
+ * built page, and no catalog id may repeat. A new tool is therefore accepted
+ * the moment its own fixture file exists, with no list to edit. Returns every
+ * problem found, sorted; empty means the shape is right.
  */
 export function fixtureCoverageProblems({
   catalogIds,
   builtIds,
   fixtureIds,
   legacyIds,
+  exemptIds = [],
 }: FixtureCoverageInput): string[] {
   const problems: string[] = [];
   const catalog = counts(catalogIds);
   const built = new Set(builtIds);
   const fixtures = counts(fixtureIds);
   const legacy = new Set(legacyIds);
+  const exempt = new Set(exemptIds);
 
   for (const [id, n] of catalog) {
     if (n > 1) problems.push(`catalog id "${id}" appears ${n} times`);
   }
   for (const id of legacy) {
     if (!catalog.has(id)) problems.push(`legacy id "${id}" is not a catalog id`);
+    if (exempt.has(id)) problems.push(`id "${id}" is in both the legacy set and the exempt set`);
     if (!fixtures.has(id))
       problems.push(`legacy id "${id}" has no live fixture (strict equality inside the legacy set)`);
   }
+  for (const id of exempt) {
+    if (!catalog.has(id)) problems.push(`exempt id "${id}" is not a catalog id`);
+  }
   for (const id of catalog.keys()) {
     if (!built.has(id)) problems.push(`catalog tool "${id}" has no built page`);
-    const n = fixtures.get(id) ?? 0;
-    if (!legacy.has(id) && n === 0)
+    if (!legacy.has(id) && !exempt.has(id) && (fixtures.get(id) ?? 0) === 0)
       problems.push(`catalog tool "${id}" has no live fixture: add e2e/live-fixtures/${id}.json`);
   }
   for (const [id, n] of fixtures) {

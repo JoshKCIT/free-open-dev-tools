@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +14,10 @@ import { fileURLToPath } from 'node:url';
 const rel = (path: string) => path.replace(/^\//, '');
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** The catalog size, read from docs/catalog.json (an array of entries, or an object with a tools array), so no number is held here. */
+const catalogRaw: unknown = JSON.parse(readFileSync(join(root, 'docs', 'catalog.json'), 'utf8'));
+const CATALOG_SIZE = (Array.isArray(catalogRaw) ? catalogRaw : (catalogRaw as { tools: unknown[] }).tools).length;
 const toolIds = readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
   .filter((f) => f.endsWith('.ts'))
   .map((f) => f.replace(/\.ts$/, ''))
@@ -42,8 +46,8 @@ test.describe('routes', () => {
   });
 
   test('every tool page has a unique meta description', async ({ page }) => {
-    // One test visits every tool page, so its cost grows with the catalog: at 211 pages Firefox on CI took about
-    // 49 seconds, past the global 45 second budget. Give this test its own budget instead of relaxing every site test.
+    // One test visits every tool page, so its cost grows with the catalog: with the whole catalog Firefox on CI took
+    // about 49 seconds, past the global 45 second budget. Give this test its own budget instead of relaxing every site test.
     test.setTimeout(180_000);
     const seen = new Set<string>();
     for (const id of toolIds) {
@@ -104,7 +108,7 @@ test.describe('progress and cancel stay inert until a tool opts in', () => {
    * progress element in the tree unconditionally.
    */
   test('no tool page renders a Cancel button or a progress element before any run starts', async ({ page }) => {
-    // 211 sequential navigations comfortably fit the default 45s budget
+    // One navigation per catalog tool comfortably fits the default 45s budget
     // against a local build, but not against a deployed site's real network
     // latency on every browser project (raised in 09-07).
     test.setTimeout(180_000);
@@ -279,7 +283,7 @@ test.describe('accessibility', () => {
   });
 
   test('every form control has an accessible name', async ({ page }) => {
-    // Same reason as the Cancel/progress sweep above: 211 navigations need
+    // Same reason as the Cancel/progress sweep above: one navigation per catalog tool needs
     // more than the default 45s budget against a deployed site's real
     // network latency (raised in 09-07).
     test.setTimeout(180_000);
@@ -342,16 +346,16 @@ test.describe('public copy carries no derivation story', () => {
     expect(await page.locator('main a[href^="http"]').count()).toBe(1);
   });
 
-  test('the catalog page renders all 211 catalog entries', async ({ page }) => {
+  test(`the catalog page renders all ${CATALOG_SIZE} catalog entries`, async ({ page }) => {
     await page.goto(rel('/catalog'));
-    expect(await page.locator('.tool-card').count()).toBe(211);
+    expect(await page.locator('.tool-card').count()).toBe(CATALOG_SIZE);
   });
 
   test('no catalog card reads Planned once every entry is built', async ({ page }) => {
     await page.goto(rel('/catalog'));
     await expect(page.locator('.tool-card').first()).toBeVisible();
     const plannedPills = page.locator('.tool-card .pill-neutral', { hasText: 'Planned' });
-    expect(await plannedPills.count(), 'no card may read Planned now that the catalog is complete at 211').toBe(0);
+    expect(await plannedPills.count(), 'no card may read Planned now that every catalog entry is built').toBe(0);
   });
 
   test('the home page statistics row holds exactly three items', async ({ page }) => {

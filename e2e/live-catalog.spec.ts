@@ -3,7 +3,12 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFixtureFiles, FIXTURE_FILE_KINDS } from './fixture-files';
-import { buildInlineFiles, inlineFileProblems, type InlineFixtureFile } from './fixture-inline';
+import {
+  buildInlineFiles,
+  fixtureCoverageProblems,
+  inlineFileProblems,
+  type InlineFixtureFile,
+} from './fixture-inline';
 
 /**
  * Plan 02-14 Task 3's own evidence for the roadmap's first and fifth
@@ -47,6 +52,20 @@ const catalogJson = JSON.parse(readFileSync(join(root, 'apps', 'web', 'src', 'ge
   tools: CatalogEntry[];
 };
 const CATALOG: CatalogEntry[] = catalogJson.tools;
+
+/**
+ * `docs/catalog.json` is the single source of truth for the catalog (an array of entries, or `{ tools: [...] }`).
+ * Every size this file expects is read from it at run time, so a tool added later changes no number here.
+ */
+const DOCS_CATALOG_RAW: unknown = JSON.parse(readFileSync(join(root, 'docs', 'catalog.json'), 'utf8'));
+const DOCS_CATALOG_IDS: string[] = (
+  Array.isArray(DOCS_CATALOG_RAW) ? DOCS_CATALOG_RAW : (DOCS_CATALOG_RAW as { tools: unknown[] }).tools
+).map((entry) => (entry as { id: string }).id);
+
+/** Every tool id with a page file under `apps/web/src/tools`. */
+const BUILT_PAGE_IDS: string[] = readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
+  .filter((f) => f.endsWith('.ts'))
+  .map((f) => f.replace(/\.ts$/, ''));
 
 function entryFor(id: string): CatalogEntry {
   const entry = CATALOG.find((c) => c.id === id);
@@ -296,7 +315,7 @@ const PHASE_15_TOOL_IDS = [
   'chart-maker',
 ];
 
-/** The 6 developer workflow tools Phase 16 adds (DEV-01..06), taking the catalog to 211. */
+/** The 6 developer workflow tools Phase 16 adds (DEV-01..06), the last tools of the milestone before v1.2. */
 const PHASE_16_TOOL_IDS = [
   'keyboard-event-viewer',
   'glob-tester',
@@ -731,7 +750,7 @@ for (const { data } of LIVE_FIXTURE_FILES) {
 }
 
 test.describe('the live catalog shows exactly the built tools', () => {
-  test('the rendered catalog counts 211 links to built tool pages, every entry of the 211-entry catalog', async ({
+  test(`the rendered catalog counts ${DOCS_CATALOG_IDS.length} links to built tool pages, one for every catalog entry`, async ({
     page,
   }) => {
     await page.goto(rel('/catalog'));
@@ -739,26 +758,24 @@ test.describe('the live catalog shows exactly the built tools', () => {
     // the prerendered head -- wait for the first card before counting.
     await expect(page.locator('a.tool-card').first()).toBeVisible();
     const count = await page.locator('a.tool-card').count();
-    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(211);
+    expect(count, 'a.tool-card only renders as a link (react-router Link) for an implemented tool').toBe(
+      DOCS_CATALOG_IDS.length,
+    );
   });
 
   test('every docs/catalog.json entry has a built page and the catalog shows none missing', async ({ page }) => {
-    const docsCatalogPath = join(root, 'docs', 'catalog.json');
-    const docsCatalogRaw: unknown = JSON.parse(readFileSync(docsCatalogPath, 'utf8'));
-    const docsEntries: { id: string }[] = Array.isArray(docsCatalogRaw)
-      ? (docsCatalogRaw as { id: string }[])
-      : (docsCatalogRaw as { tools: { id: string }[] }).tools;
-    expect(docsEntries.length, 'docs/catalog.json is the single source of truth for the catalog size').toBe(211);
+    // The size is read from docs/catalog.json; the generated catalog the site draws from must list the same ids.
+    expect(
+      [...DOCS_CATALOG_IDS].sort(),
+      'the generated catalog the site renders from must list exactly the ids in docs/catalog.json',
+    ).toEqual(CATALOG.map((entry) => entry.id).sort());
 
     await page.goto(rel('/catalog'));
     await expect(page.locator('a.tool-card').first()).toBeVisible();
 
-    for (const entry of docsEntries) {
-      const link = page.locator(`a.tool-card[href$="/tools/${entry.id}"]`);
-      await expect(
-        link,
-        `docs/catalog.json entry "${entry.id}" has no matching link in the rendered catalog`,
-      ).toHaveCount(1);
+    for (const id of DOCS_CATALOG_IDS) {
+      const link = page.locator(`a.tool-card[href$="/tools/${id}"]`);
+      await expect(link, `docs/catalog.json entry "${id}" has no matching link in the rendered catalog`).toHaveCount(1);
     }
 
     const plannedPills = page.locator('.tool-card .pill-neutral', { hasText: 'Planned' });
@@ -820,11 +837,7 @@ test('every live fixture file names a built tool page and uses only known step a
       }
     }
   }
-  const pageIds = new Set(
-    readdirSync(join(root, 'apps', 'web', 'src', 'tools'))
-      .filter((f) => f.endsWith('.ts'))
-      .map((f) => f.replace(/\.ts$/, '')),
-  );
+  const pageIds = new Set(BUILT_PAGE_IDS);
 
   for (const { file, data } of LIVE_FIXTURE_FILES) {
     const idFromFileName = file.replace(/\.json$/, '');
@@ -1007,31 +1020,73 @@ test('every phase 16 tool has exactly one live fixture file', () => {
 });
 
 /**
- * Strict equality (not membership-only): the catalog is complete at 211
- * tools, so every id list above (the fourteen phases and the 2026-09-29
- * additions) must have exactly one live fixture file, and no fixture id may
- * exist outside those fifteen lists.
+ * The 16 tools built before first-use fixtures existed. They have no live fixture file (the 22 tools of `NEW_TOOL_IDS`
+ * have their checks in the table above instead), so they are exempt from needing one. Frozen: no later tool is ever
+ * added here.
  */
-test('every live fixture file belongs to phase 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 or the 2026-09-29 additions', () => {
-  const union = [
-    ...PHASE_3_TOOL_IDS,
-    ...PHASE_4_TOOL_IDS,
-    ...PHASE_5_TOOL_IDS,
-    ...PHASE_6_TOOL_IDS,
-    ...PHASE_7_TOOL_IDS,
-    ...PHASE_8_TOOL_IDS,
-    ...PHASE_9_TOOL_IDS,
-    ...PHASE_10_TOOL_IDS,
-    ...PHASE_11_TOOL_IDS,
-    ...PHASE_12_TOOL_IDS,
-    ...PHASE_13_TOOL_IDS,
-    ...PHASE_14_TOOL_IDS,
-    ...PHASE_15_TOOL_IDS,
-    ...PHASE_16_TOOL_IDS,
-    ...ADDED_2026_09_29_TOOL_IDS,
-  ];
+const EARLY_TOOL_IDS = [
+  'base64',
+  'url-codec',
+  'html-entities',
+  'number-base',
+  'hash-text',
+  'hmac',
+  'jwt-decoder',
+  'uuid',
+  'json-formatter',
+  'case-converter',
+  'word-counter',
+  'text-diff',
+  'slug-generator',
+  'unix-timestamp',
+  'ip-subnet',
+  'chmod-calculator',
+];
+
+/**
+ * The frozen legacy set: the union of the fifteen lists above (phases 3 to 16 and the 2026-09-29 additions). Each of
+ * these tools has exactly one live fixture file, forever (strict equality, so a deleted fixture is caught). Nothing
+ * built from phase 17 on is ever added here: a new tool is covered by rule (every catalog tool outside the legacy and
+ * early sets has exactly one live fixture), not by a list.
+ */
+const LEGACY_TOOL_IDS: readonly string[] = Object.freeze([
+  ...PHASE_3_TOOL_IDS,
+  ...PHASE_4_TOOL_IDS,
+  ...PHASE_5_TOOL_IDS,
+  ...PHASE_6_TOOL_IDS,
+  ...PHASE_7_TOOL_IDS,
+  ...PHASE_8_TOOL_IDS,
+  ...PHASE_9_TOOL_IDS,
+  ...PHASE_10_TOOL_IDS,
+  ...PHASE_11_TOOL_IDS,
+  ...PHASE_12_TOOL_IDS,
+  ...PHASE_13_TOOL_IDS,
+  ...PHASE_14_TOOL_IDS,
+  ...PHASE_15_TOOL_IDS,
+  ...PHASE_16_TOOL_IDS,
+  ...ADDED_2026_09_29_TOOL_IDS,
+]);
+
+/**
+ * Accepts a new catalog id by rule. Inside the frozen legacy set the fixture ids must equal the set exactly. Beyond it,
+ * every fixture id must be a catalog id with a built page, and every catalog tool outside the legacy set (and the early
+ * tools that never had a fixture file, including the ones whose first-use checks sit in the table above) must have
+ * exactly one live fixture. A tool added in a later phase passes as soon as its own `e2e/live-fixtures/<id>.json`
+ * exists; it fails with none or two.
+ */
+test('every live fixture file is a built catalog tool, and every catalog tool outside the legacy set has exactly one live fixture', () => {
+  const legacy = new Set(LEGACY_TOOL_IDS);
   expect(
-    [...LIVE_FIXTURE_IDS].sort(),
-    'every live fixture id must be exactly the union of all fourteen phases and the 2026-09-29 additions',
-  ).toEqual([...union].sort());
+    LIVE_FIXTURE_IDS.filter((id) => legacy.has(id)).sort(),
+    'inside the frozen legacy set the live fixture ids must equal the set exactly',
+  ).toEqual([...LEGACY_TOOL_IDS].sort());
+  expect(
+    fixtureCoverageProblems({
+      catalogIds: DOCS_CATALOG_IDS,
+      builtIds: BUILT_PAGE_IDS,
+      fixtureIds: LIVE_FIXTURE_IDS,
+      legacyIds: LEGACY_TOOL_IDS,
+      exemptIds: [...NEW_TOOL_IDS, ...EARLY_TOOL_IDS],
+    }),
+  ).toEqual([]);
 });
