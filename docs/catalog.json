@@ -1496,5 +1496,12 @@
     "category": "hashing",
     "tier": 2,
     "summary": "Make a PKCE verifier and challenge, build an OAuth 2.0 authorization request and read the code or error out of a redirect address, all offline."
+  },
+  {
+    "id": "spf-dmarc",
+    "name": "SPF & DMARC Record Checker & Builder",
+    "category": "network",
+    "tier": 3,
+    "summary": "Check an SPF or DMARC record term by term, count the DNS lookups against the limit of 10 without making any, and build either record from fields."
   }
 ]
