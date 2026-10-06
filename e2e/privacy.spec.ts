@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFixtureFiles } from './fixture-files';
 import { buildInlineFiles, inlineFileProblems, type InlineFixtureFile } from './fixture-inline';
+import { armCspProbe, describeFinding } from './csp-probe';
 
 /**
  * Paths below are written with a leading slash because it reads better.
@@ -919,6 +920,10 @@ test.describe('local processing', () => {
       // relax the faster site tests.
       test.setTimeout(180_000);
 
+      // The content security policy blocks a request without producing a request event, so a leak the policy
+      // refuses is only visible as a violation. The probe is armed before the page loads (load-time violations
+      // count); the request recorder below still arms after load.
+      const csp = await armCspProbe(page);
       const recorder = await instrument(page);
       const value = canary(id);
       const numericValue = numericCanary(id);
@@ -980,6 +985,12 @@ test.describe('local processing', () => {
       expect(
         offending.map((r) => `${r.method()} ${r.url()}`),
         `Processing input on /tools/${id} caused a network request. A local tool must make none.`,
+      ).toEqual([]);
+
+      const violations = csp.findings().map(describeFinding);
+      expect(
+        violations,
+        `A content security policy violation happened on /tools/${id}: ${violations.join(' | ')}. A tool page must stay inside its own policy.`,
       ).toEqual([]);
 
       const url = page.url();
