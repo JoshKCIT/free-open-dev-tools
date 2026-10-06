@@ -5,6 +5,7 @@ import {
   SpfDmarcError,
   buildSpf,
   checkSpf,
+  countLookups,
   describeTerm,
   parseSpf,
   readTxtRecords,
@@ -14,6 +15,7 @@ import {
   type SpfEnding,
   type SpfNote,
   type SpfReport,
+  type TreeCount,
 } from '@fodt/spf-dmarc';
 import { bool, defineTool, str, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
 
@@ -83,12 +85,58 @@ function countCell(report: SpfReport, index: number): string {
   return 'No';
 }
 
+/** The whole-tree count as the value of a row: exact, or a lower bound that says why. */
+function treeValue(tree: TreeCount): string {
+  if (tree.stopped) return `${tree.total} or more of ${LOOKUP_LIMIT} (counting stops at ${tree.total})`;
+  if (tree.lowerBound) return `${tree.total} or more of ${LOOKUP_LIMIT} (a lower bound: see the list below)`;
+  return `${tree.total} of ${LOOKUP_LIMIT}`;
+}
+
+function treeTable(tree: TreeCount): OutputBlock {
+  return {
+    kind: 'table',
+    label: 'Lookup tree',
+    table: {
+      headers: ['Record', 'Reached from', 'Lookups', 'Note'],
+      rows: tree.rows.map((row) => [
+        row.label,
+        row.reachedFrom === '' ? 'The first record' : row.reachedFrom,
+        row.lookups,
+        [row.times > 1 ? `Reached ${row.times} times, and counted each time.` : '', ...row.notes]
+          .filter((n) => n !== '')
+          .join(' '),
+      ]),
+      mono: [0, 1],
+    },
+  };
+}
+
+function treeNotes(tree: TreeCount): string[] {
+  const items: string[] = [];
+  for (const name of tree.missing) {
+    items.push(
+      `The name ${name} was not pasted, so what it adds is not counted and the whole-tree count is a lower bound.`,
+    );
+  }
+  for (const name of tree.skipped) {
+    items.push(`The name ${name} holds a macro, so it was not followed and the whole-tree count is a lower bound.`);
+  }
+  for (const loop of tree.loops) {
+    items.push(
+      `The record ${loop.from} leads back to ${loop.to}, which is already being followed, so that loop was cut.`,
+    );
+  }
+  if (tree.stopped) items.push(`Counting stopped at ${tree.total}, which is over the limit of ${LOOKUP_LIMIT}.`);
+  return items;
+}
+
 function checkBlocks(text: string): OutputBlock[] {
   const records = readTxtRecords(text, 'spf');
   const first = records[0];
   if (first === undefined) return [];
   const report = checkSpf(parseSpf(first.text), first.strings);
   const record = report.record;
+  const tree = records.length > 1 ? countLookups(records, 0) : null;
   const blocks: OutputBlock[] = [verdict(report)];
   blocks.push({
     kind: 'keyvalue',
@@ -98,6 +146,7 @@ function checkBlocks(text: string): OutputBlock[] {
       ['Length', `${withCommas(record.length)} characters, ${withCommas(report.octets)} octets`],
       ['Strings needed', `${report.stringsNeeded} (one string holds at most 255 octets)`],
       ['DNS lookups counted', `${report.lookupCount} of ${LOOKUP_LIMIT}`],
+      ...(tree === null ? [] : ([['Whole tree', treeValue(tree)]] as [string, string][])),
     ],
   });
   if (record.terms.length > 0) {
@@ -125,6 +174,7 @@ function checkBlocks(text: string): OutputBlock[] {
       });
     }
   }
+  if (tree !== null) blocks.push(treeTable(tree));
   if (!record.isSpf) {
     blocks.push({
       kind: 'list',
@@ -132,7 +182,7 @@ function checkBlocks(text: string): OutputBlock[] {
       items: record.errors.map((e) => `Position ${e.position}: ${e.message}`),
     });
   }
-  const worth = [...first.warnings, ...report.notes.map(noteItem)];
+  const worth = [...first.warnings, ...report.notes.map(noteItem), ...(tree === null ? [] : treeNotes(tree))];
   if (worth.length > 0) blocks.push({ kind: 'list', label: 'Worth a look', items: worth });
   return blocks;
 }
@@ -201,7 +251,7 @@ export default defineTool({
       type: 'textarea',
       rows: 6,
       placeholder: PASTE_PLACEHOLDER,
-      help: 'A bare record, or a zone-file line with one or more quoted strings. The first record is the one checked.',
+      help: 'A bare record, or a zone-file line with one or more quoted strings. The first record is the one checked. Further lines are records with their names (name: v=spf1 ... or a zone-file line), used only to count lookups through include and redirect.',
       wide: true,
       visible: only('check'),
     },
@@ -281,6 +331,13 @@ export default defineTool({
     {
       label: 'RFC 7208 section 10.1.1: a zone-file line with one network and the mail servers',
       values: { mode: 'check', spfText: 'example.com. IN TXT "v=spf1 ip4:192.0.2.0/24 mx -all"' },
+    },
+    {
+      label: 'Count the whole tree: a record and the record its include points to, pasted with its name',
+      values: {
+        mode: 'check',
+        spfText: 'v=spf1 include:_spf.example.net -all\n_spf.example.net: v=spf1 a mx ip4:192.0.2.0/24 -all',
+      },
     },
     {
       label: 'Build a record for two networks and one include',

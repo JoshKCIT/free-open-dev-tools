@@ -20,6 +20,8 @@ export { parseSpf } from './spf-parse';
 export type { SpfKind, SpfProblem, SpfQualifier, SpfRecord, SpfTerm } from './spf-parse';
 export { checkSpf, describeTerm } from './spf-check';
 export type { LookupKind, LookupTerm, NoteTone, SpfNote, SpfReport } from './spf-check';
+export { countLookups } from './spf-tree';
+export type { TreeCount, TreeLoop, TreeRecordInput, TreeRow } from './spf-tree';
 export { buildSpf, toTxtValue } from './spf-build';
 export type { BuildField, BuildProblem, BuiltSpf, SpfEnding, SpfFields } from './spf-build';
 export { MAX_SHOWN_PATH, MAX_SHOWN_PATTERN, visible } from './visible';

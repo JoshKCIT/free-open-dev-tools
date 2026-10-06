@@ -205,7 +205,25 @@ export function readTxtRecords(text: string, part: SpfDmarcPart = 'spf'): TxtRec
       if (end < 0) end = n;
       let stop = end;
       if (stop > entryStart && text.charCodeAt(stop - 1) === RETURN) stop--;
-      push({ label: null, text: text.slice(entryStart, stop), strings: [], warnings: [], line: entryLine }, entryStart);
+      const raw = text.slice(entryStart, stop);
+      // A labelled record: a name that ends in a colon, then a record that starts with v= (name: v=spf1 ...).
+      let word = 0;
+      while (word < raw.length && !isBlank(raw.charCodeAt(word))) word++;
+      let rest = word;
+      while (rest < raw.length && isBlank(raw.charCodeAt(rest))) rest++;
+      const labelled =
+        word > 1 &&
+        raw.charCodeAt(word - 1) === 58 &&
+        (raw.charCodeAt(rest) | 32) === 118 &&
+        raw.charCodeAt(rest + 1) === 61;
+      if (labelled) {
+        push(
+          { label: raw.slice(0, word - 1), text: raw.slice(rest), strings: [], warnings: [], line: entryLine },
+          entryStart,
+        );
+      } else {
+        push({ label: null, text: raw, strings: [], warnings: [], line: entryLine }, entryStart);
+      }
       continue;
     }
     const head = tokens.slice(0, firstString).map((t) => t.text);

@@ -1,5 +1,10 @@
 [
-  { "values": { "spfText": "v=spf1 ip4:192.0.2.0/24 mx -all" }, "attachesFile": false },
+  {
+    "values": {
+      "spfText": "v=spf1 ip4:192.0.2.0/24 mx include:_spf.example.net -all\n_spf.example.net: v=spf1 ip6:2001:db8::/32 -all"
+    },
+    "attachesFile": false
+  },
   {
     "mode": { "field": "mode", "value": "build-spf" },
     "values": {
