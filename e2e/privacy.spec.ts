@@ -2,7 +2,7 @@ import { test, expect, type Page, type Request, type TestInfo } from '@playwrigh
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildFixtureFiles } from './fixture-files';
+import { buildFixtureFiles, FIXTURE_FILE_KINDS } from './fixture-files';
 import { buildInlineFiles, inlineFileProblems, type InlineFixtureFile } from './fixture-inline';
 import { armCspProbe, describeFinding } from './csp-probe';
 
@@ -505,9 +505,13 @@ const BUILT_IN_FIXTURES: Record<string, FixtureEntry[]> = {
  * shared_procedure, step 7): the file's name is the tool id, and its content
  * is a JSON array in the exact shape of `FixtureEntry[]`.
  *
- * Every entry must carry a boolean `attachesFile`, and a file's id must not
- * already be declared in `BUILT_IN_FIXTURES` -- both are structural mistakes
- * that should fail loudly at collection time, not be silently ignored.
+ * Every entry must be an object with a boolean `attachesFile` and no key
+ * outside `FixtureEntry`, every field must have its declared shape, and a
+ * file's id must not already be declared in `BUILT_IN_FIXTURES` -- all are
+ * structural mistakes that should fail loudly at collection time, naming the
+ * file, not be silently ignored. (A misspelt `inlineFile` would otherwise load,
+ * attach the synthetic canary file instead and pass without ever reaching the
+ * tool's real file path.)
  */
 function loadPrivacyFixtureFiles(): Record<string, FixtureEntry[]> {
   const dir = join(root, 'e2e', 'privacy-fixtures');
@@ -520,35 +524,75 @@ function loadPrivacyFixtureFiles(): Record<string, FixtureEntry[]> {
       throw new Error(`e2e/privacy-fixtures/${file} declares an id ("${id}") already in BUILT_IN_FIXTURES.`);
     }
     const raw: unknown = JSON.parse(readFileSync(join(dir, file), 'utf8'));
-    const isValid =
-      Array.isArray(raw) &&
-      raw.every(
-        (e) =>
-          e !== null && typeof e === 'object' && typeof (e as { attachesFile?: unknown }).attachesFile === 'boolean',
-      );
-    if (!isValid) {
-      throw new Error(
-        `e2e/privacy-fixtures/${file} must be a JSON array of fixture entries, each with a boolean "attachesFile".`,
-      );
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new Error(`e2e/privacy-fixtures/${file} must be a non-empty JSON array of fixture entries.`);
     }
-    const entryProblems = (raw as FixtureEntry[]).flatMap((entry, index) => privacyEntryProblems(file, index, entry));
+    const entryProblems = raw.flatMap((entry: unknown, index) => privacyEntryProblems(file, index, entry));
     if (entryProblems.length > 0) throw new Error(entryProblems.join('\n'));
     result[id] = raw as FixtureEntry[];
   }
   return result;
 }
 
+/** The keys a privacy fixture entry may hold: exactly the fields of `FixtureEntry`. */
+const ENTRY_KEYS = new Set(['mode', 'values', 'attachesFile', 'file', 'inlineFiles']);
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 /**
- * Every problem with the inline files of one fixture entry, each naming the fixture file and the entry. An entry
- * with `inlineFiles` must declare `attachesFile: true` and must not also name `file` kinds (they are two ways to
- * say the same thing).
+ * Every problem with one fixture entry, each naming the fixture file and the entry: a value that is not an object,
+ * an unknown key (a misspelling would otherwise be ignored), `attachesFile` that is not a boolean, a `mode` that is
+ * not `{ field, value }` strings, `values` that do not map field names to strings, a `file` that names no known
+ * fixture file kind, and the inline file rules. An entry with `file` or `inlineFiles` must declare
+ * `attachesFile: true`, and must not give both (they are two ways to say the same thing).
  */
-function privacyEntryProblems(file: string, index: number, entry: FixtureEntry): string[] {
-  if (!Object.prototype.hasOwnProperty.call(entry, 'inlineFiles')) return [];
+function privacyEntryProblems(file: string, index: number, entry: unknown): string[] {
   const where = `e2e/privacy-fixtures/${file}: entry ${index}`;
-  const problems = inlineFileProblems(entry.inlineFiles, `${where}.inlineFiles`);
-  if (entry.attachesFile !== true) problems.push(`${where} has inlineFiles but attachesFile is not true`);
-  if (entry.file !== undefined) problems.push(`${where} has both file and inlineFiles: give one`);
+  if (!isPlainObject(entry)) return [`${where} must be an object with a boolean "attachesFile"`];
+  const problems = Object.keys(entry)
+    .filter((key) => !ENTRY_KEYS.has(key))
+    .map((key) => `${where} has an unknown key "${key}" (allowed: ${[...ENTRY_KEYS].join(', ')})`);
+  if (typeof entry.attachesFile !== 'boolean') problems.push(`${where}.attachesFile must be true or false`);
+  if (entry.mode !== undefined) {
+    const mode = entry.mode;
+    if (
+      !isPlainObject(mode) ||
+      typeof mode.field !== 'string' ||
+      typeof mode.value !== 'string' ||
+      Object.keys(mode).some((key) => key !== 'field' && key !== 'value')
+    ) {
+      problems.push(`${where}.mode must be { "field": <string>, "value": <string> } and nothing else`);
+    }
+  }
+  if (entry.values !== undefined) {
+    if (!isPlainObject(entry.values) || Object.values(entry.values).some((value) => typeof value !== 'string')) {
+      problems.push(`${where}.values must map field names to strings`);
+    }
+  }
+  if (entry.file !== undefined) {
+    // Read the way `buildFixtureFiles` reads it: comma-separated, trimmed, empty pieces ignored.
+    const kinds =
+      typeof entry.file === 'string'
+        ? entry.file
+            .split(',')
+            .map((kind) => kind.trim())
+            .filter((kind) => kind.length > 0)
+        : [];
+    const unknown = kinds.filter((kind) => !(FIXTURE_FILE_KINDS as readonly string[]).includes(kind));
+    if (typeof entry.file !== 'string' || kinds.length === 0 || unknown.length > 0) {
+      problems.push(
+        `${where}.file must be a comma-separated list of fixture file kinds${unknown.length > 0 ? ` (unknown: ${unknown.map((kind) => JSON.stringify(kind)).join(', ')})` : ''}`,
+      );
+    }
+    if (entry.attachesFile !== true) problems.push(`${where} has file but attachesFile is not true`);
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, 'inlineFiles')) {
+    problems.push(...inlineFileProblems(entry.inlineFiles, `${where}.inlineFiles`));
+    if (entry.attachesFile !== true) problems.push(`${where} has inlineFiles but attachesFile is not true`);
+    if (entry.file !== undefined) problems.push(`${where} has both file and inlineFiles: give one`);
+  }
   return problems;
 }
 
@@ -573,21 +617,48 @@ test('every privacy fixture file is loaded and names a real tool page', () => {
   }
 });
 
-test('a malformed inline file in a privacy fixture file is refused, naming the file', () => {
+test('a malformed privacy fixture entry or inline file is refused, naming the file', () => {
   const good = { name: 'a.bin', mimeType: 'application/octet-stream', base64: 'AA==' };
-  expect(privacyEntryProblems('x.json', 0, { attachesFile: true, inlineFiles: [good] })).toEqual([]);
-  const refused: [string, FixtureEntry][] = [
-    ['an empty inlineFiles array', { attachesFile: true, inlineFiles: [] }],
-    ['both base64 and text', { attachesFile: true, inlineFiles: [{ ...good, text: 'x' }] }],
-    ['neither base64 nor text', { attachesFile: true, inlineFiles: [{ name: 'a', mimeType: 'text/plain' }] }],
-    ['a non-string name', { attachesFile: true, inlineFiles: [{ ...good, name: 3 as unknown as string }] }],
-    ['inlineFiles with attachesFile false', { attachesFile: false, inlineFiles: [good] }],
-    ['inlineFiles beside file kinds', { attachesFile: true, file: 'text', inlineFiles: [good] }],
+  const accepted: [string, unknown][] = [
+    ['an inline base64 file', { attachesFile: true, inlineFiles: [good] }],
+    ['no file at all', { attachesFile: false }],
+    ['a mode and values', { mode: { field: 'mode', value: 'hash' }, values: { input: 'x' }, attachesFile: false }],
+    ['two fixture file kinds', { attachesFile: true, file: 'pdf, png' }],
   ];
-  for (const [what, entry] of refused) {
+  for (const [what, entry] of accepted) {
+    expect(privacyEntryProblems('x.json', 0, entry), `${what} must be accepted`).toEqual([]);
+  }
+  const refused: [string, unknown, string][] = [
+    ['an empty inlineFiles array', { attachesFile: true, inlineFiles: [] }, 'inlineFiles'],
+    ['both base64 and text', { attachesFile: true, inlineFiles: [{ ...good, text: 'x' }] }, 'both base64'],
+    [
+      'neither base64 nor text',
+      { attachesFile: true, inlineFiles: [{ name: 'a', mimeType: 'text/plain' }] },
+      'neither',
+    ],
+    ['a non-string name', { attachesFile: true, inlineFiles: [{ ...good, name: 3 }] }, '.name'],
+    ['inlineFiles with attachesFile false', { attachesFile: false, inlineFiles: [good] }, 'attachesFile is not true'],
+    ['inlineFiles beside file kinds', { attachesFile: true, file: 'text', inlineFiles: [good] }, 'both file and'],
+    ['a misspelt inlineFiles key', { attachesFile: true, inlineFile: [good] }, 'unknown key "inlineFile"'],
+    ['a misspelt attachesFile key', { attachesFile: true, attachFile: true }, 'unknown key "attachFile"'],
+    ['an entry that is not an object', 'text', 'must be an object'],
+    ['a missing attachesFile', { values: { input: 'x' } }, 'attachesFile must be true or false'],
+    ['a mode with no value', { mode: { field: 'mode' }, attachesFile: false }, '.mode must be'],
+    [
+      'a mode with an extra key',
+      { mode: { field: 'm', value: 'v', label: 'x' }, attachesFile: false },
+      '.mode must be',
+    ],
+    ['a value that is a number', { values: { count: 3 }, attachesFile: false }, '.values must map'],
+    ['an unknown fixture file kind', { attachesFile: true, file: 'pdf,docx' }, 'unknown: "docx"'],
+    ['an empty fixture file kind list', { attachesFile: true, file: '' }, '.file must be'],
+    ['file kinds with attachesFile false', { attachesFile: false, file: 'pdf' }, 'has file but attachesFile'],
+  ];
+  for (const [what, entry, says] of refused) {
     const problems = privacyEntryProblems('x.json', 0, entry);
     expect(problems.length, `${what} must be refused`).toBeGreaterThan(0);
     expect(problems.join(' '), `${what}: the message must name the file`).toContain('e2e/privacy-fixtures/x.json');
+    expect(problems.join(' '), `${what}: the message must say what is wrong`).toContain(says);
   }
 });
 
