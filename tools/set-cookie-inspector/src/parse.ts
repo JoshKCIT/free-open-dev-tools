@@ -1,3 +1,4 @@
+import { parseCookieDate } from './date';
 import {
   MAX_AGE_LIMIT_SECONDS,
   MAX_ATTRIBUTE_VALUE_OCTETS,
@@ -61,8 +62,8 @@ export interface ParsedCookie {
   attributes: Attribute[];
   /** The Max-Age that counts (the last valid one), or null. */
   maxAge: MaxAge | null;
-  /** The text of the Expires that counts (the last valid one, and only when no Max-Age counts), or null. */
-  expires: string | null;
+  /** The Expires that counts (the last valid one, and only when no Max-Age counts) in milliseconds since 1970, or null. */
+  expires: number | null;
   /** The last Domain attribute after section 5.6.3: one leading dot dropped, lower case. Null when there is none. */
   domain: string | null;
   /** The last Path attribute as written. Null when there is none. */
@@ -161,7 +162,7 @@ function sameSiteOf(value: string): SameSiteValue {
 
 /** What one attribute carries once it is read, kept beside it so the winners can be picked after the whole line. */
 type Payload =
-  | { kind: 'expires'; text: string }
+  | { kind: 'expires'; ms: number }
   | { kind: 'max-age'; max: MaxAge }
   | { kind: 'domain'; domain: string }
   | { kind: 'path'; path: string }
@@ -190,8 +191,23 @@ function readAttribute(name: string, value: string): Read {
     );
   }
   switch (KINDS.get(kindName)) {
-    case 'expires':
-      return make('expires', 'used', 'Read as a cookie date.', { kind: 'expires', text: value });
+    case 'expires': {
+      const ms = parseCookieDate(value);
+      if (ms === null) {
+        return make(
+          'expires',
+          'ignored',
+          'It is not a cookie date (section 5.1.1), so the draft ignores it (section 5.6.1 step 2).',
+          { kind: 'none' },
+        );
+      }
+      return make(
+        'expires',
+        'used',
+        'Read as a cookie date (section 5.1.1); it sets the lifetime unless a Max-Age is present, never beyond 400 days (section 5.5).',
+        { kind: 'expires', ms },
+      );
+    }
     case 'max-age': {
       const read = readMaxAge(value);
       if ('problem' in read) return make('max-age', 'ignored', read.problem, { kind: 'none' });
@@ -376,7 +392,7 @@ export function parseSetCookie(line: string): ParsedCookie | IgnoredLine {
     const payload = read.payload;
     switch (payload.kind) {
       case 'expires':
-        cookie.expires = payload.text;
+        cookie.expires = payload.ms;
         break;
       case 'max-age':
         cookie.maxAge = payload.max;

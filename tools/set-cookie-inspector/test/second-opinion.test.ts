@@ -122,7 +122,7 @@ function cookieFields(line: string): Fields {
   const parsed = parseWithCookie(line);
   return {
     name: parsed.name,
-    value: parsed.value,
+    value: parsed.value ?? null,
     maxAge: typeof parsed.maxAge === 'number' ? clampSeconds(parsed.maxAge) : null,
     domain: normaliseDomain(parsed.domain),
     path: normalisePath(parsed.path),

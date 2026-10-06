@@ -1,7 +1,8 @@
-import { MAX_NAME_VALUE_OCTETS, withCommas } from './limits';
-import type { IgnoredLine, ParsedCookie, SameSiteValue } from './parse';
+import { MAX_AGE_LIMIT_SECONDS, MAX_ATTRIBUTE_VALUE_OCTETS, MAX_NAME_VALUE_OCTETS, withCommas } from './limits';
+import type { IgnoredLine, ParsedCookie } from './parse';
 import type { RequestInfo } from './request';
-import { defaultPath } from './scope';
+import { defaultPath, domainMatches, type CookieScope } from './scope';
+import { visible } from './visible';
 
 /**
  * The storage model of draft-ietf-httpbis-rfc6265bis-22 section 5.7: what a browser does with a cookie it has received,
@@ -35,20 +36,12 @@ export interface Lifetime {
   seconds: number | null;
   /** The moment it ends, in milliseconds since 1970. Null for a session cookie. */
   expiresAtMs: number | null;
+  /** The moment it ends as `2026-10-06 13:00:00 UTC`. Null for a session cookie. */
+  until: string | null;
   /** True when the lifetime asked for was longer than 400 days and was reduced. */
   clamped: boolean;
   /** The lifetime in plain words. */
   text: string;
-}
-
-/** The fields a browser keeps for a stored cookie that decide where it is sent. */
-export interface CookieScope {
-  domain: string;
-  hostOnly: boolean;
-  path: string;
-  secureOnly: boolean;
-  httpOnly: boolean;
-  sameSite: SameSiteValue;
 }
 
 export interface Decision {
@@ -59,12 +52,15 @@ export interface Decision {
   failedStep: StepRecord | null;
   /** The answer in plain words. For a prefix rule it starts with the prefix. */
   reason: string;
+  /** The lifetime of a cookie that passed every step, else null. */
   lifetime: Lifetime | null;
+  /** The fields a browser would keep for a cookie that passed every step, else null. */
   scope: CookieScope | null;
 }
 
 const SECURE_PREFIX = '__secure-';
 const HOST_PREFIX = '__host-';
+const SIZE_RULE = `Name and value together must be at most ${withCommas(MAX_NAME_VALUE_OCTETS)} octets.`;
 
 /** True when `text` starts with `prefix` ignoring the case of ASCII letters (section 5.4: prefixes match case-insensitively). */
 function startsWithFolded(text: string, prefix: string): boolean {
@@ -75,6 +71,15 @@ function startsWithFolded(text: string, prefix: string): boolean {
     if (code !== prefix.charCodeAt(i)) return false;
   }
   return true;
+}
+
+/** True when the text holds a character that is not in CHAR (%x01-7F): a NUL or anything above ASCII. */
+function hasNonChar(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code === 0 || code > 127) return true;
+  }
+  return false;
 }
 
 function stop(
@@ -93,11 +98,85 @@ function stop(
 /** The decision for a line that the parsing algorithm of section 5.6 ignores in its entirety. */
 export function ignoredLineDecision(line: IgnoredLine): Decision {
   const step = line.where.endsWith('step 1') ? 1 : 5;
-  const rule =
-    step === 1
-      ? 'A set-cookie-string with a control character is ignored.'
-      : `Name and value together must be at most ${withCommas(MAX_NAME_VALUE_OCTETS)} octets.`;
+  const rule = step === 1 ? 'A set-cookie-string with a control character is ignored.' : SIZE_RULE;
   return stop([], 'ignored', step, rule, line.reason, '5.6');
+}
+
+/** A length of time as days, hours, minutes and seconds, leaving out the parts that are zero. */
+export function describeDuration(seconds: number): string {
+  if (seconds === 0) return '0 seconds';
+  const parts: string[] = [];
+  const unit = (count: number, name: string): void => {
+    if (count > 0) parts.push(`${withCommas(count)} ${name}${count === 1 ? '' : 's'}`);
+  };
+  unit(Math.floor(seconds / 86_400), 'day');
+  unit(Math.floor((seconds % 86_400) / 3_600), 'hour');
+  unit(Math.floor((seconds % 3_600) / 60), 'minute');
+  unit(seconds % 60, 'second');
+  return parts.join(' ');
+}
+
+/** A moment as `2026-10-06 13:00:00 UTC`. */
+function describeMoment(ms: number): string {
+  const iso = new Date(ms).toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC`;
+}
+
+/**
+ * The lifetime of a cookie that passed every step (sections 5.5, 5.6.1, 5.6.2 and 5.7 step 6). Max-Age wins over Expires,
+ * a lifetime is never more than 400 days from `nowMs`, and one that is zero, negative or already over is deleted at once.
+ */
+export function lifetimeOf(cookie: ParsedCookie, nowMs: number): Lifetime {
+  const limitMs = MAX_AGE_LIMIT_SECONDS * 1000;
+  const deleted = (source: 'Max-Age' | 'Expires', text: string): Lifetime => ({
+    kind: 'deleted',
+    source,
+    seconds: 0,
+    expiresAtMs: nowMs,
+    until: describeMoment(nowMs),
+    clamped: false,
+    text,
+  });
+  const lives = (source: 'Max-Age' | 'Expires', seconds: number, expiresAtMs: number, clamped: boolean): Lifetime => ({
+    kind: 'persistent',
+    source,
+    seconds,
+    expiresAtMs,
+    until: describeMoment(expiresAtMs),
+    clamped,
+    text: `${withCommas(seconds)} seconds (${describeDuration(seconds)}) from the time of the response, until ${describeMoment(expiresAtMs)}${clamped ? `. The lifetime asked for was longer, so it is reduced to the limit of 400 days (${withCommas(MAX_AGE_LIMIT_SECONDS)} seconds, section 5.5)` : ''}.`,
+  });
+  if (cookie.maxAge !== null) {
+    if (cookie.maxAge.immediate)
+      return deleted('Max-Age', 'Deleted at once: Max-Age is zero or negative (section 5.6.2 step 7).');
+    return lives('Max-Age', cookie.maxAge.seconds, nowMs + cookie.maxAge.seconds * 1000, cookie.maxAge.clamped);
+  }
+  if (cookie.expires !== null) {
+    const delta = cookie.expires - nowMs;
+    if (delta <= 0) {
+      return deleted(
+        'Expires',
+        'Deleted at once: Expires is at or before the time of the response, so the cookie is already expired (section 5.7).',
+      );
+    }
+    if (delta > limitMs) return lives('Expires', MAX_AGE_LIMIT_SECONDS, nowMs + limitMs, true);
+    return lives('Expires', Math.floor(delta / 1000), cookie.expires, false);
+  }
+  return {
+    kind: 'session',
+    source: 'none',
+    seconds: null,
+    expiresAtMs: null,
+    until: null,
+    clamped: false,
+    text: 'Until the browser session ends: there is no Max-Age or valid Expires, so the cookie is not kept for later (section 5.7 step 6).',
+  };
+}
+
+/** The path a cookie gets (section 5.7 step 11 and 5.6.4): the Path attribute when it starts with a slash, else the default path. */
+function pathOf(cookie: ParsedCookie, request: RequestInfo): string {
+  if (cookie.path !== null && cookie.path !== '' && cookie.path.charCodeAt(0) === 47) return cookie.path;
+  return defaultPath(request.path);
 }
 
 /**
@@ -105,10 +184,13 @@ export function ignoredLineDecision(line: IgnoredLine): Decision {
  *
  * `nowMs` is the moment the response arrives, in milliseconds since 1970; nothing reads a clock.
  */
-export function decide(cookie: ParsedCookie, request: RequestInfo, _nowMs: number): Decision {
+export function decide(cookie: ParsedCookie, request: RequestInfo, nowMs: number): Decision {
   const steps: StepRecord[] = [];
   const pass = (step: number, rule: string): void => {
     steps.push({ section: '5.7', step, rule, result: 'pass' });
+  };
+  const notModelled = (step: number, rule: string): void => {
+    steps.push({ section: '5.7', step, rule, result: 'not-modelled' });
   };
 
   // Step 2: an empty name with an empty value.
@@ -124,14 +206,47 @@ export function decide(cookie: ParsedCookie, request: RequestInfo, _nowMs: numbe
   pass(2, 'An empty name with an empty value is ignored.');
 
   // Step 4: the size (read with section 5.6 step 5, so a larger cookie never reaches this point).
-  pass(4, `Name and value together are at most ${withCommas(MAX_NAME_VALUE_OCTETS)} octets.`);
+  pass(4, SIZE_RULE);
 
+  // Steps 6 and 7: the lifetime attributes and the Domain attribute that count were picked while the line was read.
+  pass(6, 'Max-Age, else Expires, sets the lifetime, and the last of each counts.');
   const domainAttribute = cookie.domain ?? '';
+  pass(
+    7,
+    `The last Domain attribute of ${withCommas(MAX_ATTRIBUTE_VALUE_OCTETS)} octets or less is the domain-attribute.`,
+  );
+
+  // Step 8: a Domain with a character that is not in CHAR.
+  if (hasNonChar(domainAttribute)) {
+    return stop(
+      steps,
+      'not-stored',
+      8,
+      'A Domain with a character that is not in CHAR ignores the cookie.',
+      'The Domain attribute holds a character outside ASCII, so the cookie is refused (step 8).',
+    );
+  }
+  pass(8, 'A Domain with a character that is not in CHAR ignores the cookie.');
+
+  // Step 9: the public suffix list is not consulted.
+  notModelled(9, 'A Domain that is a public suffix is refused (needs the public suffix list).');
+
+  // Step 10: the Domain must match the host of the response address.
   const hostOnly = domainAttribute === '';
-  const path =
-    cookie.path !== null && cookie.path !== '' && cookie.path.charCodeAt(0) === 47
-      ? cookie.path
-      : defaultPath(request.path);
+  if (!hostOnly && !domainMatches(request.host, domainAttribute)) {
+    return stop(
+      steps,
+      'not-stored',
+      10,
+      'A Domain must domain-match the host of the response address.',
+      `The Domain attribute (${visible(domainAttribute, 40)}) does not domain-match the host of the response address, so the cookie is refused (step 10). A Domain must be the host itself or a parent of it${request.isIp ? '; an IP address matches only itself' : ''}.`,
+    );
+  }
+  pass(10, 'A Domain must domain-match the host of the response address.');
+
+  // Step 11: the path.
+  const path = pathOf(cookie, request);
+  pass(11, 'The path is the last Path attribute, else the default path of the response address.');
 
   // Step 13: a Secure cookie needs a secure connection.
   if (cookie.secure && !request.secure) {
@@ -145,18 +260,23 @@ export function decide(cookie: ParsedCookie, request: RequestInfo, _nowMs: numbe
   }
   pass(13, 'A cookie with Secure needs a secure connection.');
 
-  // Step 18: a cookie whose SameSite is not None, set on a cross-site request that is not a top-level navigation.
-  if (cookie.sameSite !== 'None') {
-    if (request.context === 'cross-site') {
-      return stop(
-        steps,
-        'ignored',
-        18,
-        'A cookie whose SameSite is not None is ignored on a cross-site request that is not a top-level navigation.',
-        `SameSite is ${cookie.sameSite} here (anything but None) and the cookie arrived on a cross-site request that is not a top-level navigation, so the draft ignores it entirely (step 18).`,
-      );
-    }
+  // Step 16: the cookie store is not modelled.
+  notModelled(
+    16,
+    'A cookie without Secure cannot overlay a Secure cookie from a plain http address (needs the cookie store).',
+  );
+
+  // Steps 17 and 18: SameSite, and a cookie whose SameSite is not None on a cross-site request that is not a navigation.
+  if (cookie.sameSite !== 'None' && request.context === 'cross-site') {
+    return stop(
+      steps,
+      'ignored',
+      18,
+      'A cookie whose SameSite is not None is ignored on a cross-site request that is not a top-level navigation.',
+      `SameSite is ${cookie.sameSite} here (anything but None) and the cookie arrived on a cross-site request that is not a top-level navigation, so the draft ignores it entirely (step 18).`,
+    );
   }
+  pass(17, 'The SameSite flag is the last SameSite attribute, else Default.');
   pass(
     18,
     'A cookie whose SameSite is not None is ignored on a cross-site request that is not a top-level navigation.',
@@ -175,16 +295,14 @@ export function decide(cookie: ParsedCookie, request: RequestInfo, _nowMs: numbe
   pass(19, 'SameSite=None needs the Secure attribute.');
 
   // Step 20: the __Secure- prefix.
-  if (startsWithFolded(cookie.name, SECURE_PREFIX)) {
-    if (!cookie.secure) {
-      return stop(
-        steps,
-        'not-stored',
-        20,
-        'A name that starts with __Secure- needs the Secure attribute.',
-        `__Secure- needs the Secure attribute, and this cookie has none (step 20). The name starts with ${cookie.name.slice(0, SECURE_PREFIX.length)}; prefixes are matched whatever the letter case (section 5.4).`,
-      );
-    }
+  if (startsWithFolded(cookie.name, SECURE_PREFIX) && !cookie.secure) {
+    return stop(
+      steps,
+      'not-stored',
+      20,
+      'A name that starts with __Secure- needs the Secure attribute.',
+      `__Secure- needs the Secure attribute, and this cookie has none (step 20). The name starts with ${cookie.name.slice(0, SECURE_PREFIX.length)}; prefixes are matched whatever the letter case (section 5.4).`,
+    );
   }
   pass(20, 'A name that starts with __Secure- needs the Secure attribute.');
 
@@ -223,12 +341,60 @@ export function decide(cookie: ParsedCookie, request: RequestInfo, _nowMs: numbe
   }
   pass(22, 'An empty name with a value that starts with __Secure- or __Host- is ignored.');
 
+  // Steps 23 and 24: replacing an old cookie and inserting the new one need the cookie store.
+  notModelled(23, 'An existing cookie with the same name, domain and path is replaced (needs the cookie store).');
+
+  const lifetime = lifetimeOf(cookie, nowMs);
+  const scope: CookieScope = {
+    domain: hostOnly ? request.host : domainAttribute,
+    hostOnly,
+    path,
+    secureOnly: cookie.secure,
+    httpOnly: cookie.httpOnly,
+    sameSite: cookie.sameSite,
+  };
+  if (lifetime.kind === 'deleted') {
+    return {
+      outcome: 'stored-then-deleted',
+      stepsApplied: steps,
+      failedStep: null,
+      reason: `It passes every storage step, then its lifetime is over (${lifetime.source === 'Max-Age' ? 'Max-Age is zero or negative' : 'Expires is at or before the time of the response'}), so a browser removes it at once (section 5.7).`,
+      lifetime,
+      scope,
+    };
+  }
   return {
     outcome: 'stored',
     stepsApplied: steps,
     failedStep: null,
     reason: 'No step of the storage model stops it.',
-    lifetime: null,
-    scope: null,
+    lifetime,
+    scope,
   };
+}
+
+/** What the prefix rules say about this cookie, in plain words. */
+export function describePrefix(cookie: ParsedCookie, decision: Decision): string {
+  const prefixed = startsWithFolded(cookie.name, SECURE_PREFIX)
+    ? '__Secure-'
+    : startsWithFolded(cookie.name, HOST_PREFIX)
+      ? '__Host-'
+      : null;
+  const emptyNamePrefixed =
+    cookie.name === '' &&
+    (startsWithFolded(cookie.value, SECURE_PREFIX) || startsWithFolded(cookie.value, HOST_PREFIX));
+  if (prefixed === null && !emptyNamePrefixed)
+    return 'The name has no __Secure- or __Host- prefix, so no prefix rule applies.';
+  const step = decision.failedStep?.step ?? 0;
+  if (emptyNamePrefixed) {
+    return step === 22
+      ? 'The cookie has no name and its text starts with a prefix: refused (step 22).'
+      : 'The cookie has no name and its text starts with a prefix: the rule applies when the earlier steps pass.';
+  }
+  const need = prefixed === '__Host-' ? 'needs Secure, no Domain and Path=/' : 'needs the Secure attribute';
+  if (step === 20 || step === 21)
+    return `The name starts with ${prefixed}, which ${need}. Not met, so the cookie is refused.`;
+  if (decision.failedStep !== null)
+    return `The name starts with ${prefixed}, which ${need}. Not reached: another rule stopped the cookie first.`;
+  return `The name starts with ${prefixed}, which ${need}. Met. Prefixes are matched whatever the letter case.`;
 }
