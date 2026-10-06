@@ -31,8 +31,14 @@ export const STALE_PHRASES = [
   'GitHub Pages sends no policy at all',
 ];
 
+/**
+ * The limits of a policy in markup: no framing protection, no violation reports, no sandboxing the way a header can,
+ * no stop on navigation, WebRTC and connection hints not governed in every browser, extensions outside it.
+ */
+const LIMIT_WORDS = ['framing', 'report violations', 'sandbox', 'navigat', 'WebRTC', 'extension'];
+
 /** The words that make the account true: each page has its own policy, and the limits of a policy in markup. */
-const TRUTH_WORDS = ['its own', 'framing', 'navigat', 'WebRTC', 'extension'];
+const TRUTH_WORDS = ['its own', ...LIMIT_WORDS];
 
 /** Collapses line breaks, comment stars and comment slashes so a wrapped phrase is one run of text. */
 export function flat(text) {
@@ -65,7 +71,9 @@ export function between(text, start, end) {
 
 /**
  * The files that state the page policy. `required` words must be present; `sections` are the changed parts, checked
- * for em dashes (older text in the same files may hold some, so only these parts are held to the rule).
+ * for em dashes (older text in the same files may hold some, so only these parts are held to the rule); `limits` is the
+ * passage that lists what the policy cannot do, which must hold every limit word itself (a word used elsewhere in the
+ * file does not count).
  */
 export const FILES = [
   {
@@ -75,11 +83,13 @@ export const FILES = [
       ['<h2>Each page has its own content security policy</h2>', '<h2>Tools that would need the network</h2>'],
     ],
     order: ['What it blocks', 'What it cannot do'],
+    limits: ['<p>What it cannot do', 'The policy sits behind three checks'],
   },
   {
     path: '.claude/CLAUDE.md',
     required: [...TRUTH_WORDS, 'weak copyleft (MPL and similar) needs an explicit owner OK'],
     sections: [['- **Hosting**', '- **Provenance**']],
+    limits: ['markup cannot give framing protection', '- **Provenance**'],
   },
   {
     path: 'docs/ARCHITECTURE.md',
@@ -100,6 +110,7 @@ export const FILES = [
     ],
     sections: [['### Content security policy per page', '## The privacy harness']],
     order: ['What it blocks', 'What it cannot do'],
+    limits: ['**What it cannot do.**', '**If the site moves'],
   },
   {
     path: 'docs/DEPLOYMENT.md',
@@ -114,6 +125,7 @@ export const FILES = [
     path: 'SECURITY.md',
     required: TRUTH_WORDS,
     sections: [['**Each page carries its own content security policy.**', '**Cryptography is not invented here.**']],
+    limits: ['## What this project cannot protect you from', '- Your own clipboard'],
   },
   {
     path: 'CONTRIBUTING.md',
@@ -124,6 +136,7 @@ export const FILES = [
     path: 'README.md',
     required: TRUTH_WORDS,
     sections: [['- **Each page has its own content security policy.**', '[`e2e/privacy.spec.ts`]']],
+    limits: ['- **Each page has its own content security policy.**', '[`e2e/privacy.spec.ts`]'],
   },
   {
     path: 'apps/web/src/components/CssPreview.tsx',
@@ -159,6 +172,14 @@ describe('the page policy is described truthfully in every listed file', () => {
           expect(part.includes(EM_DASH)).toBe(false);
         }
       });
+
+      if (file.limits) {
+        it('lists every limit of the policy in the passage that states its limits', () => {
+          const part = between(text, ...file.limits);
+          expect(part, `passage starting ${file.limits[0]} was not found`).not.toBeNull();
+          expect(missingWords(part, LIMIT_WORDS)).toEqual([]);
+        });
+      }
 
       if (file.order) {
         it('says what the policy blocks before what it cannot do', () => {
@@ -240,10 +261,26 @@ describe('the wording helpers can fail', () => {
   it('reports a required word that a text lacks', () => {
     expect(missingWords('each page carries its own policy', TRUTH_WORDS)).toEqual([
       'framing',
+      'report violations',
+      'sandbox',
       'navigat',
       'WebRTC',
       'extension',
     ]);
+  });
+
+  it('every file that states the limits names the passage that lists them', () => {
+    const stating = FILES.filter((file) => LIMIT_WORDS.every((word) => file.required.includes(word)));
+    expect(stating.map((file) => file.path).sort()).toEqual(
+      [
+        '.claude/CLAUDE.md',
+        'README.md',
+        'SECURITY.md',
+        'apps/web/src/pages/Privacy.tsx',
+        'docs/ARCHITECTURE.md',
+      ].sort(),
+    );
+    for (const file of stating) expect(file.limits, file.path).toBeDefined();
   });
 
   it('reports a stale phrase even when a comment wraps it across lines', () => {
