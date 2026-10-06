@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFixtureFiles, FIXTURE_FILE_KINDS } from './fixture-files';
+import { buildInlineFiles, inlineFileProblems, type InlineFixtureFile } from './fixture-inline';
 
 /**
  * Plan 02-14 Task 3's own evidence for the roadmap's first and fifth
@@ -371,14 +372,19 @@ async function firstCodeBlockText(page: Page): Promise<string> {
 
 /**
  * One step of a live fixture file: what to do to a single field, or press
- * Run. `attach` names a comma-separated list of `FIXTURE_FILE_KINDS`
- * (e2e/fixture-files.ts) in `value`, attached to the field's own file
- * input carrying the marker `FODT-LIVE-FIXTURE`.
+ * Run. `attach` carries exactly one of two things, attached to the field's
+ * own file input with the marker `FODT-LIVE-FIXTURE`: `value`, a
+ * comma-separated list of `FIXTURE_FILE_KINDS` (e2e/fixture-files.ts); or
+ * `files`, real files carried inline in the fixture JSON
+ * (e2e/fixture-inline.ts: `base64` bytes or `text`, where `{{MARKER}}`
+ * becomes the marker). `files` is how a tool with its own file format ships
+ * a fixture with no shared edit.
  */
 interface LiveStep {
   action: 'fill' | 'select' | 'check' | 'uncheck' | 'radio' | 'run' | 'attach';
   field?: string;
   value?: string;
+  files?: InlineFixtureFile[];
 }
 
 /**
@@ -409,16 +415,46 @@ interface LoadedLiveFixture {
 function loadLiveFixtureFiles(): LoadedLiveFixture[] {
   const dir = join(root, 'e2e', 'live-fixtures');
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
+  const loaded = readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
     .map((file) => ({ file, data: JSON.parse(readFileSync(join(dir, file), 'utf8')) as LiveFixtureFile }));
+  // A malformed inline-file step fails when the spec loads, naming the file, never silently skipped.
+  const problems = loaded.flatMap(({ file, data }) => attachStepProblems(file, data));
+  if (problems.length > 0) throw new Error(problems.join('\n'));
+  return loaded;
+}
+
+/**
+ * Every problem with the `attach` steps of one fixture file: an attach step has exactly one of `value`
+ * (fixture file kinds) and `files` (inline files), and `files` must be well formed (e2e/fixture-inline.ts).
+ */
+function attachStepProblems(file: string, data: LiveFixtureFile): string[] {
+  const problems: string[] = [];
+  if (!Array.isArray(data.steps)) return [`e2e/live-fixtures/${file}: "steps" must be an array`];
+  data.steps.forEach((step, index) => {
+    if (step === null || typeof step !== 'object' || step.action !== 'attach') return;
+    const where = `e2e/live-fixtures/${file}: steps[${index}]`;
+    const hasValue = Object.prototype.hasOwnProperty.call(step, 'value');
+    const hasFiles = Object.prototype.hasOwnProperty.call(step, 'files');
+    if (hasValue && hasFiles)
+      problems.push(`${where} is an attach step with both "value" and "files": give exactly one`);
+    else if (!hasValue && !hasFiles) {
+      problems.push(`${where} is an attach step with neither "value" nor "files": give exactly one`);
+    } else if (hasFiles) {
+      problems.push(...inlineFileProblems(step.files, `${where}.files`));
+    }
+  });
+  return problems;
 }
 
 const LIVE_FIXTURE_FILES = loadLiveFixtureFiles();
 /** Every tool id a live fixture file declares, in file-load order. */
 const LIVE_FIXTURE_IDS = LIVE_FIXTURE_FILES.map((f) => f.data.id);
 
-/** Applies one `LiveStep` to the page. The six known actions are the only ones a fixture file may use. */
+/** The marker every live attach step carries (`{{MARKER}}` in an inline text file becomes this). */
+const LIVE_MARKER = 'FODT-LIVE-FIXTURE';
+
+/** Applies one `LiveStep` to the page. The known actions are the only ones a fixture file may use. */
 async function applyLiveStep(page: Page, step: LiveStep): Promise<void> {
   switch (step.action) {
     case 'fill':
@@ -440,7 +476,9 @@ async function applyLiveStep(page: Page, step: LiveStep): Promise<void> {
       await pressRunIfPresent(page);
       break;
     case 'attach': {
-      const files = buildFixtureFiles(step.value ?? '', 'FODT-LIVE-FIXTURE');
+      const files = step.files
+        ? buildInlineFiles(step.files, LIVE_MARKER)
+        : buildFixtureFiles(step.value ?? '', LIVE_MARKER);
       await page
         .locator(`#f-${step.field}`)
         .setInputFiles(files.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: Buffer.from(f.buffer) })));
@@ -772,6 +810,8 @@ test('every live fixture file names a built tool page and uses only known step a
   for (const { file, data } of LIVE_FIXTURE_FILES) {
     for (const step of data.steps) {
       if (step.action !== 'attach') continue;
+      // Inline files are validated when the spec loads (attachStepProblems); only fixture kinds are checked here.
+      if (step.files !== undefined) continue;
       for (const kind of (step.value ?? '').split(',')) {
         expect(
           (KNOWN_FIXTURE_FILE_KINDS as Set<string>).has(kind),
@@ -805,6 +845,59 @@ test('every live fixture file names a built tool page and uses only known step a
         `e2e/live-fixtures/${file} uses an unknown step action "${step.action}"`,
       ).toBe(true);
     }
+  }
+});
+
+/**
+ * The inline-attach path, proven through the same step runner every loaded fixture uses: a fixture object built here
+ * (not read from a file) attaches the five bytes `Hello` as base64 to the hex viewer's file input, and the page shows
+ * them as hex. A later tool's fixture with `files` takes exactly this path.
+ */
+test('an inline file attached by a fixture step reaches the hex-viewer page through the same step runner', async ({
+  page,
+}) => {
+  const inlineFixture: LiveFixtureFile = {
+    id: 'hex-viewer',
+    label: 'five inline bytes, Hello, shown as hex',
+    steps: [
+      {
+        action: 'attach',
+        field: 'file',
+        files: [{ name: 'hello.bin', mimeType: 'application/octet-stream', base64: 'SGVsbG8=' }],
+      },
+    ],
+    expect: ['48 65 6c 6c 6f', 'hello.bin'],
+  };
+  expect(attachStepProblems('self-test.json', inlineFixture)).toEqual([]);
+  await page.goto(rel(`/tools/${inlineFixture.id}`));
+  for (const step of inlineFixture.steps) await applyLiveStep(page, step);
+  await settle(page);
+  for (const text of inlineFixture.expect) await containsCheck(text)(page);
+});
+
+test('a malformed inline attach step is refused when the spec loads, naming the file', () => {
+  const step = (extra: Partial<LiveStep>): LiveFixtureFile => ({
+    id: 'x',
+    label: 'x',
+    steps: [{ action: 'attach', field: 'file', ...extra }],
+    expect: ['x'],
+  });
+  const good = { name: 'a.bin', mimeType: 'application/octet-stream', base64: 'AA==' };
+  expect(attachStepProblems('x.json', step({ files: [good] }))).toEqual([]);
+  expect(attachStepProblems('x.json', step({ value: 'text' }))).toEqual([]);
+  const refused: [string, Partial<LiveStep>][] = [
+    ['an empty files array', { files: [] }],
+    ['both base64 and text', { files: [{ ...good, text: 'x' }] }],
+    ['neither base64 nor text', { files: [{ name: 'a.bin', mimeType: 'text/plain' }] }],
+    ['a non-string name', { files: [{ ...good, name: 7 as unknown as string }] }],
+    ['a non-string type', { files: [{ ...good, mimeType: null as unknown as string }] }],
+    ['both value and files', { value: 'text', files: [good] }],
+    ['neither value nor files', {}],
+  ];
+  for (const [what, extra] of refused) {
+    const problems = attachStepProblems('x.json', step(extra));
+    expect(problems.length, `${what} must be refused`).toBeGreaterThan(0);
+    expect(problems.join(' '), `${what}: the message must name the file`).toContain('e2e/live-fixtures/x.json');
   }
 });
 

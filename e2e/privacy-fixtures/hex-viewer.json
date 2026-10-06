@@ -4,5 +4,15 @@
     "mode": { "field": "source", "value": "hex" },
     "values": { "pasted": "48656c6c6f", "search": "6c6c", "position": "0" },
     "attachesFile": false
+  },
+  {
+    "attachesFile": true,
+    "inlineFiles": [
+      { "name": "inline-bytes.bin", "mimeType": "application/octet-stream", "base64": "SGVsbG8gd29ybGQ=" }
+    ]
+  },
+  {
+    "attachesFile": true,
+    "inlineFiles": [{ "name": "inline-marker.txt", "mimeType": "text/plain", "text": "marker {{MARKER}} end" }]
   }
 ]

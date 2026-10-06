@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFixtureFiles } from './fixture-files';
+import { buildInlineFiles, inlineFileProblems, type InlineFixtureFile } from './fixture-inline';
 
 /**
  * Paths below are written with a leading slash because it reads better.
@@ -384,6 +385,27 @@ async function attachRealFixtureFiles(page: Page, kinds: string, marker: string)
 }
 
 /**
+ * Attaches the inline files of a fixture entry (`inlineFiles`, e2e/fixture-inline.ts), built with `marker` (the
+ * page's canary) wherever a text file holds `{{MARKER}}`, to the first visible file input. Like
+ * `attachRealFixtureFiles`, every file goes to that one input; a page whose input is not `multiple` takes one
+ * file per entry, so a fixture for it lists one inline file in each entry.
+ */
+async function attachInlineFixtureFiles(page: Page, files: InlineFixtureFile[], marker: string): Promise<number> {
+  const fileInputs = page.locator('main input[type="file"]');
+  const count = await fileInputs.count();
+  const built = buildInlineFiles(files, marker);
+  for (let i = 0; i < count; i++) {
+    const field = fileInputs.nth(i);
+    if (!(await field.isVisible())) continue;
+    await field.setInputFiles(
+      built.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: Buffer.from(f.buffer) })),
+    );
+    return built.length;
+  }
+  return 0;
+}
+
+/**
  * Presses the Run button if this state rendered one, and waits for it to
  * return to its idle label -- a precise finish signal, not a sleep, because
  * the button reads the "Working…" label for the whole run
@@ -430,6 +452,12 @@ interface FixtureEntry {
    * processing path with a file its own header check actually accepts.
    */
   file?: string;
+  /**
+   * Real files carried inline in the fixture JSON (e2e/fixture-inline.ts: `name`, `mimeType` and one of `base64` or
+   * `text`, where `{{MARKER}}` in a text file becomes the page's canary). Used instead of `file`, with
+   * `attachesFile: true`: lets a tool with its own file format ship a fixture with no shared edit.
+   */
+  inlineFiles?: InlineFixtureFile[];
 }
 
 const BUILT_IN_FIXTURES: Record<string, FixtureEntry[]> = {
@@ -502,9 +530,25 @@ function loadPrivacyFixtureFiles(): Record<string, FixtureEntry[]> {
         `e2e/privacy-fixtures/${file} must be a JSON array of fixture entries, each with a boolean "attachesFile".`,
       );
     }
+    const entryProblems = (raw as FixtureEntry[]).flatMap((entry, index) => privacyEntryProblems(file, index, entry));
+    if (entryProblems.length > 0) throw new Error(entryProblems.join('\n'));
     result[id] = raw as FixtureEntry[];
   }
   return result;
+}
+
+/**
+ * Every problem with the inline files of one fixture entry, each naming the fixture file and the entry. An entry
+ * with `inlineFiles` must declare `attachesFile: true` and must not also name `file` kinds (they are two ways to
+ * say the same thing).
+ */
+function privacyEntryProblems(file: string, index: number, entry: FixtureEntry): string[] {
+  if (!Object.prototype.hasOwnProperty.call(entry, 'inlineFiles')) return [];
+  const where = `e2e/privacy-fixtures/${file}: entry ${index}`;
+  const problems = inlineFileProblems(entry.inlineFiles, `${where}.inlineFiles`);
+  if (entry.attachesFile !== true) problems.push(`${where} has inlineFiles but attachesFile is not true`);
+  if (entry.file !== undefined) problems.push(`${where} has both file and inlineFiles: give one`);
+  return problems;
 }
 
 const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
@@ -525,6 +569,24 @@ test('every privacy fixture file is loaded and names a real tool page', () => {
       toolIds,
       `e2e/privacy-fixtures/${file} names a tool id ("${id}") with no page in apps/web/src/tools`,
     ).toContain(id);
+  }
+});
+
+test('a malformed inline file in a privacy fixture file is refused, naming the file', () => {
+  const good = { name: 'a.bin', mimeType: 'application/octet-stream', base64: 'AA==' };
+  expect(privacyEntryProblems('x.json', 0, { attachesFile: true, inlineFiles: [good] })).toEqual([]);
+  const refused: [string, FixtureEntry][] = [
+    ['an empty inlineFiles array', { attachesFile: true, inlineFiles: [] }],
+    ['both base64 and text', { attachesFile: true, inlineFiles: [{ ...good, text: 'x' }] }],
+    ['neither base64 nor text', { attachesFile: true, inlineFiles: [{ name: 'a', mimeType: 'text/plain' }] }],
+    ['a non-string name', { attachesFile: true, inlineFiles: [{ ...good, name: 3 as unknown as string }] }],
+    ['inlineFiles with attachesFile false', { attachesFile: false, inlineFiles: [good] }],
+    ['inlineFiles beside file kinds', { attachesFile: true, file: 'text', inlineFiles: [good] }],
+  ];
+  for (const [what, entry] of refused) {
+    const problems = privacyEntryProblems('x.json', 0, entry);
+    expect(problems.length, `${what} must be refused`).toBeGreaterThan(0);
+    expect(problems.join(' '), `${what}: the message must name the file`).toContain('e2e/privacy-fixtures/x.json');
   }
 });
 
@@ -790,7 +852,8 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
       }
     }
 
-    if (fixture.file) filesAttached += await attachRealFixtureFiles(page, fixture.file, value);
+    if (fixture.inlineFiles) filesAttached += await attachInlineFixtureFiles(page, fixture.inlineFiles, value);
+    else if (fixture.file) filesAttached += await attachRealFixtureFiles(page, fixture.file, value);
     else if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
     if (await pressRunIfPresent(page)) {
       runsCompleted++;
