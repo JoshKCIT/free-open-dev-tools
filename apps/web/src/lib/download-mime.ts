@@ -5,7 +5,9 @@
  * from a `text/plain` Blob, Chromium and Windows WebKit add `.txt` to the saved name, and ssh will not find the key. A
  * Blob of type `application/octet-stream` is saved under exactly the name given, so those names get that type. A name that
  * already carries an extension keeps the plain text type, which is what lets a browser keep its own handling of `.pem`,
- * `.pub`, `.h` and the like. A leading-dot name such as `.gitignore` counts as having an extension.
+ * `.pub`, `.h` and the like. A leading-dot name such as `.gitignore` counts as having no extension, because Chromium
+ * strips the dot and would add `.txt` (it saves `gitignore.txt`); Chromium and Firefox drop the leading dot whatever
+ * the type, which a page cannot change.
  *
  * The name is always one of the fixed names the pages write; nothing here reads any input.
  */
@@ -13,7 +15,8 @@
 /** The three names SSH looks for by default. They have no extension, so the extension test would catch them as well. */
 export const KEY_FILE_NAMES: readonly string[] = Object.freeze(['id_rsa', 'id_ecdsa', 'id_ed25519']);
 
-const HAS_EXTENSION = /\.[A-Za-z0-9]+$/;
+/** An extension needs a name before it: `.gitignore` has none, and Chromium would save it as `gitignore.txt`. */
+const HAS_EXTENSION = /[^.]\.[A-Za-z0-9]+$/;
 
 const TEXT_TYPE = 'text/plain;charset=utf-8';
 const BINARY_TYPE = 'application/octet-stream';

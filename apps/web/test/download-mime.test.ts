@@ -13,8 +13,12 @@ describe('downloadMime', () => {
     for (const name of ['_headers', 'README', 'Dockerfile']) expect(downloadMime(name)).toBe(BINARY);
   });
 
+  it('gives the binary type to a name whose only dot is the leading one', () => {
+    for (const name of ['.gitignore', '.env', '.htaccess', '.htpasswd']) expect(downloadMime(name), name).toBe(BINARY);
+  });
+
   it('keeps the text type for names that already carry an extension', () => {
-    for (const name of ['id_ed25519.pub', 'private-key.pem', '.gitignore', 'formatted.go', 'data.h', 'a.b.c']) {
+    for (const name of ['id_ed25519.pub', 'private-key.pem', '.env.local', 'formatted.go', 'data.h', 'a.b.c']) {
       expect(downloadMime(name), name).toBe(TEXT);
     }
   });
