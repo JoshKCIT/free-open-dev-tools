@@ -8,13 +8,14 @@ import { ROOT } from '../lib/catalog.mjs';
  * HARD-05 (D-220): the browser tests prove the page policy by running with the policy in force. Playwright has an
  * option that switches the page policy off for a test context; one test that sets it would make every other proof in
  * that file meaningless while staying green. This test scans the Playwright config and every script file under
- * e2e for the option used as code (the name followed by optional spaces and a colon or an equals sign, bare or quoted
- * as an object key) and fails the build if it appears. Comments are removed first, so the rule can be written about in
- * prose. The scan is proved able to fail on a scratch copy of the real config.
+ * e2e (TypeScript and JavaScript, with or without JSX) for the option's name anywhere in code: a key, a quoted,
+ * bracketed or computed key, a template literal, an assignment or a plain mention. No file needs to name it in code,
+ * so any use fails the build. Comments are removed first, so the rule can be written about in prose. The scan is
+ * proved able to fail on a scratch copy of the real config.
  */
 
 const OPTION = 'bypass' + 'CSP';
-const USAGE = new RegExp(`(?<![A-Za-z0-9_$])["']?${OPTION}["']?\\s*[:=]`);
+const USAGE = new RegExp(`(?<![A-Za-z0-9_$])${OPTION}(?![A-Za-z0-9_$])`);
 
 /** Removes line and block comments, keeping line breaks so reported line numbers stay right. */
 export function withoutComments(text) {
@@ -34,12 +35,15 @@ export function bypassUsageLines(text) {
   return found;
 }
 
+/** The script files the scan reads: TypeScript and JavaScript in every module form, with or without JSX. */
+const SCRIPT_FILE = /\.(?:ts|mts|cts|tsx|js|mjs|cjs|jsx)$/;
+
 function scriptFilesUnder(dir) {
   const files = [];
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) files.push(...scriptFilesUnder(path));
-    else if (/\.(?:ts|mts|cts|js|mjs|cjs)$/.test(name)) files.push(path);
+    else if (SCRIPT_FILE.test(name)) files.push(path);
   }
   return files;
 }
@@ -67,11 +71,27 @@ describe('no test or configuration switches the page policy off', () => {
     expect(bypassUsageLines(`use: { ${OPTION}:true }`)).toHaveLength(1);
   });
 
-  it('does not match prose in a comment, a longer name or a plain mention', () => {
+  it('matches a bracketed key, a computed key, a template literal key and a plain mention in code', () => {
+    const tick = String.fromCharCode(96);
+    expect(bypassUsageLines(`opts['${OPTION}'] = true;`)).toHaveLength(1);
+    expect(bypassUsageLines(`opts["${OPTION}"]=true;`)).toHaveLength(1);
+    expect(bypassUsageLines(`browser.newContext({ ['${OPTION}']: true })`)).toHaveLength(1);
+    expect(bypassUsageLines(`browser.newContext({ [${tick}${OPTION}${tick}]: true })`)).toHaveLength(1);
+    expect(bypassUsageLines(`const key = '${OPTION}'; test.use({ [key]: true });`)).toHaveLength(1);
+    expect(bypassUsageLines(`const named = 'the option named ${OPTION}';`)).toHaveLength(1);
+  });
+
+  it('does not match prose in a comment or a longer name', () => {
     expect(bypassUsageLines(`// never set ${OPTION}: true here`)).toEqual([]);
     expect(bypassUsageLines(`/* ${OPTION} = true is forbidden */`)).toEqual([]);
     expect(bypassUsageLines(`const my${OPTION}Flag = 1; const ${OPTION}Other: number = 2;`)).toEqual([]);
-    expect(bypassUsageLines(`the option named ${OPTION} is never used`)).toEqual([]);
+    expect(bypassUsageLines(`const x = 1; // the option named ${OPTION} is never used`)).toEqual([]);
+  });
+
+  it('scans files written with JSX too, and skips data files', () => {
+    for (const name of ['a.spec.ts', 'a.spec.tsx', 'b.jsx', 'c.mjs', 'd.cts'])
+      expect(SCRIPT_FILE.test(name), name).toBe(true);
+    for (const name of ['e.json', 'f.md', 'g.tsx.snap']) expect(SCRIPT_FILE.test(name), name).toBe(false);
   });
 
   it('fails on a scratch copy of the real config that sets the option', () => {
