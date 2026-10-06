@@ -275,7 +275,7 @@ function addPreflightRules(
       return allowedHeaders.has('authorization')
         ? pass('authorization is named in Access-Control-Allow-Headers.')
         : fail(
-            `authorization is not named in Access-Control-Allow-Headers${allowedHeaders.has('*') ? '. A * never covers it' : ''}.`,
+            `authorization is not named in Access-Control-Allow-Headers${allowedHeaders.has('*') ? '. The standard says a * never covers it. Browsers tried so far still accept the * when credentials are not included, so a page can work today and stop working when they enforce the standard' : ''}.`,
           );
     },
   );
