@@ -29,13 +29,15 @@ Paste the Set-Cookie lines a server sent, the address they came from and how the
 - Sizes are counted in octets of the text pasted (UTF-8, so a two-byte character counts 2); the page cannot know how a server encoded non-ASCII bytes. A name and value over 4,096 octets are ignored and an attribute value over 1,024 octets is ignored, as the draft says.
 - The host localhost and the loopback addresses are treated as secure, as browsers do for localhost (the draft leaves the meaning of secure to the browser); check yours for the loopback addresses.
 - A paste is limited to 262,144 characters, 500 lines (blank lines do not count), 16,384 characters in a line and 100 attributes in a line, and the address to 8,192 characters; a larger paste is refused before any work, naming the line and never repeating the text.
-- Where web-platform-tests holds a newer expectation than the draft, the page follows the draft and the difference is listed in the test notes.
+- Where web-platform-tests holds an expectation that the draft text does not give, the page follows the draft. The file expects a __Host- cookie with an empty or valueless Path attribute to be refused (the draft turns an empty Path into the default path, so it accepts a cookie at the root), and it knows the __Http- and __Host-Http- prefixes (the draft does not), so a cookie with one of those prefixes is judged as an ordinary name. Each difference is listed in the test notes.
 
 ## Ambiguous cases, and what this does about them
 
 - A line with no equals sign is a cookie with an empty name and the whole text as its value, as section 5.6 says. Libraries differ: one of the second-opinion libraries returns nothing for it.
 - When Max-Age and Expires are both present Max-Age decides and Expires is shown as ignored; when an attribute appears twice the last one is used and the earlier ones are shown as ignored.
 - A SameSite value that is not None, Lax or Strict means Default enforcement, which the draft sends like Lax; some browsers apply Lax by default and others do not.
+- A later Domain attribute that is empty (Domain= or Domain=.) replaces an earlier one, because the draft uses the last Domain attribute, so the cookie becomes host-only; one of the second-opinion libraries keeps the earlier Domain.
+- A __Host- cookie with an empty Path attribute passes the __Host- rule when the response is at the root, because the draft turns an empty Path into the default path and asks only that a Path attribute is present and the cookie path is /; browsers may refuse it.
 
 ## Defined by
 
@@ -91,7 +93,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Expected values come from the draft text (the sixteen section 5.4 lines, the section 3.1 and 5.1.4 examples, the date, Max-Age, lifetime and storage algorithms) and from web-platform-tests cookie rows at commit a419ab2 re-expressed as JSON rows that cite their file and line, with every wall-clock date replaced by a fixed time. tough-cookie 6.0.2 and cookie 1.1.1 are dev-only second opinions over a seeded corpus; the measured differences are listed by name in the test. Every parser is timed on hostile strings at two sizes.
+Expected values come from the draft text (the sixteen section 5.4 lines, the section 3.1 and 5.1.4 examples, the date, Max-Age, lifetime and storage algorithms) and from web-platform-tests cookie rows at commit a419ab2 re-expressed as JSON rows that cite their file and line, with every wall-clock date replaced by one fixed time: 134 rows from eight files, 2 from a script file, and 6 published cases listed as not reproduced with the draft outcome and the reason (an empty and a valueless Path on a __Host- cookie, the __Http- and __Host-Http- prefixes the draft does not have, and one case with the same outcome and a different rule). tough-cookie 6.0.2 and cookie 1.1.1 are dev-only second opinions that read a seeded corpus of 300 lines; they agree with the package on name, value, Max-Age, Domain and Path except two measured differences listed by name in the test: tough-cookie returns no cookie for a line with no name, and it keeps an earlier Domain when a later one is empty. Neither library checks cookie name prefixes. The date algorithm, the 4,096 and 1,024 octet limits, the 400-day limit, masking, ordering, names such as __proto__ and every parser on hostile strings at two sizes are tested, and the page never reads a clock except to fill an empty time field.
 
 ## Licence
 
