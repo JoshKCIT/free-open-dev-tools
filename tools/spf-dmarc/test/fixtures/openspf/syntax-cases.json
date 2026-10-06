@@ -1,0 +1,1762 @@
+{
+  "suiteCommit": "4bf96ea63af4999663809bae9b5530bce25e6f16",
+  "cases": [
+    {
+      "section": "Initial processing",
+      "name": "nolocalpart",
+      "spec": "4.3/2",
+      "record": "v=spf1 -all exp=exp.example.net",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp with a domain-spec after an all is grammar-clean; the suite gives fail"
+    },
+    {
+      "section": "Initial processing",
+      "name": "non-ascii-policy",
+      "spec": "3.1/1",
+      "record": "v=spf1 a:ï»¿garbage.example.net -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a byte order mark inside a domain-spec is outside the visible characters macro-literal allows"
+    },
+    {
+      "section": "Initial processing",
+      "name": "non-ascii-mech",
+      "spec": "3.1/1",
+      "record": "v=spf1 a:example.net -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a byte above US-ASCII in front of a mechanism name makes it no mechanism"
+    },
+    {
+      "section": "Initial processing",
+      "name": "non-ascii-result",
+      "spec": "3.1/1",
+      "record": "v=spf1 a:example.net all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a byte above US-ASCII in front of all makes it no mechanism"
+    },
+    {
+      "section": "Initial processing",
+      "name": "non-ascii-non-spf",
+      "spec": "4.5/1",
+      "record": "v=spf1 a:example.net -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "the record itself is plain ASCII; the suite only varies the message around it"
+    },
+    {
+      "section": "Initial processing",
+      "name": "control-char-policy",
+      "spec": "4.6.1/2",
+      "record": "v=spf1 a:ctrl.example.com\rptr -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a carriage return is not a space, so it cannot separate terms and is not allowed inside a domain-spec"
+    },
+    {
+      "section": "Initial processing",
+      "name": "two-spaces",
+      "spec": "4.6.1",
+      "record": "v=spf1 a  -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "terms are separated by one or more spaces (1*SP), so two spaces are fine"
+    },
+    {
+      "section": "Initial processing",
+      "name": "trailing-space",
+      "spec": "4.5/2",
+      "record": "v=spf1 a -all ",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "the record ends with *SP, so a trailing space is fine"
+    },
+    {
+      "section": "Initial processing",
+      "name": "null-text",
+      "spec": 3.3,
+      "record": "v=spf1 ip4:192.0.2.5 -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a plain record; the suite varies the message text around it"
+    },
+    {
+      "section": "Initial processing",
+      "name": "badip4",
+      "spec": "4.6.1/2",
+      "record": "v=spf1 ip4:192.0.2.5\n include:spf.protection.outlook.com ~all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a line feed is not a space, so the address ends with a line feed and is not an IPv4 address"
+    },
+    {
+      "section": "Record lookup",
+      "name": "both",
+      "spec": "4.4/1",
+      "record": "v=spf1 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a plain v=spf1 -all"
+    },
+    {
+      "section": "Selecting records",
+      "name": "empty",
+      "spec": "4.5/4",
+      "record": "v=spf1",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "v=spf1 alone is a record with no terms"
+    },
+    {
+      "section": "Selecting records",
+      "name": "nospace2",
+      "spec": "4.5/4",
+      "record": "v=spf1 mx",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a bare mx directive"
+    },
+    {
+      "section": "Selecting records",
+      "name": "case-insensitive",
+      "spec": "4.5/6",
+      "record": "v=SpF1 ~all",
+      "suiteResult": "softfail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "the version and every name are case-insensitive"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "detect-errors-anywhere",
+      "spec": 4.6,
+      "record": "v=spf1 ip4:1.2.3.4 -all moo",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "moo has no equals sign, so it is neither a modifier nor a mechanism"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "modifier-charset-good",
+      "spec": "4.6.1/2",
+      "record": "v=spf1 moo.cow-far_out=man:dog/cat ip4:1.2.3.4 -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a modifier name may hold periods, hyphens and underscores, and its value may hold a colon and a slash"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "modifier-charset-bad1",
+      "spec": "4.6.1/4",
+      "record": "v=spf1 moo.cow/far_out=man:dog/cat ip4:1.2.3.4 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a slash ends the name moo.cow, which is no mechanism"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "modifier-charset-bad2",
+      "spec": "4.6.1/4",
+      "record": "v=spf1 moo.cow:far_out=man:dog/cat ip4:1.2.3.4 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a colon ends the name moo.cow, which is no mechanism"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "redirect-after-mechanisms1",
+      "spec": "4.6.3",
+      "record": "v=spf1 redirect=t5.example.com ~all",
+      "suiteResult": "softfail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "redirect before an all-less ending is grammar-clean"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "redirect-after-mechanisms2",
+      "spec": "4.6.3",
+      "record": "v=spf1 ip4:1.2.3.4 redirect=t2.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "redirect after mechanisms is grammar-clean"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "default-result",
+      "spec": "4.7/1",
+      "record": "v=spf1 ip4:1.2.3.4",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a record with one mechanism and no ending"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "redirect-is-modifier",
+      "spec": "4.6.1/4",
+      "record": "v=spf1 ip4:1.2.3.4 redirect:t2.example.com",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "redirect with a colon is a mechanism name that does not exist; a modifier needs an equals sign"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "invalid-domain",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:foo-bar -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "foo-bar has no period and toplabel, so domain-end cannot match"
+    },
+    {
+      "section": "ALL mechanism syntax",
+      "name": "all-dot",
+      "spec": "5.1/1",
+      "record": "v=spf1 -all.",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "all takes nothing after its name, and a period is not a space"
+    },
+    {
+      "section": "ALL mechanism syntax",
+      "name": "all-arg",
+      "spec": "5.1/1",
+      "record": "v=spf1 -all:foobar",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "all takes no argument"
+    },
+    {
+      "section": "ALL mechanism syntax",
+      "name": "all-cidr",
+      "spec": "5.1/1",
+      "record": "v=spf1 -all/8",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "all takes no prefix length"
+    },
+    {
+      "section": "ALL mechanism syntax",
+      "name": "all-neutral",
+      "spec": "5.1/1",
+      "record": "v=spf1 ?all",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "?all is a directive"
+    },
+    {
+      "section": "ALL mechanism syntax",
+      "name": "all-double",
+      "spec": "5.1/1",
+      "record": "v=spf1 all -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "two all mechanisms are grammar-clean (the second is never tested)"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-cidr",
+      "spec": "5.5/2",
+      "record": "v=spf1 ptr/0 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "ptr takes no prefix length"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-match-target",
+      "spec": "5.5/5",
+      "record": "v=spf1 ptr:example.com -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "ptr with a domain-spec"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-match-implicit",
+      "spec": "5.5/5",
+      "record": "v=spf1 ptr -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "ptr with no argument"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-empty-domain",
+      "spec": "5.5/2",
+      "record": "v=spf1 ptr:",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "ptr with a colon needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-case-change",
+      "spec": "5.5/2",
+      "record": "v=spf1 ptr:example.Com -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "domain names are case-insensitive"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-cname-loop",
+      "spec": "5.5/7",
+      "record": "v=spf1 ptr",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a bare ptr"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr6",
+      "spec": "5.3/2",
+      "record": "v=spf1 a//33 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a//33 is a valid IPv6 prefix length (the range is 0 to 128)"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-bad-cidr4",
+      "spec": "5.3/2",
+      "record": "v=spf1 a/33 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv4 prefix length of 33 is out of range"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-bad-cidr6",
+      "spec": "5.3/2",
+      "record": "v=spf1 a//129 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv6 prefix length of 129 is out of range"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-dual-cidr-ip4-match",
+      "spec": "5.3/2",
+      "record": "v=spf1 a/24//64 -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a/24//64 is the dual prefix length form"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-dual-cidr-ip4-err",
+      "spec": "5.3/2",
+      "record": "v=spf1 a/24/64 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a/24/64 has one slash too few before the IPv6 length"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-dual-cidr-ip4-default",
+      "spec": "5.3/2",
+      "record": "v=spf1 a//64 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv6 prefix length alone"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-dual-cidr-ip6-default",
+      "spec": "5.3/2",
+      "record": "v=spf1 a/24 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv4 prefix length alone"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-multi-ip1",
+      "spec": "5.3/3",
+      "record": "v=spf1 a:foo.example.com/24",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a domain-spec followed by an IPv4 prefix length"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-bad-domain",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:example.com:8080",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "the last label of a:example.com:8080 holds a colon, so it is not a toplabel"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-nxdomain",
+      "spec": "5.3/3",
+      "record": "v=spf1 a/0 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a prefix length of 0 is valid"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr6-0-ip4",
+      "spec": "5.3/3",
+      "record": "v=spf1 a//0 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv6 prefix length of 0 is valid"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-ip6-dualstack",
+      "spec": "5.3/3",
+      "record": "v=spf1 a -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a bare a"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-null",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:foo.example.com\u0000",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a NUL character is outside the visible characters a domain-spec allows"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-numeric",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:111.222.33.44",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an all-digit last label is not a toplabel"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-numeric-toplabel",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:abc.123",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an all-digit last label is not a toplabel"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-dash-in-toplabel",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:foo.example.xn--zckzah -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a toplabel may hold hyphens: xn--zckzah"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-bad-toplabel",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:example.-com",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a toplabel cannot start with a hyphen"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-only-toplabel",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:museum",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a lone label with no period before it has no toplabel"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-only-toplabel-trailing-dot",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:museum.",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a lone label with a trailing period still has no toplabel"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-colon-domain",
+      "spec": "7.1/2",
+      "record": "v=spf1 a:foo:bar/baz.example.com",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a domain-spec may hold a colon and a slash that is not a prefix length"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-empty-domain",
+      "spec": "5.3/2",
+      "record": "v=spf1 a:",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a with a colon needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-fail",
+      "spec": "5.2/9",
+      "record": "v=spf1 include:ip5.example.com ~all",
+      "suiteResult": "softfail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "include with a domain-spec"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-softfail",
+      "spec": "5.2/9",
+      "record": "v=spf1 include:ip6.example.com all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "include with a domain-spec and a bare all"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-neutral",
+      "spec": "5.2/9",
+      "record": "v=spf1 include:ip7.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "include with a domain-spec and -all"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-syntax-error",
+      "spec": "5.2/1",
+      "record": "v=spf1 include +all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "include needs a colon and a domain-spec"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-cidr",
+      "spec": "5.2/1",
+      "record": "v=spf1 include:ip5.example.com/24 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "include takes no prefix length, and com/24 is not a toplabel"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-empty-domain",
+      "spec": "5.2/1",
+      "record": "v=spf1 include: -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "include with a colon needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr6",
+      "spec": "5.4/2",
+      "record": "v=spf1 mx//33 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "mx//33 is a valid IPv6 prefix length (the range is 0 to 128)"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-bad-cidr4",
+      "spec": "5.4/2",
+      "record": "v=spf1 mx/33 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv4 prefix length of 33 is out of range"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-bad-cidr6",
+      "spec": "5.4/2",
+      "record": "v=spf1 mx//129 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv6 prefix length of 129 is out of range"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-multi-ip1",
+      "spec": "5.4/3",
+      "record": "v=spf1 mx:foo.example.com/24",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a domain-spec followed by an IPv4 prefix length"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-bad-domain",
+      "spec": "7.1/2",
+      "record": "v=spf1 mx:example.com:8080",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "the last label of mx:example.com:8080 holds a colon, so it is not a toplabel"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-nxdomain",
+      "spec": "5.4/3",
+      "record": "v=spf1 mx/0 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a prefix length of 0 is valid"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr6-0-ip4",
+      "spec": "5.4/3",
+      "record": "v=spf1 mx//0 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv6 prefix length of 0 is valid"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-null",
+      "spec": "7.1/2",
+      "record": "v=spf1 mx:foo.example.com\u0000",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a NUL character is outside the visible characters a domain-spec allows"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-numeric-top-label",
+      "spec": "7.1/2",
+      "record": "v=spf1 mx:abc.123",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an all-digit last label is not a toplabel"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-colon-domain",
+      "spec": "7.1/2",
+      "record": "v=spf1 mx:foo:bar/baz.example.com",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a domain-spec may hold a colon and a slash that is not a prefix length"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-bad-toplab",
+      "spec": "7.1/2",
+      "record": "v=spf1 mx:example.-com",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a toplabel cannot start with a hyphen"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-empty-domain",
+      "spec": "5.2/1",
+      "record": "v=spf1 mx: -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "mx with a colon needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-empty-domain",
+      "spec": "5.7/2",
+      "record": "v=spf1 exists:",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "exists with a colon needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-implicit",
+      "spec": "5.7/2",
+      "record": "v=spf1 exists",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "exists needs a colon and a domain-spec"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-cidr",
+      "spec": "5.7/2",
+      "record": "v=spf1 exists:mail.example.com/24",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "exists takes no prefix length, and com/24 is not a toplabel"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-ip4",
+      "spec": "5.7/3",
+      "record": "v=spf1 exists:mail.example.com",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exists with a domain-spec"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-ip6only",
+      "spec": "5.7/3",
+      "record": "v=spf1 exists:mail6.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exists with a domain-spec and -all"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "cidr4-0",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4:1.1.1.1/0 -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "ip4 with a prefix length of 0"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "cidr4-32",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4:1.2.3.4/32 -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "ip4 with a prefix length of 32"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "cidr4-33",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4:1.2.3.4/33 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv4 prefix length of 33 is out of range"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "cidr4-032",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4:1.2.3.4/032 -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a prefix length with a leading zero is not allowed"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "bare-ip4",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "ip4 needs a colon and an address"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "bad-ip4-port",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4:1.2.3.4:8080",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a port after an IPv4 address is not part of the grammar"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "bad-ip4-short",
+      "spec": "5.6/4",
+      "record": "v=spf1 ip4:1.2.3",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv4 address needs four numbers"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "ip4-dual-cidr",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip4:1.2.3.4//32",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "ip4 takes one prefix length, not the dual form"
+    },
+    {
+      "section": "IP4 mechanism syntax",
+      "name": "ip4-mapped-ip6",
+      "spec": "5/9/2",
+      "record": "v=spf1 -ip4:1.2.3.4 ip6:::FFFF:1.2.3.4",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv4-mapped IPv6 address is a valid ip6 network"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "bare-ip6",
+      "spec": "5.6/2",
+      "record": "v=spf1 -all ip6",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "ip6 needs a colon and an address"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-0-ip4",
+      "spec": "5/9/2",
+      "record": "v=spf1 ip6:::1.1.1.1/0",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv6 network with an embedded IPv4 part and a prefix length of 0"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-129",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip6:::1.1.1.1/129",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv6 prefix length of 129 is out of range"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-bad",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip6:::1.1.1.1//33",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "ip6 takes one prefix length, not the dual form"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-33",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip6:Cafe:Babe:8000::/33",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an IPv6 network with a prefix length of 33"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "ip6-bad1",
+      "spec": "5.6/2",
+      "record": "v=spf1 ip6::CAFE::BABE",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "an IPv6 address may hold :: only once"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-cancels-exp",
+      "spec": "6.2/13",
+      "record": "v=spf1 exp=exp1.example.com redirect=e2.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp and redirect together are grammar-clean (the redirect cancels the explanation, which is evaluation)"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-syntax-error",
+      "spec": "6.1/2",
+      "record": "v=spf1 redirect=-all ?all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "redirect needs a domain-spec, and -all has no toplabel"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "include-ignores-exp",
+      "spec": "6.2/13",
+      "record": "v=spf1 include:e3.example.com -all exp=exp3.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp after an all, beside an include, is grammar-clean"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-cancels-prior-exp",
+      "spec": "6.2/13",
+      "record": "v=spf1 exp=exp1.example.com redirect=e4.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp or redirect with a domain-spec is grammar-clean; the suite varies only the name or the explanation it points at"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "invalid-modifier",
+      "spec": "A/3",
+      "record": "v=spf1 1up=foo",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a modifier name starts with a letter, and 1up starts with a digit"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "empty-modifier-name",
+      "spec": "A/3",
+      "record": "v=spf1 =all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a modifier needs a name before its equals sign"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "dorky-sentinel",
+      "spec": "7.1/6",
+      "record": "v=spf1 -all exp=exp4.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp after an all is grammar-clean"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-multiple-txt",
+      "spec": "6.2/4",
+      "record": "v=spf1 -all exp=e11msg.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp or redirect with a domain-spec is grammar-clean; the suite varies only the name or the explanation it points at"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-no-txt",
+      "spec": "6.2/4",
+      "record": "v=spf1 exp=mail.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp before an all is grammar-clean"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-dns-error",
+      "spec": "6.2/4",
+      "record": "v=spf1 exp=e21msg.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp or redirect with a domain-spec is grammar-clean; the suite varies only the name or the explanation it points at"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-empty-domain",
+      "spec": "6.2/4",
+      "record": "v=spf1 exp= -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "exp needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "explanation-syntax-error",
+      "spec": "6.2/4",
+      "record": "v=spf1 exp=e13msg.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp or redirect with a domain-spec is grammar-clean; the suite varies only the name or the explanation it points at"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-syntax-error",
+      "spec": "6.2/1",
+      "record": "v=spf1 exp=-all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "exp needs a domain-spec, and -all has no toplabel"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-twice",
+      "spec": "6/2",
+      "record": "v=spf1 exp=e13msg.example.com -all exp=e11msg.example.com",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "exp must not appear twice (RFC 7208 section 6)"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-empty-domain",
+      "spec": "6.2/4",
+      "record": "v=spf1 ?all redirect=",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "redirect needs a domain-spec, which cannot be empty"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-twice",
+      "spec": "6/2",
+      "record": "v=spf1 redirect=e12.example.com -all redirect=e12.example.com",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "redirect must not appear twice (RFC 7208 section 6)"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "unknown-modifier-syntax",
+      "spec": "A/3",
+      "record": "v=spf1 -all foo=%abc",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a percent sign must start a macro (%{, %%, %_ or %-), and %a does not"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "default-modifier-obsolete",
+      "spec": "6/3",
+      "record": "v=spf1 default=pass",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "default is an unknown modifier, which is ignored"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "default-modifier-obsolete2",
+      "spec": "6/3",
+      "record": "v=spf1 default=+",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "default with a plus sign value is still an unknown modifier"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "non-ascii-exp",
+      "spec": "6.2/5",
+      "record": "v=spf1 exp=badexp.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp or redirect with a domain-spec is grammar-clean; the suite varies only the name or the explanation it points at"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "two-exp-records",
+      "spec": "6.2/4",
+      "record": "v=spf1 exp=twoexp.example.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "exp or redirect with a domain-spec is grammar-clean; the suite varies only the name or the explanation it points at"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "exp-void",
+      "spec": "4.6.4/1, 6/2",
+      "record": "v=spf1 a:erehwon.example.com a:foobar.com exp=nxdomain.com -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "two a mechanisms with domain-specs and an exp are grammar-clean"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-implicit",
+      "spec": "6.1/4",
+      "record": "v=spf1 redirect=testimplicit.example.com",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "redirect as the only term"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "trailing-dot-domain",
+      "spec": "7.1/16",
+      "record": "v=spf1 redirect=%{d}.d.spf.example.com.",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a redirect domain-spec may start with a macro and end with a trailing period"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "trailing-dot-exp",
+      "spec": 7.1,
+      "record": "v=spf1 exp=msg.example.com. -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an exp domain-spec may end with a trailing period"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "exp-only-macro-char",
+      "spec": "7.1/8",
+      "record": "v=spf1 -all exp=%{r}.example.com",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "the macro letter r is allowed only in explanation text (RFC 7208 section 7.2), not in a domain-spec"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "invalid-macro-char",
+      "spec": "7.1/9",
+      "record": "v=spf1 -exists:%(ir).sbl.example.com ?all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a percent sign followed by an opening parenthesis is not a macro"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "invalid-embedded-macro-char",
+      "spec": "7.1/9",
+      "record": "v=spf1 exists:foo%(ir).sbl.example.com ?all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a percent sign followed by an opening parenthesis is not a macro"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "invalid-trailing-macro-char",
+      "spec": "7.1/9",
+      "record": "v=spf1 exists:foo%.sbl.example.com ?all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a percent sign followed by a period is not a macro"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "macro-mania-in-domain",
+      "spec": "7.1/3, 7.1/4",
+      "record": "v=spf1 a:macro%%percent%_%_space%-url-space.example.com -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "the macro forms %%, %_ and %- may sit inside a domain-spec"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "exp-txt-macro-char",
+      "spec": "7.1/20",
+      "record": "v=spf1 -all exp=%{ir}.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a macro with the i letter and the r transformer"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "domain-name-truncation",
+      "spec": "7.1/25",
+      "record": "v=spf1 -all exp=foobar.%{o}.%{o}.%{o}.%{o}.%{o}.%{o}.%{o}.%{o}.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "many o macros in one domain-spec"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "v-macro-ip4",
+      "spec": "7.1/6",
+      "record": "v=spf1 -all exp=e4msg.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a record with exp after an all"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "undef-macro",
+      "spec": "7.1/6",
+      "record": "v=spf1 a:%{a}.example.com -all",
+      "suiteResult": "permerror",
+      "expect": "syntax-error",
+      "reviewed": true,
+      "why": "a is not a macro letter"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "p-macro-ip4-novalid",
+      "spec": "7.1/22",
+      "record": "v=spf1 -all exp=e6msg.example.com",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a second exp domain after an all"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "p-macro-multiple",
+      "spec": "7.1/22",
+      "record": "v=spf1 exists:%{p}.should.example.com ~exists:%{p}.ok.example.com",
+      "suiteResult": "pass or softfail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "the p macro letter is allowed in a domain-spec"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "upper-macro",
+      "spec": "7.1/26",
+      "record": "v=spf1 -all exp=msg8.%{D2}",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an uppercase macro letter with a digit transformer ends a domain-spec"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "hello-macro",
+      "spec": "7.1/6",
+      "record": "v=spf1 a:%{H} -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "the h macro letter in an uppercase form"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "require-valid-helo",
+      "spec": "7.1/6",
+      "record": "v=spf1 -include:_spfh.%{d2} ip4:1.2.3.0/24 -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "an include whose domain-spec ends with a macro"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "macro-reverse-split-on-dash",
+      "spec": "7.1/15, 7.1/16, 7.1/17, 7.1/18",
+      "record": "v=spf1 exists:%{i}.%{l2r-}.user.%{d2}",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a macro with a digit, the r transformer and a hyphen delimiter"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "macro-multiple-delimiters",
+      "spec": "7.1/15, 7.1/16",
+      "record": "v=spf1 exists:%{l2r+-}.user.%{d2}",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a macro with several delimiters"
+    },
+    {
+      "section": "Processing limits",
+      "name": "mech-at-limit",
+      "spec": "4.6.4/1",
+      "record": "v=spf1 a mx a mx a mx a mx a ptr ip4:1.2.3.4 -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "ten terms that cause lookups sit at the limit: the grammar is fine and the count test reuses this record"
+    },
+    {
+      "section": "Processing limits",
+      "name": "include-at-limit",
+      "spec": "4.6.4/1",
+      "record": "v=spf1 a include:inc.example.com ip4:1.2.3.4 mx -all",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "a record with an include among other terms"
+    },
+    {
+      "section": "Processing limits",
+      "name": "void-at-limit",
+      "spec": "4.6.4/7",
+      "record": "v=spf1 a:err.example.com a:err1.example.com ?all",
+      "suiteResult": "neutral",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "two a mechanisms with domain-specs and ?all"
+    },
+    {
+      "section": "Test cases from implementation bugs",
+      "name": "bytes-bug",
+      "spec": "5.4/4",
+      "record": "v=spf1 mx redirect=_spf.example.com",
+      "suiteResult": "pass",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "mx and redirect together"
+    },
+    {
+      "section": "Test cases from implementation bugs",
+      "name": "cname-aliasing",
+      "spec": "3.2/1",
+      "record": "v=spf1 include:a.example.org include:b.example.org -all",
+      "suiteResult": "fail",
+      "expect": "valid",
+      "reviewed": true,
+      "why": "two includes and -all"
+    }
+  ],
+  "dropped": [
+    {
+      "section": "Record lookup",
+      "name": "txtonly",
+      "record": "v=spf1 -all",
+      "suiteResult": "fail",
+      "why": "same record text as the case before"
+    },
+    {
+      "section": "Record lookup",
+      "name": "spfonly",
+      "record": "v=spf1 -all",
+      "suiteResult": "none",
+      "why": "same record text as the case before"
+    },
+    {
+      "section": "Record lookup",
+      "name": "spftimeout",
+      "record": "v=spf1 -all",
+      "suiteResult": "fail",
+      "why": "same record text as the case before"
+    },
+    {
+      "section": "Record lookup",
+      "name": "txttimeout",
+      "record": "v=spf1 -all",
+      "suiteResult": "temperror",
+      "why": "temperror comes from a DNS failure, which says nothing about grammar"
+    },
+    {
+      "section": "Selecting records",
+      "name": "multispf1",
+      "record": "v=spf1 -all",
+      "suiteResult": [
+        "permerror",
+        "fail"
+      ],
+      "why": "same record text as an earlier case; the suite result is about two records existing"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "invalid-domain-empty-label",
+      "record": "v=spf1 a:mail.example...com -all",
+      "suiteResult": [
+        "fail",
+        "permerror"
+      ],
+      "why": "the suite accepts either result: the grammar allows empty labels, which are a DNS name rule"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "invalid-domain-long",
+      "record": "v=spf1 a:a123456789012345678901234567890123456789012345678901234567890123.example.com -all",
+      "suiteResult": [
+        "fail",
+        "permerror"
+      ],
+      "why": "the suite accepts either result: a label over 63 characters is a DNS name rule"
+    },
+    {
+      "section": "Record evaluation",
+      "name": "invalid-domain-long-via-macro",
+      "record": "v=spf1 a:%{H}.bar -all",
+      "suiteResult": [
+        "fail",
+        "permerror"
+      ],
+      "why": "the suite accepts either result: the length comes from macro expansion, which needs a real message"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-nomatch-invalid",
+      "record": "v=spf1 ptr -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "PTR mechanism syntax",
+      "name": "ptr-match-ip6",
+      "record": "v=spf1 ptr -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-dual-cidr-ip6-match",
+      "record": "v=spf1 a/24//64 -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-multi-ip2",
+      "record": "v=spf1 a:foo.example.com/24",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr4-0",
+      "record": "v=spf1 a/0 -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr4-0-ip6",
+      "record": "v=spf1 a/0 -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr6-0-ip4mapped",
+      "record": "v=spf1 a//0 -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr6-0-ip6",
+      "record": "v=spf1 a//0 -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-cidr6-0-nxdomain",
+      "record": "v=spf1 a//0 -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "A mechanism syntax",
+      "name": "a-colon-domain-ip4mapped",
+      "record": "v=spf1 a:foo:bar/baz.example.com",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-temperror",
+      "record": "v=spf1 include:ip8.example.com -all",
+      "suiteResult": "temperror",
+      "why": "temperror comes from a DNS failure, which says nothing about grammar"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-permerror",
+      "record": "v=spf1 include:e6.example.com -all",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from the included record, not from the record that holds the include"
+    },
+    {
+      "section": "Include mechanism semantics and syntax",
+      "name": "include-none",
+      "record": "v=spf1 include:erehwon.example.com -all",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from a name with no record, which is a DNS fact"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-multi-ip2",
+      "record": "v=spf1 mx:foo.example.com/24",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr4-0",
+      "record": "v=spf1 mx/0 -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr4-0-ip6",
+      "record": "v=spf1 mx/0 -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr6-0-ip4mapped",
+      "record": "v=spf1 mx//0 -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr6-0-ip6",
+      "record": "v=spf1 mx//0 -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-cidr6-0-nxdomain",
+      "record": "v=spf1 mx//0 -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-colon-domain-ip4mapped",
+      "record": "v=spf1 mx:foo:bar/baz.example.com",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-empty",
+      "record": "v=spf1 mx",
+      "suiteResult": "neutral",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "MX mechanism syntax",
+      "name": "mx-implicit",
+      "record": "v=spf1 mx",
+      "suiteResult": "neutral",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-ip6",
+      "record": "v=spf1 exists:mail.example.com",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "EXISTS mechanism syntax",
+      "name": "exists-dnserr",
+      "record": "v=spf1 exists:err.example.com -all",
+      "suiteResult": "temperror",
+      "why": "temperror comes from a DNS failure, which says nothing about grammar"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-ip4",
+      "record": "v=spf1 ip6:::1.1.1.1/0",
+      "suiteResult": "neutral",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-0",
+      "record": "v=spf1 ip6:::1.1.1.1/0",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "IP6 mechanism syntax",
+      "name": "cidr6-33-ip4",
+      "record": "v=spf1 ip6:Cafe:Babe:8000::/33",
+      "suiteResult": "neutral",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Semantics of exp and other modifiers",
+      "name": "redirect-none",
+      "record": "v=spf1 redirect=erehwon.example.com",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from a name with no record, which is a DNS fact"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "v-macro-ip6",
+      "record": "v=spf1 -all exp=e4msg.example.com",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "p-macro-ip4-valid",
+      "record": "v=spf1 -all exp=e6msg.example.com",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "p-macro-ip6-novalid",
+      "record": "v=spf1 -all exp=e6msg.example.com",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "p-macro-ip6-valid",
+      "record": "v=spf1 -all exp=e6msg.example.com",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "invalid-hello-macro",
+      "record": "v=spf1 a:%{H} -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Macro expansion rules",
+      "name": "hello-domain-literal",
+      "record": "v=spf1 a:%{H} -all",
+      "suiteResult": "fail",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Processing limits",
+      "name": "redirect-loop",
+      "record": "v=spf1 ip4:1.1.1.1 redirect=e1.example.com",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from a loop between records, which is evaluation"
+    },
+    {
+      "section": "Processing limits",
+      "name": "include-loop",
+      "record": "v=spf1 include:e3.example.com",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from a loop between records, which is evaluation"
+    },
+    {
+      "section": "Processing limits",
+      "name": "mx-limit",
+      "record": "v=spf1 mx",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from the number of MX records found, which is a DNS fact"
+    },
+    {
+      "section": "Processing limits",
+      "name": "ptr-limit",
+      "record": "v=spf1 ptr",
+      "suiteResult": [
+        "neutral",
+        "pass"
+      ],
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Processing limits",
+      "name": "false-a-limit",
+      "record": "v=spf1 a -all",
+      "suiteResult": "pass",
+      "why": "same record text as an earlier case"
+    },
+    {
+      "section": "Processing limits",
+      "name": "mech-over-limit",
+      "record": "v=spf1 a mx a mx a mx a mx a ptr a ip4:1.2.3.4 -all",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from the eleventh lookup term, which the lookup count test covers, not a grammar rule"
+    },
+    {
+      "section": "Processing limits",
+      "name": "include-over-limit",
+      "record": "v=spf1 a include:inc.example.com a ip4:1.2.3.4 -all",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from the lookups of the included record, which is evaluation"
+    },
+    {
+      "section": "Processing limits",
+      "name": "void-over-limit",
+      "record": "v=spf1 a:err.example.com a:err1.example.com a:err2.example.com ?all",
+      "suiteResult": "permerror",
+      "why": "the permerror comes from void lookups, which is a DNS fact"
+    }
+  ]
+}
