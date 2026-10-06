@@ -4,7 +4,7 @@
     "pdf-to-image": "The PDF reader library has an optional image decoder that compiles a module from bytes, and this page never reaches it."
   },
   "eval": {
-    "mermaid-renderer": "Bundled library code looks up the global object with a Function call only after two safe lookups fail, which never happens in a browser.",
+    "mermaid-renderer": "Bundled library code looks up the global object with a Function call only after two safe lookups fail, and a parser holds an indirect eval after a return; neither runs in a browser.",
     "pdf-text-metadata": "The PDF reader library looks up the global object with a Function call only after two safe lookups fail, which never happens in a browser.",
     "pdf-to-image": "The PDF reader library looks up the global object with a Function call only after two safe lookups fail, which never happens in a browser.",
     "php-formatter": "The match is the PHP eval construct being printed back as formatted text by the formatter, not a call the page makes.",
@@ -13,12 +13,15 @@
     "xsd-validator": "The match is a method named eval on the XML engine's XPath wrapper, which evaluates XPath and not script."
   },
   "fetch": {
+    "case-converter": "The match is the word XMLHttpRequest in the page's example input and help text, a name to convert between cases, not a call.",
     "curl-converter": "The match is sample code the page prints for the visitor to copy, not a call the page makes.",
-    "jq-playground": "The engine loader has a fetch path for its module bytes that is not taken, because the bytes are inlined in the page.",
+    "html-formatter": "The HTML minifier carries a request shim for its own CSS minifier, which this page replaces with csso, and the JS minifier lists XMLHttpRequest as a name; nothing sends a request.",
+    "jq-playground": "The engine loader has fetch and XMLHttpRequest paths for its module bytes and lazy files that are not taken, because the bytes are inlined in the page.",
+    "js-formatter": "The match is XMLHttpRequest in the JS minifier's built-in list of browser property names, which it reads as text so it never renames them, not a call.",
     "mermaid-renderer": "The match is a method named fetch on the diagram engine's math token reader, which reads text and makes no request.",
-    "pdf-text-metadata": "The PDF reader library has a fetch path for loading a document by address that this page never takes, because it hands over bytes.",
-    "pdf-to-image": "The PDF reader library has a fetch path for loading a document by address that this page never takes, because it hands over bytes.",
-    "qr-barcode-reader": "The engine loader has a fetch path for its module bytes that is not taken, because the bytes are inlined in the page.",
-    "sqlite-viewer": "The engine loader has a fetch path for its module bytes that is not taken, because the bytes are inlined in the page."
+    "pdf-text-metadata": "The PDF reader library has fetch and XMLHttpRequest paths for loading a document or font data by address that this page never takes, because it hands over bytes.",
+    "pdf-to-image": "The PDF reader library has fetch and XMLHttpRequest paths for loading a document or font data by address that this page never takes, because it hands over bytes.",
+    "qr-barcode-reader": "The engine loader has fetch and XMLHttpRequest paths for its module bytes that are not taken, because the bytes are inlined in the page.",
+    "sqlite-viewer": "The engine loader has fetch and XMLHttpRequest paths for its module bytes that are not taken, because the bytes are inlined in the page."
   }
 }

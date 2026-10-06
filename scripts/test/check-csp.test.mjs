@@ -175,6 +175,49 @@ describe('the fixed lists and the token table', () => {
     expect([...scanTokens('a.fetch(x); this.eval(y); xWorker(z); retrieveFunction("a")')]).toEqual([]);
   });
 
+  it.each([
+    ['an indirect eval through a comma', '(0,eval)(e)', 'eval'],
+    ['an eval read from the global object', 'globalThis.eval(s)', 'eval'],
+    ['an eval read from window', 'window.eval(s)', 'eval'],
+    ['a timer given a string', 'setTimeout("f()",5)', 'eval'],
+    ['an interval given a template', 'setInterval(`f()`,5)', 'eval'],
+    ['a function made through a constructor property', '(function(){}).constructor("return this")()', 'eval'],
+    ['a bare Function call with variable arguments', 'Function(a,b)', 'eval'],
+    ['an eval at the very start of a chunk', 'eval(s)', 'eval'],
+    ['a shared worker', 'new SharedWorker(u)', 'workers'],
+    ['WebAssembly copied into a variable', 'const W=WebAssembly;W.instantiate(b)', 'wasm'],
+    ['WebAssembly destructured', 'const{instantiate:i}=WebAssembly', 'wasm'],
+    ['a computed WebAssembly member', 'WebAssembly["instantiate"](b)', 'wasm'],
+    ['a request object', 'const x=new XMLHttpRequest', 'fetch'],
+    ['a request object read as a member', 'const x=new g.XMLHttpRequest', 'fetch'],
+    ['a socket', 'new WebSocket(u)', 'fetch'],
+    ['a server event stream', 'new EventSource(u)', 'fetch'],
+    ['a beacon', 'navigator.sendBeacon(u,d)', 'fetch'],
+    ['a fetch at the very start of a chunk', 'fetch(u)', 'fetch'],
+  ])('detects %s', (_label, code, token) => {
+    expect([...scanTokens(code)]).toEqual([token]);
+  });
+
+  it('keeps lookalike names and safe calls clean in every class', () => {
+    for (const code of [
+      'a.fetch(x)',
+      'this.eval(y)',
+      'xWorker(z)',
+      'retrieveFunction("a")',
+      'typeof WebAssembly<"u"',
+      'isFunction(x)',
+      'setTimeout(f,5)',
+      'x.constructor(y)',
+      'WebAssembly.validate(b)',
+      'evaluate(x)',
+      'refetch(x)',
+      'such as a background worker, WebAssembly, or generating code',
+      'a module (WebAssembly) in text',
+    ]) {
+      expect([...scanTokens(code)], code).toEqual([]);
+    }
+  });
+
   it('follows imports and dynamic imports from a page entry and never expands the shell', () => {
     const manifest = {
       'index.html': {
@@ -197,6 +240,15 @@ describe('the fixed lists and the token table', () => {
 
 describe('the rule table on single pages', () => {
   const judge = (id, needs, tokens = [], acks = []) => judgePage({ id, needs, tokens, acks });
+
+  it('fails a page whose only code generation is an indirect eval, and one whose only worker is shared', () => {
+    expect(judgePage({ id: 'x', needs: [], tokens: scanTokens('(0,eval)(s)'), acks: [] })[0]).toContain(
+      'does not declare "eval"',
+    );
+    expect(judgePage({ id: 'x', needs: [], tokens: scanTokens('new SharedWorker(u)'), acks: [] })[0]).toContain(
+      'does not declare "workers"',
+    );
+  });
 
   it('refuses a need outside the closed list', () => {
     expect(judge('p', ['font'])[0]).toContain('not on the closed list');
@@ -370,7 +422,11 @@ describe('a fake build through the real gate', () => {
 
   it('fails a fetch call in a page closure without a reason, passes with one, and fails a stale one', () => {
     const rows = [{ id: 'plain', needs: [], code: FETCH_CODE }];
-    expectFail(makeFakeBuild({ rows }), 'holds a fetch call and scripts/csp-acks.json has no reviewed reason');
+    expectFail(makeFakeBuild({ rows }), 'holds a network call (the fetch class');
+    expectFail(
+      makeFakeBuild({ rows: [{ id: 'plain', needs: [], code: 'const x=new g.XMLHttpRequest;x.open("GET",u)' }] }),
+      'scripts/csp-acks.json has no reviewed reason for this page',
+    );
     const acked = { ...NO_ACKS, fetch: { plain: 'A loader path that is never taken.' } };
     expect(expectPass(makeFakeBuild({ rows, acks: acked }))).toContain('ack=1');
     expectFail(

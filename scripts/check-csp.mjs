@@ -11,8 +11,8 @@
  *   `tools/<id>/src/meta.json`, apart from the proven false positives in `scripts/csp-acks.json`;
  * - run-time code generation appears only on the fixed list `EVAL_PAGES`, and the reserved WebAssembly inspector
  *   never declares WebAssembly or code generation;
- * - no `fetch(` appears in any page closure without a reviewed acknowledgement, and none of the four tokens appears in
- *   the shell chunks;
+ * - no network call (the fetch class) appears in any page closure without a reviewed acknowledgement, and none of
+ *   the four code-behaviour token classes appears in the shell chunks;
  * - every written HTML file opens its head with exactly one policy, equal to the one the page's needs produce.
  *
  * Every check calls note() and keeps going; one report-and-exit block runs at the end. The gate never prints text it
@@ -53,12 +53,31 @@ export const NO_COMPILE_PAGES = Object.freeze(['wasm-inspector']);
 /** Ids named by the fixed lists that have no page yet. Such an id is reported as reserved and does not fail. */
 export const RESERVED_IDS = Object.freeze(['font-inspector', 'wasm-inspector']);
 
-/** The token classes scanned for in built chunks, raw text included (documentation strings count). */
+/**
+ * The token classes scanned for in built chunks, raw text included (documentation strings count).
+ *
+ * Each class names the forms minified code really uses, while a method of another object (`a.fetch(`, `this.eval(`)
+ * or a longer name (`xWorker(`, `isFunction(`) stays clean:
+ * - workers: a dedicated or a shared worker;
+ * - wasm: the compiling calls, a computed member of `WebAssembly`, and `WebAssembly` copied into a variable or
+ *   destructured as minified code writes it, with no space (`W=WebAssembly;`, `{instantiate:i}=WebAssembly`), so the
+ *   word in a sentence such as "a worker, WebAssembly, or" on a site page is not taken for code;
+ * - eval: `new Function(`, a bare `Function(` call, direct and indirect eval (`eval(`, `(0,eval)(`,
+ *   `globalThis.eval(`), a timer given a string, and `.constructor("...")`;
+ * - fetch, the network class: `fetch(`, any mention of `XMLHttpRequest` (minified code often reaches it as a member
+ *   such as `new g.XMLHttpRequest`), `new WebSocket(`, `new EventSource(` and `sendBeacon(`.
+ */
 export const TOKENS = Object.freeze([
-  ['workers', /new Worker\(|\bWorker\(/],
-  ['wasm', /WebAssembly\.(instantiate|compile|Module|instantiateStreaming|compileStreaming)/],
-  ['eval', /new Function\(|[^A-Za-z0-9_.$]Function\(["'`$]|[^A-Za-z0-9_.$]eval\(/],
-  ['fetch', /[^A-Za-z0-9_.$]fetch\(/],
+  ['workers', /\b(?:Shared)?Worker\(/],
+  [
+    'wasm',
+    /WebAssembly\.(?:instantiate|compile|Module|instantiateStreaming|compileStreaming)\b|WebAssembly\s*\[|[=:]WebAssembly(?:[;,)}]|$)/,
+  ],
+  [
+    'eval',
+    /new Function\(|(?:^|[^A-Za-z0-9_.$])Function\(|(?:^|[^A-Za-z0-9_$])eval\s*\)\s*\(|(?:^|[^A-Za-z0-9_.$])eval\(|(?:globalThis|window|self)\.eval\(|set(?:Timeout|Interval)\(\s*["'`]|\.constructor\(\s*["'`]/,
+  ],
+  ['fetch', /(?:^|[^A-Za-z0-9_.$])fetch\(|XMLHttpRequest|new WebSocket\(|new EventSource\(|sendBeacon\(/],
   ['sandboxed-html', /kind\s*:\s*["'`]sandboxed-html["'`]/],
 ]);
 
@@ -149,7 +168,7 @@ export function judgePage({ id, needs, tokens, acks }) {
 
   // The three grants a token can justify.
   const meaning = {
-    workers: 'a background worker (new Worker)',
+    workers: 'a background worker (Worker or SharedWorker)',
     wasm: 'WebAssembly compilation',
     eval: 'run-time code generation (new Function or eval)',
   };
@@ -184,7 +203,9 @@ export function judgePage({ id, needs, tokens, acks }) {
       'the "fetch" acknowledgement in scripts/csp-acks.json is stale: the built code no longer holds that token. Remove the entry.',
     );
   } else if (seen.has('fetch') && !acked.has('fetch')) {
-    fail('the built code holds a fetch call and scripts/csp-acks.json has no reviewed reason for this page.');
+    fail(
+      'the built code holds a network call (the fetch class: fetch, XMLHttpRequest, WebSocket, EventSource or sendBeacon) and scripts/csp-acks.json has no reviewed reason for this page.',
+    );
   }
 
   // Inline preview styles follow the preview block exactly.
