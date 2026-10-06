@@ -15,6 +15,7 @@ import {
   namesDirective,
   OUTSIDE_KINDS,
   outsideRequestOutcomes,
+  runProbeBody,
   wasmCompileOutcome,
   type ControlResult,
   type CspFinding,
@@ -228,6 +229,39 @@ test.describe('the violation probe sees what the policy refuses', () => {
     });
     expect(seen, 'the recording server saw nothing from the worker').toEqual([]);
     expect(probe.findings().length, 'the refusal is visible somewhere (event or console line)').toBeGreaterThan(0);
+  });
+
+  test('a class that extends Blob keeps its own class and methods with the probe armed', async ({ page }) => {
+    const probe = await armCspProbe(page);
+    await openToolPage(page, 'regex-tester');
+    // Page code (a same-origin script, governed by the page policy): a library class built on Blob, once with a
+    // JavaScript type (which the probe prefixes) and once with a plain text type.
+    const { result } = await runProbeBody(
+      page,
+      `class Tagged extends Blob { tag() { return 'kept'; } }
+      const js = new Tagged(['1;'], { type: 'text/javascript' });
+      const plain = new Tagged(['plain'], { type: 'text/plain' });
+      return {
+        jsIsTagged: js instanceof Tagged,
+        jsTag: typeof js.tag === 'function' ? js.tag() : 'lost',
+        plainIsTagged: plain instanceof Tagged,
+        plainTag: typeof plain.tag === 'function' ? plain.tag() : 'lost',
+        stillBlob: js instanceof Blob && plain instanceof Blob,
+        plainText: await plain.text(),
+        jsPrefixed: (await js.text()).startsWith('try{self.addEventListener'),
+      };`,
+      0,
+    );
+    expect(result, 'a Blob subclass under the probe').toEqual({
+      jsIsTagged: true,
+      jsTag: 'kept',
+      plainIsTagged: true,
+      plainTag: 'kept',
+      stillBlob: true,
+      plainText: 'plain',
+      jsPrefixed: true,
+    });
+    expect(probe.findings().map(describeFinding), 'the subclass raised a violation').toEqual([]);
   });
 
   test('the page own worker still runs with the probe armed and the policy in force', async ({ page }) => {

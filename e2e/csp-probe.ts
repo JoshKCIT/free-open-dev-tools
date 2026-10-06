@@ -74,13 +74,14 @@ const INIT = `(() => {
   document.addEventListener('securitypolicyviolation', (e) => report(topLevel ? 'document' : 'frame', e.effectiveDirective, String(e.blockedURI).slice(0, 80)));
   const Original = window.Blob;
   const PREFIX = "try{self.addEventListener('securitypolicyviolation',function(e){try{new BroadcastChannel('__fodt_csp').postMessage({d:e.effectiveDirective,b:String(e.blockedURI).slice(0,80)})}catch(x){}})}catch(x){};";
-  window.Blob = new Proxy(Original, { construct(target, args) {
+  // newTarget is kept, so a class that extends Blob still gets its own prototype and methods under the probe.
+  window.Blob = new Proxy(Original, { construct(target, args, newTarget) {
     const parts = args[0];
     const opts = args[1];
     if (opts && typeof opts.type === 'string' && /^(text|application)[/]javascript/.test(opts.type) && Array.isArray(parts)) {
-      return new target([PREFIX, ...parts], opts);
+      return Reflect.construct(target, [[PREFIX, ...parts], ...args.slice(1)], newTarget);
     }
-    return new target(...args);
+    return Reflect.construct(target, args, newTarget);
   } });
   if (topLevel) {
     try {
