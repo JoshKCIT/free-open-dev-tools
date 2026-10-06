@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -594,6 +594,30 @@ async function withRecordingServer(body: (address: string) => Promise<void>): Pr
 }
 
 /**
+ * Every page of this site carries a policy that refuses outside requests, so a control that must show a request being
+ * heard cannot be made from a tool page: the browser refuses it before it is made. The control request comes from a
+ * fresh page of the same browser that no tool policy covers: a plain page served by a small local server (a page with a
+ * real local address, so the browser lets it reach the local recording server). Written here, never imported from
+ * another spec.
+ */
+async function withPlainPage(context: BrowserContext, body: (plain: Page) => Promise<void>): Promise<void> {
+  const server = createServer((_request, response) => {
+    response.setHeader('content-type', 'text/html');
+    response.end('<!doctype html><html><head><meta charset="utf-8"><title>plain</title></head><body></body></html>');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  const plain = await context.newPage();
+  try {
+    await plain.goto(`http://127.0.0.1:${port}/`);
+    await body(plain);
+  } finally {
+    await plain.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+/**
  * 19 hostile diagrams. `{ADDRESS}` stands for the local recording server. Each is refused before drawing, fails to
  * parse, or is drawn and checked, and none may make a single request. `outcome` is what the page does with it today:
  * a refusal by the check made before any frame exists, a parse error the engine reports, or a drawing.
@@ -741,24 +765,28 @@ test('mermaid-renderer: hostile diagrams are refused or drawn without a single r
 test('mermaid-renderer: the recording server sees a request a plain page makes, so its silence means something', async ({
   page,
 }) => {
+  // The tool page's own policy refuses a request to the recording server, so the control is asked by a plain page that
+  // no tool policy covers (see withPlainPage): the same server, asked by a page, must be heard.
   const control = await withRecordingServer(async (address) => {
-    await openTool(page);
-    await page.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+    await withPlainPage(page.context(), async (plain) => {
+      await plain.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+    });
   });
   expect(control).toEqual(['GET /control']);
   // And an image the page's own document asks for is seen too, as the engine's images would be without the frame's policy.
   const image = await withRecordingServer(async (address) => {
-    await openTool(page);
-    await page.evaluate(
-      (target) =>
-        new Promise<void>((resolve) => {
-          const probe = new Image();
-          probe.onload = () => resolve();
-          probe.onerror = () => resolve();
-          probe.src = target;
-        }),
-      `${address}/control-image.png`,
-    );
+    await withPlainPage(page.context(), async (plain) => {
+      await plain.evaluate(
+        (target) =>
+          new Promise<void>((resolve) => {
+            const probe = new Image();
+            probe.onload = () => resolve();
+            probe.onerror = () => resolve();
+            probe.src = target;
+          }),
+        `${address}/control-image.png`,
+      );
+    });
   });
   expect(image.length).toBeGreaterThan(0);
   expect(new Set(image)).toEqual(new Set(['GET /control-image.png']));

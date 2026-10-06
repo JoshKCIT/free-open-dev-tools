@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { buildFixtureFile, writePng } from './fixture-files';
@@ -679,6 +679,30 @@ async function withRecordingServer(body: (address: string) => Promise<void>): Pr
   return seen;
 }
 
+/**
+ * Every page of this site carries a policy that refuses outside requests, so a control that must show a request being
+ * heard cannot be made from a tool page: the browser refuses it before it is made. The control request comes from a
+ * fresh page of the same browser that no tool policy covers: a plain page served by a small local server (a page with a
+ * real local address, so the browser lets it reach the local recording server). Written here, never imported from
+ * another spec.
+ */
+async function withPlainPage(context: BrowserContext, body: (plain: Page) => Promise<void>): Promise<void> {
+  const server = createServer((_request, response) => {
+    response.setHeader('content-type', 'text/html');
+    response.end('<!doctype html><html><head><meta charset="utf-8"><title>plain</title></head><body></body></html>');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  const plain = await context.newPage();
+  try {
+    await plain.goto(`http://127.0.0.1:${port}/`);
+    await body(plain);
+  } finally {
+    await plain.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
 test('sass-less-compiler: an import of another file or address is refused in the page and a local server receives nothing', async ({
   page,
 }) => {
@@ -714,9 +738,12 @@ test('sass-less-compiler: an import of another file or address is refused in the
   // The server the stylesheets name saw no request at all.
   expect(seen).toEqual([]);
 
-  // The detector can fail: a page script that requests the server's address is heard by the same kind of server.
+  // The detector can fail: a page script that requests the server's address is heard by the same kind of server. The
+  // tool page's own policy refuses that request, so it is made by a plain page that no tool policy covers.
   const control = await withRecordingServer(async (address) => {
-    await page.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+    await withPlainPage(page.context(), async (plain) => {
+      await plain.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+    });
   });
   expect(control).toEqual(['GET /control']);
 });

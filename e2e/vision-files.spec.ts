@@ -75,6 +75,30 @@ function offending(requests: string[]): string[] {
 }
 
 /**
+ * Every page of this site carries a policy that refuses outside requests, so a control that must show a request being
+ * heard cannot be made from a tool page: the browser refuses it before it is made. The control request comes from a
+ * fresh page of the same browser that no tool policy covers: a plain page served by a small local server (a page with a
+ * real local address, so the browser lets it reach the local recording server). Written here, never imported from
+ * another spec.
+ */
+async function withPlainPage(context: BrowserContext, body: (plain: Page) => Promise<void>): Promise<void> {
+  const server = createServer((_request, response) => {
+    response.setHeader('content-type', 'text/html');
+    response.end('<!doctype html><html><head><meta charset="utf-8"><title>plain</title></head><body></body></html>');
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  const plain = await context.newPage();
+  try {
+    await plain.goto(`http://127.0.0.1:${port}/`);
+    await body(plain);
+  } finally {
+    await plain.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+/**
  * Attaches a file to the file field. The pages are prerendered, so a file set in the first moments after load can be
  * dropped again when the page finishes starting; the attachment is repeated until the page shows the file's name.
  */
@@ -213,11 +237,14 @@ test('pdf-text-metadata: text of a three-page file comes back page by page in pa
 });
 
 test('pdf-text-metadata: the request recorder of this spec sees a request the page makes', async ({ page }) => {
-  // The detector the other tests rely on can fail: a script that asks for an address of the page's own origin is seen.
-  await openTool(page, 'pdf-text-metadata');
-  const requests = recordRequests(page);
-  await page.evaluate(() => fetch('/tools/pdf-text-metadata/').then((response) => response.status));
-  expect(offending(requests).length).toBeGreaterThanOrEqual(1);
+  // The detector the other tests rely on can fail: a script that asks for an address of its own page's origin is seen.
+  // The tool page's own policy refuses even a request to its own origin before it is made, so the recorder is shown on a
+  // plain page that no tool policy covers.
+  await withPlainPage(page.context(), async (plain) => {
+    const requests = recordRequests(plain);
+    await plain.evaluate(() => fetch('/control').then((response) => response.status));
+    expect(offending(requests).length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 test('pdf-text-metadata: the metadata of a tagged file is listed and its stripped copy re-reads with none', async ({
@@ -2484,26 +2511,29 @@ test('image-converter: hostile SVGs are refused and a local server receives noth
 test('image-converter: the recording server sees a plain page request, so its silence means something', async ({
   page,
 }) => {
+  // The tool page's own policy refuses a request to the recording server, so the control is asked by a plain page that
+  // no tool policy covers (see withPlainPage): the same server, asked by a page, must be heard.
   const control = await withRecordingServer(async (address) => {
-    await openTool(page, 'image-converter');
-    // The same server, asked by the page itself: it must be heard.
-    await page.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+    await withPlainPage(page.context(), async (plain) => {
+      await plain.evaluate((target) => fetch(target, { mode: 'no-cors' }).then(() => undefined), `${address}/control`);
+    });
   });
   expect(control).toEqual(['GET /control']);
   // And a picture the page's own document asks for is heard too, which is what an SVG with an image in it would be if it
   // were drawn without the check.
   const image = await withRecordingServer(async (address) => {
-    await openTool(page, 'image-converter');
-    await page.evaluate(
-      (target) =>
-        new Promise<void>((resolve) => {
-          const probe = new Image();
-          probe.onload = () => resolve();
-          probe.onerror = () => resolve();
-          probe.src = target;
-        }),
-      `${address}/control-image.svg`,
-    );
+    await withPlainPage(page.context(), async (plain) => {
+      await plain.evaluate(
+        (target) =>
+          new Promise<void>((resolve) => {
+            const probe = new Image();
+            probe.onload = () => resolve();
+            probe.onerror = () => resolve();
+            probe.src = target;
+          }),
+        `${address}/control-image.svg`,
+      );
+    });
   });
   expect(new Set(image)).toEqual(new Set(['GET /control-image.svg']));
 });
