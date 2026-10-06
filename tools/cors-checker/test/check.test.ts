@@ -77,7 +77,7 @@ it('a wildcard never covers Authorization and never applies when credentials are
 
   // cors-preflight-star.any.js:41, 42 and 44: with credentials included * is not a wildcard for methods or headers.
   const include = {
-    credentials: 'include',
+    credentials: 'include' as const,
     responseHeaders: `Access-Control-Allow-Origin: ${PAGE}\nAccess-Control-Allow-Credentials: true`,
   };
   const credentialed = answer({ origin: PAGE, credentials: true, methods: '*', headers: '*' });
