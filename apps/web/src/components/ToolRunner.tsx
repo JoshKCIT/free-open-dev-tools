@@ -283,8 +283,10 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const [run, setRun] = useState({ id: 0, startedAt: 0 });
   // The id of the run whose cue is on screen, or null. Set when the cue first appears, reset by the effect below.
   const [cueShownFor, setCueShownFor] = useState<number | null>(null);
-  const cueShownRef = useRef<number | null>(null);
-  // The one status message: the start sentence when a cue appears, then Finished. or Cancelled. when that cue ends.
+  // True from the moment the start sentence was spoken until the end sentence is, so a run that superseded a shown one
+  // still ends with one message and a run that never showed a cue never touches the status.
+  const announced = useRef(false);
+  // The one status message: the start sentence when a cue appears, then Finished. or Cancelled. when the run ends.
   const [status, setStatus] = useState('');
   // How the run that is ending ended: abandoned by Cancel, Reset or an edit, or run to its own end.
   const endedBy = useRef<'finished' | 'cancelled'>('finished');
@@ -298,7 +300,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
     setResult(null);
     setCrashed(null);
     setProgress(null);
-    cueShownRef.current = null;
+    announced.current = false;
     setCueShownFor(null);
     setStatus('');
   }, [base]);
@@ -424,15 +426,15 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
 
   // The end of a shown cue. The cue clears its own timers when it unmounts (it renders only while a run is going and is
   // keyed on the run), so every way a run can end, and a run that supersedes another, reaches the same single cleanup.
-  // This effect then says the end once, and only for a cue that was shown: a run that never showed the cue changes
-  // nothing, and a superseded run's cue is dropped without a message because the work goes on.
+  // This effect drops a cue that belongs to an earlier run and, once nothing is running, says the end once, and only
+  // when the start was spoken: a run that never showed the cue changes the status not at all, and a run that supersedes
+  // a shown one says nothing at the switch because the work goes on, then ends with the one message.
   useEffect(() => {
-    const shownFor = cueShownRef.current;
-    if (shownFor === null) return;
-    if (running && shownFor === run.id) return;
-    cueShownRef.current = null;
-    setCueShownFor(null);
-    if (!running) setStatus(endedBy.current === 'cancelled' ? 'Cancelled.' : 'Finished.');
+    setCueShownFor((id) => (running && id === run.id ? id : null));
+    if (!running && announced.current) {
+      announced.current = false;
+      setStatus(endedBy.current === 'cancelled' ? 'Cancelled.' : 'Finished.');
+    }
   }, [running, run.id]);
 
   // After Cancel, put focus where the visitor can carry on: the Run button, or the Input title on a page that has none.
@@ -628,7 +630,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
             cancellable={Boolean(tool.cancellable)}
             stale={hasEarlierResult}
             onShown={() => {
-              cueShownRef.current = run.id;
+              announced.current = true;
               setCueShownFor(run.id);
               setStatus(startSentence(tool.runLimit));
             }}

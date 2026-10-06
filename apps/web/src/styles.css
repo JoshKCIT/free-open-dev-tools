@@ -712,6 +712,11 @@ input[type='file'] {
 :root[data-theme='light'] .output-stale {
   opacity: 0.92;
 }
+/* Block labels are drawn in the faintest text colour, which is already under 4.5:1 in the light theme and barely over it
+   in the dark one. Dimming on top would make them unreadable, so while the result is dimmed they use the muted colour. */
+.output-stale .output-label {
+  color: var(--text-muted);
+}
 
 .tree-view {
   display: flex;

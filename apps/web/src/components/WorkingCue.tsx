@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { RunLimit } from '../lib/tool-ui';
 
 /** A run that finishes within this many milliseconds shows nothing new. */
@@ -89,11 +89,18 @@ export default function WorkingCue({
   }, [runId, startedAt]);
 
   if (elapsedMs === null) return null;
+  const parts = [cueSentence(elapsedMs, limit)];
+  if (cancellable) parts.push('Press Cancel to stop it.');
+  if (stale) parts.push('Showing the previous result while this runs.');
+  // A plain space between the parts keeps the text readable when it is copied; the flex layout ignores it.
   return (
     <div className="working-cue" aria-hidden="true">
-      <span>{cueSentence(elapsedMs, limit)}</span>
-      {cancellable ? <span>Press Cancel to stop it.</span> : null}
-      {stale ? <span>Showing the previous result while this runs.</span> : null}
+      {parts.map((part, i) => (
+        <Fragment key={part}>
+          {i > 0 ? ' ' : null}
+          <span>{part}</span>
+        </Fragment>
+      ))}
     </div>
   );
 }
