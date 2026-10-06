@@ -360,7 +360,8 @@ test.describe('public copy carries no derivation story', () => {
 
   test('the home page statistics row holds exactly three items', async ({ page }) => {
     await page.goto(rel('/'));
-    expect(await page.locator('.stat-row > div').count()).toBe(3);
+    // The home page draws its statistics when it starts, so the count is awaited, not read once.
+    await expect(page.locator('.stat-row > div')).toHaveCount(3);
   });
 
   test('the privacy page has no link into the catalog', async ({ page }) => {
@@ -403,7 +404,8 @@ test.describe('the broadened catalog', () => {
       expect(text, `${path} names developer tools or utilities`).toContain('developer');
     }
     await page.goto(rel('/'));
-    expect(await page.locator('.stat-row > div').count(), 'the home statistics row still holds three items').toBe(3);
+    // The home page draws its statistics when it starts, so the count is awaited, not read once.
+    await expect(page.locator('.stat-row > div'), 'the home statistics row still holds three items').toHaveCount(3);
   });
 
   test('the Money category sits after Images, documents and archives and before Reference tables', async ({ page }) => {
