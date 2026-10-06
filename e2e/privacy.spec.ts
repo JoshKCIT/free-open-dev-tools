@@ -987,6 +987,12 @@ test.describe('local processing', () => {
         `Processing input on /tools/${id} caused a network request. A local tool must make none.`,
       ).toEqual([]);
 
+      // A request the page policy blocks produces no request event, so the assertion above stays silent for a leak
+      // the browser refused and this one is what catches it. Proven to fail against a deliberate blocked leak on
+      // 2026-10-05, in all four projects (chromium, firefox, webkit, mobile-chrome): a throwaway build of the Base64
+      // page that sent its input to an outside address on each run turned this assertion red, naming this exact
+      // message and the refused address, while the request assertion above stayed silent; it passed again once the
+      // leak was removed. The leak was never committed.
       const violations = csp.findings().map(describeFinding);
       expect(
         violations,
