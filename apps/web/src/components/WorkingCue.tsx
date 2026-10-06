@@ -18,14 +18,16 @@ export function formatLimitSeconds(ms: number): string {
 
 /**
  * The visible line. N is floored to whole seconds, so it never exceeds the true elapsed time. Only a total limit can be
- * passed: a quiet limit restarts with every sign of progress, so a long run is not past it.
+ * passed: a quiet limit restarts with every sign of progress, so a long run is not past it. Past a total limit the line
+ * never says the run is stopping: the helper starts its own clock only when the job reaches the background step, and
+ * work the page does before or after that step is not counted, so a run can go on past the number and still finish.
  */
 export function cueSentence(elapsedMs: number, limit: RunLimit | undefined): string {
   const seconds = Math.floor(Math.max(0, elapsedMs) / 1000);
   if (!limit) return `Working… ${seconds} s`;
   const x = formatLimitSeconds(limit.ms);
   if (limit.kind === 'quiet') return `Working… ${seconds} s (stops after ${x} s with no progress)`;
-  if (elapsedMs > limit.ms) return `Working… ${seconds} s, past the ${x} s limit, stopping`;
+  if (elapsedMs > limit.ms) return `Working… ${seconds} s (the ${x} s limit counts only the background step)`;
   return `Working… ${seconds} s (stops at ${x} s)`;
 }
 

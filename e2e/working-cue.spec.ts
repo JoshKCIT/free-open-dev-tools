@@ -639,7 +639,11 @@ test('glob-tester: a held run passes its limit while the helper waits, says so, 
 
   // Past the 5 second limit the helper is still waiting for the worker (its start limit is 10 seconds).
   await page.clock.runFor(4500);
-  await expect(cue(page)).toHaveText(new RegExp(`Working${ELLIPSIS} \\d+ s, past the 5 s limit, stopping`));
+  // The cue never claims a stop here: the helper's own clock has not started, so nothing stops at 5 seconds.
+  await expect(cue(page)).toHaveText(
+    new RegExp(`Working${ELLIPSIS} \\d+ s \\(the 5 s limit counts only the background step\\)`),
+  );
+  await expect(cue(page)).not.toContainText('stopping');
   await expect(output(page)).toHaveAttribute('aria-busy', 'true');
   await flushRender(page);
 

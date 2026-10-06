@@ -50,8 +50,11 @@ describe('cueSentence', () => {
     expect(cueSentence(4_000, undefined)).toBe(`Working${E} 4 s`);
   });
 
-  it('says it is past the limit, still stopping, once the total limit is passed', () => {
-    expect(cueSentence(11_000, { ms: 10_000 })).toBe(`Working${E} 11 s, past the 10 s limit, stopping`);
+  it('never claims a stop once the total limit is passed, and says the limit counts only the background step', () => {
+    expect(cueSentence(11_000, { ms: 10_000 })).toBe(
+      `Working${E} 11 s (the 10 s limit counts only the background step)`,
+    );
+    expect(cueSentence(11_000, { ms: 10_000 })).not.toMatch(/stopping|stops/);
     expect(cueSentence(10_000, { ms: 10_000 })).toBe(`Working${E} 10 s (stops at 10 s)`);
   });
 
