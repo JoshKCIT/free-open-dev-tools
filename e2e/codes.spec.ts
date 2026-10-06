@@ -5,14 +5,43 @@ import { readFileSync } from 'node:fs';
 /**
  * Four-browser decode of qr-generator's and barcode-generator's own output,
  * drawn from the page's own rendered SVG (and, for QR, the downloaded PNG
- * too) into a canvas inside the browser and decoded with a real reader
- * injected inline -- never a network request. `jsQR`'s and
- * `@zxing/library`'s UMD builds are resolved from each tool's own installed
- * `node_modules` with `createRequire` and injected with
- * `page.addScriptTag({ path })`, which inlines the file's contents into the
- * page and makes no request of any kind.
+ * too) into a canvas inside the browser and decoded with a real reader.
+ * `jsQR`'s and `@zxing/library`'s UMD builds are resolved from each tool's own
+ * installed `node_modules` with `createRequire`, served by `page.route` at an
+ * address under the site's own origin and loaded as a script element with that
+ * `src`. Every page now carries a policy whose `script-src` allows only the
+ * site itself, so the reader must arrive as a same-origin script: an inline
+ * script (what the add-script-tag helper of the test library inserts) is refused, and the
+ * policy-bypass option is never used. The reader is served from the test
+ * process, so nothing leaves the machine.
  */
 const rel = (path: string) => path.replace(/^\//, '');
+
+/**
+ * Serves the library file at `address` (a path under the page's own origin)
+ * with a JavaScript type, loads it as a script element and waits for it to run.
+ * It is loaded before the request listener of each test is attached, so the
+ * test's own "no request other than data: and blob:" assertion covers every
+ * request the tool page makes while it works and never the reader's own load.
+ */
+async function loadSameOriginScript(page: Page, address: string, filePath: string): Promise<void> {
+  const body = readFileSync(filePath, 'utf8');
+  await page.route(
+    (url) => url.pathname === address,
+    (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body }),
+  );
+  await page.evaluate(
+    (src) =>
+      new Promise<void>((resolve, reject) => {
+        const element = document.createElement('script');
+        element.addEventListener('load', () => resolve(), { once: true });
+        element.addEventListener('error', () => reject(new Error(`the script ${src} did not load`)), { once: true });
+        element.src = src;
+        document.head.append(element);
+      }),
+    address,
+  );
+}
 
 const qrGeneratorRequire = createRequire(new URL('../tools/qr-generator/package.json', import.meta.url));
 const JSQR_PATH = qrGeneratorRequire.resolve('jsqr/dist/jsQR.js');
@@ -154,12 +183,13 @@ test('qr-generator output decodes back to the exact payload for every payload ki
   const requests: string[] = [];
   await page.goto(rel('/tools/qr-generator'));
   await page.waitForLoadState('networkidle');
+  await loadSameOriginScript(page, '/__fodt-jsqr.js', JSQR_PATH);
   page.on('request', (request) => {
     const url = request.url();
     if (url.startsWith('data:') || url.startsWith('blob:')) return;
     requests.push(`${request.method()} ${url}`);
   });
-  await page.addScriptTag({ path: JSQR_PATH });
+  expect(await page.evaluate(() => typeof window.jsQR)).toBe('function');
 
   const scenarios: { kind: string; fields: Record<string, string> }[] = [
     { kind: 'text', fields: { text: 'Hello, world' } },
@@ -205,12 +235,13 @@ test('barcode-generator output decodes back to the exact data for every symbolog
   const requests: string[] = [];
   await page.goto(rel('/tools/barcode-generator'));
   await page.waitForLoadState('networkidle');
+  await loadSameOriginScript(page, '/__fodt-zxing.js', ZXING_PATH);
   page.on('request', (request) => {
     const url = request.url();
     if (url.startsWith('data:') || url.startsWith('blob:')) return;
     requests.push(`${request.method()} ${url}`);
   });
-  await page.addScriptTag({ path: ZXING_PATH });
+  expect(await page.evaluate(() => typeof window.ZXing)).toBe('object');
 
   const scenarios: { symbology: string; data: string; format: string }[] = [
     { symbology: 'code128', data: 'Wikipedia', format: 'CODE_128' },
