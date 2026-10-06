@@ -84,7 +84,17 @@ export default tseslint.config(
         {
           paths: ['react-router-dom', 'react-router'].map((name) => ({
             name,
-            importNames: ['Link', 'NavLink', 'useNavigate', 'Navigate', 'redirect'],
+            // useLinkClickHandler, Form and useSubmit each move to another route inside the same document.
+            importNames: [
+              'Link',
+              'NavLink',
+              'useNavigate',
+              'Navigate',
+              'redirect',
+              'useLinkClickHandler',
+              'Form',
+              'useSubmit',
+            ],
             message:
               'Use SiteLink or SiteNavLink: every in-site link must load a new document so the policy of the page you are on is the one in force.',
           })),
@@ -100,6 +110,12 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         ...connectionSyntax('App code must never open a peer connection, data channel or transport.'),
+        {
+          // A dynamic import of the router would reach its link components without the import ban above seeing them.
+          selector: 'ImportExpression[source.value=/^react-router(-dom)?$/]',
+          message:
+            'Import the router statically: a dynamic import would reach its link components past the ban, and every in-site link must load a new document.',
+        },
       ],
       'no-eval': 'error',
       'no-new-func': 'error',

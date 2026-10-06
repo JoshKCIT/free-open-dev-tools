@@ -28,19 +28,35 @@ describe('router links are banned outside the shared link pair', () => {
     expect(await rulesReportedFor(PAGE, code)).toContain('no-restricted-imports');
   });
 
-  it('NavLink, useNavigate, Navigate and redirect are each reported, from either package name', async () => {
+  it('NavLink, useNavigate, Navigate, redirect and the other in-document navigators are each reported, from either package name', async () => {
     for (const [name, from] of [
       ['NavLink', 'react-router-dom'],
       ['useNavigate', 'react-router-dom'],
       ['Navigate', 'react-router-dom'],
       ['redirect', 'react-router-dom'],
+      ['useLinkClickHandler', 'react-router-dom'],
+      ['Form', 'react-router-dom'],
+      ['useSubmit', 'react-router-dom'],
       ['Link', 'react-router'],
       ['useNavigate', 'react-router'],
+      ['useLinkClickHandler', 'react-router'],
     ]) {
       const code = `import { ${name} } from '${from}';\nexport const used = ${name};\n`;
       const rules = await rulesReportedFor(PAGE, code);
       expect(rules, `${name} from ${from}`).toContain('no-restricted-imports');
     }
+  });
+
+  it('a dynamic import of either router package is reported', async () => {
+    for (const from of ['react-router-dom', 'react-router']) {
+      const code = `export const load = () => import('${from}').then((m) => m.Link);\n`;
+      expect(await rulesReportedFor(PAGE, code), from).toContain('no-restricted-syntax');
+    }
+  });
+
+  it('a dynamic import of a site module stays allowed', async () => {
+    const code = `export const load = () => import('./Home');\n`;
+    expect(await rulesReportedFor(PAGE, code)).not.toContain('no-restricted-syntax');
   });
 
   it('the same import inside the shared link file reports nothing', async () => {
