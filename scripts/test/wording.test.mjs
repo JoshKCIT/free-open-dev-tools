@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from '../lib/catalog.mjs';
+import { EVAL_PAGES } from '../check-csp.mjs';
 
 /**
  * HARD-08 (D-221, D-223 i): every file that says something about the page policy says the same true thing, and none
@@ -80,6 +81,60 @@ export const FILES = [
     required: [...TRUTH_WORDS, 'weak copyleft (MPL and similar) needs an explicit owner OK'],
     sections: [['- **Hosting**', '- **Provenance**']],
   },
+  {
+    path: 'docs/ARCHITECTURE.md',
+    required: [
+      ...TRUTH_WORDS,
+      'needs',
+      'meta.json',
+      'csp-acks.json',
+      'check-csp.mjs',
+      'tree',
+      'countdown',
+      'runLimit',
+      'refreshAfterMs',
+      'inlineFiles',
+      'fresh document',
+      'Content security policy per page',
+      ...EVAL_PAGES,
+    ],
+    sections: [['### Content security policy per page', '## The privacy harness']],
+    order: ['What it blocks', 'What it cannot do'],
+  },
+  {
+    path: 'docs/DEPLOYMENT.md',
+    required: ['its own', 'framing', 'frame-ancestors', 'per-route', 'check-csp.mjs --live'],
+    sections: [
+      ['GitHub Pages was chosen', '## One-time setup'],
+      ['- Any live page does not open its head', '## Rollback'],
+      ['On a host that supports custom headers', '## Operational notes'],
+    ],
+  },
+  {
+    path: 'SECURITY.md',
+    required: TRUTH_WORDS,
+    sections: [['**Each page carries its own content security policy.**', '**Cryptography is not invented here.**']],
+  },
+  {
+    path: 'CONTRIBUTING.md',
+    required: ['its own', 'needs', 'meta.json', 'content security policy', 'build fails when'],
+    sections: [['### 6. It must declare what its page needs', '## Adding a tool, step by step']],
+  },
+  {
+    path: 'README.md',
+    required: TRUTH_WORDS,
+    sections: [['- **Each page has its own content security policy.**', '[`e2e/privacy.spec.ts`]']],
+  },
+  {
+    path: 'apps/web/src/components/CssPreview.tsx',
+    required: ["page's own content security policy", 'second layer'],
+    sections: [['The preview stage', 'export default function CssPreview']],
+  },
+  {
+    path: 'apps/web/src/lib/css-preview-guard.ts',
+    required: ["page's own content security policy", 'second layer'],
+    sections: [['A second, independent fence', 'export function previewHazard']],
+  },
 ];
 
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -116,6 +171,13 @@ describe('the page policy is described truthfully in every listed file', () => {
       }
     });
   }
+});
+
+describe('the list of checked files', () => {
+  it('covers at least eight files and names each only once', () => {
+    expect(FILES.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(FILES.map((file) => file.path)).size).toBe(FILES.length);
+  });
 });
 
 describe('the wording helpers can fail', () => {

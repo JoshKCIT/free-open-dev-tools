@@ -6,9 +6,10 @@
  * tool package -- so a bug in one fence is unlikely to be a bug in both.
  *
  * The preview renders on the live, unsandboxed page (see `CssPreview.tsx`'s
- * own comment for why): there is no content security policy here that
- * would stop a resource-loading CSS value from firing a real request the
- * moment the stylesheet is adopted. This function lists the function and
+ * own comment for why). The page's own content security policy refuses
+ * outside requests, but it is a second layer: this function is the first,
+ * so a resource-loading CSS value never reaches the point of firing a request
+ * when the stylesheet is adopted. It lists the function and
  * property names that can load a resource or break out of a rule, and
  * never holds a full network address, so `scripts/check-catalog.mjs`'s own
  * scan for a resource-loading function followed by an address never trips

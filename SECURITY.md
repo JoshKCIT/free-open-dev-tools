@@ -21,12 +21,12 @@ This is a static site with no accounts, no server and no database, so the intere
 | A dependency that ships a backdoor or a known-exploitable flaw into the bundle | It reaches every visitor.                                |
 | A supply chain weakness in the build or deploy workflow                        | It would let someone publish something we did not write. |
 
-| Out of scope                                           | Why                                                                                                                     |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| The hosting provider access logs                       | Documented on the privacy page. GitHub receives ordinary request metadata; that is inherent to being served over HTTP.  |
-| Missing security headers that a static host cannot set | GitHub Pages does not allow custom response headers. The page-level content security policy is applied where it can be. |
-| Output that is wrong                                   | That is a correctness bug. Open a normal issue with a description of the input.                                         |
-| Exhausting your own tab by pasting an enormous input   | It affects only your tab.                                                                                               |
+| Out of scope                                           | Why                                                                                                                                                                                                            |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The hosting provider access logs                       | Documented on the privacy page. GitHub receives ordinary request metadata; that is inherent to being served over HTTP.                                                                                         |
+| Missing security headers that a static host cannot set | GitHub Pages does not allow custom response headers. Each page carries its own content security policy in its markup instead, which cannot give framing protection, violation reports or sandboxing by header. |
+| Output that is wrong                                   | That is a correctness bug. Open a normal issue with a description of the input.                                                                                                                                |
+| Exhausting your own tab by pasting an enormous input   | It affects only your tab.                                                                                                                                                                                      |
 
 ## How the project defends itself
 
@@ -39,9 +39,16 @@ a real browser and fails if any request is made while a tool is processing input
 service and no analytics. The check runs in CI and again against the live site after deployment.
 
 **Pasted content is not executed.** Markup rendered from user input is sanitised in the tool package, then rendered
-inside an iframe with an empty `sandbox` attribute and a `default-src 'none'` content security policy. Tools that
+inside an iframe with an empty `sandbox` attribute and a `default-src 'none'` content security policy, under the policy of the page that holds the frame. Tools that
 would have required executing pasted code, such as a JavaScript or SQL playground, were deliberately excluded and are
 recorded as such in the catalog.
+
+**Each page carries its own content security policy.** It is a meta element written at build time as the first element
+of the head, and the build fails if a page's policy and its built code disagree. It forbids the page from requesting
+anything outside the site (no fetch, XHR, WebSocket, beacon, outside images, fonts, media, frames, objects or form
+posts), and a page adds only what its tool declares it needs. It is a second layer behind the lint rules, the static
+gate and the browser harness, not a replacement for them. After every deploy the same check runs against the live
+site.
 
 **Cryptography is not invented here.** Digests and HMAC come from `@noble/hashes`, which is audited and has no
 dependencies of its own. Random values always come from `crypto.getRandomValues`, never `Math.random`.
@@ -53,7 +60,11 @@ on any dependency whose licence is not on the reviewed allow list.
 
 ## What this project cannot protect you from
 
-- A compromised browser or a malicious extension. Anything with access to the page can read what you type into it.
+- A compromised browser or a malicious extension. Anything with access to the page can read what you type into it, and
+  browser extensions sit outside the page policy.
+- What a policy in markup cannot do: it gives no framing protection, cannot report violations, cannot sandbox by header
+  and cannot stop you following a link or a page navigating away, and it does not govern WebRTC or connection hints
+  such as preconnect in every browser.
 - Your own clipboard and browser history.
 - The fact that your network can see you requested this site, and which page.
 - Pasting a live production secret into any web page, here or anywhere. Rotate anything you paste into a page you did

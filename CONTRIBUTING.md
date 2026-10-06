@@ -93,6 +93,19 @@ Cover, where they apply: typical input, empty input, malformed input, Unicode an
 multiline data, boundary values, numeric precision, large input, locale and time zone differences, adversarial input,
 and cases where conversion loses information.
 
+### 6. It must declare what its page needs
+
+Every page carries its own content security policy in its markup, written at build time, and the baseline forbids a
+page from requesting anything and from running more than the site's own scripts. If your tool's page needs more than
+that, say so in `src/meta.json` under `needs`, using only these five words: `workers` (a background worker, always
+started from a blob address), `wasm` (WebAssembly), `eval` (run-time code generation, which only a short
+fixed list of pages in the gate may use), `sandboxed-html` (a preview frame that needs inline styles) and
+`mermaid-frame` (the diagram page only). A page that needs none of them declares nothing.
+
+The build fails when the declaration and the built code disagree: a page that uses a worker or WebAssembly it did not
+declare, and a page that declares something its code never uses. `scripts/check-csp.mjs` says which page and which
+word. Declare what the built code does and no more; do not widen a declaration to make a build pass.
+
 ## Adding a tool, step by step
 
 ### 1. Pick an id from the catalog
@@ -122,6 +135,7 @@ This one file drives the tool page, the folder README and the release gates. Fie
 | `about`                          | yes      | Two or three sentences: what it does and when to reach for it.      |
 | `supports`                       | yes      | What is accepted, specifically. Name versions and dialects.         |
 | `limits`                         | yes      | What it will not do and where it loses information. Never empty.    |
+| `needs`                          | no       | What its page needs beyond the baseline policy (rule 6).            |
 | `ambiguities`                    | no       | Where implementations disagree, and what this one chose.            |
 | `standards`                      | no       | The specifications it implements, with URLs.                        |
 | `dependencies`                   | no       | Runtime dependencies. These flow into the generated `package.json`. |

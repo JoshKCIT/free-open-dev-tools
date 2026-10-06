@@ -6,8 +6,9 @@ GitHub Pages, from the `main` branch of this repository, at
 `https://joshkcit.github.io/free-open-dev-tools/`.
 
 GitHub Pages was chosen because it needs no credentials beyond the repository itself, costs nothing, and serves static
-files, which is all this site is. Its one relevant limitation is that it cannot set custom response headers, so the
-content security policy is applied per page rather than at the header level.
+files, which is all this site is. Its one relevant limitation is that it cannot set custom response headers, so each
+page carries its own content security policy in its markup instead. What that policy blocks, and what a policy in
+markup cannot do, is written up in `docs/ARCHITECTURE.md`; every deploy checks the live pages' policies (see below).
 
 ## One-time setup
 
@@ -197,11 +198,16 @@ The `verify` job runs against the live site after publishing and fails if:
 - The deployed HTML references any asset from a host other than the site own origin.
 - Either the served HTML (the prerendered page descriptions, which live in the HTML rather than the bundle) or the
   served JavaScript carries a forbidden reference from the `PROVENANCE_DENYLIST` repository secret.
-- Any of the complete 211-tool catalog's pages fails to load its tool cleanly, loads anything from another origin, or
+- Any of the catalog's tool pages fails to load its tool cleanly, loads anything from another origin, or
   its JavaScript — every chunk and inline worker the page actually loads — carries a forbidden reference.
   `e2e/all-tool-chunks.spec.ts` checks this against the live site, on chromium only: it is a byte scan over static
   files rather than a cross-browser behavioural check, so running it on every engine would repeat the same fetches
   for no added coverage.
+- Any live page does not open its head with exactly its own content security policy. `node scripts/check-csp.mjs --live
+https://joshkcit.github.io/free-open-dev-tools/` checks every page, so a deploy that drops or breaks a policy is seen
+  at once.
+- An in-site link does not load a fresh page, or a page's policy does not refuse an outside request. The navigation and
+  policy specs (`e2e/navigation.spec.ts` and `e2e/csp.spec.ts`) run against the live site on chromium.
 
 A failure here means the deployment is broken even though the build passed. Roll back.
 
@@ -258,24 +264,25 @@ The build output in `apps/web/dist` is plain static files and works on any stati
 - Output directory: `apps/web/dist`
 - Environment: `VITE_BASE=/` when serving from a domain root.
 
-On a host that supports custom headers, these are worth setting. They are not set today only because GitHub Pages
-cannot:
+On a host that supports custom headers, a header policy adds what a policy in the markup cannot give: framing
+protection, violation reporting and sandboxing by header. The page policies stay in the markup and keep working on
+any static host; these headers are the extra layer if you move:
 
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+Content-Security-Policy: frame-ancestors 'none'
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
 Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
 Cross-Origin-Opener-Policy: same-origin
 ```
 
-`connect-src 'none'` is the interesting one: it makes the privacy claim enforceable by the browser itself, not just by
-our tests. Adding it is the main argument for moving off GitHub Pages later.
+`frame-ancestors 'none'` is the one a markup policy cannot express at all: a browser ignores it in a meta element.
 
-`script-src 'self' 'wasm-unsafe-eval'` and `worker-src 'self' blob:` are both needed: the code formatters compile
-WebAssembly inside background workers that the page builds from blob addresses, so a host that sets this header and
-leaves either one out blocks every formatter and every other tool that runs in an inline worker. GitHub Pages sends no
-policy at all and needs nothing changed.
+Do not replace the page policies with one site-wide `Content-Security-Policy` header that carries the rest of the
+policy. The pages differ: background workers, WebAssembly, run-time code generation and preview frames are each
+allowed on only the pages that need them, and one header for the whole site would either break those pages or
+allow all of them everywhere. A host that sets script and connection rules in a header needs per-route policies,
+one for each distinct policy the built pages carry (`node scripts/check-csp.mjs --suggest` prints what each page needs).
 
 ## Operational notes
 

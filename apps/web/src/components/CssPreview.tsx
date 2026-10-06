@@ -21,10 +21,11 @@ function renderNode(node: PreviewNode, key: number | string = 0) {
  * This renders in the live page, never inside `OutputView.tsx`'s
  * `sandbox=""` iframe -- that sandbox runs no scripts at all by design, and
  * a draggable handle needs pointer and keyboard listeners. Because this
- * runs unsandboxed, on a site with no page-level content security policy
- * outside that one iframe, `previewHazard` is checked before every single
- * stylesheet application: a hazard draws nothing at all rather than ever
- * adopting CSS that could load a resource.
+ * runs unsandboxed, under the page's own content security policy (which
+ * already refuses outside requests; a second layer, not the only one),
+ * `previewHazard` is checked before every single stylesheet application: a
+ * hazard draws nothing at all rather than ever adopting CSS that could load
+ * a resource.
  *
  * The tree is drawn inside the shadow root with React's own `createPortal`,
  * as plain elements carrying only a class name and text -- never
