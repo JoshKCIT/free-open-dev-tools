@@ -95,7 +95,10 @@ export const FILES = [
   {
     path: '.claude/CLAUDE.md',
     required: [...TRUTH_WORDS, 'weak copyleft (MPL and similar) needs an explicit owner OK'],
-    sections: [['- **Hosting**', '- **Provenance**']],
+    sections: [
+      ['- **Licensing**', '- **Hosting**'],
+      ['- **Hosting**', '- **Provenance**'],
+    ],
     limits: ['markup cannot give framing protection', '- **Provenance**'],
   },
   {
@@ -125,6 +128,7 @@ export const FILES = [
     required: ['its own', 'framing', 'frame-ancestors', 'per-route', 'check-csp.mjs --live'],
     sections: [
       ['GitHub Pages was chosen', '## One-time setup'],
+      ["- Any of the catalog's tool pages fails", '- Any live page does not open its head'],
       ['- Any live page does not open its head', '## Rollback'],
       ['On a host that supports custom headers', '## Operational notes'],
     ],

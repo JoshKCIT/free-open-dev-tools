@@ -25,9 +25,9 @@ tested source for their own project.
   a specification, its published vectors, or a mature independent implementation used as a second opinion
 - **Documentation**: Every tool must state its limits, and the limits list may not be empty — enforced by
   the catalog gate
-- **Licensing**: MIT for everything original here — code, build scripts, documentation and site copy —
+- **Licensing**: MIT for everything original here: code, build scripts, documentation and site copy,
   backed by a root `LICENSE` file; runtime dependencies must be permissively licensed and their notices
-  preserved — enforced by the licence gate; weak copyleft (MPL and similar) needs an explicit owner OK
+  preserved, enforced by the licence gate; weak copyleft (MPL and similar) needs an explicit owner OK
 - **Hosting**: GitHub Pages, which cannot set response headers. Each page therefore carries its own content
   security policy in its markup, a meta element written at build time as the first element of the head and
   checked on every build. It forbids the page from requesting anything (no fetch, XHR, WebSocket, beacon,
