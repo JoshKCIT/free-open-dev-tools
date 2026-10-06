@@ -1,5 +1,5 @@
 import { meta, buildHtaccess, HTPASSWD_COST, HtaccessError } from '@fodt/htaccess-generator';
-import { htpasswdInWorker } from '../lib/run-htaccess-in-worker';
+import { HTPASSWD_TIME_LIMIT_MS, htpasswdInWorker } from '../lib/run-htaccess-in-worker';
 import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /**
@@ -30,6 +30,7 @@ export default defineTool({
   // deliberate Run press and offers Cancel, like the bcrypt page itself.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: HTPASSWD_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     { name: 'forceHttps', label: 'Force HTTPS', type: 'checkbox', default: false },

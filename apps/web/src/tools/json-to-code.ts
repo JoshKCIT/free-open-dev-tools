@@ -1,5 +1,5 @@
 import { meta, jsonToCode, LANGUAGES, JsonToCodeError, type InputFormat, type Language } from '@fodt/json-to-code';
-import { jsonToCodeInWorker, JsonToCodeRunError } from '../lib/run-json-to-code-in-worker';
+import { JSON_TO_CODE_TIME_LIMIT_MS, jsonToCodeInWorker, JsonToCodeRunError } from '../lib/run-json-to-code-in-worker';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 const LANGUAGE_LABELS: Record<Language, string> = {
@@ -23,6 +23,7 @@ export default defineTool({
   // duplicates grows with the square of the key count), so that run can be cancelled. JSON and XML samples stay
   // synchronous.
   cancellable: true,
+  runLimit: { ms: JSON_TO_CODE_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

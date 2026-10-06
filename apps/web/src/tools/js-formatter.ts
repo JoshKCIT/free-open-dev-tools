@@ -1,5 +1,9 @@
 import { meta, formatJs, JsFormatterError } from '@fodt/js-formatter';
-import { jsFormatterInWorker, JsFormatterRunError } from '../lib/run-js-formatter-in-worker';
+import {
+  JS_FORMATTER_TIME_LIMIT_MS,
+  jsFormatterInWorker,
+  JsFormatterRunError,
+} from '../lib/run-js-formatter-in-worker';
 import { defineTool, str, bool, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -13,6 +17,7 @@ export default defineTool({
   // thread. `cancellable: true` applies to the whole page; cancelling a
   // main-thread run is a no-op since those complete almost instantly.
   cancellable: true,
+  runLimit: { ms: JS_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

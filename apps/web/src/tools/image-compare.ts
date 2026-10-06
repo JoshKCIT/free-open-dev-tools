@@ -11,6 +11,7 @@ import {
   shareText,
 } from '@fodt/image-compare';
 import {
+  IMAGE_COMPARE_TIME_LIMIT_MS,
   compareInWorker,
   decodeToPixels,
   pixelsToPng,
@@ -63,6 +64,7 @@ export default defineTool({
   // offers a Cancel button while that work is in flight.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: IMAGE_COMPARE_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

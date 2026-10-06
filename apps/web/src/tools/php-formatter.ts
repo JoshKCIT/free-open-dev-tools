@@ -1,5 +1,9 @@
 import { meta, hasPhpOpeningTag, PhpFormatterError, PHP_VERSIONS, type PhpBraceStyle } from '@fodt/php-formatter';
-import { phpFormatterInWorker, PhpFormatterRunError } from '../lib/run-php-formatter-in-worker';
+import {
+  PHP_FORMATTER_TIME_LIMIT_MS,
+  phpFormatterInWorker,
+  PhpFormatterRunError,
+} from '../lib/run-php-formatter-in-worker';
 import { defineTool, bool, num, str, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -10,6 +14,7 @@ export default defineTool({
   // stuck inside one long call, so the page, not the formatter, decides when
   // a run has taken too long.
   cancellable: true,
+  runLimit: { ms: PHP_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

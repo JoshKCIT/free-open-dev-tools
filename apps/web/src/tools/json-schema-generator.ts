@@ -1,5 +1,9 @@
 import { meta, generateSchema, SchemaGeneratorError, type InputFormat } from '@fodt/json-schema-generator';
-import { jsonSchemaGeneratorInWorker, JsonSchemaGeneratorRunError } from '../lib/run-json-schema-generator-in-worker';
+import {
+  JSON_SCHEMA_GENERATOR_TIME_LIMIT_MS,
+  jsonSchemaGeneratorInWorker,
+  JsonSchemaGeneratorRunError,
+} from '../lib/run-json-schema-generator-in-worker';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -9,6 +13,7 @@ export default defineTool({
   // duplicates grows with the square of the key count), so that run can be cancelled. JSON and XML samples stay
   // synchronous.
   cancellable: true,
+  runLimit: { ms: JSON_SCHEMA_GENERATOR_TIME_LIMIT_MS },
   fields: [
     {
       name: 'samples',

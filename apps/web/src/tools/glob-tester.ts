@@ -12,6 +12,7 @@ import {
   type TestResult,
 } from '@fodt/glob-tester';
 import {
+  GLOB_TESTER_TIME_LIMIT_MS,
   GLOB_TESTER_NOT_STARTED_MESSAGE,
   GLOB_TESTER_START_LIMIT_MESSAGE,
   GLOB_TESTER_STOPPED_MESSAGE,
@@ -166,6 +167,7 @@ export default defineTool({
   // comment): a pattern that backtracks is stuck inside one synchronous call, so the page, not the matcher, decides when
   // it has taken too long, and Cancel stops it at once.
   cancellable: true,
+  runLimit: { ms: GLOB_TESTER_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

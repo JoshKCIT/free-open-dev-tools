@@ -13,7 +13,7 @@ import {
   type BytesPerRow,
   type SearchResult,
 } from '@fodt/hex-viewer';
-import { hexViewerInWorker, HexViewerRunError } from '../lib/run-hex-viewer-in-worker';
+import { HEX_VIEWER_TIME_LIMIT_MS, hexViewerInWorker, HexViewerRunError } from '../lib/run-hex-viewer-in-worker';
 import {
   defineTool,
   bool,
@@ -183,6 +183,7 @@ export default defineTool({
   // Viewing reads one slice of the file on the page. Searching streams the whole file, which is real background work, so
   // it runs in a new worker with a 20 second limit (see run-hex-viewer-in-worker.ts's own comment) and offers Cancel.
   cancellable: true,
+  runLimit: { ms: HEX_VIEWER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'source',

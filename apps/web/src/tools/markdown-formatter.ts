@@ -1,5 +1,9 @@
 import { meta, MarkdownFormatterError } from '@fodt/markdown-formatter';
-import { markdownFormatterInWorker, MarkdownFormatterRunError } from '../lib/run-markdown-formatter-in-worker';
+import {
+  MARKDOWN_FORMATTER_TIME_LIMIT_MS,
+  markdownFormatterInWorker,
+  MarkdownFormatterRunError,
+} from '../lib/run-markdown-formatter-in-worker';
 import { defineTool, str, num, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -10,6 +14,7 @@ export default defineTool({
   // other pages on this site, there is no cheap way to detect ahead of
   // time whether a given Markdown document will be one of the slow shapes.
   cancellable: true,
+  runLimit: { ms: MARKDOWN_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

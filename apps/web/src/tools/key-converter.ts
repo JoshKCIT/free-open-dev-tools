@@ -16,6 +16,7 @@ import {
   type KeyOutputs,
 } from '@fodt/key-converter';
 import {
+  KEY_CONVERTER_TIME_LIMIT_MS,
   KEY_CONVERTER_NOT_STARTED_MESSAGE,
   KEY_CONVERTER_START_LIMIT_MESSAGE,
   KEY_CONVERTER_STOPPED_MESSAGE,
@@ -180,6 +181,7 @@ export default defineTool({
   // is being made.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: KEY_CONVERTER_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

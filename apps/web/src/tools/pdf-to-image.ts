@@ -1,5 +1,5 @@
 import { meta, FileSignatureError, PdfToImageError, PageRangeError } from '@fodt/pdf-to-image';
-import { renderPdfInPage } from '../lib/run-pdf-to-image';
+import { PDF_STALL_LIMIT_MS, renderPdfInPage } from '../lib/run-pdf-to-image';
 import { defineTool, files, num, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** A 2 MB cap on the first-page preview, matching this project's other data: URL preview budgets. */
@@ -21,6 +21,7 @@ export default defineTool({
   // flight.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: PDF_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     // No accept filter beyond PDF: this page only ever reads a PDF.

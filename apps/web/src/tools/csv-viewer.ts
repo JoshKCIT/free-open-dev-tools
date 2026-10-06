@@ -1,5 +1,5 @@
 import { meta, MAX_DISPLAY_ROWS, CsvViewerError, type ViewCsvOptions } from '@fodt/csv-viewer';
-import { csvViewerInWorker } from '../lib/run-csv-viewer-in-worker';
+import { CSV_TIME_LIMIT_MS, csvViewerInWorker } from '../lib/run-csv-viewer-in-worker';
 import { defineTool, str, bool, files, type Field, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const DELIMITER_LABEL: Record<string, string> = { ',': 'comma', ';': 'semicolon', '\t': 'tab', '|': 'pipe' };
@@ -62,6 +62,7 @@ const fields: Field[] = [
 export default defineTool({
   id: 'csv-viewer',
   cancellable: true,
+  runLimit: { ms: CSV_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields,
   async run(values, ctx): Promise<ToolResult> {

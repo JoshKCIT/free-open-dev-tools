@@ -1,5 +1,9 @@
 import { meta } from '@fodt/yaml-formatter';
-import { yamlFormatterInWorker, YamlFormatterRunError } from '../lib/run-yaml-formatter-in-worker';
+import {
+  YAML_FORMATTER_TIME_LIMIT_MS,
+  yamlFormatterInWorker,
+  YamlFormatterRunError,
+} from '../lib/run-yaml-formatter-in-worker';
 import { defineTool, str, num, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -9,6 +13,7 @@ export default defineTool({
   // (checking duplicate mapping keys grows quadratically with a flat
   // mapping's key count), so the run can be cancelled.
   cancellable: true,
+  runLimit: { ms: YAML_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

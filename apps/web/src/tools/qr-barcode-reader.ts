@@ -9,6 +9,7 @@ import {
 } from '@fodt/qr-barcode-reader';
 import { scanWithCamera, CameraScanError } from '../lib/camera-scan';
 import {
+  QR_BARCODE_READER_TIME_LIMIT_MS,
   imagePixelsFromFile,
   openReaderSession,
   readCodesInWorker,
@@ -40,6 +41,7 @@ export default defineTool({
   // a Cancel button while that work is in flight.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: QR_BARCODE_READER_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

@@ -1,5 +1,9 @@
 import { checkInputSizes, meta, XsdValidatorError, type NotLoadedReference, type XsdIssue } from '@fodt/xsd-validator';
-import { xsdValidatorInWorker, XsdValidatorRunError } from '../lib/run-xsd-validator-in-worker';
+import {
+  XSD_VALIDATOR_TIME_LIMIT_MS,
+  xsdValidatorInWorker,
+  XsdValidatorRunError,
+} from '../lib/run-xsd-validator-in-worker';
 import { defineTool, bool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 const ORDER_SCHEMA = `<?xml version="1.0"?>
@@ -57,6 +61,7 @@ export default defineTool({
   // long.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: XSD_VALIDATOR_TIME_LIMIT_MS },
   fields: [
     {
       name: 'schema',

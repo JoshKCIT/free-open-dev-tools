@@ -14,7 +14,11 @@ import {
   readPdfText,
   reopenForCheck,
 } from '../lib/run-pdf-text-metadata-reader';
-import { PdfTextMetadataRunError, stripInWorker } from '../lib/run-pdf-text-metadata-in-worker';
+import {
+  PDF_TEXT_METADATA_TIME_LIMIT_MS,
+  PdfTextMetadataRunError,
+  stripInWorker,
+} from '../lib/run-pdf-text-metadata-in-worker';
 import {
   defineTool,
   files,
@@ -156,6 +160,7 @@ export default defineTool({
   // offered while either is in flight.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: PDF_TEXT_METADATA_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

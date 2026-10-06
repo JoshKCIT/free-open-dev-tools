@@ -1,5 +1,5 @@
 import { meta, type FileKind } from '@fodt/exif-viewer';
-import { runExifViewerInWorker } from '../lib/run-exif-viewer-in-worker';
+import { EXIF_VIEWER_STALL_LIMIT_MS, runExifViewerInWorker } from '../lib/run-exif-viewer-in-worker';
 import { defineTool, bool, files, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const MEDIA_TYPES: Partial<Record<FileKind, string>> = {
@@ -15,6 +15,7 @@ export default defineTool({
   // and offers a Cancel button while that work is in flight.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: EXIF_VIEWER_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     { name: 'file', label: 'Photo', type: 'file', accept: 'image/jpeg,image/png,image/webp' },

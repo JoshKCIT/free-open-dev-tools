@@ -1,11 +1,12 @@
 import { meta } from '@fodt/json-schema-validator';
-import { jsonSchemaInWorker, SchemaRunError } from '../lib/run-json-schema-in-worker';
+import { SCHEMA_TIME_LIMIT_MS, jsonSchemaInWorker, SchemaRunError } from '../lib/run-json-schema-in-worker';
 import { defineTool, str, bool, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
   id: 'json-schema-validator',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: SCHEMA_TIME_LIMIT_MS },
   fields: [
     {
       name: 'schema',

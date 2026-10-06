@@ -1,5 +1,9 @@
 import { meta, convertData, DataConvertError, type ConvertOptions, type DataFormat } from '@fodt/data-convert';
-import { dataConvertInWorker, DataConvertRunError } from '../lib/run-data-convert-in-worker';
+import {
+  DATA_CONVERT_TIME_LIMIT_MS,
+  dataConvertInWorker,
+  DataConvertRunError,
+} from '../lib/run-data-convert-in-worker';
 import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const LANGUAGE: Record<string, string | undefined> = {
@@ -48,6 +52,7 @@ export default defineTool({
   // quadratically with a flat mapping's key count, and a loaded machine can
   // push an ordinary file past a shorter limit), so that run can be cancelled. The other sources (JSON, TOML, XML, CSV, TSV) stay synchronous.
   cancellable: true,
+  runLimit: { ms: DATA_CONVERT_TIME_LIMIT_MS },
   fields: [
     {
       name: 'from',

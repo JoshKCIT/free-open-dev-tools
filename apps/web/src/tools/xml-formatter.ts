@@ -8,7 +8,11 @@ import {
   type C14nMode,
   type FormatMode,
 } from '@fodt/xml-formatter';
-import { xmlFormatterInWorker, XmlFormatterRunError } from '../lib/run-xml-formatter-in-worker';
+import {
+  XML_FORMATTER_TIME_LIMIT_MS,
+  xmlFormatterInWorker,
+  XmlFormatterRunError,
+} from '../lib/run-xml-formatter-in-worker';
 import { defineTool, str, bool, num, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 /** Which of two compared documents a problem is in, as the heading of its message. */
@@ -80,6 +84,7 @@ export default defineTool({
   // new background worker for every run, with a 20 second limit (see run-xml-formatter-in-worker.ts's own comment), so
   // the page offers Cancel while one is in flight.
   cancellable: true,
+  runLimit: { ms: XML_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

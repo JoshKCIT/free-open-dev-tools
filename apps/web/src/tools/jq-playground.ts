@@ -1,5 +1,9 @@
 import { checkInputSize, meta, JqPlaygroundError, type JqOptions } from '@fodt/jq-playground';
-import { jqPlaygroundInWorker, JqPlaygroundRunError } from '../lib/run-jq-playground-in-worker';
+import {
+  JQ_PLAYGROUND_TIME_LIMIT_MS,
+  jqPlaygroundInWorker,
+  JqPlaygroundRunError,
+} from '../lib/run-jq-playground-in-worker';
 import { defineTool, bool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** Where a problem is, as the start of its message: a filter or an input problem names itself, a run problem does not. */
@@ -26,6 +30,7 @@ export default defineTool({
   // filter that never ends is stuck inside one synchronous engine call, so the page, not the engine, decides when it
   // has taken too long, and Cancel stops it at once.
   cancellable: true,
+  runLimit: { ms: JQ_PLAYGROUND_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

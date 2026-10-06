@@ -5,7 +5,11 @@ import {
   type SqliteColumnInfo,
   type SqliteRunOptions,
 } from '@fodt/sqlite-viewer';
-import { sqliteViewerInWorker, SqliteViewerRunError } from '../lib/run-sqlite-viewer-in-worker';
+import {
+  SQLITE_VIEWER_TIME_LIMIT_MS,
+  sqliteViewerInWorker,
+  SqliteViewerRunError,
+} from '../lib/run-sqlite-viewer-in-worker';
 import {
   defineTool,
   bool,
@@ -41,6 +45,7 @@ export default defineTool({
   // page, not the engine, decides when a run has taken too long.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: SQLITE_VIEWER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'file',

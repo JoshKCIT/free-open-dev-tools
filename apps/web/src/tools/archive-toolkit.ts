@@ -1,5 +1,6 @@
 import { meta } from '@fodt/archive-toolkit';
 import {
+  ARCHIVE_TOOLKIT_STALL_LIMIT_MS,
   extractArchiveInWorker,
   createZipInWorker,
   ArchiveToolkitRunError,
@@ -24,6 +25,7 @@ export default defineTool({
   id: 'archive-toolkit',
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: ARCHIVE_TOOLKIT_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

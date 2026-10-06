@@ -11,7 +11,7 @@ import {
   type FaviconFit,
   type FontFamily,
 } from '@fodt/favicon-generator';
-import { buildFaviconInWorker } from '../lib/run-favicon-generator-in-worker';
+import { FAVICON_GENERATOR_STALL_LIMIT_MS, buildFaviconInWorker } from '../lib/run-favicon-generator-in-worker';
 import {
   defineTool,
   bool,
@@ -119,6 +119,7 @@ export default defineTool({
   // drawing and encoding six sizes is real background work either way.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: FAVICON_GENERATOR_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields,
   async run(values, ctx): Promise<ToolResult> {

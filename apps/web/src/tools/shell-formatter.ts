@@ -1,5 +1,9 @@
 import { meta, ShellFormatterError, SHELL_DIALECTS, type ShellDialect } from '@fodt/shell-formatter';
-import { shellFormatterInWorker, ShellFormatterRunError } from '../lib/run-shell-formatter-in-worker';
+import {
+  SHELL_FORMATTER_TIME_LIMIT_MS,
+  shellFormatterInWorker,
+  ShellFormatterRunError,
+} from '../lib/run-shell-formatter-in-worker';
 import { defineTool, num, str, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** The dialect choices, in the package's own order, each with the label the visitor reads. */
@@ -17,6 +21,7 @@ export default defineTool({
   // WebAssembly build that may be stuck inside one synchronous call, so the
   // page, not the engine, decides when a run has taken too long.
   cancellable: true,
+  runLimit: { ms: SHELL_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

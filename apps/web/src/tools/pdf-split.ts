@@ -1,6 +1,6 @@
 import { meta } from '@fodt/pdf-split';
 import type { OrganizeOperation } from '@fodt/pdf-split';
-import { runPdfSplitInWorker, PdfSplitRunError } from '../lib/run-pdf-split-in-worker';
+import { PDF_SPLIT_STALL_LIMIT_MS, runPdfSplitInWorker, PdfSplitRunError } from '../lib/run-pdf-split-in-worker';
 import { defineTool, files, str, num, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
 
 function isOperation(values: Values, kind: string): boolean {
@@ -25,6 +25,7 @@ export default defineTool({
   id: 'pdf-split',
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: PDF_SPLIT_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     { name: 'file', label: 'PDF file', type: 'file', accept: 'application/pdf,.pdf' },

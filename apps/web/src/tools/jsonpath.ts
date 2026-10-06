@@ -1,5 +1,5 @@
 import { meta, type JsonPathMatch } from '@fodt/jsonpath';
-import { jsonPathInWorker, JsonPathRunError } from '../lib/run-jsonpath-in-worker';
+import { JSONPATH_TIME_LIMIT_MS, jsonPathInWorker, JsonPathRunError } from '../lib/run-jsonpath-in-worker';
 import { defineTool, str, type ToolResult } from '../lib/tool-ui';
 
 const MAX_VALUE_PREVIEW = 200;
@@ -14,6 +14,7 @@ export default defineTool({
   id: 'jsonpath',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: JSONPATH_TIME_LIMIT_MS },
   fields: [
     {
       name: 'document',

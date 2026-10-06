@@ -1,5 +1,5 @@
 import { meta } from '@fodt/docker-compose-validator';
-import { composeInWorker, ComposeRunError } from '../lib/run-docker-compose-in-worker';
+import { COMPOSE_TIME_LIMIT_MS, composeInWorker, ComposeRunError } from '../lib/run-docker-compose-in-worker';
 import { defineTool, str, type ToolResult } from '../lib/tool-ui';
 
 const EXAMPLE = `services:
@@ -19,6 +19,7 @@ export default defineTool({
   id: 'docker-compose-validator',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: COMPOSE_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

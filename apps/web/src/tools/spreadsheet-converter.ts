@@ -5,7 +5,11 @@ import {
   type TextFormat,
   type ToTextResult,
 } from '@fodt/spreadsheet-converter';
-import { spreadsheetConverterInWorker, SpreadsheetConverterRunError } from '../lib/run-spreadsheet-converter-in-worker';
+import {
+  SPREADSHEET_CONVERTER_TIME_LIMIT_MS,
+  spreadsheetConverterInWorker,
+  SpreadsheetConverterRunError,
+} from '../lib/run-spreadsheet-converter-in-worker';
 import { defineTool, bool, files, str, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -120,6 +124,7 @@ export default defineTool({
   // the code doing the work, decides when a run has taken too long.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: SPREADSHEET_CONVERTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'mode',

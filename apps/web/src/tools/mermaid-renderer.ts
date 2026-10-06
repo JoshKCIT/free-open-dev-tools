@@ -14,7 +14,13 @@ import {
   visible,
   withPixelSize,
 } from '@fodt/mermaid-renderer';
-import { MermaidFrameError, renderInFrame, svgDataAddress, svgToPng } from '../lib/mermaid-frame';
+import {
+  MERMAID_REPLY_LIMIT_MS,
+  MermaidFrameError,
+  renderInFrame,
+  svgDataAddress,
+  svgToPng,
+} from '../lib/mermaid-frame';
 import { defineTool, formatBytes, num, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 const FLOWCHART_EXAMPLE = `flowchart LR
@@ -56,6 +62,7 @@ function altText(type: string | undefined, title: string | undefined, descriptio
 
 export default defineTool({
   id: 'mermaid-renderer',
+  runLimit: { ms: MERMAID_REPLY_LIMIT_MS },
   // Drawing waits for a deliberate Run press: the engine runs in a frame that holds the page while it works, so it is
   // never started as you type, and it cannot be cancelled part way.
   autoRun: false,

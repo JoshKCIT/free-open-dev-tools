@@ -1,5 +1,9 @@
 import { meta } from '@fodt/github-actions-validator';
-import { githubActionsInWorker, GithubActionsRunError } from '../lib/run-github-actions-in-worker';
+import {
+  GITHUB_ACTIONS_TIME_LIMIT_MS,
+  githubActionsInWorker,
+  GithubActionsRunError,
+} from '../lib/run-github-actions-in-worker';
 import { defineTool, str, type ToolResult } from '../lib/tool-ui';
 
 const EXAMPLE = `name: node.js CI
@@ -29,6 +33,7 @@ export default defineTool({
   id: 'github-actions-validator',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: GITHUB_ACTIONS_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

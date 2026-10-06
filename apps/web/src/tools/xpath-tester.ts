@@ -1,5 +1,5 @@
 import { meta, type XPathNodeResult } from '@fodt/xpath-tester';
-import { xpathInWorker, XPathRunError } from '../lib/run-xpath-tester-in-worker';
+import { XPATH_TIME_LIMIT_MS, xpathInWorker, XPathRunError } from '../lib/run-xpath-tester-in-worker';
 import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const MAX_MARKUP_PREVIEW = 20;
@@ -32,6 +32,7 @@ export default defineTool({
   id: 'xpath-tester',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: XPATH_TIME_LIMIT_MS },
   fields: [
     {
       name: 'xml',

@@ -1,5 +1,9 @@
 import { meta, GoFormatterError } from '@fodt/go-formatter';
-import { goFormatterInWorker, GoFormatterRunError } from '../lib/run-go-formatter-in-worker';
+import {
+  GO_FORMATTER_TIME_LIMIT_MS,
+  goFormatterInWorker,
+  GoFormatterRunError,
+} from '../lib/run-go-formatter-in-worker';
 import { defineTool, str, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -10,6 +14,7 @@ export default defineTool({
   // WebAssembly build that may be stuck inside one synchronous call, so the
   // page, not the engine, decides when a run has taken too long.
   cancellable: true,
+  runLimit: { ms: GO_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

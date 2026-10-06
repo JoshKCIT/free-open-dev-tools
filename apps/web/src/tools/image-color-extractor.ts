@@ -1,5 +1,5 @@
 import { meta, extractFromPixels, paletteCss, SAMPLE_PATTERN, type QuantizedColor } from '@fodt/image-color-extractor';
-import { extractColorsInWorker } from '../lib/run-image-color-extractor-in-worker';
+import { IMAGE_TIME_LIMIT_MS, extractColorsInWorker } from '../lib/run-image-color-extractor-in-worker';
 import {
   defineTool,
   str,
@@ -49,6 +49,7 @@ export default defineTool({
   // background worker so the tab stays responsive.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: IMAGE_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

@@ -1,11 +1,12 @@
 import { meta } from '@fodt/image-to-pdf';
-import { runImageToPdfInWorker } from '../lib/run-image-to-pdf-in-worker';
+import { IMAGE_TO_PDF_STALL_LIMIT_MS, runImageToPdfInWorker } from '../lib/run-image-to-pdf-in-worker';
 import { defineTool, files, str, num, formatBytes, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
   id: 'image-to-pdf',
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: IMAGE_TO_PDF_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {

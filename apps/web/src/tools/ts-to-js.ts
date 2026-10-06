@@ -1,5 +1,5 @@
 import { meta } from '@fodt/ts-to-js';
-import { tsToJsInWorker, TsToJsRunError } from '../lib/run-ts-to-js-in-worker';
+import { TS_TO_JS_TIME_LIMIT_MS, tsToJsInWorker, TsToJsRunError } from '../lib/run-ts-to-js-in-worker';
 import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -10,6 +10,7 @@ export default defineTool({
   // growth measured against the installed compiler), so the run can be
   // cancelled.
   cancellable: true,
+  runLimit: { ms: TS_TO_JS_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

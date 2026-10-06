@@ -1,5 +1,5 @@
 import { meta } from '@fodt/k8s-validator';
-import { k8sInWorker, K8sRunError } from '../lib/run-k8s-in-worker';
+import { K8S_TIME_LIMIT_MS, k8sInWorker, K8sRunError } from '../lib/run-k8s-in-worker';
 import { defineTool, str, type ToolResult } from '../lib/tool-ui';
 
 const EXAMPLE = `apiVersion: apps/v1
@@ -29,6 +29,7 @@ export default defineTool({
   id: 'k8s-validator',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: K8S_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

@@ -1,5 +1,9 @@
 import { meta, SQL_DIALECTS } from '@fodt/sql-formatter';
-import { sqlFormatterInWorker, SqlFormatterRunError } from '../lib/run-sql-formatter-in-worker';
+import {
+  SQL_FORMATTER_TIME_LIMIT_MS,
+  sqlFormatterInWorker,
+  SqlFormatterRunError,
+} from '../lib/run-sql-formatter-in-worker';
 import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 export default defineTool({
@@ -9,6 +13,7 @@ export default defineTool({
   // (a deeply nested parenthesised expression showed super-linear growth
   // against the installed grammar), so the run can be cancelled.
   cancellable: true,
+  runLimit: { ms: SQL_FORMATTER_TIME_LIMIT_MS },
   fields: [
     {
       name: 'input',

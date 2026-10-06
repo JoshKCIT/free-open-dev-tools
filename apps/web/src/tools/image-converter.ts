@@ -10,6 +10,7 @@ import {
   type Rotation,
 } from '@fodt/image-converter';
 import {
+  IMAGE_CONVERTER_STALL_LIMIT_MS,
   probeEncodersInWorker,
   convertImageInWorker,
   type ConvertImageResult,
@@ -275,6 +276,7 @@ export default defineTool({
   // D-10): decoding, resizing and encoding are all real background work.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: IMAGE_CONVERTER_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields,
   async run(values, ctx): Promise<ToolResult> {

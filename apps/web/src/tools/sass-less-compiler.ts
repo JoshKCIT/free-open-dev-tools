@@ -6,7 +6,11 @@ import {
   type Language,
   type OutputStyle,
 } from '@fodt/sass-less-compiler';
-import { compileInWorker, SassLessCompilerRunError } from '../lib/run-sass-less-compiler-in-worker';
+import {
+  SASS_LESS_COMPILER_TIME_LIMIT_MS,
+  compileInWorker,
+  SassLessCompilerRunError,
+} from '../lib/run-sass-less-compiler-in-worker';
 import { defineTool, str, type OutputBlock, type ToolIssue, type ToolResult } from '../lib/tool-ui';
 
 /** The languages and output styles a stylesheet can be compiled as. Maps, so a stray value is just a miss. */
@@ -87,6 +91,7 @@ export default defineTool({
   // button while that work is in flight.
   autoRun: false,
   cancellable: true,
+  runLimit: { ms: SASS_LESS_COMPILER_TIME_LIMIT_MS },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {
