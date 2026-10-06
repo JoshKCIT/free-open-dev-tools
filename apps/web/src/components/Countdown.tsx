@@ -18,7 +18,8 @@ export default function Countdown({ label, endsAt, periodMs }: { label?: string;
   }, []);
 
   const leftMs = Math.min(Math.max(endsAt - now, 0), periodMs);
-  const secondsLeft = Math.floor(leftMs / 1000);
+  // Rounded up, so a 30 second step counts 30 down to 1, as authenticator apps and the page's own notes count it.
+  const secondsLeft = Math.ceil(leftMs / 1000);
   const periodSeconds = Math.round(periodMs / 1000);
   return (
     <div className="countdown" role="timer" aria-label={label ?? 'Time left in the current step'}>

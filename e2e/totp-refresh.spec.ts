@@ -35,6 +35,11 @@ const ONE_SECOND_BEFORE_BOUNDARY = 1_111_111_109_000;
 /** The wait the page asks for when the clock stands one second before a boundary: the one second plus 25 ms. */
 const WAIT_FROM_THERE = 1025;
 
+/** The wait the page asks for at any moment of a 30 second step: the time to the next boundary plus 25 ms. */
+function waitFrom(momentMs: number): number {
+  return (Math.floor(momentMs / 30_000) + 1) * 30_000 - momentMs + 25;
+}
+
 function outputArea(page: Page) {
   return page.locator('section[aria-label="Output"]');
 }
@@ -102,7 +107,7 @@ async function openAtMoment(page: Page, momentMs: number, firstCode: string, typ
   if (typedTime === undefined) {
     await expect(statValue(page, 'Unix seconds')).toHaveText(String(Math.floor(momentMs / 1000)));
     // The run's result arms the next timer in an effect after the screen is updated; wait for it before moving the clock.
-    await expect.poll(async () => (await armedTimeouts(page)).at(-1)).toBe(WAIT_FROM_THERE);
+    await expect.poll(async () => (await armedTimeouts(page)).at(-1)).toBe(waitFrom(momentMs));
   }
 }
 
@@ -195,6 +200,20 @@ test('totp-generator: counter based codes never change by themselves', async ({ 
   await page.clock.fastForward(120_000);
   expect(await outputArea(page).locator('table').innerText()).toBe(before);
   await expect(outputArea(page).locator('.countdown')).toHaveCount(0);
+});
+
+test('totp-generator: the countdown and the paused note count the same seconds left, 30 down to 1', async ({
+  page,
+}) => {
+  // 13.3 seconds before the boundary 14 whole seconds are left, as an authenticator app and the page notes count them.
+  await openAtMoment(page, ONE_SECOND_BEFORE_BOUNDARY - 12_300, '07081804');
+  await expect(outputArea(page).locator('.countdown-text')).toHaveText('14 s left of 30 s');
+  // Pause makes a run 140 ms later, still inside the same whole second, and its note names the same number.
+  await page.getByLabel('Pause refreshing').check();
+  await page.clock.runFor(200);
+  await expect(outputArea(page)).toContainText(
+    'Refreshing is paused. 14 of 30 seconds were left in the current step when these codes were made.',
+  );
 });
 
 test('totp-generator: ticking Pause refreshing freezes the codes and hides the countdown, and unticking refreshes at once', async ({

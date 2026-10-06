@@ -28,10 +28,13 @@ describe('countdown block markup', () => {
     expect(html).not.toContain('role="log"');
   });
 
-  it('floors the seconds and never shows a negative number', () => {
+  it('rounds the seconds up, counting 30 down to 1, and never shows a negative number', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
-    expect(render(NOW + 11_900, 30_000)).toContain('11 s left of 30 s');
-    expect(render(NOW + 999, 30_000)).toContain('0 s left of 30 s');
+    expect(render(NOW + 11_900, 30_000)).toContain('12 s left of 30 s');
+    expect(render(NOW + 999, 30_000)).toContain('1 s left of 30 s');
+    expect(render(NOW + 1, 30_000)).toContain('1 s left of 30 s');
+    expect(render(NOW + 29_001, 30_000)).toContain('30 s left of 30 s');
+    expect(render(NOW, 30_000)).toContain('0 s left of 30 s');
     expect(render(NOW - 5_000, 30_000)).toContain('0 s left of 30 s');
     expect(render(NOW + 90_000, 30_000)).toContain('30 s left of 30 s');
   });
