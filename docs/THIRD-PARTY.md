@@ -317,7 +317,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [set-cookie-parser](https://github.com/nfriedly/set-cookie-parser) | 2.7.2 | MIT | transitive (via react-router) | apps/web |
 | [smol-toml](github:squirrelchat/smol-toml) | 1.9.0 | BSD-3-Clause | direct | tools/data-convert |
 | [source-map](https://github.com/mozilla/source-map) | 0.6.1 | BSD-3-Clause | transitive (via clean-css, source-map-support) | tools/html-formatter, tools/js-formatter |
-| [source-map-js](https://github.com/7rulnik/source-map-js) | 1.2.1 | BSD-3-Clause | transitive (via css-tree, sass) | tools/css-formatter, tools/html-formatter, tools/sass-less-compiler, tools/svg-optimizer |
+| [source-map-js](https://github.com/7rulnik/source-map-js) | 1.2.2 | BSD-3-Clause | transitive (via css-tree, sass) | tools/css-formatter, tools/html-formatter, tools/sass-less-compiler, tools/svg-optimizer |
 | [source-map-support](https://github.com/evanw/node-source-map-support) | 0.5.21 | MIT | transitive (via terser) | tools/html-formatter, tools/js-formatter |
 | [sql-formatter](https://github.com/sql-formatter-org/sql-formatter) | 15.9.0 | MIT | direct | tools/sql-formatter |
 | [sql.js](http://github.com/sql-js/sql.js) | 1.14.2 | MIT | direct | tools/sqlite-viewer |
@@ -11626,7 +11626,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### source-map-js 1.2.1
+### source-map-js 1.2.2
 
 Licence: BSD-3-Clause
 
