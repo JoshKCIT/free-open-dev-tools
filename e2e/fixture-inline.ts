@@ -12,10 +12,12 @@
  *
  * Shape of one entry (`InlineFixtureFile`): `name` and `mimeType` as the page
  * will see them, and exactly one of `base64` (the bytes, standard alphabet) or
- * `text` (UTF-8). Every `{{MARKER}}` in `text` is replaced by the run's
- * marker (the live harness uses `FODT-LIVE-FIXTURE`; the privacy harness uses
- * the page's own canary), so a leak of a file's content is something the
- * privacy checks can actually find.
+ * `text` (UTF-8), never empty. Every `{{MARKER}}` in `text` is replaced by the
+ * run's marker (the live harness uses `FODT-LIVE-FIXTURE`; the privacy harness
+ * uses the page's own canary), so a leak of a file's content is something the
+ * privacy checks can actually find. A privacy fixture entry with any text file
+ * must hold `{{MARKER}}` in at least one of them (`privacy.spec.ts`); an entry
+ * of base64 files only is allowed, for binary formats.
  *
  * This module imports only a type, so a Vitest file can load it without a
  * browser.
@@ -74,9 +76,12 @@ export function inlineFileProblems(value: unknown, where: string): string[] {
       problems.push(`${at} has neither base64 nor text: give exactly one`);
     } else if (hasBase64) {
       if (typeof entry.base64 !== 'string') problems.push(`${at}.base64 must be a string`);
+      else if (entry.base64.length === 0) problems.push(`${at}.base64 is empty: a fixture file must hold some bytes`);
       else if (!BASE64_TEXT.test(entry.base64)) problems.push(`${at}.base64 is not valid standard base64`);
     } else if (typeof entry.text !== 'string') {
       problems.push(`${at}.text must be a string`);
+    } else if (entry.text.length === 0) {
+      problems.push(`${at}.text is empty: a fixture file must hold some text`);
     }
   });
   return problems;

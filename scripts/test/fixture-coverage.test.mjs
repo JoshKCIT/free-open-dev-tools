@@ -235,6 +235,14 @@ describe('inline fixture files', () => {
     expect(inlineFileProblems([{ ...good, name: 'a/b.bin' }], 'f')).toHaveLength(1);
   });
 
+  it('refuses an empty payload, base64 or text, so no fixture attaches a file of zero bytes', () => {
+    expect(inlineFileProblems([{ ...good, base64: '' }], 'f').join(' ')).toContain('f[0].base64 is empty');
+    expect(inlineFileProblems([{ name: 'a.txt', mimeType: 'text/plain', text: '' }], 'f').join(' ')).toContain(
+      'f[0].text is empty',
+    );
+    expect(() => buildInlineFiles([{ ...good, base64: '' }], 'M')).toThrow(/is empty/);
+  });
+
   it('decodes base64 exactly and encodes text as UTF-8', () => {
     const [wasm, text] = buildInlineFiles([good, { name: 'n.txt', mimeType: 'text/plain', text: 'café' }], 'M');
     expect([...wasm.buffer]).toEqual([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);

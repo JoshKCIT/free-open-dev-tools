@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildFixtureFiles, FIXTURE_FILE_KINDS } from './fixture-files';
-import { buildInlineFiles, inlineFileProblems, type InlineFixtureFile } from './fixture-inline';
+import { buildInlineFiles, inlineFileProblems, MARKER_PLACEHOLDER, type InlineFixtureFile } from './fixture-inline';
 import { armCspProbe, describeFinding } from './csp-probe';
 
 /**
@@ -592,6 +592,16 @@ function privacyEntryProblems(file: string, index: number, entry: unknown): stri
     problems.push(...inlineFileProblems(entry.inlineFiles, `${where}.inlineFiles`));
     if (entry.attachesFile !== true) problems.push(`${where} has inlineFiles but attachesFile is not true`);
     if (entry.file !== undefined) problems.push(`${where} has both file and inlineFiles: give one`);
+    // A text file is where the canary goes: an entry that carries text must carry the marker in at least one text file,
+    // or a leak of that file's content could not be found. Base64 files carry bytes, so an all-base64 entry is fine.
+    const texts = Array.isArray(entry.inlineFiles)
+      ? entry.inlineFiles.filter((f): f is { text: string } => isPlainObject(f) && typeof f.text === 'string')
+      : [];
+    if (texts.length > 0 && !texts.some((f) => f.text.includes(MARKER_PLACEHOLDER))) {
+      problems.push(
+        `${where}.inlineFiles has text files but none holds ${MARKER_PLACEHOLDER}, so a leak of them could not be found`,
+      );
+    }
   }
   return problems;
 }
@@ -619,11 +629,14 @@ test('every privacy fixture file is loaded and names a real tool page', () => {
 
 test('a malformed privacy fixture entry or inline file is refused, naming the file', () => {
   const good = { name: 'a.bin', mimeType: 'application/octet-stream', base64: 'AA==' };
+  const text = { name: 'a.txt', mimeType: 'text/plain', text: 'no marker here' };
   const accepted: [string, unknown][] = [
     ['an inline base64 file', { attachesFile: true, inlineFiles: [good] }],
     ['no file at all', { attachesFile: false }],
     ['a mode and values', { mode: { field: 'mode', value: 'hash' }, values: { input: 'x' }, attachesFile: false }],
     ['two fixture file kinds', { attachesFile: true, file: 'pdf, png' }],
+    ['a text file holding the marker', { attachesFile: true, inlineFiles: [{ ...text, text: 'a {{MARKER}}' }] }],
+    ['a marker in one text file of two', { attachesFile: true, inlineFiles: [text, { ...text, text: '{{MARKER}}' }] }],
   ];
   for (const [what, entry] of accepted) {
     expect(privacyEntryProblems('x.json', 0, entry), `${what} must be accepted`).toEqual([]);
@@ -653,6 +666,9 @@ test('a malformed privacy fixture entry or inline file is refused, naming the fi
     ['an unknown fixture file kind', { attachesFile: true, file: 'pdf,docx' }, 'unknown: "docx"'],
     ['an empty fixture file kind list', { attachesFile: true, file: '' }, '.file must be'],
     ['file kinds with attachesFile false', { attachesFile: false, file: 'pdf' }, 'has file but attachesFile'],
+    ['an empty base64 payload', { attachesFile: true, inlineFiles: [{ ...good, base64: '' }] }, 'base64 is empty'],
+    ['an empty text payload', { attachesFile: true, inlineFiles: [{ ...text, text: '' }] }, 'text is empty'],
+    ['text files with no marker', { attachesFile: true, inlineFiles: [good, text] }, 'none holds {{MARKER}}'],
   ];
   for (const [what, entry, says] of refused) {
     const problems = privacyEntryProblems('x.json', 0, entry);
