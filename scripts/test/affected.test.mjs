@@ -60,6 +60,17 @@ describe('pathRule', () => {
     }
   });
 
+  it('makes CI build when the page policy gate or its acknowledgements change, without a full run', () => {
+    for (const path of ['scripts/check-csp.mjs', 'scripts/csp-acks.json']) {
+      expect(pathRule(path), path).toEqual({
+        kind: 'site',
+        why: 'read by the build gate that every production build runs',
+      });
+    }
+    expect(pathRule('scripts/test/check-csp.test.mjs').kind).toBe('trace');
+    expect(pathRule('scripts/check-csp.mjs.bak').kind).toBe('trace');
+  });
+
   it('hands the catalog files and the lockfile to their own entry-by-entry rules', () => {
     expect(pathRule('docs/catalog.json')).toEqual({ kind: 'catalog' });
     expect(pathRule('apps/web/src/generated-catalog.json')).toEqual({ kind: 'catalog' });

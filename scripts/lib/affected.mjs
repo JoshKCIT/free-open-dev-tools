@@ -99,6 +99,11 @@ export function pathRule(path) {
   if (/^e2e\/[^/]+\.spec\.ts$/.test(path)) return { kind: 'spec' };
   if (path.startsWith('e2e/')) return { kind: 'trace' };
   if (path === 'pnpm-lock.yaml') return { kind: 'lockfile' };
+  // The page policy gate runs only inside a production build, and the static job runs its unit tests, not the gate.
+  // An edit to it or to its acknowledgements must therefore make CI build, or the gate first runs at deploy.
+  if (/^scripts\/(check-csp\.mjs|csp-acks\.json)$/.test(path)) {
+    return { kind: 'site', why: 'read by the build gate that every production build runs' };
+  }
   if (path.startsWith('scripts/')) return { kind: 'trace' };
   if (path === '.provenance-denylist') return { kind: 'site', why: 'read by the whole-catalog JavaScript check' };
   for (const [pattern, why] of NOTHING) if (pattern.test(path)) return { kind: 'nothing', why };
