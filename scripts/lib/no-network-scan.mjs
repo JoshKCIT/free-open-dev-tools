@@ -4,12 +4,19 @@
  * every tool package source file, every tool page and the shared site code.
  */
 
+/** The start of a string that names another site: an http or https address, or a scheme-relative `//host` one. */
+const REMOTE_START = /^(?:(https?):|\/\/)/i;
+
 /**
  * Removes comments and string literals before scanning for network calls.
  *
  * Without this the check fires on documentation and on test data: the case
  * converter legitimately uses "XMLHttpRequest" as an example identifier. What
  * matters is whether the code can actually call these, not whether it names them.
+ *
+ * One thing of a string is kept: a string (or template literal) that starts with an address of another site leaves
+ * the token `"http:"`, `"https:"` or `"//"` in its place, so a remote dynamic import such as `import("https://x")`
+ * still reads as `import( "https:" )` and the pattern below can find it. No other pattern looks at that token.
  */
 export function stripStringsAndComments(source) {
   let out = '';
@@ -32,6 +39,8 @@ export function stripStringsAndComments(source) {
     if (ch === '"' || ch === "'" || ch === '`') {
       const quote = ch;
       i++;
+      const remote = REMOTE_START.exec(source.slice(i, i + 8));
+      if (remote) out += remote[1] ? ` "${remote[1].toLowerCase()}:"` : ' "//"';
       while (i < n) {
         if (source[i] === '\\') {
           i += 2;
@@ -79,7 +88,8 @@ export const FORBIDDEN = [
   [/navigator\.sendBeacon/, 'navigator.sendBeacon'],
   [/new\s+WebSocket/, 'new WebSocket'],
   [/new\s+EventSource/, 'new EventSource'],
-  [/import\s*\(\s*['"]https?:/, 'a remote dynamic import'],
+  // Reads the token the stripper leaves for a string that starts with another site's address (see above).
+  [/\bimport\s*\(\s*"(?:https?:|\/\/)"/, 'a remote dynamic import'],
   [
     /\b(?:webkit)?RTCPeerConnection\b|\bRTCDataChannel\b|\bWebTransport\b/,
     'a peer connection, data channel or transport',

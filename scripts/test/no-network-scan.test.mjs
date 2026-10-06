@@ -45,6 +45,37 @@ describe('the no-network scan of the catalog gate', () => {
     expect(forbiddenIn('new EventSource(u)')).toEqual(['new EventSource']);
   });
 
+  it('finds a dynamic import of another site, however its address is quoted', () => {
+    for (const code of [
+      'export const load = () => import("https://x");',
+      "export const load = () => import('http://cdn.example/m.js');",
+      'export const load = () => import(`https://cdn.example/${name}.js`);',
+      "export const load = () => import ( 'HTTPS://cdn.example/m.js' );",
+      "export const load = () => import('//cdn.example/m.js');",
+    ]) {
+      expect(forbiddenIn(code), code).toEqual(['a remote dynamic import']);
+    }
+  });
+
+  it('passes a local dynamic import and an address that is only a value', () => {
+    for (const code of [
+      "export const load = () => import('./local.js');",
+      'export const load = () => import("../lib/x.ts");',
+      'export const load = (n: string) => import(`./parts/${n}.js`);',
+      "export const home = 'https://example.org/'; export const relative = '//not-imported';",
+      "// import('https://x') would be a leak",
+      'export const text = \'import("https://x")\';',
+    ]) {
+      expect(forbiddenIn(code), code).toEqual([]);
+    }
+  });
+
+  it('leaves only a scheme token where a string started with another site address', () => {
+    expect(stripStringsAndComments(`a('https://x/y?q=1')`).replace(/\s+/g, ' ')).toBe('a( "https:" )');
+    expect(stripStringsAndComments(`a("//cdn/x")`).replace(/\s+/g, ' ')).toBe('a( "//" )');
+    expect(stripStringsAndComments(`a('./x')`).replace(/\s+/g, ' ')).toBe('a( )');
+  });
+
   it('removes strings and comments but keeps code inside a template placeholder', () => {
     expect(stripStringsAndComments(`a('x') // y\nb`).replace(/\s+/g, ' ')).toBe('a( ) b');
     expect(stripStringsAndComments('`t ${c(1)} u`')).toContain('c(1)');
