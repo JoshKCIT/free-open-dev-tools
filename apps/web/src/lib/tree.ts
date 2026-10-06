@@ -9,8 +9,12 @@ import type { TreeNode } from './tool-ui';
 /** Most nodes the block draws. */
 export const TREE_NODE_CAP = 5000;
 
-/** Most levels the block draws (the first level is level 1). */
-export const TREE_DEPTH_CAP = 64;
+/**
+ * Most levels the block draws (the first level is level 1). 40 keeps well clear of the nested `details` depth at which
+ * an older headless Chromium build was seen to end the page (47); no realistic ASN.1, WebAssembly or MIME structure
+ * needs more drawn levels, and Copy and Download still give the whole tree.
+ */
+export const TREE_DEPTH_CAP = 40;
 
 /** `default`: only the first level and nodes that ask to be open. `all` and `none` are Expand all and Collapse all. */
 export type TreeMode = 'default' | 'all' | 'none';

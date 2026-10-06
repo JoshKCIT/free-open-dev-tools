@@ -169,20 +169,13 @@ test.describe('tree output block markup', () => {
     await expect(tab.getByText('r50', { exact: true })).toHaveCount(0);
   });
 
-  // Measured on 2026-10-05 (Playwright 1.63, Windows): the old headless build that the chromium and mobile-chrome
-  // projects launch ends the page ("Target crashed") once 47 native details elements are nested, even when all are
-  // closed, with or without this block's stylesheet. Full Chromium 153, Firefox and WebKit draw 100 nested levels. The
-  // 64 level markup is therefore drawn here in Firefox and WebKit only; the markup test in
-  // apps/web/test/tree-view.test.tsx covers the same chain without a browser. Phase 18 and 19 tool specs that return
-  // a deep tree must keep it under 47 levels in the chromium project or use the full Chromium build.
-  test('draws 64 levels of a 65 level chain with a line saying deeper levels are in the copy text', async ({
+  // 40 levels: an older headless Chromium build was seen to end the page at 47 nested details.
+  test('draws 40 levels of a 41 level chain with a line saying deeper levels are in the copy text', async ({
     page: tab,
-    browserName,
   }) => {
-    test.skip(browserName === 'chromium', 'the old headless Chromium build ends the page at 47 nested details');
-    await tab.setContent(documentFor(chain(65), builtStyles()));
-    await expect(tab.locator('ul.tree li')).toHaveCount(64);
-    await expect(tab.getByText('Levels below 64 are left out here. Copy gives the whole tree.')).toBeVisible();
+    await tab.setContent(documentFor(chain(41), builtStyles()));
+    await expect(tab.locator('ul.tree li')).toHaveCount(40);
+    await expect(tab.getByText('Levels below 40 are left out here. Copy gives the whole tree.')).toBeVisible();
     await expect(tab.getByText('Showing the first')).toHaveCount(0);
   });
 

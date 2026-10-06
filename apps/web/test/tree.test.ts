@@ -35,9 +35,9 @@ const SMALL: TreeNode[] = [
 ];
 
 describe('tree helpers', () => {
-  it('states the two caps as 5000 nodes and 64 levels', () => {
+  it('states the two caps as 5000 nodes and 40 levels', () => {
     expect(TREE_NODE_CAP).toBe(5000);
-    expect(TREE_DEPTH_CAP).toBe(64);
+    expect(TREE_DEPTH_CAP).toBe(40);
   });
 
   it('counts a 5001 node forest as 5001 and a 10000 level chain without running out of stack', () => {
@@ -74,27 +74,27 @@ describe('tree helpers', () => {
     expect(out.depthCut).toBe(false);
   });
 
-  it('keeps 64 levels of a 65 level chain and reports that levels were cut', () => {
-    const out = capTree(chain(65));
-    expect(out.shown).toBe(64);
-    expect(out.total).toBe(65);
+  it('keeps 40 levels of a 41 level chain and reports that levels were cut', () => {
+    const out = capTree(chain(41));
+    expect(out.shown).toBe(40);
+    expect(out.total).toBe(41);
     expect(out.depthCut).toBe(true);
     expect(out.nodeCut).toBe(false);
     const lines = treeText(out.nodes).split('\n');
-    expect(lines).toHaveLength(64);
-    expect(lines[63]?.trim()).toBe('level63');
-    expect(capTree(chain(64)).depthCut).toBe(false);
+    expect(lines).toHaveLength(40);
+    expect(lines[39]?.trim()).toBe('level39');
+    expect(capTree(chain(40)).depthCut).toBe(false);
   });
 
-  it('caps a 10000 level chain at 64 levels without running out of stack', () => {
+  it('caps a 10000 level chain at 40 levels without running out of stack', () => {
     const out = capTree(chain(10_000));
-    expect(out.shown).toBe(64);
+    expect(out.shown).toBe(40);
     expect(out.total).toBe(10_000);
     expect(out.depthCut).toBe(true);
   });
 
   it('honours caps given by the caller and keeps the order', () => {
-    const out = capTree(SMALL, 3, 64);
+    const out = capTree(SMALL, 3, TREE_DEPTH_CAP);
     expect(treeText(out.nodes)).toBe('root\tfirst\n  a\n    a1');
     expect(out.shown).toBe(3);
     expect(out.total).toBe(5);

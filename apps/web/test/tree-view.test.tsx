@@ -68,20 +68,20 @@ describe('tree block markup', () => {
     expect(html).not.toContain('left out here');
   });
 
-  it('draws 64 levels of a 65 level chain with a line saying deeper levels are in the copy text', () => {
-    const html = render(chain(65));
-    expect(count(html, /<li[ >]/g)).toBe(64);
-    expect(html).toContain('level63');
-    expect(html).not.toContain('level64');
-    expect(html).toContain('Levels below 64 are left out here. Copy gives the whole tree.');
+  it('draws 40 levels of a 41 level chain with a line saying deeper levels are in the copy text', () => {
+    const html = render(chain(41));
+    expect(count(html, /<li[ >]/g)).toBe(40);
+    expect(html).toContain('level39');
+    expect(html).not.toContain('level40');
+    expect(html).toContain('Levels below 40 are left out here. Copy gives the whole tree.');
     expect(html).not.toContain('Showing the first');
   });
 
-  it('draws a 64 level chain whole and a 10000 level chain as 64 levels without failing', () => {
-    expect(render(chain(64))).not.toContain('left out here');
+  it('draws a 40 level chain whole and a 10000 level chain as 40 levels without failing', () => {
+    expect(render(chain(40))).not.toContain('left out here');
     const html = render(chain(10_000));
-    expect(count(html, /<li[ >]/g)).toBe(64);
-    expect(html).toContain('Levels below 64 are left out here.');
+    expect(count(html, /<li[ >]/g)).toBe(40);
+    expect(html).toContain('Levels below 40 are left out here.');
   });
 
   it('draws nodes in the order given, depth first', () => {

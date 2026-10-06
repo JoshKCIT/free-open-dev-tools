@@ -7,8 +7,8 @@ import { TREE_DEPTH_CAP, capTree, initialOpen, type TreeMode } from '../lib/tree
  * opening, closing and the keyboard (Tab to a heading, Enter or Space to toggle).
  *
  * Labels and details are written as React text, which the browser never reads as markup; nothing here sets inner HTML.
- * Only the capped tree (at most 5,000 nodes and 64 levels, see lib/tree.ts) is drawn, so the recursion below is never
- * deeper than 64 calls whatever the page hands over. Expand all and Collapse all start the list over with a new key,
+ * Only the capped tree (at most 5,000 nodes and 40 levels, see lib/tree.ts) is drawn, so the recursion below is never
+ * deeper than 40 calls whatever the page hands over. Expand all and Collapse all start the list over with a new key,
  * which is how every node takes the mode's open state again even after the visitor opened or closed some by hand.
  */
 

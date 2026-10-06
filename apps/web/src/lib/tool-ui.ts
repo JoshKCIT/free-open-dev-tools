@@ -125,7 +125,7 @@ export type OutputBlock =
   | { kind: 'countdown'; label?: string; endsAt: number; periodMs: number }
   /**
    * Nested entries drawn as native expandable sections, in the order given, depth first. Text only: labels and details
-   * are never read as markup. The block draws at most 5,000 nodes and 64 levels and says so when it cuts; Copy always
+   * are never read as markup. The block draws at most 5,000 nodes and 40 levels and says so when it cuts; Copy always
    * gives the whole tree, as `copyText` when the page supplies it and otherwise as indented text (two spaces per level,
    * a tab before a detail). `download` names a file that saves the same text. Keep the page's own tree under the size
    * the tool can hold in memory: the block caps what it draws, not what the page builds.
