@@ -1475,5 +1475,12 @@
     "category": "encoding",
     "tier": 3,
     "summary": "Convert international domain names between Unicode and their ASCII Punycode form, with invalid labels explained."
+  },
+  {
+    "id": "cors-checker",
+    "name": "CORS Checker",
+    "category": "network",
+    "tier": 2,
+    "summary": "Describe a cross-origin request and paste the response headers to see whether a browser would send a preflight and let the page read the answer."
   }
 ]

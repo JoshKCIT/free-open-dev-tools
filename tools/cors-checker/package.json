@@ -1,0 +1,47 @@
+{
+  "name": "@fodt/cors-checker",
+  "version": "1.0.0",
+  "description": "Describe a cross-origin request and paste the response headers to see whether a browser would send a preflight and let the page read the answer.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "cors",
+    "preflight",
+    "cross-origin",
+    "access-control",
+    "origin",
+    "options",
+    "headers",
+    "credentials"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/cors-checker"
+  }
+}
