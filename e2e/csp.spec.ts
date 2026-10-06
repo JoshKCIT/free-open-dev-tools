@@ -1,16 +1,33 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { armCspProbe, blobWorkerOutcome, namesDirective, describeFinding, PROBE_SCRIPT_PATH } from './csp-probe';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  addressWorkerOutcome,
+  armCspProbe,
+  blobWorkerOutcome,
+  describeFinding,
+  directiveForOutside,
+  evalOutcome,
+  inlineScriptOutcome,
+  namesDirective,
+  OUTSIDE_KINDS,
+  outsideRequestOutcomes,
+  wasmCompileOutcome,
+  type ControlResult,
+  type CspFinding,
+} from './csp-probe';
 
 /**
  * Proof that every page's own content security policy refuses what it must, and that the instrument noticing a refusal
  * can fail. The shared probe lives in `e2e/csp-probe.ts` and is also armed inside the per-tool test of
  * `e2e/privacy.spec.ts`, so all 211 tool pages are driven through every control state with zero violations allowed.
  *
- * Page code for the controls is served by `page.route` from `__fodt-probe.js` (the path `PROBE_SCRIPT_PATH`) and loaded as a
- * script element, never run through `page.evaluate`: code run by `evaluate` is not subject to the page's `script-src`
- * and its `eval` and `Function` calls succeed even on a locked page, in all four engines.
+ * Page code for the controls is served by `page.route` from `__fodt-probe.js` and loaded as a script element, never run
+ * through `page.evaluate`: code run by `evaluate` is not subject to the page's `script-src` and its `eval` and
+ * `Function` calls succeed even on a locked page, in all four engines.
  *
  * WHAT IS PROOF WHERE (measured in Chromium, Firefox, Windows WebKit and Linux WebKit while planning; trust no green
  * WebKit event assertion more than the table allows):
@@ -24,17 +41,23 @@ import { armCspProbe, blobWorkerOutcome, namesDirective, describeFinding, PROBE_
  *   blob worker fetch                       prefix event      prefix event       console only
  *   blob worker eval or WebAssembly         prefix event      prefix event       NOTHING; proof is the tool's run completing
  *
- * So on WebKit the proof for worker and WebAssembly violations is behavioural, and these tests assert behaviour there.
- * Never assert that eval is refused right after a WebAssembly compile on WebKit (it has a measured lapse); the
- * eval-refused control runs on a page with neither grant.
+ * So on WebKit the proof for worker and WebAssembly violations is behavioural, and these tests assert behaviour there
+ * (the worker starts or never starts; the compile throws or compiles; the server saw nothing). Never assert that eval
+ * is refused right after a WebAssembly compile on WebKit (it has a measured lapse); the eval-refused control runs first
+ * on a fresh page, before any compile.
  *
  * The outside address is a local recording server (so a leak shows as a server hit) or, when E2E_BASE_URL points at a
  * deployed site, `https://example.invalid/` (an https page cannot reach a plain http server), and proof relies on
- * violations and behaviour alone.
+ * violations and behaviour alone; the positive controls that need a reachable server run only against the local build.
+ *
+ * One representative page is tested for each DISTINCT policy string the build serves, found from the served pages, so a
+ * new combination of needs gets every control with no edit here.
  */
 
 const rel = (path: string) => path.replace(/^\//, '');
 const deployed = Boolean(process.env.E2E_BASE_URL);
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const baseUrl = (process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173').replace(/\/?$/, '/');
 
 /**
  * Runs `body` with the address of a local HTTP server that records every request it receives (or the never-resolving
@@ -67,6 +90,107 @@ async function openToolPage(page: Page, id: string): Promise<void> {
   await page.waitForLoadState('networkidle');
 }
 
+/** The findings as readable lines, for failure messages. */
+const lines = (findings: CspFinding[]): string => findings.map(describeFinding).join(' | ') || 'none';
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Policy discovery: one representative per distinct policy string, found from the served pages.
+// ---------------------------------------------------------------------------------------------------------------------
+
+type ParsedPolicy = Map<string, string[]>;
+
+function parsePolicyText(text: string): ParsedPolicy {
+  const parsed: ParsedPolicy = new Map();
+  for (const part of text.split(';')) {
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    const name = tokens.shift();
+    if (name) parsed.set(name, tokens);
+  }
+  return parsed;
+}
+
+const POLICY_META = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/;
+
+interface Representative {
+  id: string;
+  policy: string;
+  pages: number;
+  label: string;
+  parsed: ParsedPolicy;
+}
+
+function labelOf(parsed: ParsedPolicy): string {
+  const script = parsed.get('script-src') ?? [];
+  const parts: string[] = [];
+  if (script.includes("'unsafe-eval'")) parts.push('eval');
+  if (script.includes("'wasm-unsafe-eval'")) parts.push('wasm');
+  if ((parsed.get('worker-src') ?? []).includes('blob:')) parts.push('workers');
+  if ((parsed.get('style-src') ?? []).includes("'unsafe-inline'")) parts.push('inline styles');
+  if (script.filter((token) => token.startsWith("'sha256-")).length > 1) parts.push('frame hashes');
+  return parts.length > 0 ? parts.join(' + ') : 'baseline';
+}
+
+async function pageText(id: string): Promise<string | undefined> {
+  try {
+    const response = await fetch(new URL(`tools/${id}`, baseUrl));
+    if (response.ok) return await response.text();
+  } catch {
+    /* fall through to the built files */
+  }
+  const built = join(root, 'apps', 'web', 'dist', 'tools', `${id}.html`);
+  return existsSync(built) ? readFileSync(built, 'utf8') : undefined;
+}
+
+async function discover(): Promise<{ representatives: Representative[]; problem?: string }> {
+  const catalog = JSON.parse(readFileSync(join(root, 'docs', 'catalog.json'), 'utf8')) as { id: string }[];
+  const ids = catalog.map((entry) => entry.id).sort();
+  const groups = new Map<string, string[]>();
+  let unread = 0;
+  for (let start = 0; start < ids.length; start += 24) {
+    const texts = await Promise.all(ids.slice(start, start + 24).map((id) => pageText(id)));
+    texts.forEach((text, index) => {
+      const policy = text ? POLICY_META.exec(text)?.[1] : undefined;
+      const id = ids[start + index]!;
+      if (!policy) {
+        unread += 1;
+        return;
+      }
+      groups.set(policy, [...(groups.get(policy) ?? []), id]);
+    });
+  }
+  const representatives = [...groups.entries()]
+    .map(([policy, members]) => {
+      const parsed = parsePolicyText(policy);
+      return { id: [...members].sort()[0]!, policy, pages: members.length, label: labelOf(parsed), parsed };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+  return unread > 0 && representatives.length === 0
+    ? { representatives, problem: `no page of the catalog could be read from ${baseUrl} or the built files` }
+    : { representatives };
+}
+
+const discovery = await discover();
+
+test('the representatives found cover every distinct policy the build serves', async () => {
+  const testInfo = test.info();
+  expect(discovery.problem, 'the served pages could not be read').toBeUndefined();
+  const total = discovery.representatives.reduce((sum, rep) => sum + rep.pages, 0);
+  testInfo.annotations.push({
+    type: 'representatives',
+    description: discovery.representatives.map((rep) => `${rep.label}: ${rep.id} (${rep.pages})`).join('; '),
+  });
+  expect(discovery.representatives.length, 'at least the baseline and the worker policies are served').toBeGreaterThan(
+    1,
+  );
+  expect(total, 'every catalog page with a policy is in exactly one group').toBeGreaterThan(0);
+  // Every group has a different whole policy string, by construction; the labels may repeat, so say so loudly.
+  expect(new Set(discovery.representatives.map((rep) => rep.policy)).size).toBe(discovery.representatives.length);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The probe itself: blob workers (research A1), the page's own worker, load-time violations.
+// ---------------------------------------------------------------------------------------------------------------------
+
 test.describe('the violation probe sees what the policy refuses', () => {
   test('a blob worker that tries an outside fetch is recorded, refused and never reaches the server', async ({
     page,
@@ -86,7 +210,7 @@ test.describe('the violation probe sees what the policy refuses', () => {
       );
       expect(
         fromWorker.length,
-        `a violation raised inside the blob worker is recorded by the probe (${worker.findings.map(describeFinding).join(' | ')})`,
+        `a violation raised inside the blob worker is recorded by the probe (${lines(worker.findings)})`,
       ).toBeGreaterThan(0);
     });
     expect(seen, 'the recording server saw nothing from the worker').toEqual([]);
@@ -140,8 +264,375 @@ test.describe('the violation probe sees what the policy refuses', () => {
       .filter((finding) => (finding.blocked ?? finding.text ?? '').includes('load-time.png'));
     expect(
       recorded.length,
-      `the image refused during load is in the probe (${probe.findings().map(describeFinding).join(' | ')})`,
+      `the image refused during load is in the probe (${lines(probe.findings())})`,
     ).toBeGreaterThan(0);
-    expect(PROBE_SCRIPT_PATH).toBe('/__fodt-probe.js');
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The structure of every page in the real browser.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The policy meta is the first element of the head, the charset meta the second, and the icon (a data address) loads. */
+async function expectStructure(page: Page, label: string): Promise<void> {
+  const structure = await page.evaluate(() => {
+    const first = document.head.children[0];
+    const second = document.head.children[1];
+    const icon = document.querySelector('link[rel~="icon"]');
+    return {
+      firstTag: first?.tagName,
+      firstHttpEquiv: first?.getAttribute('http-equiv'),
+      secondTag: second?.tagName,
+      secondHasCharset: second?.hasAttribute('charset') ?? false,
+      characterSet: document.characterSet,
+      iconHref: icon?.getAttribute('href') ?? '',
+    };
+  });
+  expect(structure.firstTag, `${label}: the first element of head`).toBe('META');
+  expect(structure.firstHttpEquiv, `${label}: the first element of head is the policy meta`).toBe(
+    'Content-Security-Policy',
+  );
+  expect(structure.secondTag, `${label}: the second element of head`).toBe('META');
+  expect(structure.secondHasCharset, `${label}: the second element of head is the charset meta`).toBe(true);
+  expect(structure.characterSet, `${label}: the page is read as UTF-8`).toBe('UTF-8');
+  expect(structure.iconHref.startsWith('data:'), `${label}: the icon is a data address`).toBe(true);
+  const iconLoad = await page.evaluate(
+    (href) =>
+      new Promise<string>((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve('ok');
+        image.onerror = () => resolve('error');
+        image.src = href;
+      }),
+    structure.iconHref,
+  );
+  expect(iconLoad, `${label}: the icon still loads under the policy`).toBe('ok');
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// One representative per distinct policy, every control.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Whether this engine delivers a violation event (or console line) for the control; WebKit gives none for wasm. */
+function recorded(result: ControlResult, directive: string): boolean {
+  return result.findings.some((finding) => namesDirective(finding, directive));
+}
+
+for (const rep of discovery.representatives) {
+  const grants = {
+    eval: (rep.parsed.get('script-src') ?? []).includes("'unsafe-eval'"),
+    wasm:
+      (rep.parsed.get('script-src') ?? []).includes("'unsafe-eval'") ||
+      (rep.parsed.get('script-src') ?? []).includes("'wasm-unsafe-eval'"),
+    blobWorkers: (rep.parsed.get('worker-src') ?? []).includes('blob:'),
+  };
+
+  test.describe(`policy ${rep.label}: ${rep.id} stands for ${rep.pages} pages`, () => {
+    test('loads clean, with the policy first in the head and the charset second', async ({ page }) => {
+      const probe = await armCspProbe(page);
+      await openToolPage(page, rep.id);
+      const written = await page.evaluate(
+        () => document.head.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content') ?? '',
+      );
+      expect(written, 'the policy in the live page is the one the representative stands for').toBe(rep.policy);
+      await expectStructure(page, rep.id);
+      expect(probe.findings().map(describeFinding), `${rep.id} raised a violation while loading`).toEqual([]);
+    });
+
+    test('an outside fetch, XHR, beacon, WebSocket, EventSource and image are refused and recorded', async ({
+      page,
+    }) => {
+      const probe = await armCspProbe(page);
+      await openToolPage(page, rep.id);
+      const seen = await withOutsideAddress(async (outside) => {
+        const outcomes = await outsideRequestOutcomes(page, outside);
+        for (const kind of OUTSIDE_KINDS) {
+          const result = outcomes[kind];
+          expect(result.outcome, `${rep.id}: an outside ${kind} was not refused (${result.detail})`).toBe('refused');
+          expect(
+            recorded(result, directiveForOutside(kind)),
+            `${rep.id}: the probe did not record the refused ${kind} (${result.detail}; ${lines(result.findings)})`,
+          ).toBe(true);
+        }
+      });
+      expect(seen, `${rep.id}: the recording server saw a request`).toEqual([]);
+      expect(probe.findings().length).toBeGreaterThan(0);
+    });
+
+    test('a worker started from an address never starts', async ({ page }) => {
+      await armCspProbe(page);
+      await openToolPage(page, rep.id);
+      const result = await addressWorkerOutcome(page);
+      expect(result.outcome, `${rep.id}: a worker from an address started (${result.detail})`).toBe('refused');
+    });
+
+    test(`a blob worker is ${grants.blobWorkers ? 'allowed, and its own outside fetch fails' : 'refused'}`, async ({
+      page,
+    }) => {
+      await armCspProbe(page);
+      await openToolPage(page, rep.id);
+      const seen = await withOutsideAddress(async (outside) => {
+        const result = await blobWorkerOutcome(page, outside);
+        if (grants.blobWorkers) {
+          expect(result.outcome, `${rep.id}: the blob worker did not start (${result.detail})`).toBe('allowed');
+          expect(result.inner, `${rep.id}: the worker's outside fetch was not refused (${result.detail})`).toBe(
+            'failed',
+          );
+        } else {
+          expect(result.outcome, `${rep.id}: a blob worker started on a page with no worker grant`).toBe('refused');
+        }
+      });
+      expect(seen, `${rep.id}: the recording server saw a request from a worker`).toEqual([]);
+    });
+
+    test(`code generation is ${grants.eval ? 'allowed' : 'refused'} and WebAssembly compile is ${grants.wasm ? 'allowed' : 'refused'}`, async ({
+      page,
+      browserName,
+    }) => {
+      await armCspProbe(page);
+      await openToolPage(page, rep.id);
+      // Eval first, on a fresh page, before any compile (WebKit can let eval through right after a compile).
+      const generated = await evalOutcome(page);
+      expect(generated.outcome, `${rep.id}: new Function (${generated.detail})`).toBe(
+        grants.eval ? 'allowed' : 'refused',
+      );
+      if (!grants.eval) {
+        expect(
+          recorded(generated, 'script-src'),
+          `${rep.id}: the refused code generation was not recorded (${lines(generated.findings)})`,
+        ).toBe(true);
+      }
+      const compiled = await wasmCompileOutcome(page);
+      expect(compiled.outcome, `${rep.id}: WebAssembly compile (${compiled.detail})`).toBe(
+        grants.wasm ? 'allowed' : 'refused',
+      );
+      if (!grants.wasm && browserName !== 'webkit') {
+        expect(
+          recorded(compiled, 'script-src'),
+          `${rep.id}: the refused compile was not recorded (${lines(compiled.findings)})`,
+        ).toBe(true);
+      }
+    });
+
+    test('an inline script injected by page code does not run', async ({ page }) => {
+      await armCspProbe(page);
+      await openToolPage(page, rep.id);
+      const result = await inlineScriptOutcome(page);
+      expect(result.outcome, `${rep.id}: an inline script ran (${result.detail})`).toBe('refused');
+      expect(
+        recorded(result, 'script-src'),
+        `${rep.id}: the refusal was not recorded (${lines(result.findings)})`,
+      ).toBe(true);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The two frames: Mermaid (scripts allowed, nothing else) and the closed preview frame.
+// ---------------------------------------------------------------------------------------------------------------------
+
+test('the Mermaid frame draws under its hashes with no violation, and cannot fetch', async ({ page }) => {
+  // Keep the page's own frame in the document after its run so the real frame can be asked to fetch.
+  await page.addInitScript(() => {
+    const original = Element.prototype.remove;
+    Element.prototype.remove = function (this: Element) {
+      if (this instanceof HTMLIFrameElement && this.getAttribute('sandbox') === 'allow-scripts') return;
+      original.call(this);
+    };
+  });
+  const probe = await armCspProbe(page);
+  await openToolPage(page, 'mermaid-renderer');
+  await page.locator('#f-source').fill('flowchart LR\n  A --> B');
+  await page.locator('main div.toolbar button.button-primary').first().click();
+  await expect(page.locator('section[aria-label="Output"] img').first()).toHaveAttribute(
+    'alt',
+    /^Mermaid flowchart diagram/,
+    { timeout: 30_000 },
+  );
+  expect(probe.findings().map(describeFinding), 'drawing a diagram raised a violation').toEqual([]);
+
+  const frame = page.frames().find((candidate) => candidate !== page.mainFrame());
+  expect(frame, 'the diagram frame is still in the document').toBeDefined();
+  const before = probe.events.length;
+  const seen = await withOutsideAddress(async (outside) => {
+    const outcome = await frame!.evaluate(
+      (address) =>
+        fetch(`${address}from-the-frame`, { mode: 'no-cors' }).then(
+          () => 'sent',
+          () => 'failed',
+        ),
+      outside,
+    );
+    expect(outcome, 'the diagram frame fetched an outside address').toBe('failed');
+    await page.waitForTimeout(500);
+  });
+  expect(seen, 'the recording server saw a request from the diagram frame').toEqual([]);
+  const raised = probe.events.slice(before);
+  expect(
+    raised.some((finding) => finding.source === 'frame' && namesDirective(finding, 'connect-src')),
+    `the probe recorded the frame's refused fetch (${lines(raised)})`,
+  ).toBe(true);
+});
+
+test('a link clicked in the closed preview frame reaches nothing', async ({ page }) => {
+  const probe = await armCspProbe(page);
+  await openToolPage(page, 'markdown-html');
+  const seen = await withOutsideAddress(async (outside) => {
+    await page.locator('#f-input').fill(`[go](${outside}clicked)`);
+    const preview = page.frameLocator('iframe.preview-frame');
+    const link = preview.locator('a').first();
+    await expect(link).toHaveAttribute('href', `${outside}clicked`, { timeout: 15_000 });
+    await link.click();
+    await page.waitForTimeout(1200);
+  });
+  expect(seen, 'a link inside the closed preview frame reached the outside address').toEqual([]);
+  expect(
+    probe.findings().filter((finding) => finding.source === 'pageerror'),
+    'the click raised a page error',
+  ).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The instrument can fail: the same controls on a page with no policy are allowed, and the server hears them.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Serves a bare page with no policy from a real local server and opens it. It is a real server on purpose: a page
+ * answered by `route.fulfill` has no known address, so Chromium treats it as public and refuses its requests to the
+ * local recording server ("Permission was denied ... loopback address space"), which would make the control prove nothing.
+ */
+async function withPageWithoutPolicy(page: Page, body: () => Promise<void>): Promise<void> {
+  const server = createServer((_request, response) => {
+    response.setHeader('content-type', 'text/html');
+    response.end(
+      '<!doctype html><html><head><meta charset="utf-8"><title>no policy</title></head><body><div id="holder"></div></body></html>',
+    );
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await body();
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+test.describe('positive controls: with no policy the same attempts succeed, so a refusal means something', () => {
+  test.skip(deployed, 'needs a recording server the page can reach; an https page cannot reach plain http');
+
+  test('outside requests, address worker, blob worker, eval, compile and inline script are all allowed', async ({
+    page,
+  }) => {
+    const probe = await armCspProbe(page);
+    const results: Record<string, ControlResult> = {};
+    let seen: string[] = [];
+    await withPageWithoutPolicy(page, async () => {
+      seen = await withOutsideAddress(async (outside) => {
+        const outcomes = await outsideRequestOutcomes(page, outside);
+        for (const kind of OUTSIDE_KINDS) results[kind] = outcomes[kind];
+        results.addressWorker = await addressWorkerOutcome(page);
+        const blob = await blobWorkerOutcome(page, outside);
+        results.blobWorker = blob;
+        expect(blob.inner, `the blob worker's outside fetch goes through with no policy (${blob.detail})`).toBe('sent');
+        results.eval = await evalOutcome(page);
+        results.wasm = await wasmCompileOutcome(page);
+        results.inline = await inlineScriptOutcome(page);
+      });
+    });
+    for (const [name, result] of Object.entries(results)) {
+      expect(result.outcome, `with no policy, ${name} must be allowed (${result.detail})`).toBe('allowed');
+    }
+    expect(seen.length, 'the recording server hears the requests when nothing refuses them').toBeGreaterThan(0);
+    expect(probe.findings().map(describeFinding), 'a page with no policy raises no violation').toEqual([]);
+  });
+
+  test('a link in a closed preview frame reaches the server when no policy forbids it', async ({ page }) => {
+    await armCspProbe(page);
+    let seen: string[] = [];
+    await withPageWithoutPolicy(page, async () => {
+      seen = await withOutsideAddress(async (outside) => {
+        await page.evaluate((address) => {
+          const frame = document.createElement('iframe');
+          frame.setAttribute('sandbox', '');
+          frame.srcdoc = `<!doctype html><html><body><a id="go" href="${address}clicked">go</a></body></html>`;
+          document.body.append(frame);
+        }, outside);
+        const link = page.frameLocator('iframe').locator('#go');
+        await link.click();
+        await page.waitForTimeout(1200);
+      });
+    });
+    expect(seen.length, 'the same click with no policy does reach the server').toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The six pages that are not tools.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const SITE_PAGES = ['/', '/tools', '/catalog', '/privacy', '/about', '/404.html'] as const;
+
+/**
+ * Keeps the visit to the site: a click on a link to another site is answered with an empty page and noted, so the
+ * test follows the link without leaving the machine.
+ */
+async function answerOtherSitesLocally(context: BrowserContext, followed: string[]): Promise<void> {
+  const origin = new URL(baseUrl).origin;
+  await context.route(
+    (url) => url.origin !== origin && /^https?:$/.test(url.protocol),
+    (route) => {
+      followed.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>elsewhere</title>' });
+    },
+  );
+}
+
+for (const path of SITE_PAGES) {
+  test(`${path}: the probe sees nothing while a filter is typed, categories are chosen, the theme is switched and each kind of link is followed`, async ({
+    page,
+    context,
+  }) => {
+    const followed: string[] = [];
+    await answerOtherSitesLocally(context, followed);
+    const probe = await armCspProbe(page);
+    await page.goto(rel(path));
+    await page.waitForLoadState('networkidle');
+    await expectStructure(page, path);
+
+    const search = page.locator('#tool-search');
+    if (await search.count()) {
+      await search.fill('jwt');
+      await expect(page.locator('a.tool-card').first()).toBeVisible();
+      await search.fill('');
+      const chips = page.locator('.category-filters .chip');
+      for (let index = 0; index < (await chips.count()); index += 1) await chips.nth(index).click();
+    }
+
+    const toggle = page.locator('button[aria-label^="Switch to"]').first();
+    await toggle.click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
+    await toggle.click();
+
+    // Each kind of link: a link inside the site (a new document), a link to the same page's main area, a link to
+    // another site (answered locally above). The page is loaded again after each so the next click starts fresh.
+    const kinds = [
+      'a[href]:not([href^="http"]):not([href^="#"]):not([href^="mailto"])',
+      'a[href^="#"]',
+      'a[href^="http"]',
+    ];
+    for (const selector of kinds) {
+      const link = page.locator(selector).first();
+      if ((await link.count()) === 0) continue;
+      await link.focus();
+      await link.click({ noWaitAfter: false }).catch(() => undefined);
+      await page.waitForLoadState('load');
+      await page.waitForTimeout(300);
+      await page.goto(rel(path));
+      await page.waitForLoadState('networkidle');
+    }
+
+    await page.waitForTimeout(500);
+    expect(probe.findings().map(describeFinding), `${path} raised a violation`).toEqual([]);
+  });
+}
