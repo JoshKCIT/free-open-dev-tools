@@ -183,6 +183,16 @@ export interface RunContext {
   onProgress?(fraction: number, detail?: string): void;
 }
 
+/**
+ * The time limit a page's own background helper enforces, so the working cue can say it. `ms` is always the helper's
+ * exported limit constant, never a second number written on the page. `kind` is `'total'` (the default) when the helper
+ * stops the run after `ms` in all, and `'quiet'` when it stops after `ms` with no progress.
+ */
+export interface RunLimit {
+  ms: number;
+  kind?: 'total' | 'quiet';
+}
+
 export interface ToolDocs {
   /** Two or three sentences on what the tool does and when to reach for it. */
   about: string;
@@ -220,6 +230,12 @@ export interface ToolPage {
    * and editing the form or pressing Reset never aborts an in-flight run.
    */
   cancellable?: boolean;
+  /**
+   * The limit the page's background helper enforces on a run, taken from the helper's own exported constant. A run still
+   * going after about a second shows `Working… N s (stops at X s)` beside the output; a page with no limit shows the
+   * elapsed time only.
+   */
+  runLimit?: RunLimit;
   /** Every tool in this release is 'local'. The value is displayed on the page. */
   processing?: 'local';
 }

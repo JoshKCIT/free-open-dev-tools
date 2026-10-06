@@ -3,7 +3,8 @@ import type { Field, ToolPage, ToolResult, Values } from '../lib/tool-ui';
 import { formatBytes } from '../lib/tool-ui';
 import GridField from './GridField';
 import PointField from './PointField';
-import OutputView from './OutputView';
+import OutputView, { StaleOutputContext } from './OutputView';
+import WorkingCue, { startSentence } from './WorkingCue';
 
 function initialValues(fields: Field[]): Values {
   const v: Values = {};
@@ -276,12 +277,30 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const [resetSeq, setResetSeq] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const runSeq = useRef(0);
+  // The working cue (HARD-01). `run` is keyed on the run, not on `running`: `running` stays true when a new run
+  // supersedes a running one, so only a counter bumped inside `execute` restarts the cue's clock. `startedAt` is a
+  // `performance.now()` reading from the start of the run.
+  const [run, setRun] = useState({ id: 0, startedAt: 0 });
+  // The id of the run whose cue is on screen, or null. Set when the cue first appears, reset by the effect below.
+  const [cueShownFor, setCueShownFor] = useState<number | null>(null);
+  const cueShownRef = useRef<number | null>(null);
+  // The one status message: the start sentence when a cue appears, then Finished. or Cancelled. when that cue ends.
+  const [status, setStatus] = useState('');
+  // How the run that is ending ended: abandoned by Cancel, Reset or an edit, or run to its own end.
+  const endedBy = useRef<'finished' | 'cancelled'>('finished');
+  // Set by Cancel; honoured in an effect once `running` is false, because the Run button is disabled while it is true.
+  const focusAfterCancel = useRef(false);
+  const runButtonRef = useRef<HTMLButtonElement>(null);
+  const inputTitleRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     setValues(base);
     setResult(null);
     setCrashed(null);
     setProgress(null);
+    cueShownRef.current = null;
+    setCueShownFor(null);
+    setStatus('');
   }, [base]);
 
   const execute = useCallback(
@@ -290,6 +309,10 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
       const controller = new AbortController();
       abortRef.current = controller;
       const seq = ++runSeq.current;
+      endedBy.current = 'finished';
+      focusAfterCancel.current = false;
+      const startedAt = performance.now();
+      setRun((r) => ({ id: r.id + 1, startedAt }));
       setRunning(true);
       setCrashed(null);
       setProgress(null);
@@ -363,6 +386,8 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const abandonRun = useCallback((reason: 'cancel' | 'reset' | 'edit') => {
     // 1. advance the run sequence counter.
     runSeq.current++;
+    endedBy.current = 'cancelled';
+    if (reason === 'cancel') focusAfterCancel.current = true;
     // 2. abort the controller.
     abortRef.current?.abort();
     // 3. clear the progress state.
@@ -396,6 +421,26 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   }, [values, execute, tool.autoRun]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // The end of a shown cue. The cue clears its own timers when it unmounts (it renders only while a run is going and is
+  // keyed on the run), so every way a run can end, and a run that supersedes another, reaches the same single cleanup.
+  // This effect then says the end once, and only for a cue that was shown: a run that never showed the cue changes
+  // nothing, and a superseded run's cue is dropped without a message because the work goes on.
+  useEffect(() => {
+    const shownFor = cueShownRef.current;
+    if (shownFor === null) return;
+    if (running && shownFor === run.id) return;
+    cueShownRef.current = null;
+    setCueShownFor(null);
+    if (!running) setStatus(endedBy.current === 'cancelled' ? 'Cancelled.' : 'Finished.');
+  }, [running, run.id]);
+
+  // After Cancel, put focus where the visitor can carry on: the Run button, or the Input title on a page that has none.
+  useEffect(() => {
+    if (running || !focusAfterCancel.current) return;
+    focusAfterCancel.current = false;
+    (runButtonRef.current ?? inputTitleRef.current)?.focus();
+  }, [running]);
 
   // Timed refresh (a result may ask for one run more through `refreshAfterMs`). One timer, armed from the latest result
   // and cleared by the effect's own cleanup when a new result arrives, Reset empties the result or the page is left;
@@ -459,12 +504,22 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
       </div>
     ) : null;
   const statsPosition = result?.statsPosition ?? 'before-outputs';
+  // An earlier result is on screen: outputs, problems, warnings, stats or a crash message.
+  const hasEarlierResult =
+    crashed !== null ||
+    Boolean(
+      result && (result.outputs.length > 0 || result.errors?.length || result.warnings?.length || result.stats?.length),
+    );
+  const cueVisible = running && cueShownFor === run.id;
+  const stale = cueVisible && hasEarlierResult;
 
   return (
     <div className="tool-layout">
       <section className="panel" aria-label="Input and options">
         <div className="panel-head">
-          Input
+          <span className="panel-title" ref={inputTitleRef} tabIndex={-1}>
+            Input
+          </span>
           <span className="spacer" />
           {tool.examples && tool.examples.length > 0 ? (
             <div className="toolbar toolbar-small">
@@ -506,6 +561,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
               <button
                 type="button"
                 className="button button-primary"
+                ref={runButtonRef}
                 onClick={() => void execute(values)}
                 disabled={running}
               >
@@ -560,57 +616,77 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
             Processed locally in your browser
           </span>
         </div>
-        <div className="panel-body">
-          {crashed ? (
-            <div className="note note-error">
-              The tool failed on this input: {crashed}. This is a bug. Please report it with a description of the input,
-              not the input itself.
-            </div>
-          ) : null}
+        <span className="visually-hidden" role="status">
+          {status}
+        </span>
+        {running ? (
+          <WorkingCue
+            key={`${tool.id}:${run.id}`}
+            runId={run.id}
+            startedAt={run.startedAt}
+            limit={tool.runLimit}
+            cancellable={Boolean(tool.cancellable)}
+            stale={hasEarlierResult}
+            onShown={() => {
+              cueShownRef.current = run.id;
+              setCueShownFor(run.id);
+              setStatus(startSentence(tool.runLimit));
+            }}
+          />
+        ) : null}
+        <StaleOutputContext.Provider value={stale}>
+          <div className={stale ? 'panel-body output-stale' : 'panel-body'}>
+            {crashed ? (
+              <div className="note note-error">
+                The tool failed on this input: {crashed}. This is a bug. Please report it with a description of the
+                input, not the input itself.
+              </div>
+            ) : null}
 
-          {result?.errors && result.errors.length > 0 ? (
-            <ul className="issue-list" aria-label="Input problems">
-              {result.errors.map((e, i) => (
-                <li className="issue" key={i}>
-                  {e.line !== undefined ? (
-                    <strong>
-                      Line {e.line}
-                      {e.column !== undefined ? `, column ${e.column}` : ''}:{' '}
-                    </strong>
-                  ) : null}
-                  {e.path ? <code>{e.path}</code> : null} {e.message}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+            {result?.errors && result.errors.length > 0 ? (
+              <ul className="issue-list" aria-label="Input problems">
+                {result.errors.map((e, i) => (
+                  <li className="issue" key={i}>
+                    {e.line !== undefined ? (
+                      <strong>
+                        Line {e.line}
+                        {e.column !== undefined ? `, column ${e.column}` : ''}:{' '}
+                      </strong>
+                    ) : null}
+                    {e.path ? <code>{e.path}</code> : null} {e.message}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
 
-          {result?.warnings && result.warnings.length > 0
-            ? result.warnings.map((w, i) => (
-                <div className="note note-warn" key={i}>
-                  {w}
-                </div>
-              ))
-            : null}
+            {result?.warnings && result.warnings.length > 0
+              ? result.warnings.map((w, i) => (
+                  <div className="note note-warn" key={i}>
+                    {w}
+                  </div>
+                ))
+              : null}
 
-          {statsPosition === 'before-outputs' ? statsBlock : null}
+            {statsPosition === 'before-outputs' ? statsBlock : null}
 
-          {hasOutput ? (
-            <div>
-              {result.outputs.map((b, i) => (
-                <Fragment key={i}>
-                  <OutputView block={b} />
-                  {statsPosition === 'after-first-output' && i === 0 ? statsBlock : null}
-                </Fragment>
-              ))}
-            </div>
-          ) : !result?.errors?.length && !crashed ? (
-            <p style={{ color: 'var(--text-faint)', fontSize: '0.88rem', margin: 0 }}>
-              {tool.autoRun === false ? 'Choose your input, then press Run.' : 'Output appears here as you type.'}
-            </p>
-          ) : null}
+            {hasOutput ? (
+              <div>
+                {result.outputs.map((b, i) => (
+                  <Fragment key={i}>
+                    <OutputView block={b} />
+                    {statsPosition === 'after-first-output' && i === 0 ? statsBlock : null}
+                  </Fragment>
+                ))}
+              </div>
+            ) : !result?.errors?.length && !crashed ? (
+              <p style={{ color: 'var(--text-faint)', fontSize: '0.88rem', margin: 0 }}>
+                {tool.autoRun === false ? 'Choose your input, then press Run.' : 'Output appears here as you type.'}
+              </p>
+            ) : null}
 
-          {statsPosition === 'after-outputs' ? statsBlock : null}
-        </div>
+            {statsPosition === 'after-outputs' ? statsBlock : null}
+          </div>
+        </StaleOutputContext.Provider>
       </section>
     </div>
   );

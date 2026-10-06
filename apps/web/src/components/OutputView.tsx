@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputBlock, DownloadableFile } from '../lib/tool-ui';
 import { downloadMime } from '../lib/download-mime';
 import Countdown from './Countdown';
@@ -6,8 +6,16 @@ import CssPreview from './CssPreview';
 import TreeView from './TreeView';
 import { copyTextOf } from '../lib/tree';
 
+/**
+ * True while the working cue shows over an earlier result: the result on screen is the previous one, so Copy and
+ * Download (and the swatch and Copy HTML buttons, which are Copy buttons) are off until the run ends. The runner provides
+ * it; nothing else sets it.
+ */
+export const StaleOutputContext = createContext(false);
+
 /** `text` may be a function, so a big text (the whole of a tree) is built only when Copy is pressed. */
 function CopyButton({ text, label = 'Copy' }: { text: string | (() => string); label?: string }) {
+  const stale = useContext(StaleOutputContext);
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle');
   useEffect(() => {
     if (state === 'idle') return;
@@ -20,6 +28,7 @@ function CopyButton({ text, label = 'Copy' }: { text: string | (() => string); l
       type="button"
       className="button"
       style={{ padding: '3px 9px', fontSize: '0.78rem' }}
+      disabled={stale}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(typeof text === 'function' ? text() : text);
@@ -48,11 +57,13 @@ function DownloadButton({
   file: DownloadableFile | (() => DownloadableFile);
   label?: string;
 }) {
+  const stale = useContext(StaleOutputContext);
   return (
     <button
       type="button"
       className="button"
       style={{ padding: '3px 9px', fontSize: '0.78rem' }}
+      disabled={stale}
       onClick={() => {
         const file = typeof fileOrMaker === 'function' ? fileOrMaker() : fileOrMaker;
         const body: BlobPart =
@@ -107,6 +118,7 @@ function SandboxedHtml({ html }: { html: string }) {
 }
 
 export default function OutputView({ block }: { block: OutputBlock }) {
+  const stale = useContext(StaleOutputContext);
   const label = 'label' in block ? block.label : undefined;
 
   const head = (extra?: React.ReactNode) =>
@@ -218,6 +230,7 @@ export default function OutputView({ block }: { block: OutputBlock }) {
                 type="button"
                 className="swatch"
                 title={`Copy ${c.label}`}
+                disabled={stale}
                 onClick={() => void navigator.clipboard.writeText(c.label).catch(() => {})}
               >
                 <span className="swatch-color" style={{ background: c.css }} />

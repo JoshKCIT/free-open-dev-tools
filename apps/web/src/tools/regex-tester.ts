@@ -1,5 +1,5 @@
 import { meta, SUPPORTED_FLAGS, type RegexJob, type MatchRow, type ExplainPart } from '@fodt/regex-tester';
-import { regexInWorker } from '../lib/run-regex-in-worker';
+import { REGEX_TIME_LIMIT_MS, regexInWorker } from '../lib/run-regex-in-worker';
 import { defineTool, str, bool, type Field, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 const FLAG_LABELS: Record<(typeof SUPPORTED_FLAGS)[number], string> = {
@@ -22,6 +22,7 @@ export default defineTool({
   id: 'regex-tester',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   cancellable: true,
+  runLimit: { ms: REGEX_TIME_LIMIT_MS },
   fields: [
     {
       name: 'mode',

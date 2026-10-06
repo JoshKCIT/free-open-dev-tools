@@ -534,6 +534,12 @@ main {
 .panel-head .spacer {
   margin-left: auto;
 }
+/* The Input title takes focus after Cancel on a page with no Run button (programmatic focus only: tabindex -1). */
+.panel-title:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 .panel-body {
   padding: 14px;
   display: flex;
@@ -680,6 +686,31 @@ input[type='file'] {
   .countdown progress {
     display: none;
   }
+}
+
+/* The working cue sits between the Output heading and its body, so it is not a child of the body and is not styled by the
+   heading (which is uppercase, small and bold). */
+.working-cue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+/* The previous result while a newer run is going: dimmed (0.8 in the dark theme, 0.92 in the light one, chosen so every
+   text colour on the page keeps at least 4.5:1 once blended, measured in e2e/working-cue.spec.ts) and marked by a dashed
+   edge. No filter, so the blended colours stay exact. The padding gives back the width the border takes. */
+.output-stale {
+  opacity: 0.8;
+  border-left: 3px dashed var(--border-strong);
+  padding-left: 11px;
+}
+:root[data-theme='light'] .output-stale {
+  opacity: 0.92;
 }
 
 .tree-view {
@@ -1025,6 +1056,9 @@ dl.kv dd {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .panel-body {
+    transition: opacity 0.15s ease;
+  }
   .button,
   .chip,
   .tool-card {
