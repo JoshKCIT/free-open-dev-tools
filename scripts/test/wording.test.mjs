@@ -204,6 +204,25 @@ describe('the deploy workflow checks the live site without a catalog size in any
     expect(lines.slice(at, at + 4).join('\n')).toContain(`E2E_BASE_URL: ${LIVE_ADDRESS}`);
   });
 
+  it('checks the live site against the commit that was deployed, not the tip of main', () => {
+    const ref = 'ref: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}';
+    const jobText = (name) => {
+      const start = text.search(new RegExp(`^  ${name}:`, 'm'));
+      expect(start, `no ${name} job`).toBeGreaterThan(-1);
+      const rest = text.slice(start + 1);
+      const next = rest.search(/^ {2}[A-Za-z][\w-]*:/m);
+      return next < 0 ? rest : rest.slice(0, next);
+    };
+    const firstCheckout = (job) => {
+      const at = job.indexOf('uses: actions/checkout@');
+      expect(at, 'the job checks nothing out').toBeGreaterThan(-1);
+      const end = job.indexOf('- ', at);
+      return job.slice(at, end < 0 ? job.length : end);
+    };
+    expect(firstCheckout(jobText('build'))).toContain(ref);
+    expect(firstCheckout(jobText('verify'))).toContain(ref);
+  });
+
   it('finds a counted step name when one is written', () => {
     const names = stepNames('steps:\n  - name: The 211 tool pages load\n    run: true');
     expect(names.filter((name) => COUNTED_PAGES.test(name))).toEqual(['The 211 tool pages load']);

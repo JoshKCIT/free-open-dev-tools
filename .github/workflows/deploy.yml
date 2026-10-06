@@ -94,7 +94,11 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
+      # The commit that was deployed, not the tip of main: the live checks compare each page with the needs, the
+      # Mermaid frame hashes and the catalog of the code that is actually live, which differ on a rollback.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || github.event.workflow_run.head_sha || github.sha }}
 
       # These run against the live site. A failure here means the deployment is
       # broken and should be rolled back, which is why it is a separate job.
