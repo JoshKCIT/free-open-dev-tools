@@ -1482,5 +1482,12 @@
     "category": "network",
     "tier": 2,
     "summary": "Describe a cross-origin request and paste the response headers to see whether a browser would send a preflight and let the page read the answer."
+  },
+  {
+    "id": "set-cookie-inspector",
+    "name": "Set-Cookie Inspector",
+    "category": "network",
+    "tier": 2,
+    "summary": "Paste Set-Cookie lines and see whether a browser would store each cookie, how long it lives, where it is sent and why one is refused."
   }
 ]

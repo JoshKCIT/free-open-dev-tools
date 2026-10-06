@@ -1,0 +1,66 @@
+{
+  "id": "set-cookie-inspector",
+  "name": "Set-Cookie Inspector",
+  "summary": "Paste Set-Cookie lines and see whether a browser would store each cookie, how long it lives, where it is sent and why one is refused.",
+  "about": "Paste the Set-Cookie lines a server sent, the address they came from and how the request was made (from the same site, a top-level navigation from another site, or a cross-site request that is not a navigation). For each cookie the page shows its name, its value (masked until you ask), every attribute used or ignored with the reason, whether a browser following draft-ietf-httpbis-rfc6265bis-22 would store it and the first rule that stops it, how long it lives, where it would be sent, the __Host- and __Secure- prefix rules, the SameSite rules and its size against the limits. Nothing is sent and nothing is read from or written to your browser's cookies.",
+  "supports": [
+    "Set-Cookie lines pasted one to a line (an optional Set-Cookie: prefix is dropped, blank lines are skipped and the line numbers stay yours), read by the parsing algorithm of draft-ietf-httpbis-rfc6265bis-22 section 5.6: a line with a control character is ignored, the name and value are split at the first equals sign (no equals sign means an empty name and the whole text as the value), spaces and tabs are stripped from both ends, and nothing is percent-decoded",
+    "The attributes Expires, Max-Age, Domain, Path, Secure, HttpOnly and SameSite, each listed in the order written as used or ignored with the reason: an Expires that is not a cookie date, an empty or malformed Max-Age, a value over 1,024 octets, an attribute that appears again later (the last one is used), an Expires that Max-Age overrides, and attributes the draft does not know (Partitioned and Priority are shown and not judged)",
+    "The cookie date algorithm of section 5.1.1 (any order of day, month, year and time, two-digit years 70 to 99 as 19xx and 0 to 69 as 20xx, refusing a year below 1601, a day above 31, an hour above 23 and a minute or second above 59), Max-Age compared as text before any number is formed, and the 400-day (34,560,000 seconds) lifetime limit of section 5.5",
+    "Whether a browser would store each cookie: every step of the storage model of section 5.7 in order, with the first rule that stops it named (empty name and value, size, Domain that does not match the response address, Secure over plain http, SameSite on a cross-site request, SameSite=None without Secure, the __Secure- and __Host- prefixes in any letter case, and an empty name whose value starts like a prefix)",
+    "Where a stored cookie is sent: its domain (a host-only cookie goes to that one host, a Domain cookie to the host and its subdomains), its default path or Path with the matching rules of section 5.1.4, the Secure, HttpOnly and SameSite rules of section 5.8.3, and the order a browser lists cookies with longer paths first",
+    "A time of your choosing (an ISO 8601 UTC time, or this device's clock read once per run) so a lifetime is whole seconds from a fixed moment: a zero or negative Max-Age reads Stored, then deleted at once, and a past Expires reads the same way",
+    "Values masked to their first characters and their length until Reveal is ticked, sizes counted in UTF-8 octets, and a short list of things worth a look: cookies joined by commas, a Domain with one label, Secure over http, a session cookie without HttpOnly, a value that looks like a token, non-ASCII text and quotes kept as part of the value"
+  ],
+  "limits": [
+    "This page judges what you paste by draft-ietf-httpbis-rfc6265bis-22 (1 December 2025), which is still an Internet-Draft with no RFC number. Browsers differ from it and from each other (the SameSite default, third-party cookie blocking, partitioning, size and count limits), so a verdict says what the draft says would happen to the text you gave, not what one browser will certainly do.",
+    "Nothing is read from or written to your browser's cookies and nothing is sent. Treat a real session cookie as a password even on a page that keeps it local; values are masked until you ask.",
+    "The public suffix list is not consulted, so a Domain such as co.uk is not refused here although a browser refuses it. Whether two sites are the same site is something you choose with the request setting, because answering it needs that list too.",
+    "The cookie store is not modelled: replacing an existing cookie, the rule that stops an http page overwriting a secure cookie (step 16), per-domain and total counts and eviction are not checked, and every line is judged on its own.",
+    "Partitioned and Priority are shown but not judged; they are outside the draft. Browsers that know them may act on them.",
+    "Sizes are counted in octets of the text pasted (UTF-8, so a two-byte character counts 2); the page cannot know how a server encoded non-ASCII bytes. A name and value over 4,096 octets are ignored and an attribute value over 1,024 octets is ignored, as the draft says.",
+    "The host localhost and the loopback addresses are treated as secure, as browsers do for localhost (the draft leaves the meaning of secure to the browser); check yours for the loopback addresses.",
+    "A paste is limited to 262,144 characters, 500 lines (blank lines do not count), 16,384 characters in a line and 100 attributes in a line, and the address to 8,192 characters; a larger paste is refused before any work, naming the line and never repeating the text.",
+    "Where web-platform-tests holds a newer expectation than the draft, the page follows the draft and the difference is listed in the test notes."
+  ],
+  "ambiguities": [
+    "A line with no equals sign is a cookie with an empty name and the whole text as its value, as section 5.6 says. Libraries differ: one of the second-opinion libraries returns nothing for it.",
+    "When Max-Age and Expires are both present Max-Age decides and Expires is shown as ignored; when an attribute appears twice the last one is used and the earlier ones are shown as ignored.",
+    "A SameSite value that is not None, Lax or Strict means Default enforcement, which the draft sends like Lax; some browsers apply Lax by default and others do not."
+  ],
+  "standards": [
+    {
+      "label": "draft-ietf-httpbis-rfc6265bis-22: Cookies, HTTP State Management Mechanism (1 December 2025)",
+      "url": "https://datatracker.ietf.org/doc/draft-ietf-httpbis-rfc6265bis/22/"
+    },
+    {
+      "label": "draft-ietf-httpbis-rfc6265bis-22 as plain text",
+      "url": "https://www.ietf.org/archive/id/draft-ietf-httpbis-rfc6265bis-22.txt"
+    },
+    {
+      "label": "web-platform-tests cookies at commit a419ab2",
+      "url": "https://github.com/web-platform-tests/wpt/tree/a419ab2055dd4a747dfae5c407ae9a6d10aa08ca/cookies"
+    },
+    {
+      "label": "MDN: Set-Cookie (Secure from localhost, SameSite defaults, Partitioned)",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"
+    }
+  ],
+  "keywords": [
+    "cookie",
+    "set-cookie",
+    "samesite",
+    "httponly",
+    "secure",
+    "max-age",
+    "expires",
+    "__host-",
+    "__secure-",
+    "rfc6265bis"
+  ],
+  "primaryExport": "inspectCookies",
+  "usage": "import { inspectCookies, SetCookieInspectorError } from '@fodt/set-cookie-inspector';\n\nconst report = inspectCookies({\n  lines: 'Set-Cookie: __Host-SID=12345; Secure; Domain=site.example; Path=/',\n  requestUrl: 'https://site.example/account/login',\n  context: 'same-site',\n  nowMs: Date.UTC(2026, 9, 6, 12, 0, 0),\n  reveal: false,\n});\n\nreport.cookies[0].decision.outcome; // 'not-stored'\nreport.cookies[0].decision.reason; // '__Host- needs Secure, no Domain and Path=/ ...'",
+  "apiNotes": "`inspectCookies(input)` checks the sizes first (`checkInput`), reads the response address, splits the paste into lines, parses each line with the algorithm of section 5.6 (`parseSetCookie`) and judges it with the storage model of section 5.7 (`decide`), giving one row per line in the order pasted. A row holds the parsed name and value, the value as shown (masked unless `reveal` is true), every attribute in the order written with `used` or `ignored` and a reason, the decision (`outcome` is `stored`, `not-stored`, `ignored` or `stored-then-deleted`, with the steps applied, the first failing step and a reason), the lifetime, and where the cookie is sent. The function is pure: the time is passed in as milliseconds (`nowMs`), nothing is read from a clock, the same input gives an equal report every time, and nothing is printed. A refusal is a `SetCookieInspectorError` with `part` and `line` and never holds pasted text; `parseCookieDate`, `parseSetCookie`, `maskValue` and `visible` are exported too.",
+  "testNotes": "Expected values come from the draft text (the sixteen section 5.4 lines, the section 3.1 and 5.1.4 examples, the date, Max-Age, lifetime and storage algorithms) and from web-platform-tests cookie rows at commit a419ab2 re-expressed as JSON rows that cite their file and line, with every wall-clock date replaced by a fixed time. tough-cookie 6.0.2 and cookie 1.1.1 are dev-only second opinions over a seeded corpus; the measured differences are listed by name in the test. Every parser is timed on hostile strings at two sizes.",
+  "devDependencies": { "tough-cookie": "6.0.2", "cookie": "1.1.1" }
+}
