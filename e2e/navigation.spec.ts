@@ -265,6 +265,41 @@ test.describe('in-site addresses keep the base path', () => {
   });
 });
 
+test.describe('an address in the wrong letter case', () => {
+  // The host is case-sensitive: each of these answers 404 with the 404 shell, which carries the baseline policy.
+  const VARIANTS = [
+    { path: '/TOOLS/regex-tester', page: /Regex Tester/ },
+    { path: '/Tools/docker-run-to-compose', page: /docker run/i },
+    { path: '/PRIVACY', page: /^Privacy/ },
+  ];
+
+  test('shows the not-found page from the 404 shell and never draws the page under the shell policy', async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    const base = new URL(baseURL ?? '');
+    const local = ['127.0.0.1', 'localhost'].includes(base.hostname);
+    if (local) {
+      // A static preview server answers an unknown address with the home page and may match a file name in any case on
+      // Windows, so the host's answer is served here: the built 404 shell with status 404.
+      const shell = await (await request.get(rel('/404.html'))).text();
+      expect(shell).toContain('Content-Security-Policy');
+      const variants = new Set(VARIANTS.map(({ path }) => base.pathname.replace(/\/$/, '') + path));
+      await page.route(
+        (url) => variants.has(url.pathname),
+        (route) => route.fulfill({ status: 404, contentType: 'text/html', body: shell }),
+      );
+    }
+    for (const variant of VARIANTS) {
+      const response = await page.goto(rel(variant.path));
+      expect(response?.status(), variant.path).toBe(404);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Page not found');
+      await expect(page.getByRole('heading', { name: variant.page })).toHaveCount(0);
+    }
+  });
+});
+
 declare global {
   interface Window {
     __fodtThemeValues?: string[];

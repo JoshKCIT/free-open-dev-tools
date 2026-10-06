@@ -55,13 +55,18 @@ export default function App() {
 
       <main id="main" tabIndex={-1}>
         <div className="wrap">
+          {/*
+            Every route matches its exact letter case. The host treats addresses as case-sensitive and answers a
+            case variant such as /TOOLS/regex-tester with the 404 shell, which carries the baseline page policy; a
+            route that ignored case would draw the tool there, under a policy that is not its own, and break it.
+          */}
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/tools" element={<ToolsIndex />} />
-            <Route path="/tools/:id" element={<ToolView />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/about" element={<About />} />
+            <Route caseSensitive path="/" element={<Home />} />
+            <Route caseSensitive path="/tools" element={<ToolsIndex />} />
+            <Route caseSensitive path="/tools/:id" element={<ToolView />} />
+            <Route caseSensitive path="/catalog" element={<Catalog />} />
+            <Route caseSensitive path="/privacy" element={<Privacy />} />
+            <Route caseSensitive path="/about" element={<About />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
