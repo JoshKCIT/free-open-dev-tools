@@ -1,0 +1,15 @@
+[
+  {
+    "values": {
+      "pageOrigin": "https://app.example",
+      "url": "https://api.example/items",
+      "method": "PUT",
+      "requestHeaders": "X-Token: abc123",
+      "preflightStatus": "204",
+      "preflightHeaders": "Access-Control-Allow-Origin: https://app.example\nAccess-Control-Allow-Methods: PUT\nAccess-Control-Allow-Headers: x-token",
+      "responseStatus": "200",
+      "responseHeaders": "Access-Control-Allow-Origin: https://app.example"
+    },
+    "attachesFile": false
+  }
+]

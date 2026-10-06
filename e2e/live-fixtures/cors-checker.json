@@ -1,0 +1,15 @@
+{
+  "id": "cors-checker",
+  "label": "Fetch Standard: a wildcard in Access-Control-Allow-Headers never covers Authorization (web-platform-tests cors-preflight-star), and the preflight lists the name in lower case",
+  "steps": [
+    { "action": "fill", "field": "method", "value": "POST" },
+    { "action": "fill", "field": "requestHeaders", "value": "Authorization: 123" },
+    {
+      "action": "fill",
+      "field": "preflightHeaders",
+      "value": "Access-Control-Allow-Origin: *\nAccess-Control-Allow-Methods: *\nAccess-Control-Allow-Headers: *"
+    },
+    { "action": "fill", "field": "responseHeaders", "value": "Access-Control-Allow-Origin: *" }
+  ],
+  "expect": ["Access-Control-Request-Headers: authorization", "FAIL"]
+}
