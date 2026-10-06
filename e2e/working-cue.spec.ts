@@ -642,14 +642,25 @@ test('regex-tester: leaving the page during a shown cue starts the next document
   await expect(cue(page)).toBeVisible();
   expect((await liveTimers(page)).length).toBeGreaterThan(0);
 
-  // Every in-site link loads a new document; going there while a run is shown must leave nothing behind.
+  // Every in-site link loads a new document; going there while a run is shown must leave nothing behind. The old
+  // document's timers cannot reach the new one (a browser never carries them over), so what is checked is what the NEW
+  // document could get wrong: a cue, a status text or a timer of its own. Its timers are counted from its very first
+  // script (this init script runs after the counter's), so a timer it started while loading is listed too.
+  await page.addInitScript(() => {
+    if (window.__fodtTimers) window.__fodtTimers.on = true;
+  });
   await page.clock.resume();
   await page.goto(rel('/tools/glob-tester'));
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(cue(page)).toHaveCount(0);
   await expect(status(page)).toHaveText('');
   await expect(outputBody(page)).not.toHaveClass(/output-stale/);
-  expect(await liveTimers(page)).toEqual([]);
+  expect(await page.evaluate(() => window.__fodtTimers?.on), 'the new document counts its timers').toBe(true);
+  // Two seconds of page time later: every timeout the new document started has fired, and it started no interval.
+  await page.clock.runFor(2000);
+  await expect(cue(page)).toHaveCount(0);
+  await expect(status(page)).toHaveText('');
+  await expect.poll(() => liveTimers(page)).toEqual([]);
 });
 
 test('glob-tester: a held run passes its limit while the helper waits, says so, then ends and says Finished.', async ({
