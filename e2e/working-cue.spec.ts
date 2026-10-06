@@ -53,9 +53,12 @@ function output(page: Page) {
   return page.locator('section[aria-label="Output"]');
 }
 
-/** The one persistent status element: a direct child of the Output section (each Copy button holds its own, inside). */
+/**
+ * The one persistent status element: a direct child of the tool layout, outside the Output section, which is marked
+ * busy while a run goes (each Copy button holds its own status, inside the section).
+ */
 function status(page: Page) {
-  return output(page).locator(':scope > [role="status"]');
+  return page.locator('.tool-layout > [role="status"]');
 }
 
 /** The cue: a direct child of the Output section, between its heading and its body. */
@@ -175,8 +178,8 @@ async function liveTimers(page: Page): Promise<string[]> {
 /** Starts recording each change of the status text, beginning from what it shows now. */
 async function watchStatus(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const el = document.querySelector('section[aria-label="Output"] > [role="status"]');
-    if (!el) throw new Error('no status element in the Output section');
+    const el = document.querySelector('.tool-layout > [role="status"]');
+    if (!el) throw new Error('no status element in the tool layout');
     window.__fodtStatusLog = [];
     let last = el.textContent ?? '';
     new MutationObserver(() => {
@@ -299,6 +302,10 @@ test('regex-tester: a held run shows nothing at 500 ms, then at 1100 ms the cue,
   await expect(outputBody(page)).toHaveClass(/output-stale/);
   await expect(output(page).getByRole('button', { name: 'Copy as TSV' })).toBeDisabled();
   await expect(status(page)).toHaveText(START_SENTENCE);
+  // The start sentence is written while the Output section is busy, so the status must sit outside every busy region.
+  await expect(output(page)).toHaveAttribute('aria-busy', 'true');
+  await expect(status(page)).toHaveCount(1);
+  expect(await status(page).evaluate((el) => el.closest('[aria-busy="true"]') === null)).toBe(true);
 });
 
 test('regex-tester: Cancel removes the cue, shows the existing cancelled note exactly and says Cancelled.', async ({

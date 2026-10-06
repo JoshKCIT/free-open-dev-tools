@@ -633,9 +633,6 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
             Processed locally in your browser
           </span>
         </div>
-        <span className="visually-hidden" role="status">
-          {status}
-        </span>
         {running ? (
           <WorkingCue
             key={`${tool.id}:${run.id}`}
@@ -705,6 +702,13 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
           </div>
         </StaleOutputContext.Provider>
       </section>
+
+      {/* The one status message sits outside the Output section, which is marked busy while a run goes: assistive
+          technology may hold back changes inside a busy region until it is no longer busy, which would swallow the start
+          sentence. It is visually hidden and absolutely positioned, so it takes no grid cell. */}
+      <span className="visually-hidden" role="status">
+        {status}
+      </span>
     </div>
   );
 }
