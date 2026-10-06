@@ -11,7 +11,9 @@ import { ROOT } from '../lib/catalog.mjs';
  * A static scan, with no browser: each page under `apps/web/src/tools` is read together with the run helpers it imports
  * from `../lib`. A helper limit constant is an exported `*_TIME_LIMIT_MS`, `*_STALL_LIMIT_MS` or
  * `MERMAID_REPLY_LIMIT_MS`; a start limit (`*_START_LIMIT_MS`, `*_READY_LIMIT_MS`) guards the worker starting and is never
- * accepted. When a page imports helpers with both a total and a stall limit it names the total one.
+ * accepted. When a page imports helpers with both a total and a stall limit it names the stall one, as a quiet limit:
+ * on the only such page (the PDF text page) the stall-limited reader is the default run and has no total timer, so a
+ * total limit would promise a stop that never comes.
  */
 
 const TOOLS_DIR = join(ROOT, 'apps', 'web', 'src', 'tools');
@@ -76,8 +78,7 @@ export function checkPage(source, readHelper) {
     return { problems, expected: null };
   }
 
-  const totals = available.filter((l) => !l.stall);
-  const chosen = totals.length > 0 ? totals[0] : available[0];
+  const chosen = available.find((l) => l.stall) ?? available[0];
   const expected = { name: chosen.name, kind: chosen.stall ? 'quiet' : null };
 
   if (!declared) {
@@ -146,7 +147,7 @@ describe('every page with an enforced run limit declares it from its helper', ()
     expect(bad).toEqual([]);
   });
 
-  it('marks exactly the eight stall limit pages quiet and no other page', () => {
+  it('marks exactly the nine stall limit pages quiet and no other page', () => {
     const quiet = declaring.filter((r) => r.declared?.kind === 'quiet').map((r) => r.id);
     expect(quiet.sort()).toEqual([
       'archive-toolkit',
@@ -156,14 +157,15 @@ describe('every page with an enforced run limit declares it from its helper', ()
       'image-to-pdf',
       'pdf-merge',
       'pdf-split',
+      'pdf-text-metadata',
       'pdf-to-image',
     ]);
   });
 
-  it('names the total limit on the pages whose helpers export both, never a start limit', () => {
+  it('names the stall limit on the page whose helpers export both, never a start limit', () => {
     const pdfText = rows.find((r) => r.id === 'pdf-text-metadata');
-    expect(pdfText?.declared?.ms).toBe('PDF_TEXT_METADATA_TIME_LIMIT_MS');
-    expect(pdfText?.declared?.kind).toBeNull();
+    expect(pdfText?.declared?.ms).toBe('PDF_TEXT_METADATA_STALL_LIMIT_MS');
+    expect(pdfText?.declared?.kind).toBe('quiet');
     const mermaid = rows.find((r) => r.id === 'mermaid-renderer');
     expect(mermaid?.declared?.ms).toBe('MERMAID_REPLY_LIMIT_MS');
     for (const r of declaring) expect(r.declared?.ms).not.toMatch(/START_LIMIT|READY_LIMIT/);
@@ -211,15 +213,19 @@ describe('the mapping check can fail', () => {
     expect(checkPage(page("runLimit: { ms: DEMO_TIME_LIMIT_MS, kind: 'quiet' },"), read).problems.length).toBe(1);
   });
 
-  it('prefers the total limit when a page imports a total and a stall limit', () => {
+  it('prefers the stall limit when a page imports a total and a stall limit', () => {
     const both = (module) =>
       module === '../lib/run-demo-in-worker'
         ? 'export const DEMO_TIME_LIMIT_MS = 20000;\n'
         : 'export const DEMO_READER_STALL_LIMIT_MS = 20_000;\n';
     const source = (line) =>
-      `import { a } from '../lib/run-demo-reader';\nimport { DEMO_TIME_LIMIT_MS } from '../lib/run-demo-in-worker';\ndefineTool({ ${line} });`;
-    expect(checkPage(source('runLimit: { ms: DEMO_TIME_LIMIT_MS },'), both).problems).toEqual([]);
-    const stallOnly = source("runLimit: { ms: DEMO_READER_STALL_LIMIT_MS, kind: 'quiet' },");
-    expect(checkPage(stallOnly, both).problems.length).toBeGreaterThan(0);
+      `import { DEMO_READER_STALL_LIMIT_MS, a } from '../lib/run-demo-reader';\nimport { DEMO_TIME_LIMIT_MS } from '../lib/run-demo-in-worker';\ndefineTool({ ${line} });`;
+    expect(checkPage(source("runLimit: { ms: DEMO_READER_STALL_LIMIT_MS, kind: 'quiet' },"), both).problems).toEqual(
+      [],
+    );
+    const total = checkPage(source('runLimit: { ms: DEMO_TIME_LIMIT_MS },'), both).problems.join();
+    expect(total).toContain('must name DEMO_READER_STALL_LIMIT_MS');
+    const stallNotQuiet = checkPage(source('runLimit: { ms: DEMO_READER_STALL_LIMIT_MS },'), both).problems.join();
+    expect(stallNotQuiet).toContain('kind must be');
   });
 });

@@ -9,16 +9,13 @@ import {
   formatPageTexts,
 } from '@fodt/pdf-text-metadata';
 import {
+  PDF_TEXT_METADATA_STALL_LIMIT_MS,
   PdfTextMetadataReadError,
   readPdfMetadata,
   readPdfText,
   reopenForCheck,
 } from '../lib/run-pdf-text-metadata-reader';
-import {
-  PDF_TEXT_METADATA_TIME_LIMIT_MS,
-  PdfTextMetadataRunError,
-  stripInWorker,
-} from '../lib/run-pdf-text-metadata-in-worker';
+import { PdfTextMetadataRunError, stripInWorker } from '../lib/run-pdf-text-metadata-in-worker';
 import {
   defineTool,
   files,
@@ -160,7 +157,9 @@ export default defineTool({
   // offered while either is in flight.
   autoRun: false,
   cancellable: true,
-  runLimit: { ms: PDF_TEXT_METADATA_TIME_LIMIT_MS },
+  // The stall limit, as a quiet limit: Text and Metadata stop only after 20 seconds with no page read, and the Remove
+  // metadata worker reports no progress, so its 20 second total is the same stop.
+  runLimit: { ms: PDF_TEXT_METADATA_STALL_LIMIT_MS, kind: 'quiet' },
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   fields: [
     {
