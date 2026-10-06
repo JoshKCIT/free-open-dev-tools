@@ -81,6 +81,53 @@ describe('fixtureCoverageProblems on the real repository', () => {
     expect(new Set(LEGACY_IDS).size, 'no id sits in two of the fifteen lists').toBe(LEGACY_IDS.length);
   });
 
+  it('keeps the exempt ids exactly the frozen list, so no later tool can skip its live fixture by joining one', () => {
+    // The tools built before first-use fixture files existed (NEW_TOOL_IDS and EARLY_TOOL_IDS in the spec). A tool added
+    // to either list would need no live fixture; this literal is the whole list, forever, and is never extended.
+    const FROZEN_EXEMPT = [
+      'base32',
+      'base58',
+      'base64',
+      'basic-auth',
+      'bcrypt',
+      'case-converter',
+      'chmod-calculator',
+      'classical-cipher',
+      'data-uri',
+      'hash-file',
+      'hash-text',
+      'hmac',
+      'html-entities',
+      'ieee754',
+      'ip-subnet',
+      'json-formatter',
+      'json-string-escape',
+      'jwt-decoder',
+      'jwt-signature',
+      'luhn',
+      'morse-code',
+      'nato-phonetic',
+      'number-base',
+      'number-to-words',
+      'password-generator',
+      'password-strength',
+      'random-number',
+      'random-string',
+      'roman-numerals',
+      'scientific-notation',
+      'slug-generator',
+      'text-diff',
+      'text-radix',
+      'unicode-inspector',
+      'unix-timestamp',
+      'url-codec',
+      'uuid',
+      'word-counter',
+    ];
+    expect([...EXEMPT_IDS].sort()).toEqual(FROZEN_EXEMPT);
+    expect(new Set(EXEMPT_IDS).size, 'no id sits in both exempt lists').toBe(EXEMPT_IDS.length);
+  });
+
   it('accepts a simulated new tool that has a built page and exactly one live fixture', () => {
     const problems = fixtureCoverageProblems({
       catalogIds: [...CATALOG_IDS, 'future-tool'],
