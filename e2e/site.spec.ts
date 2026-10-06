@@ -246,6 +246,8 @@ test.describe('accessibility', () => {
   test('the skip link is present, first in the document, and moves focus to the content', async ({ page }) => {
     await page.goto(rel('/'));
     const skip = page.getByRole('link', { name: 'Skip to content' });
+    // The page draws itself after the load event fires, so wait for the link before reading the document order.
+    await expect(skip).toBeAttached();
 
     // It must be the first focusable thing in the document order, which is what
     // makes it useful whatever the browser's tab settings are.
@@ -309,7 +311,9 @@ test.describe('accessibility', () => {
   test('every page has exactly one level one heading', async ({ page }) => {
     for (const path of ['/', '/tools', '/catalog', '/privacy', '/about', '/tools/base64']) {
       await page.goto(rel(path));
-      expect(await page.locator('h1').count(), `${path} should have exactly one h1`).toBe(1);
+      // The page draws itself after the load event fires, so the count retries until it settles (it still fails when the
+      // page never holds exactly one level one heading).
+      await expect(page.locator('h1'), `${path} should have exactly one h1`).toHaveCount(1);
     }
   });
 
