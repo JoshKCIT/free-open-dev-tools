@@ -825,6 +825,10 @@ for (const theme of ['dark', 'light'] as const) {
         if (row.dimmed < MIN_CONTRAST) {
           tooLow.push(`${contrastCase.name}: ${row.selector} reads ${row.dimmed.toFixed(2)}`);
         }
+        // The block label is on every normal result too, so its undimmed value must hold as well.
+        if (row.selector === '.output-label' && row.undimmed < MIN_CONTRAST) {
+          tooLow.push(`${contrastCase.name}: ${row.selector} reads ${row.undimmed.toFixed(2)} undimmed`);
+        }
       }
       // End the held run so the next case starts from a finished page.
       await cancelButton(page).click();
