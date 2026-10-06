@@ -1,0 +1,2084 @@
+{
+  "wptCommit": "a419ab2055dd4a747dfae5c407ae9a6d10aa08ca",
+  "note": "Cases re-expressed from the web-platform-tests files named in each source (file:line of the case in the file at the commit). The JavaScript is not copied. Every date is relative to the fixed time nowMs.",
+  "rows": [
+    {
+      "source": "cookies/size/name-and-value.html:21",
+      "name": "Set max-size cookie with largest possible name and value (4096 bytes)",
+      "lines": [
+        {
+          "nameLength": 2048,
+          "valueLength": 2048
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+        "value": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:26",
+      "name": "Ignore cookie with name larger than 4096 and 1 byte value",
+      "lines": [
+        {
+          "nameLength": 4097,
+          "valueLength": 1
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:31",
+      "name": "Set max-size value-less cookie",
+      "lines": [
+        {
+          "nameLength": 4096,
+          "valueLength": 0
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+        "value": ""
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:36",
+      "name": "Ignore value-less cookie with name larger than 4096 bytes",
+      "lines": [
+        {
+          "nameLength": 4097,
+          "valueLength": 0
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:41",
+      "name": "Set max-size cookie with largest possible value (4095 bytes)",
+      "lines": [
+        {
+          "nameLength": 1,
+          "valueLength": 4095
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "t",
+        "value": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:46",
+      "name": "Ignore named cookie (with non-zero length) and value larger than 4095 bytes",
+      "lines": [
+        {
+          "nameLength": 1,
+          "valueLength": 4096
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:51",
+      "name": "Ignore named cookie with length larger than 4095 bytes, and a non-zero value",
+      "lines": [
+        {
+          "nameLength": 4096,
+          "valueLength": 1
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:56",
+      "name": "Set max-size name-less cookie",
+      "lines": [
+        {
+          "nameLength": 0,
+          "valueLength": 4096
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "",
+        "value": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:61",
+      "name": "Ignore name-less cookie with value larger than 4096 bytes",
+      "lines": [
+        {
+          "nameLength": 0,
+          "valueLength": 4097
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:66",
+      "name": "Ignore name-less cookie (without leading =) with value larger than 4096 bytes",
+      "lines": [
+        {
+          "nameLength": 0,
+          "valueLength": 4097,
+          "dropFirst": 1
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/size/name-and-value.html:71",
+      "name": "Set max-size cookie that also has an attribute",
+      "lines": [
+        {
+          "nameLength": 2048,
+          "valueLength": 2048,
+          "suffix": "; Max-Age:43110;"
+        }
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+        "value": "11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "lifetime": "session"
+      },
+      "note": "The attribute is written with a colon, so it is an unknown attribute: the cookie stays a session cookie."
+    },
+    {
+      "source": "cookies/attributes/max-age.html:22",
+      "name": "Ignore max-age attribute with invalid non-zero-digit (containing a comma)",
+      "lines": [
+        "test=1; Max-Age=50,399"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "1",
+        "lifetime": "session"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:27",
+      "name": "Set cookie with age",
+      "lines": [
+        "test=2; max-age=10000"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "2",
+        "lifetimeS": 10000
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:32",
+      "name": "Set no cookie with max-age=0",
+      "lines": [
+        "test=3; max-age=0"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "3"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:37",
+      "name": "Set no cookie with max-age=-1",
+      "lines": [
+        "test=4; max-age=-1"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "4"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:42",
+      "name": "Set no cookie with max-age=-20",
+      "lines": [
+        "test=5; max-age=-20"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "5"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:47",
+      "name": "Set multiple cookies with max-age attribute (first line)",
+      "lines": [
+        "testA=6; max-age=60"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "testA",
+        "value": "6",
+        "lifetimeS": 60
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:47",
+      "name": "Set multiple cookies with max-age attribute (second line)",
+      "lines": [
+        "testB=6; max-age=60"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "testB",
+        "value": "6",
+        "lifetimeS": 60
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:52",
+      "name": "Expire later cookie with same name and max-age=0 (third line)",
+      "lines": [
+        "testA=differentvalue; max-age=0"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "testA",
+        "value": "differentvalue"
+      },
+      "note": "The jar result (only testB left) needs the cookie store, which is not modelled; each line is judged alone."
+    },
+    {
+      "source": "cookies/attributes/max-age.html:57",
+      "name": "Expire later cookie with same name and max-age=0, and do not set cookie with max-age=0 (fourth line)",
+      "lines": [
+        "testC=8; max-age=0"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "testC",
+        "value": "8"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:62",
+      "name": "Set multiple cookies with valid max-age values (first line, quote and semicolon inside the value text)",
+      "lines": [
+        "test=\"9! = foo;bar\";\" parser; max-age=6"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "\"9! = foo",
+        "lifetimeS": 6
+      },
+      "note": "The JavaScript string is test=\"9! = foo;bar\\\";\" parser; max-age=6, which is this text."
+    },
+    {
+      "source": "cookies/attributes/max-age.html:62",
+      "name": "Set multiple cookies with valid max-age values (second line, a nameless cookie and a Max-Age with a dot and a comma)",
+      "lines": [
+        "test9; max-age=2.63,"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "",
+        "value": "test9",
+        "lifetime": "session"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:67",
+      "name": "Don't set multiple cookies with max-age=0 (first line)",
+      "lines": [
+        "test=10; max-age=0"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "10"
+      }
+    },
+    {
+      "source": "cookies/attributes/max-age.html:67",
+      "name": "Don't set multiple cookies with max-age=0 (second line, a nameless cookie)",
+      "lines": [
+        "test10; max-age=0"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "",
+        "value": "test10"
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:19",
+      "name": "Set cookie with expires value containing a comma",
+      "lines": [
+        "test=1; Expires=Fri, 01 Jan 2038 00:00:00 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "1",
+        "lifetimeS": 34560000,
+        "clamped": true
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:24",
+      "name": "Set cookie with expires value followed by comma",
+      "lines": [
+        "test=2; Expires=Fri 01 Jan 2038 00:00:00 GMT, baz=qux"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "2",
+        "lifetimeS": 34560000,
+        "clamped": true
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:29",
+      "name": "Set cookie with future expiration",
+      "lines": [
+        "test=3; Expires=Fri, 01 Jan 2038 00:00:00 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "3",
+        "lifetimeS": 34560000,
+        "clamped": true
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:34",
+      "name": "Set expired cookie along with valid cookie (the expired line)",
+      "lines": [
+        "test=expired; Expires=Fri, 07 Aug 2007 08:04:19 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "expired"
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:34",
+      "name": "Set expired cookie along with valid cookie (the valid line, 30 days after the fixed time instead of the 2027 date of the file)",
+      "lines": [
+        "test=4; Expires=Thu, 05 Nov 2026 12:00:00 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "4",
+        "lifetimeS": 2592000
+      },
+      "note": "The file writes a date in 2027 that was in the future when it was written; here it is 30 days after the fixed time."
+    },
+    {
+      "source": "cookies/attributes/expires.html:39",
+      "name": "Don't set cookie with expires set to the past",
+      "lines": [
+        "test=5; expires=Thu, 10 Apr 1980 16:33:12 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "5"
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:53",
+      "name": "Set cookie with the month before the day of the month in expires",
+      "lines": [
+        "test=6; Expires=Fri Jan 01 2038 00:00:00 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "6",
+        "lifetimeS": 34560000,
+        "clamped": true
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:58",
+      "name": "Don't set cookie with the month before the day of the month in an expires in the past",
+      "lines": [
+        "test=7; Expires=Thu Apr 10 1980 16:33:12 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "7"
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:63",
+      "name": "Don't set cookie with no day name and the month before the day of the month in an expires in the past",
+      "lines": [
+        "test=8; Expires=Apr 10 1980 16:33:12 GMT"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "8"
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:68",
+      "name": "Don't set cookie with an expires in the past in Date.prototype.toString() format",
+      "lines": [
+        "test=9; Expires=Thu Apr 10 1980 16:33:12 GMT-0700 (Pacific Daylight Time)"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "9"
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:73",
+      "name": "Set cookie whose Max-Age overrides an expires in the past",
+      "lines": [
+        "test=10; Expires=Thu Apr 10 1980 16:33:12 GMT; Max-Age=1000"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "10",
+        "lifetimeS": 1000
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:82",
+      "name": "Set cookie with an asctime format expires, whose time precedes the year",
+      "lines": [
+        "test=12; Expires=Fri Jan 01 03:14:07 2038"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "12",
+        "lifetimeS": 34560000,
+        "clamped": true
+      }
+    },
+    {
+      "source": "cookies/attributes/expires.html:103",
+      "name": "Don't set cookie with an expires in the past and a non-ASCII timezone comment",
+      "lines": [
+        "test=11; Expires=Thu Apr 10 1980 16:33:12 GMT-0700 (Θερινή ώρα Ειρηνικού)"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored-then-deleted",
+        "name": "test",
+        "value": "11"
+      },
+      "note": "The file sets this one through the document cookie API only; the parsing and storage steps are the same."
+    },
+    {
+      "source": "cookies/attributes/invalid.html:23",
+      "name": "Set cookie with invalid attribute",
+      "lines": [
+        "test=1; lol; Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "1"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:29",
+      "name": "Set cookie ending with invalid attribute.",
+      "lines": [
+        "test=2; Path=/; lol"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "2"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:35",
+      "name": "Set cookie ending with quoted invalid attribute.",
+      "lines": [
+        "test=3; Path=/; 'lol'"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "3"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:41",
+      "name": "Set cookie ending with double-quoted invalid attribute.",
+      "lines": [
+        "test=4; Path=/; \"lol\""
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "4"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:47",
+      "name": "Set cookie ending with invalid attribute equals.",
+      "lines": [
+        "test=5; Path=/; lol="
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "5"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:53",
+      "name": "Set cookie with two invalid attributes (lol=\"aaa and bbb).",
+      "lines": [
+        "test=6; lol=\"aaa;bbb\"; Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "6"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:59",
+      "name": "Set cookie ending with two invalid attributes (lol=\"aaa and bbb).",
+      "lines": [
+        "test=7; Path=/; lol=\"aaa;bbb\""
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "7"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:65",
+      "name": "Set cookie for quoted Secure attribute (set from a non-secure address)",
+      "lines": [
+        "test=8; \"Secure\""
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "8",
+        "secureOnly": false
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:72",
+      "name": "Set cookie for Secure qux (set from a non-secure address)",
+      "lines": [
+        "test=9; Secure qux"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "9",
+        "secureOnly": false
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:79",
+      "name": "Ignore invalid attribute name with comma",
+      "lines": [
+        "test=10; b,az=qux"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "10"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:84",
+      "name": "Ignore invalid attribute value with comma",
+      "lines": [
+        "test=11; baz=q,ux"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "11"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:89",
+      "name": "Set cookie ignoring multiple invalid attributes, whitespace, and semicolons",
+      "lines": [
+        "  test  = 12  ;foo;;;   bar"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "12"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:94",
+      "name": "Set cookie with multiple '='s in its value, ignoring multiple invalid attributes, whitespace, and semicolons",
+      "lines": [
+        "  test=== 13  ;foo;;;   bar"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "== 13"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:99",
+      "name": "Set cookie with (invalid) version=1 attribute",
+      "lines": [
+        "test=14; version=1;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "14"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:104",
+      "name": "Set cookie with (invalid) version=1000 attribute",
+      "lines": [
+        "test=15; version=1000;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "15"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:109",
+      "name": "Set cookie ignoring anything after ; (which looks like an invalid attribute)",
+      "lines": [
+        "test=16; customvalue='1000 or more';"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "16"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:114",
+      "name": "Set cookie ignoring anything after ; (no trailing semicolon)",
+      "lines": [
+        "test=17; customvalue='1000 or more'"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "17"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:119",
+      "name": "Ignore keys after semicolon",
+      "lines": [
+        "test=18; foo=bar, a=b"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "18"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:124",
+      "name": "Ignore attributes after semicolon",
+      "lines": [
+        "test=19;max-age=3600, c=d;path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "test",
+        "value": "19",
+        "lifetime": "session"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:130",
+      "name": "Ignore `Set-Cookie: =` (first line)",
+      "lines": [
+        "testA=20"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "testA",
+        "value": "20"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:130",
+      "name": "Ignore `Set-Cookie: =` (the line with only an equals sign)",
+      "lines": [
+        "="
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:130",
+      "name": "Ignore `Set-Cookie: =` (third line)",
+      "lines": [
+        "testb=20"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "testb",
+        "value": "20"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:135",
+      "name": "Ignore empty cookie string (an empty Set-Cookie line is written with its prefix and nothing after it)",
+      "lines": [
+        "Set-Cookie:"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:140",
+      "name": "Ignore `Set-Cookie: =` with other `Set-Cookie` headers (a nameless cookie)",
+      "lines": [
+        "test22"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "",
+        "value": "test22"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:140",
+      "name": "Ignore `Set-Cookie: =` with other `Set-Cookie` headers (the equals sign)",
+      "lines": [
+        "="
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:145",
+      "name": "Ignore name- and value-less `Set-Cookie: ; bar`",
+      "lines": [
+        "; testB23"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:150",
+      "name": "Ignore name- and value-less `Set-Cookie:    ` (spaces after the prefix)",
+      "lines": [
+        "Set-Cookie:    "
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:155",
+      "name": "Ignore name- and value-less `Set-Cookie: \\t` (a tab after the prefix)",
+      "lines": [
+        "Set-Cookie:\t"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "ignored"
+      }
+    },
+    {
+      "source": "cookies/attributes/invalid.html:160",
+      "name": "Ignore cookie with domain that won't domain match (along with other invalid noise)",
+      "lines": [
+        "test=26; domain=.parser.test; ;; ;=; ,,, ===,abc,=; abracadabra! max-age=20;=;;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/cookie.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:14",
+      "name": "Secure origin: __Host- \"Path=/;\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:14",
+      "name": "Secure origin: __Host- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:14",
+      "name": "Secure origin: __Host- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:23",
+      "name": "Secure origin: __HoSt- \"Path=/;\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:23",
+      "name": "Secure origin: __HoSt- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:23",
+      "name": "Secure origin: __HoSt- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:33",
+      "name": "Secure origin: __Host- \"Secure; Path=/;\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Host-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:33",
+      "name": "Secure origin: __Host- \"Secure; Path=/;MaxAge=10\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Host-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:33",
+      "name": "Secure origin: __Host- \"Secure; Path=/;HttpOnly\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Host-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:42",
+      "name": "Secure origin: __HoSt- \"Secure; Path=/;\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__HoSt-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:42",
+      "name": "Secure origin: __HoSt- \"Secure; Path=/;MaxAge=10\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__HoSt-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:42",
+      "name": "Secure origin: __HoSt- \"Secure; Path=/;HttpOnly\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__HoSt-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:52",
+      "name": "Secure origin: __Host- \"Secure; Path=/; Domain=web-platform.test; \"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; "
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:52",
+      "name": "Secure origin: __Host- \"Secure; Path=/; Domain=web-platform.test; MaxAge=10\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:52",
+      "name": "Secure origin: __Host- \"Secure; Path=/; Domain=web-platform.test; HttpOnly\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:61",
+      "name": "Secure origin: __HoSt- \"Secure; Path=/; Domain=web-platform.test; \"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; "
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:61",
+      "name": "Secure origin: __HoSt- \"Secure; Path=/; Domain=web-platform.test; MaxAge=10\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:61",
+      "name": "Secure origin: __HoSt- \"Secure; Path=/; Domain=web-platform.test; HttpOnly\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:71",
+      "name": "Secure origin: __Host- Secure; Path=/cookies/resources/list.py",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/cookies/resources/list.py"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.https.html:80",
+      "name": "Secure origin: __HoSt- Secure; Path=/cookies/resources/list.py",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/cookies/resources/list.py"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:14",
+      "name": "Non-secure origin: __Host- \"Path=/;\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:14",
+      "name": "Non-secure origin: __Host- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:14",
+      "name": "Non-secure origin: __Host- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:23",
+      "name": "Non-secure origin: __HoSt- \"Path=/;\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:23",
+      "name": "Non-secure origin: __HoSt- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:23",
+      "name": "Non-secure origin: __HoSt- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:33",
+      "name": "Non-secure origin: __Host- \"Secure; Path=/;\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:33",
+      "name": "Non-secure origin: __Host- \"Secure; Path=/;MaxAge=10\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:33",
+      "name": "Non-secure origin: __Host- \"Secure; Path=/;HttpOnly\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:42",
+      "name": "Non-secure origin: __HoSt- \"Secure; Path=/;\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:42",
+      "name": "Non-secure origin: __HoSt- \"Secure; Path=/;MaxAge=10\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:42",
+      "name": "Non-secure origin: __HoSt- \"Secure; Path=/;HttpOnly\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:52",
+      "name": "Non-secure origin: __Host- \"Secure; Path=/; Domain=web-platform.test; \"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; "
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:52",
+      "name": "Non-secure origin: __Host- \"Secure; Path=/; Domain=web-platform.test; MaxAge=10\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:52",
+      "name": "Non-secure origin: __Host- \"Secure; Path=/; Domain=web-platform.test; HttpOnly\"",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:61",
+      "name": "Non-secure origin: __HoSt- \"Secure; Path=/; Domain=web-platform.test; \"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; "
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:61",
+      "name": "Non-secure origin: __HoSt- \"Secure; Path=/; Domain=web-platform.test; MaxAge=10\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:61",
+      "name": "Non-secure origin: __HoSt- \"Secure; Path=/; Domain=web-platform.test; HttpOnly\"",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/; Domain=web-platform.test; HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:71",
+      "name": "Non-secure origin: __Host- Secure; Path=/cookies/resources/list.py",
+      "lines": [
+        "__Host-prefixtestcookie=bar1;Secure; Path=/cookies/resources/list.py"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__host.header.html:80",
+      "name": "Non-secure origin: __HoSt- Secure; Path=/cookies/resources/list.py",
+      "lines": [
+        "__HoSt-prefixtestcookie=bar1;Secure; Path=/cookies/resources/list.py"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:13",
+      "name": "Secure origin: __Secure- \"Path=/;\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:13",
+      "name": "Secure origin: __Secure- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:13",
+      "name": "Secure origin: __Secure- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:21",
+      "name": "Secure origin: __SeCuRe- \"Path=/;\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:21",
+      "name": "Secure origin: __SeCuRe- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:21",
+      "name": "Secure origin: __SeCuRe- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:30",
+      "name": "Secure origin: __Secure- \"Secure;Path=/;\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure;Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Secure-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:30",
+      "name": "Secure origin: __Secure- \"Secure;Path=/;MaxAge=10\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Secure-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:30",
+      "name": "Secure origin: __Secure- \"Secure;Path=/;HttpOnly\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure;Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Secure-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:38",
+      "name": "Secure origin: __SeCuRe- \"Secure;Path=/;\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure;Path=/;"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__SeCuRe-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:38",
+      "name": "Secure origin: __SeCuRe- \"Secure;Path=/;MaxAge=10\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__SeCuRe-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:38",
+      "name": "Secure origin: __SeCuRe- \"Secure;Path=/;HttpOnly\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure;Path=/;HttpOnly"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__SeCuRe-prefixtestcookie",
+        "value": "bar1"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:49",
+      "name": "Secure cross-site origin: __Secure- \"Path=/;SameSite=None;domain=cross-site.web-platform.test\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;SameSite=None;domain=cross-site.web-platform.test"
+      ],
+      "requestUrl": "https://cross-site.web-platform.test/cookies/resources/set.py",
+      "context": "cross-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      },
+      "note": "The test server writes its cross-site host from a template; a fixed host name stands in here, and only that the Domain equals the request host matters."
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:58",
+      "name": "Secure cross-site origin: __SeCuRe- \"Path=/;SameSite=None;domain=cross-site.web-platform.test\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;SameSite=None;domain=cross-site.web-platform.test"
+      ],
+      "requestUrl": "https://cross-site.web-platform.test/cookies/resources/set.py",
+      "context": "cross-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      },
+      "note": "The test server writes its cross-site host from a template; a fixed host name stands in here, and only that the Domain equals the request host matters."
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:68",
+      "name": "Secure cross-site origin: __Secure- \"Secure;SameSite=None;Path=/;domain=cross-site.web-platform.test\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure;SameSite=None;Path=/;domain=cross-site.web-platform.test"
+      ],
+      "requestUrl": "https://cross-site.web-platform.test/cookies/resources/set.py",
+      "context": "cross-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Secure-prefixtestcookie",
+        "value": "bar1"
+      },
+      "note": "The test server writes its cross-site host from a template; a fixed host name stands in here, and only that the Domain equals the request host matters."
+    },
+    {
+      "source": "cookies/prefix/__secure.header.https.html:77",
+      "name": "Secure cross-site origin: __SeCuRe- \"Secure;SameSite=None;Path=/;domain=cross-site.web-platform.test\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure;SameSite=None;Path=/;domain=cross-site.web-platform.test"
+      ],
+      "requestUrl": "https://cross-site.web-platform.test/cookies/resources/set.py",
+      "context": "cross-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__SeCuRe-prefixtestcookie",
+        "value": "bar1"
+      },
+      "note": "The test server writes its cross-site host from a template; a fixed host name stands in here, and only that the Domain equals the request host matters."
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:13",
+      "name": "Non-secure origin: __Secure- \"Path=/;\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:13",
+      "name": "Non-secure origin: __Secure- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:13",
+      "name": "Non-secure origin: __Secure- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:21",
+      "name": "Non-secure origin: __SeCuRe- \"Path=/;\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:21",
+      "name": "Non-secure origin: __SeCuRe- \"Path=/;MaxAge=10\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:21",
+      "name": "Non-secure origin: __SeCuRe- \"Path=/;HttpOnly\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:30",
+      "name": "Non-secure origin: __Secure- \"Secure; Path=/;\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure; Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:30",
+      "name": "Non-secure origin: __Secure- \"Secure; Path=/;MaxAge=10\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure; Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:30",
+      "name": "Non-secure origin: __Secure- \"Secure; Path=/;HttpOnly\"",
+      "lines": [
+        "__Secure-prefixtestcookie=bar1;Secure; Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:38",
+      "name": "Non-secure origin: __SeCuRe- \"Secure; Path=/;\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure; Path=/;"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:38",
+      "name": "Non-secure origin: __SeCuRe- \"Secure; Path=/;MaxAge=10\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure; Path=/;MaxAge=10"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    },
+    {
+      "source": "cookies/prefix/__secure.header.html:38",
+      "name": "Non-secure origin: __SeCuRe- \"Secure; Path=/;HttpOnly\"",
+      "lines": [
+        "__SeCuRe-prefixtestcookie=bar1;Secure; Path=/;HttpOnly"
+      ],
+      "requestUrl": "http://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      }
+    }
+  ],
+  "windowJsRows": [
+    {
+      "source": "cookies/prefix/__host.explicit-path.https.window.js:90",
+      "name": "CONTROL \"__Host-\" with an explicit Path of \"/\" is set",
+      "lines": [
+        "__Host-explicit-path-withpath=1; Secure; Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "stored",
+        "name": "__Host-explicit-path-withpath",
+        "value": "1"
+      },
+      "note": "Set through the document cookie API in the file; the parsing and storage steps are the same."
+    },
+    {
+      "source": "cookies/prefix/__host.explicit-path.https.window.js:99",
+      "name": "\"__Host-\" without a Path attribute is not set",
+      "lines": [
+        "__Host-explicit-path-nopath=1; Secure"
+      ],
+      "requestUrl": "https://web-platform.test/",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "expect": {
+        "outcome": "not-stored"
+      },
+      "note": "Set through the document cookie API in the file; the parsing and storage steps are the same."
+    }
+  ],
+  "notReproduced": [
+    {
+      "source": "cookies/prefix/__host.explicit-path.https.window.js:106",
+      "name": "\"__Host-\" with an empty Path attribute is not set",
+      "lines": [
+        "__Host-explicit-path-emptypath=1; Secure; Path="
+      ],
+      "requestUrl": "https://web-platform.test/",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "wpt": {
+        "shouldExist": false
+      },
+      "draft": {
+        "outcome": "stored"
+      },
+      "why": "Section 5.6.4 turns an empty Path value into the default path, which is / for a document at /, and section 5.7 step 21 asks only that a Path attribute is present and the cookie path is /. The file expects the cookie to be refused; the draft text accepts it."
+    },
+    {
+      "source": "cookies/prefix/__host.explicit-path.https.window.js:113",
+      "name": "\"__Host-\" with a valueless Path attribute is not set",
+      "lines": [
+        "__Host-explicit-path-barepath=1; Secure; Path"
+      ],
+      "requestUrl": "https://web-platform.test/",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "wpt": {
+        "shouldExist": false
+      },
+      "draft": {
+        "outcome": "stored"
+      },
+      "why": "A Path attribute with no value is read as an empty value (section 5.6 step 4), so the same reading applies as for an empty Path: the draft accepts it, the file refuses it."
+    },
+    {
+      "source": "cookies/prefix/__Http.https.html:35",
+      "name": "__Http: Does not set via HTTP with Path=/ (without Secure)",
+      "lines": [
+        "__Http-prefixtestcookie=bar1;Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "wpt": {
+        "shouldExist": false
+      },
+      "draft": {
+        "outcome": "stored"
+      },
+      "why": "The __Http- prefix is not in draft-ietf-httpbis-rfc6265bis-22 (a search of the text finds no such prefix), so the page does not enforce it."
+    },
+    {
+      "source": "cookies/prefix/__Http.https.html:43",
+      "name": "__Http: Does not set via HTTP with 'Secure; Path=/'",
+      "lines": [
+        "__Http-prefixtestcookie=bar1;Secure;Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "wpt": {
+        "shouldExist": false
+      },
+      "draft": {
+        "outcome": "stored"
+      },
+      "why": "The __Http- prefix is not in draft-ietf-httpbis-rfc6265bis-22, so the page does not enforce its HttpOnly requirement."
+    },
+    {
+      "source": "cookies/prefix/__Host-Http.https.html:28",
+      "name": "__Host-Http: Does not set via HTTP with 'Secure; Path=/'",
+      "lines": [
+        "__Host-Http-prefixtestcookie=bar1;Secure;Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "wpt": {
+        "shouldExist": false
+      },
+      "draft": {
+        "outcome": "stored"
+      },
+      "why": "The __Host-Http- prefix is not in draft-ietf-httpbis-rfc6265bis-22; the draft reads the name as an ordinary name that starts with __Host-, which this cookie satisfies."
+    },
+    {
+      "source": "cookies/prefix/__Host-Http.https.html:52",
+      "name": "__Host-Http: Does not set via HTTP with 'Path=/' (without Secure)",
+      "lines": [
+        "__Host-Http-prefixtestcookie=bar1;Path=/"
+      ],
+      "requestUrl": "https://web-platform.test/cookies/resources/set.py",
+      "context": "same-site",
+      "nowMs": 1791288000000,
+      "wpt": {
+        "shouldExist": false
+      },
+      "draft": {
+        "outcome": "not-stored"
+      },
+      "why": "Not a disagreement about the outcome: the cookie is refused here too, because it starts with __Host- and has no Secure attribute. It is listed because the file expects the refusal for the __Host-Http- rule, which the draft does not have."
+    }
+  ]
+}
