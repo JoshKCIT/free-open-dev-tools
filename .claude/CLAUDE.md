@@ -27,9 +27,16 @@ tested source for their own project.
   the catalog gate
 - **Licensing**: MIT for everything original here — code, build scripts, documentation and site copy —
   backed by a root `LICENSE` file; runtime dependencies must be permissively licensed and their notices
-  preserved — enforced by the licence gate
-- **Hosting**: GitHub Pages, which cannot set response headers, so the content security policy is applied
-  per page rather than at the header level
+  preserved — enforced by the licence gate; weak copyleft (MPL and similar) needs an explicit owner OK
+- **Hosting**: GitHub Pages, which cannot set response headers. Each page therefore carries its own content
+  security policy in its markup, a meta element written at build time as the first element of the head and
+  checked on every build. It forbids the page from requesting anything (no fetch, XHR, WebSocket, beacon,
+  outside images, fonts, media, frames, objects or form posts) and allows scripts only from the site itself
+  plus the hash of one inline theme script; a page adds only what its tool declares it needs. A policy in
+  markup cannot give framing protection, cannot report violations, cannot apply sandboxing by header and
+  cannot stop a visitor following a link or a page navigating away, and some browser features (WebRTC, and
+  connection hints such as preconnect, in some browsers) and browser extensions sit outside it. It is a
+  second layer behind ESLint, the static gate and the browser harness.
 - **Provenance**: The origin of the catalog is not recorded anywhere. No survey, mapping or access log is
   kept, in any repository, public or private.
 

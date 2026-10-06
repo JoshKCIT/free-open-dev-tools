@@ -636,3 +636,26 @@ for (const path of SITE_PAGES) {
     expect(probe.findings().map(describeFinding), `${path} raised a violation`).toEqual([]);
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The privacy page tells visitors the same true account of the page policy as the project files (HARD-08).
+// ---------------------------------------------------------------------------------------------------------------------
+
+test('the privacy page explains the policy of each page, what it blocks first and then what it cannot do', async ({
+  page,
+}) => {
+  await page.goto(rel('/privacy'));
+  const heading = page.getByRole('heading', { level: 2, name: 'Each page has its own content security policy' });
+  await expect(heading).toBeVisible();
+  expect((await heading.innerText()).includes(String.fromCodePoint(0x2014))).toBe(false);
+
+  const text = await page.locator('.prose').innerText();
+  const blocks = text.indexOf('What it blocks');
+  const limits = text.indexOf('What it cannot do');
+  expect(blocks, 'the blocked list is on the page').toBeGreaterThan(-1);
+  expect(limits, 'the limits list is on the page').toBeGreaterThan(blocks);
+  const section = text.slice(text.indexOf('Each page has its own content security policy'));
+  for (const word of ['framing', 'navigating away', 'WebRTC', 'extensions']) {
+    expect(section.includes(word), `the section mentions ${word}`).toBe(true);
+  }
+});

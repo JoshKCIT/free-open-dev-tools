@@ -121,6 +121,44 @@ export default function Privacy() {
         </li>
       </ul>
 
+      <h2>Each page has its own content security policy</h2>
+      <p>
+        GitHub Pages cannot add security headers to what it serves, so every page of this site carries its own content
+        security policy inside its markup instead. It is written when the site is built and sits first in the page head,
+        so your browser reads it before anything else on the page.
+      </p>
+      <p>What it blocks:</p>
+      <ul>
+        <li>
+          Every request the page itself could make to anywhere else: no fetch, no XHR, no WebSocket, no beacon, and no
+          outside images, fonts, media, frames, objects or form posts.
+        </li>
+        <li>
+          Scripts from anywhere except this site, apart from one small inline script that sets your theme. A page adds
+          only what its own tool needs, such as a background worker, WebAssembly, or generating code for a validator,
+          and nothing broader.
+        </li>
+      </ul>
+      <p>
+        Links between pages on this site load a fresh page each time, so each page runs under its own policy and never
+        under the one of the page you came from.
+      </p>
+      <p>What it cannot do, because a policy in the markup is a second layer and not a wall:</p>
+      <ul>
+        <li>It gives no framing protection: another site can still put this one inside a frame.</li>
+        <li>It cannot report violations, and it cannot sandbox a page the way a response header can.</li>
+        <li>It cannot stop you following a link, and it cannot stop a page navigating away.</li>
+        <li>
+          It does not govern WebRTC or connection hints such as preconnect in every browser; we measured both getting
+          past it in some.
+        </li>
+        <li>Browser extensions sit outside it, and can read a page whatever it says.</li>
+      </ul>
+      <p>
+        The policy sits behind three checks that do the main work: lint rules that forbid network code in the tools, a
+        static gate in the build that fails if a page uses more than it declares, and the browser test described above.
+      </p>
+
       <h2>Tools that would need the network</h2>
       <p>
         Some utilities cannot work without contacting a server: DNS lookups, TLS certificate checks, public IP
