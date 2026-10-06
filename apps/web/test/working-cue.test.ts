@@ -1,5 +1,9 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import OutputView, { StaleOutputContext } from '../src/components/OutputView';
 import { cueSentence, formatLimitSeconds, startSentence } from '../src/components/WorkingCue';
+import type { OutputBlock } from '../src/lib/tool-ui';
 
 // The single ellipsis character the Run label already uses, built at run time.
 const E = String.fromCodePoint(0x2026);
@@ -81,5 +85,51 @@ describe('startSentence', () => {
 
   it('is the bare word when the page has no limit', () => {
     expect(startSentence(undefined)).toBe('Working.');
+  });
+});
+
+/** Draws one block the way the runner does, inside the stale context or outside it. */
+function draw(block: OutputBlock, stale: boolean): string {
+  return renderToStaticMarkup(
+    createElement(StaleOutputContext.Provider, { value: stale }, createElement(OutputView, { block })),
+  );
+}
+
+/** The opening tag of every Copy, Copy HTML, Copy as TSV, Download and swatch button of the markup (not Expand all). */
+function buttonTags(html: string): string[] {
+  const buttons = html.match(/<button[^>]*>.*?<\/button>/g) ?? [];
+  return buttons.filter((b) => /Copy|Download/.test(b)).map((b) => b.slice(0, b.indexOf('>') + 1));
+}
+
+describe('stale output context', () => {
+  const blocks: [string, OutputBlock][] = [
+    ['code with a download', { kind: 'code', value: 'x', download: 'out.txt' }],
+    ['key value', { kind: 'keyvalue', pairs: [['a', 'b']] }],
+    ['table', { kind: 'table', table: { headers: ['h'], rows: [['c']] } }],
+    ['list', { kind: 'list', items: ['one'] }],
+    ['swatches', { kind: 'swatches', colors: [{ css: '#fff', label: '#ffffff' }] }],
+    ['sandboxed html with Copy HTML', { kind: 'sandboxed-html', html: '<p>x</p>' }],
+    ['tree with copy and download', { kind: 'tree', nodes: [{ label: 'a' }], download: 'tree.txt' }],
+    ['files', { kind: 'files', files: [{ name: 'a.txt', mime: 'text/plain', content: 'x' }] }],
+    ['diff', { kind: 'diff', lines: [{ type: 'add', text: 'x' }] }],
+  ];
+
+  for (const [name, block] of blocks) {
+    it('turns every Copy and Download button off while stale: ' + name, () => {
+      const tags = buttonTags(draw(block, true));
+      expect(tags.length).toBeGreaterThan(0);
+      for (const tag of tags) expect(tag).toContain('disabled');
+    });
+
+    it('leaves every button on when not stale: ' + name, () => {
+      const tags = buttonTags(draw(block, false));
+      expect(tags.length).toBeGreaterThan(0);
+      for (const tag of tags) expect(tag).not.toContain('disabled');
+    });
+  }
+
+  it('is off by default, so a block drawn outside the runner is unchanged', () => {
+    const html = renderToStaticMarkup(createElement(OutputView, { block: { kind: 'code', value: 'x' } }));
+    expect(buttonTags(html).every((tag) => !tag.includes('disabled'))).toBe(true);
   });
 });
