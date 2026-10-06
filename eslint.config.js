@@ -1,6 +1,16 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
+// The WebRTC and WebTransport names. `no-restricted-globals` only sees a bare name, so each block below also bans them
+// as a member (`window.RTCPeerConnection`, `globalThis.WebTransport`, `self['RTCDataChannel']`) and as a name taken
+// out by destructuring (`const { RTCPeerConnection } = window`).
+const CONNECTION_NAMES = /^(webkitRTCPeerConnection|RTCPeerConnection|RTCDataChannel|WebTransport)$/;
+const connectionSyntax = (message) => [
+  { selector: `MemberExpression[computed=false][property.name=${CONNECTION_NAMES}]`, message },
+  { selector: `MemberExpression[computed=true][property.value=${CONNECTION_NAMES}]`, message },
+  { selector: `ObjectPattern > Property[key.name=${CONNECTION_NAMES}]`, message },
+];
+
 export default tseslint.config(
   {
     // Vendored fixtures under tools/*/test/fixtures/** are third-party
@@ -51,6 +61,10 @@ export default tseslint.config(
         { name: 'RTCDataChannel', message: 'A tool must never open a data channel.' },
         { name: 'WebTransport', message: 'A tool must never open a transport connection.' },
       ],
+      'no-restricted-syntax': [
+        'error',
+        ...connectionSyntax('A tool must never open a peer connection, data channel or transport.'),
+      ],
       'no-eval': 'error',
       'no-new-func': 'error',
     },
@@ -82,6 +96,10 @@ export default tseslint.config(
         { name: 'webkitRTCPeerConnection', message: 'App code must never open a peer connection.' },
         { name: 'RTCDataChannel', message: 'App code must never open a data channel.' },
         { name: 'WebTransport', message: 'App code must never open a transport connection.' },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...connectionSyntax('App code must never open a peer connection, data channel or transport.'),
       ],
       'no-eval': 'error',
       'no-new-func': 'error',

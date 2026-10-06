@@ -10,6 +10,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, loadCatalog } from './lib/catalog.mjs';
 import { NEEDS } from './lib/csp.mjs';
+import { FORBIDDEN, stripStringsAndComments } from './lib/no-network-scan.mjs';
 
 const problems = [];
 const note = (msg) => problems.push(msg);
@@ -162,77 +163,8 @@ for (const id of packageIds) {
   }
 }
 
-/**
- * Removes comments and string literals before scanning for network calls.
- *
- * Without this the check fires on documentation and on test data: the case
- * converter legitimately uses "XMLHttpRequest" as an example identifier. What
- * matters is whether the code can actually call these, not whether it names them.
- */
-function stripStringsAndComments(source) {
-  let out = '';
-  let i = 0;
-  const n = source.length;
-  while (i < n) {
-    const ch = source[i];
-    const next = source[i + 1];
-
-    if (ch === '/' && next === '/') {
-      while (i < n && source[i] !== '\n') i++;
-      continue;
-    }
-    if (ch === '/' && next === '*') {
-      i += 2;
-      while (i < n && !(source[i] === '*' && source[i + 1] === '/')) i++;
-      i += 2;
-      continue;
-    }
-    if (ch === '"' || ch === "'" || ch === '`') {
-      const quote = ch;
-      i++;
-      while (i < n) {
-        if (source[i] === '\\') {
-          i += 2;
-          continue;
-        }
-        if (source[i] === quote) {
-          i++;
-          break;
-        }
-        // A template literal can contain real code inside ${ }.
-        if (quote === '`' && source[i] === '$' && source[i + 1] === '{') {
-          let depth = 1;
-          i += 2;
-          const start = i;
-          while (i < n && depth > 0) {
-            if (source[i] === '{') depth++;
-            else if (source[i] === '}') depth--;
-            if (depth > 0) i++;
-          }
-          out += ' ' + source.slice(start, i) + ' ';
-          i++;
-          continue;
-        }
-        i++;
-      }
-      out += ' ';
-      continue;
-    }
-    out += ch;
-    i++;
-  }
-  return out;
-}
-
 // --- no tool claims to send data anywhere ---------------------------------
-const FORBIDDEN = [
-  [/\bfetch\s*\(/, 'fetch('],
-  [/XMLHttpRequest/, 'XMLHttpRequest'],
-  [/navigator\.sendBeacon/, 'navigator.sendBeacon'],
-  [/new\s+WebSocket/, 'new WebSocket'],
-  [/new\s+EventSource/, 'new EventSource'],
-  [/import\s*\(\s*['"]https?:/, 'a remote dynamic import'],
-];
+// The patterns and the string and comment stripper live in scripts/lib/no-network-scan.mjs, where they are tested.
 
 for (const id of packageIds) {
   const srcDir = join(toolsDir, id, 'src');

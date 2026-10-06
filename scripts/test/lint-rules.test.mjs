@@ -87,6 +87,29 @@ describe('run-time code generation and connection globals are banned in app and 
     expect(rules.filter((r) => r === 'no-restricted-globals')).toHaveLength(2);
   });
 
+  it('a connection name reached as a member or by destructuring is reported in app, worker and tool code', async () => {
+    const reached = [
+      ['apps/web/src/lib/lint-probe.ts', 'export const a = () => new window.RTCPeerConnection();\n'],
+      ['apps/web/src/lib/lint-probe.ts', 'export const a = () => new globalThis.RTCPeerConnection();\n'],
+      ['apps/web/src/lib/lint-probe.ts', `export const a = () => new globalThis['webkitRTCPeerConnection']();\n`],
+      ['apps/web/src/lib/lint-probe.ts', 'const { RTCDataChannel } = window;\nexport const a = RTCDataChannel;\n'],
+      ['apps/web/src/lib/workers/lint-probe.worker.ts', `export const a = () => new self.WebTransport('x');\n`],
+      [TOOL_SOURCE, 'export const a = () => new globalThis.RTCPeerConnection();\n'],
+      [TOOL_SOURCE, `export const a = () => new self.WebTransport('x');\n`],
+    ];
+    for (const [path, code] of reached) {
+      expect(await rulesReportedFor(path, code), `${path}: ${code}`).toContain('no-restricted-syntax');
+    }
+  });
+
+  it('a member that only shares part of a connection name stays allowed', async () => {
+    const rules = await rulesReportedFor(
+      'apps/web/src/lib/lint-probe.ts',
+      `export const a = (o: { RTCPeerConnectionCount: number }) => o.RTCPeerConnectionCount;\n`,
+    );
+    expect(rules).not.toContain('no-restricted-syntax');
+  });
+
   it('the earlier tool package bans still fire', async () => {
     const rules = await rulesReportedFor(TOOL_SOURCE, `export const x = () => fetch('/a');\n`);
     expect(rules).toContain('no-restricted-globals');
