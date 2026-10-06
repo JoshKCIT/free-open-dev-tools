@@ -244,7 +244,7 @@ function FieldControl({
               once at least one file is selected. */}
           {selected.length > 0 && selected[0] ? (
             <p className="field-help">
-              {selected[0].name} — {formatBytes(selected[0].size)}
+              {selected[0].name} ({formatBytes(selected[0].size)})
               {selected.length > 1 ? `, and ${selected.length - 1} more` : ''}
             </p>
           ) : null}

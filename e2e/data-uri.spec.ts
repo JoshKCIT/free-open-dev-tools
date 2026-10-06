@@ -32,8 +32,8 @@ test('a selected file shows its name and size before Run, then encodes to a data
   // The summary line appears BEFORE Run is pressed -- this is the actual
   // claim under test, not just that the file input accepts a file.
   const summary = page.locator('#f-file + p.field-help');
-  await expect(summary).toContainText('note.txt');
-  await expect(summary).toContainText('B'); // formatBytes renders a byte-size unit
+  // The name, then the size in brackets as formatBytes renders it (32 bytes here), with no dash between them.
+  await expect(summary).toHaveText('note.txt (32 B)');
 
   const runButton = page.getByRole('button', { name: 'Run', exact: true });
   await runButton.click();
