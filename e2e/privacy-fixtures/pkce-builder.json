@@ -1,6 +1,34 @@
 [
   {
+    "mode": { "field": "mode", "value": "verifier" },
     "values": { "verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk", "length": "43" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "request" },
+    "values": {
+      "verifier": "",
+      "length": "43",
+      "authorizeUrl": "https://idp.example/authorize?tenant=a",
+      "clientId": "s6BhdRkqt3",
+      "redirectUri": "https://client.example.org/cb",
+      "scope": "openid profile",
+      "state": "",
+      "nonce": "",
+      "maxAge": "300",
+      "uiLocales": "fr-CA fr en",
+      "loginHint": "user@example.org",
+      "acrValues": "urn:example:silver"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "redirect" },
+    "values": {
+      "redirect": "https://client.example.org/cb?code=SplxlOBeZQQYbYS6WxSbIA&state=xyz",
+      "expectedState": "xyz",
+      "expectedIssuer": "https://idp.example"
+    },
     "attachesFile": false
   }
 ]

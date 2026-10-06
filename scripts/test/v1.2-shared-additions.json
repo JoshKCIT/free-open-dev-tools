@@ -52,7 +52,7 @@
       "category": "hashing",
       "phase": 18,
       "needs": [],
-      "outputKinds": ["keyvalue", "code", "table", "note"],
+      "outputKinds": ["keyvalue", "code", "table", "list", "note"],
       "sharedAdditions": []
     },
     {
