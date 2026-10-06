@@ -5,8 +5,8 @@ import { ROOT } from '../lib/catalog.mjs';
 
 /**
  * HARD-04 (D-216) and the connection-global bans: the lint rules are what keep every in-site link a full document
- * load and keep app and tool code away from run-time code generation and the connection APIs the page policy does
- * not govern. Each rule is proved by linting a small piece of text under a real path of the tree, so a change to the
+ * load and keep app and tool code away from run-time code generation and the peer connection and transport APIs (the
+ * page policy does not govern WebRTC in every browser). Each rule is proved by linting a small piece of text under a real path of the tree, so a change to the
  * configuration that silences a rule fails here instead of passing quietly.
  */
 
@@ -80,6 +80,49 @@ describe('run-time code generation and connection globals are banned in app and 
     );
     expect(rules).toContain('no-eval');
     expect(rules).toContain('no-new-func');
+  });
+
+  it('code generation reached through a global object, a string timer or a constructor call is reported', async () => {
+    const forms = [
+      ['export const a = (s: string) => window.eval(s);\n', 'no-restricted-properties'],
+      ['export const a = (s: string) => globalThis.eval(s);\n', 'no-restricted-properties'],
+      [`export const a = (s: string) => window['eval'](s);\n`, 'no-restricted-properties'],
+      ['export const a = (s: string) => new globalThis.Function(s);\n', 'no-restricted-properties'],
+      ['export const a = (s: string) => self.Function(s);\n', 'no-restricted-properties'],
+      [`export const a = () => setTimeout('go()', 1);\n`, 'no-implied-eval'],
+      [`export const a = () => window.setInterval('go()', 1);\n`, 'no-implied-eval'],
+      ['export const a = (s: string) => (() => 0).constructor(s);\n', 'no-restricted-syntax'],
+      ['export const a = (f: () => void, s: string) => new f.constructor(s);\n', 'no-restricted-syntax'],
+    ];
+    for (const path of [
+      'apps/web/src/lib/lint-probe.ts',
+      'apps/web/src/lib/workers/lint-probe.worker.ts',
+      TOOL_SOURCE,
+    ]) {
+      for (const [code, rule] of forms) {
+        expect(await rulesReportedFor(path, code), `${path}: ${code}`).toContain(rule);
+      }
+    }
+  });
+
+  it('a timer given a function and a message posted from a worker stay allowed', async () => {
+    const rules = await rulesReportedFor(
+      'apps/web/src/lib/workers/lint-probe.worker.ts',
+      `export const a = (f: () => void) => setTimeout(f, 1);\nexport const b = (x: number) => self.postMessage(x);\n`,
+    );
+    expect(rules).toEqual([]);
+  });
+
+  it('the shared link file is exempt from the router import ban only', async () => {
+    const code =
+      `import { Link } from 'react-router-dom';\n` +
+      `export const a = (s: string) => eval(s);\n` +
+      `export const b = () => new window.RTCPeerConnection();\n` +
+      `export const c = () => import('react-router');\n`;
+    const rules = await rulesReportedFor(SITE_LINK, code);
+    expect(rules).not.toContain('no-restricted-imports');
+    expect(rules).toContain('no-eval');
+    expect(rules.filter((r) => r === 'no-restricted-syntax')).toHaveLength(2);
   });
 
   it('app code that names a peer connection, a data channel or a transport is reported', async () => {

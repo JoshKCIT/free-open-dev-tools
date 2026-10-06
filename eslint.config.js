@@ -11,6 +11,35 @@ const connectionSyntax = (message) => [
   { selector: `ObjectPattern > Property[key.name=${CONNECTION_NAMES}]`, message },
 ];
 
+// Run-time code generation in every form lint can see: bare and indirect eval and `new Function` (no-eval,
+// no-new-func), a timer given a string (no-implied-eval), eval or Function reached through `window`, `globalThis` or
+// `self` (no-restricted-properties), and a function's constructor called directly, such as
+// `(() => 0).constructor(text)`. The page policy refuses all of these at run time on a page that has not declared code
+// generation; this catches them first. no-eval and no-implied-eval only follow names that are declared globals, and
+// this config declares none for TypeScript, so CODE_GEN_GLOBALS names the ones they need.
+const CODE_GEN_GLOBALS = {
+  window: 'readonly',
+  globalThis: 'readonly',
+  self: 'readonly',
+  setTimeout: 'readonly',
+  setInterval: 'readonly',
+};
+const codeGenRules = (message) => ({
+  'no-eval': 'error',
+  'no-new-func': 'error',
+  'no-implied-eval': 'error',
+  'no-restricted-properties': [
+    'error',
+    ...['window', 'globalThis', 'self'].flatMap((object) =>
+      ['eval', 'Function'].map((property) => ({ object, property, message })),
+    ),
+  ],
+});
+const codeGenSyntax = (message) => [
+  { selector: "CallExpression > MemberExpression.callee[property.name='constructor']", message },
+  { selector: "NewExpression > MemberExpression.callee[property.name='constructor']", message },
+];
+
 export default tseslint.config(
   {
     // Vendored fixtures under tools/*/test/fixtures/** are third-party
@@ -45,6 +74,7 @@ export default tseslint.config(
     // A tool package must be able to run anywhere and must never transmit.
     // The catalog gate checks this too; this catches it earlier, in the editor.
     files: ['tools/**/src/**/*.ts'],
+    languageOptions: { globals: CODE_GEN_GLOBALS },
     rules: {
       'no-restricted-globals': [
         'error',
@@ -64,9 +94,9 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         ...connectionSyntax('A tool must never open a peer connection, data channel or transport.'),
+        ...codeGenSyntax('A tool must never build code from text at run time.'),
       ],
-      'no-eval': 'error',
-      'no-new-func': 'error',
+      ...codeGenRules('A tool must never build code from text at run time.'),
     },
   },
   {
@@ -74,10 +104,12 @@ export default tseslint.config(
     // policy written in the page the visitor is on is the one in force
     // (a policy in markup belongs to one document). The shared link pair in
     // components/SiteLink.tsx is the only place allowed to touch the router's
-    // link components. The connection globals below are not governed by the
-    // page policy's connect-src, so no app code may name them either.
+    // link components (the block after this one lifts the import ban there and
+    // nothing else). The WebRTC names below are not governed by the page
+    // policy's connect-src in every browser; WebTransport is governed by it,
+    // and is banned as well so no app code opens a connection of that kind.
     files: ['apps/web/src/**/*.{ts,tsx}'],
-    ignores: ['apps/web/src/components/SiteLink.tsx'],
+    languageOptions: { globals: CODE_GEN_GLOBALS },
     rules: {
       'no-restricted-imports': [
         'error',
@@ -116,10 +148,16 @@ export default tseslint.config(
           message:
             'Import the router statically: a dynamic import would reach its link components past the ban, and every in-site link must load a new document.',
         },
+        ...codeGenSyntax('App code must never build code from text at run time.'),
       ],
-      'no-eval': 'error',
-      'no-new-func': 'error',
+      ...codeGenRules('App code must never build code from text at run time.'),
     },
+  },
+  {
+    // The shared link pair is the one file that may import the router's link components. Only that ban is lifted;
+    // every other app rule above still applies to it.
+    files: ['apps/web/src/components/SiteLink.tsx'],
+    rules: { 'no-restricted-imports': 'off' },
   },
   {
     files: ['**/*.mjs', 'scripts/**/*.js'],
