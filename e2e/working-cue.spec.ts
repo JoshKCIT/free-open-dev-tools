@@ -34,6 +34,7 @@ declare global {
     __failHeld?: () => void;
     __fodtTimers?: { on: boolean; live: Map<unknown, string> };
     __fodtStatusLog?: string[];
+    __fodtBusyLog?: string[];
   }
 }
 
@@ -195,6 +196,26 @@ async function statusLog(page: Page): Promise<string[]> {
   return await page.evaluate(() => window.__fodtStatusLog ?? []);
 }
 
+/** Starts recording each change of the Output section's busy state, so a run is known to have started and ended. */
+async function watchBusy(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const el = document.querySelector('section[aria-label="Output"]');
+    if (!el) throw new Error('no Output section');
+    window.__fodtBusyLog = [];
+    let last = el.getAttribute('aria-busy');
+    new MutationObserver(() => {
+      const now = el.getAttribute('aria-busy');
+      if (now === last) return;
+      last = now;
+      window.__fodtBusyLog?.push(String(now));
+    }).observe(el, { attributes: true, attributeFilter: ['aria-busy'] });
+  });
+}
+
+async function busyLog(page: Page): Promise<string[]> {
+  return await page.evaluate(() => window.__fodtBusyLog ?? []);
+}
+
 async function setHold(page: Page, on: boolean): Promise<void> {
   await page.evaluate((value) => {
     window.__hold = value;
@@ -332,10 +353,20 @@ test('regex-tester: a run that finishes within a second shows no cue, no dimming
 }) => {
   await openWithFirstResult(page);
   await watchStatus(page);
-  // The first result above was a normal run; make another one and let it finish, with the clock running as usual.
+  await watchBusy(page);
+  // The first result above was a normal run; make another one and let it finish. The page clock is paused from here,
+  // so only the page's own 140 ms typing delay is run by hand: the real worker answers in real time, and however long
+  // that takes on a loaded machine, the page clock stands at 140 ms of the run and never reaches the cue's one second.
+  await pauseClock(page);
   await fillAndHold(page, 'pattern', 'a');
+  await page.clock.runFor(140);
+  // The run started and ended (busy, then not busy), with no cue, no dimming and nothing said.
+  await expect.poll(() => busyLog(page), { timeout: 20_000 }).toEqual(['true', 'false']);
   await expect(output(page).locator('table.output-table')).toBeVisible();
-  await expect(output(page)).toHaveAttribute('aria-busy', 'false');
+  await expect(cue(page)).toHaveCount(0);
+  await expect(outputBody(page)).not.toHaveClass(/output-stale/);
+  // The cue's delay ended with the run: well past one second of page time later there is still nothing.
+  await page.clock.runFor(1100);
   await expect(cue(page)).toHaveCount(0);
   await expect(outputBody(page)).not.toHaveClass(/output-stale/);
   await expect(status(page)).toHaveText('');
