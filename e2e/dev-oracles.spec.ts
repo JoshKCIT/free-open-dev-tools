@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
+import { armCspProbe, describeFinding } from './csp-probe';
 
 /**
  * Behavioural proof, for the developer tools of phase 16, that the page gives the same answers as an independent
@@ -443,6 +444,9 @@ test('docker-run-to-compose: an image, an address or a command named in the past
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const named = `127.0.0.1:${(server.address() as AddressInfo).port}`;
   try {
+    // Armed before the page loads: the page policy refuses a request to any address the paste names before it is made,
+    // so a refused attempt shows only here, never at the recording server or as a request.
+    const probe = await armCspProbe(page);
     const requested: string[] = [];
     page.on('request', (request) => requested.push(request.url()));
     await openTool(page, 'docker-run-to-compose');
@@ -472,6 +476,7 @@ test('docker-run-to-compose: an image, an address or a command named in the past
     // Give any request that was going to happen time to arrive, then count.
     await page.waitForTimeout(1_500);
     expect(seen, 'the recording server saw no request').toEqual([]);
+    expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
     expect(
       requested.filter((url) => url.includes(named)),
       'the page requested nothing the paste named',
@@ -826,6 +831,9 @@ test('web-manifest-builder: icon and shortcut addresses are never requested', as
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const named = `127.0.0.1:${(server.address() as AddressInfo).port}`;
   try {
+    // Armed before the page loads: the page policy refuses a request to any address a field names before it is made,
+    // so a refused attempt shows only here, never at the recording server or as a request.
+    const probe = await armCspProbe(page);
     const requested: string[] = [];
     page.on('request', (request) => requested.push(request.url()));
     // Every address a visitor can type: the manifest, the page, the start address, the id, the scope, each icon and each shortcut.
@@ -857,6 +865,7 @@ test('web-manifest-builder: icon and shortcut addresses are never requested', as
     // Give any request that was going to happen time to arrive, then count.
     await page.waitForTimeout(1_500);
     expect(seen, 'the recording server saw no request').toEqual([]);
+    expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
     expect(
       requested.filter((url) => url.includes(named)),
       'the page requested nothing a field named',

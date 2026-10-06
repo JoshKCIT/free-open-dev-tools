@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { armCspProbe, describeFinding } from './csp-probe';
 
 /**
  * Behavioural proof, for the security tools of phase 14, that a key or a secret stays in the page (D-187): a private key
@@ -415,6 +416,9 @@ const CANARY_SUBJECT = 'FODT-SECURITY-CANARY';
 test('certificate-decoder: a certificate naming a local server in its CRL, OCSP, CA issuers, policy and URI fields is shown as text and the server receives nothing', async ({
   page,
 }) => {
+  // Armed before the page loads: the page policy refuses a request to any address the certificate names before it is
+  // made, so a refused attempt shows only here, never at the recording server or as a request.
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address, port) => {
     await page.goto(rel('/tools/certificate-decoder'));
     await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
@@ -437,6 +441,8 @@ test('certificate-decoder: a certificate naming a local server in its CRL, OCSP,
   });
   // The server the certificate names saw no request at all.
   expect(seen).toEqual([]);
+  // And nothing tried one: the page raised no policy violation.
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
 });
 
 test('certificate-decoder: a DER certificate opened through the file picker is read in the page and nothing leaves it', async ({

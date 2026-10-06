@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { armCspProbe, describeFinding } from './csp-probe';
 import { buildFixtureFile, writePng } from './fixture-files';
 
 /**
@@ -2478,6 +2479,9 @@ const HOSTILE_SVGS: HostileSvg[] = [
 test('image-converter: hostile SVGs are refused and a local server receives nothing', async ({ page }) => {
   test.setTimeout(180_000);
   expect(HOSTILE_SVGS.length).toBeGreaterThanOrEqual(18);
+  // Armed before the page loads: the page policy refuses any request an SVG could make before it is made, so a refused
+  // attempt shows only here, never at the recording server or as a request.
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     await openTool(page, 'image-converter');
     const requests = recordRequests(page);
@@ -2506,6 +2510,8 @@ test('image-converter: hostile SVGs are refused and a local server receives noth
     expect(offending(requests)).toEqual([]);
   });
   expect(seen).toEqual([]);
+  // And nothing tried one: the page and its workers raised no policy violation.
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
 });
 
 test('image-converter: the recording server sees a plain page request, so its silence means something', async ({

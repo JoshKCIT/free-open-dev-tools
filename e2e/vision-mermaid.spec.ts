@@ -2,6 +2,7 @@ import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { armCspProbe, describeFinding } from './csp-probe';
 
 /**
  * Behavioural proof of the Mermaid Diagram Renderer (phase 15, VIS-11; D-196, D-202 a, research C1 and C2). Mermaid
@@ -714,6 +715,9 @@ test('mermaid-renderer: hostile diagrams are refused or drawn without a single r
   test.setTimeout(240_000);
   expect(ATTACKS).toHaveLength(19);
   await observeFrames(page);
+  // Armed before the page loads: the page policy refuses any request a diagram could make before it is made, so a
+  // refused attempt shows only here, never at the recording server or as a request.
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     await openTool(page);
     // Recorded only after the page and its own chunk have loaded.
@@ -756,6 +760,8 @@ test('mermaid-renderer: hostile diagrams are refused or drawn without a single r
   });
   // The server every one of the 19 diagrams names saw no request at all.
   expect(seen).toEqual([]);
+  // And nothing tried one: the page, its frames and its workers raised no policy violation.
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
   // One frame was made for each diagram that got past the check made before drawing.
   const frames = await page.evaluate(() => window.__FODT_MERMAID_FRAMES__!);
   expect(frames.added).toHaveLength(ATTACKS.filter((attack) => attack.outcome !== 'refused').length);

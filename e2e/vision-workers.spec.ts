@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { armCspProbe, describeFinding } from './csp-probe';
 import { buildFixtureFile, writePng } from './fixture-files';
 
 /**
@@ -715,6 +716,9 @@ test('sass-less-compiler: an import of another file or address is refused in the
     { language: 'scss', source: (a) => `@import url(${a}/x3.css);`, target: (a) => `url(${a}/x3.css)` },
     { language: 'less', source: (a) => `@import url(${a}/x4.css);`, target: (a) => `url(${a}/x4.css)` },
   ];
+  // Armed before the page loads: the page policy refuses an import request before it is made, so a refused attempt
+  // shows only here, never at the recording server or as a request.
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     await openTool(page, 'sass-less-compiler');
     // Recorded only after the page and its own chunk have loaded, so this asserts nothing is requested while the
@@ -737,6 +741,8 @@ test('sass-less-compiler: an import of another file or address is refused in the
   });
   // The server the stylesheets name saw no request at all.
   expect(seen).toEqual([]);
+  // And nothing tried one: the page and its compiler workers raised no policy violation.
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
 
   // The detector can fail: a page script that requests the server's address is heard by the same kind of server. The
   // tool page's own policy refuses that request, so it is made by a plain page that no tool policy covers.

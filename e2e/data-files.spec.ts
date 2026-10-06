@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { test, expect, type Page } from '@playwright/test';
+import { armCspProbe, describeFinding, type CspProbe } from './csp-probe';
 import { writeZip } from './fixture-files';
 
 /**
@@ -568,6 +569,9 @@ test('har-viewer: a recorded cookie stays masked until Show sensitive values is 
 }) => {
   // The cookie value is built from pieces so the file holds no literal that looks like a credential.
   const cookieValue = ['cookie', 'value', '1234567890'].join('-');
+  // Armed before the page loads: the page policy refuses a request to any address the recording names before it is made,
+  // so a refused attempt shows only here, never at the recording server or as a request.
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     const body = `<img src="${address}/pixel.png"><script src="${address}/x.js"></script><a href="${address}/y">y</a>`;
     await page.goto(rel('/tools/har-viewer'));
@@ -613,11 +617,16 @@ test('har-viewer: a recorded cookie stays masked until Show sensitive values is 
     expect(strays).toEqual([]);
   });
   expect(seen).toEqual([]);
+  // And nothing tried one: the page raised no policy violation.
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
 });
 
 test('wsdl-explorer: every address a document names is listed as text, and a local server named in it receives no request', async ({
   page,
 }) => {
+  // Armed before the page loads: the page policy refuses a request to any address the document names before it is made,
+  // so a refused attempt shows only here, never at the recording server or as a request.
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     const wsdl = [
       '<definitions name="t" targetNamespace="urn:t" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:t"',
@@ -664,38 +673,30 @@ test('wsdl-explorer: every address a document names is listed as text, and a loc
     expect(strays).toEqual([]);
   });
   expect(seen).toEqual([]);
+  // And nothing tried one: the page raised no policy violation.
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
 });
 
 /**
- * Starts watching, in the page, for a blocked request (a `securitypolicyviolation` event). It must be installed before
- * the page loads. A request the page's policy blocked would never reach the recording server, so the server alone
- * could not tell "never asked" from "asked and blocked"; this event, and the page's own request list, can.
+ * Asserts the page asked nobody but itself, and that no request was blocked on the way out. A request the page's
+ * policy blocked never reaches the recording server and makes no request event, so neither could tell "never asked"
+ * from "asked and blocked"; the shared violation probe (`e2e/csp-probe.ts`, armed with `armCspProbe` before the page
+ * loads) can, and it also hears the page's frames and workers, where these engines do their work.
  */
-async function watchPolicyViolations(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const seen: string[] = [];
-    (window as unknown as { __FODT_VIOLATIONS__: string[] }).__FODT_VIOLATIONS__ = seen;
-    document.addEventListener('securitypolicyviolation', (event) => seen.push(event.blockedURI));
-  });
-}
-
-/** Asserts the page asked nobody but itself, and that no request was blocked on the way out. */
-async function assertNoOutsideRequest(page: Page, requests: string[]): Promise<void> {
+function assertNoOutsideRequest(page: Page, requests: string[], probe: CspProbe): void {
   const origin = new URL(page.url()).origin;
   const strays = requests.filter(
     (url) => !url.startsWith('data:') && !url.startsWith('blob:') && !url.startsWith(`${origin}/`),
   );
   expect(strays).toEqual([]);
-  const violations = await page.evaluate(
-    () => (window as unknown as { __FODT_VIOLATIONS__?: string[] }).__FODT_VIOLATIONS__ ?? ['(watcher missing)'],
-  );
-  expect(violations).toEqual([]);
+  expect(probe.findings().map(describeFinding), 'the page tried a request its policy refused').toEqual([]);
 }
 
 test('xsd-validator: schema includes and imports are listed as text, and a local server named in them receives no request', async ({
   page,
 }) => {
-  await watchPolicyViolations(page);
+  // Armed before the page loads (see assertNoOutsideRequest).
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     await page.goto(rel('/tools/xsd-validator'));
     await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
@@ -730,13 +731,14 @@ test('xsd-validator: schema includes and imports are listed as text, and a local
     expect(await outputArea(page).locator('img, iframe, script, link, form, a[href], object, embed').count()).toBe(0);
 
     await page.waitForTimeout(500);
-    await assertNoOutsideRequest(page, requests);
+    assertNoOutsideRequest(page, requests, probe);
   });
   expect(seen).toEqual([]);
 });
 
 test('jq-playground: a filter that imports a module from an address never asks that address', async ({ page }) => {
-  await watchPolicyViolations(page);
+  // Armed before the page loads (see assertNoOutsideRequest).
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     await page.goto(rel('/tools/jq-playground'));
     await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
@@ -752,13 +754,14 @@ test('jq-playground: a filter that imports a module from an address never asks t
     await expect(outputArea(page).locator('.issue-list')).toContainText('data', { timeout: 20_000 });
 
     await page.waitForTimeout(500);
-    await assertNoOutsideRequest(page, requests);
+    assertNoOutsideRequest(page, requests, probe);
   });
   expect(seen).toEqual([]);
 });
 
 test('sqlite-viewer: ATTACH of an address is refused by the engine and never asks that address', async ({ page }) => {
-  await watchPolicyViolations(page);
+  // Armed before the page loads (see assertNoOutsideRequest).
+  const probe = await armCspProbe(page);
   const seen = await withRecordingServer(async (address) => {
     await page.goto(rel('/tools/sqlite-viewer'));
     await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
@@ -779,7 +782,7 @@ test('sqlite-viewer: ATTACH of an address is refused by the engine and never ask
     );
 
     await page.waitForTimeout(500);
-    await assertNoOutsideRequest(page, requests);
+    assertNoOutsideRequest(page, requests, probe);
   });
   expect(seen).toEqual([]);
 });
