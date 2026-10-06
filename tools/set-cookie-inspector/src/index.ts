@@ -33,6 +33,7 @@ export type { RequestContext, RequestInfo } from './request';
 export { defaultPath } from './scope';
 export { decide } from './store';
 export type { CookieScope, Decision, Lifetime, Outcome, StepRecord } from './store';
+export { parseUtcTime } from './time';
 export { MAX_SHOWN_PATH, MAX_SHOWN_PATTERN, visible } from './visible';
 
 /** What to inspect. */

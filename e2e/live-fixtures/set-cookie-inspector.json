@@ -1,0 +1,14 @@
+{
+  "id": "set-cookie-inspector",
+  "label": "draft-ietf-httpbis-rfc6265bis-22 section 5.4: a __Host- cookie with a Domain attribute is rejected",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "lines",
+      "value": "Set-Cookie: __Host-SID=12345; Secure; Domain=site.example; Path=/"
+    },
+    { "action": "fill", "field": "requestUrl", "value": "https://site.example/account/login" },
+    { "action": "fill", "field": "now", "value": "2026-10-06T12:00:00Z" }
+  ],
+  "expect": ["Not stored", "__Host-"]
+}
