@@ -11,5 +11,31 @@
       "responseHeaders": "Access-Control-Allow-Origin: https://app.example"
     },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "credentials", "value": "include" },
+    "values": {
+      "pageOrigin": "https://app.example",
+      "url": "https://api.example/items",
+      "method": "GET",
+      "requestHeaders": "Accept: application/json",
+      "preflightStatus": "204",
+      "preflightHeaders": "Access-Control-Allow-Origin: https://app.example",
+      "responseStatus": "200",
+      "responseHeaders": "Access-Control-Allow-Origin: *"
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "no-cors" },
+    "values": {
+      "pageOrigin": "https://app.example",
+      "url": "https://api.example/items",
+      "method": "POST",
+      "requestHeaders": "Content-Type: application/json",
+      "responseStatus": "200",
+      "responseHeaders": "Access-Control-Allow-Origin: *"
+    },
+    "attachesFile": false
   }
 ]

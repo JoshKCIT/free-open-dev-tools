@@ -19,7 +19,7 @@
     "It follows the WHATWG Fetch Standard at commit e9460d1 (read on 6 October 2026). Browsers add limits of their own: Firefox remembers a preflight for at most 86,400 seconds and Chromium 76 and later for at most 7,200 (MDN); other engines are not covered.",
     "Not modelled: redirects of the real request, service workers, browser extensions that change headers, upload event listeners and streaming bodies (these can force a preflight that cannot be seen from your description), the preflight cache itself, and other protections such as CORB, ORB, COEP, CORP and Private Network Access.",
     "A header list that is not a comma separated list of valid names fails the whole preflight, as the standard says; the page names the line, never the text.",
-    "Pasted header text is limited to 65,536 characters and 500 lines, an address or origin to 8,192 characters and a method to 64 characters; a larger paste is refused before any work. Header values are counted in UTF-8 bytes, although a browser refuses a header value holding a character above U+00FF.",
+    "Pasted header text is limited to 65,536 characters and 500 lines, an address or origin to 8,192 characters and a method to 64 characters; a larger paste is refused before any work. Header values are counted one byte for each character, as the fetch API counts them; a request header value with a character above U+00FF is shown as a request the browser refuses.",
     "The preflight text shows the headers the standard lists. Browsers also add headers of their own (User-Agent, Referer, Accept-Language, cookies on the real request) that depend on the browser and are not shown."
   ],
   "ambiguities": [

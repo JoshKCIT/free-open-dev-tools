@@ -1,4 +1,4 @@
-import { meta, checkCors, CorsCheckerError, type CorsReport, type CorsInput } from '@fodt/cors-checker';
+import { meta, checkCors, visible, CorsCheckerError, type CorsReport, type CorsInput } from '@fodt/cors-checker';
 import { defineTool, num, str, type OutputBlock, type Tone, type ToolResult, type Values } from '../lib/tool-ui';
 
 // Everything on this page is an invented example: addresses use the reserved .example names (RFC 2606) and the
@@ -8,6 +8,9 @@ const PASTE_PLACEHOLDER = 'Type or paste here. Nothing leaves your browser.';
 
 const LEAD =
   'This page never contacts the server: it only applies the rules of the Fetch Standard to what you describe and paste.';
+
+const NOT_MODELLED =
+  'Not modelled: redirects of the real request, service workers, browser extensions that change headers, upload event listeners and streaming bodies, the preflight cache, and other protections such as CORB, ORB, COEP, CORP and Private Network Access. A pass is what the Fetch Standard says a browser would do with the text you gave, not a statement about the server.';
 
 const STATUS_MIN = 100;
 const STATUS_MAX = 599;
@@ -66,6 +69,46 @@ function blocksOf(report: CorsReport): OutputBlock[] {
       ]),
     },
   });
+  if (report.readable.length > 0) {
+    blocks.push({
+      kind: 'table',
+      label: 'Response headers script can read',
+      table: {
+        headers: ['Header', 'Readable', 'Why'],
+        rows: report.readable.map((header) => [header.name, header.readable ? 'Yes' : 'No', header.why]),
+      },
+    });
+  }
+  if (report.plan.headers.length > 0) {
+    blocks.push({
+      kind: 'table',
+      label: 'Request headers',
+      table: {
+        headers: ['Header', 'What the browser does'],
+        rows: report.plan.headers.map((header) => [
+          visible(header.name, 200),
+          header.fate === 'dropped-forbidden'
+            ? 'Dropped silently: forbidden request header'
+            : header.fate === 'dropped-no-cors'
+              ? 'Dropped silently: not allowed in no-cors mode'
+              : report.plan.preflight.sent && header.unsafe
+                ? 'Causes the preflight'
+                : 'Sent',
+        ]),
+      },
+    });
+  }
+  if (report.advice.length > 0) blocks.push({ kind: 'list', label: 'What to change', items: report.advice });
+  if (report.maxAge !== null) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: report.maxAge.fromHeader
+        ? `The browser may remember this preflight answer for ${report.maxAge.seconds} seconds (Access-Control-Max-Age). Firefox keeps one for at most 86,400 seconds and Chromium for at most 7,200, so it may remember it for less.`
+        : 'Access-Control-Max-Age is absent or not a whole number, so the browser may remember this preflight answer for 5 seconds. Firefox keeps one for at most 86,400 seconds and Chromium for at most 7,200.',
+    });
+  }
+  blocks.push({ kind: 'note', tone: 'info', value: NOT_MODELLED });
   return blocks;
 }
 
@@ -187,6 +230,36 @@ export default defineTool({
           'Access-Control-Allow-Origin: *\nAccess-Control-Allow-Methods: *\nAccess-Control-Allow-Headers: *',
         responseStatus: 200,
         responseHeaders: 'Access-Control-Allow-Origin: *',
+      },
+    },
+    {
+      label: 'Credentials with a wildcard origin',
+      values: {
+        pageOrigin: 'https://app.example',
+        url: 'https://api.example/items',
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'include',
+        requestHeaders: '',
+        preflightStatus: 204,
+        preflightHeaders: '',
+        responseStatus: 200,
+        responseHeaders: 'Access-Control-Allow-Origin: *\nAccess-Control-Allow-Credentials: true',
+      },
+    },
+    {
+      label: 'A simple GET needs no preflight',
+      values: {
+        pageOrigin: 'https://app.example',
+        url: 'https://api.example/items',
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'same-origin',
+        requestHeaders: 'Accept: application/json',
+        preflightStatus: 204,
+        preflightHeaders: '',
+        responseStatus: 200,
+        responseHeaders: 'Access-Control-Allow-Origin: *\nContent-Type: application/json\nX-Request-Id: 8c1f',
       },
     },
   ],
