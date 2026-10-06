@@ -1,8 +1,13 @@
-import { extractHeaderListValues } from './extract';
+import { extractHeaderListValues, firstBadListLine } from './extract';
 import { getCombined, getEntries, readBlock, type HeaderEntry } from './headers';
 import { checkInput } from './limits';
 import { describeRequest, type CorsInput, type RequestPlan } from './request';
-import { asciiLower, isCorsSafelistedMethod } from './safelist';
+import {
+  asciiLower,
+  isCorsSafelistedMethod,
+  isCorsSafelistedResponseHeaderName,
+  isForbiddenResponseHeaderName,
+} from './safelist';
 import { visible } from './visible';
 
 export type StepResult = 'pass' | 'fail' | 'skipped' | 'info';
@@ -40,11 +45,11 @@ export interface CorsReport {
   summary: string;
   /** The text of the preflight the browser would send, when one is sent. */
   preflightText: string | null;
-  /** The headers of the real answer and whether script can read each (empty unless the response is readable). */
+  /** The headers of the real answer and whether script can read each. Filled only for a cross-origin answer the page can read. */
   readable: ReadableHeader[];
   /** Neutral things to change on the server. */
   advice: string[];
-  /** How long the browser may keep the preflight answer, once the preflight passed. */
+  /** How long the browser may keep the preflight answer, known once the preflight passed. */
   maxAge: { seconds: number; fromHeader: boolean } | null;
 }
 
@@ -87,6 +92,10 @@ class Steps {
 
 /** The most list elements a detail names before it says how many more there are. */
 const MAX_LISTED = 8;
+/** The most characters of a pasted value a table cell shows. */
+const CELL = 200;
+/** The most response headers listed as readable or not. */
+const MAX_READABLE_ROWS = 500;
 
 function listed(items: readonly string[]): string {
   if (items.length === 0) return 'none';
@@ -106,7 +115,7 @@ function addCorsCheck(
   const credentialed = plan.credentials === 'include';
   const origin = getCombined(entries, 'access-control-allow-origin');
   const copies = getEntries(entries, 'access-control-allow-origin').length;
-  const shown = origin === null ? '' : visible(origin, 200);
+  const shown = origin === null ? '' : visible(origin, CELL);
   const section = 'CORS check';
 
   steps.add({ id: `${prefix}-acao-present`, where, section, rule: 'Access-Control-Allow-Origin is present' }, () =>
@@ -162,19 +171,14 @@ function addCorsCheck(
           'The answer has no Access-Control-Allow-Credentials header. It must be true when credentials are included.',
         );
       }
-      return fail(`The value ${visible(value, 200)} is not exactly true. The comparison is case sensitive.`);
+      return fail(`The value ${visible(value, CELL)} is not exactly true. The comparison is case sensitive.`);
     },
   );
 }
 
-/** Whole seconds from an Access-Control-Max-Age value, or null when it is not only digits. */
-function parseDeltaSeconds(value: string): number | null {
-  if (value.length === 0 || value.length > 15) return null;
-  for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i);
-    if (code < 48 || code > 57) return null;
-  }
-  return Number(value);
+/** Whole seconds from an Access-Control-Max-Age value of digits. Very long numbers are cut at the largest exact whole number. */
+function deltaSeconds(digits: string): number {
+  return digits.length > 15 ? Number.MAX_SAFE_INTEGER : Number(digits);
 }
 
 /** The checks of the CORS-preflight fetch after the CORS check: status, lists, method, Authorization, headers, Max-Age. */
@@ -190,9 +194,11 @@ function addPreflightRules(
   const status = input.preflightStatus;
   const methods = extractHeaderListValues(entries, 'access-control-allow-methods');
   const headerNames = extractHeaderListValues(entries, 'access-control-allow-headers');
-  const allowedHeaders = new Set((headerNames ?? []).map(asciiLower));
+  const methodList = Array.isArray(methods) ? methods : null;
+  const headerList = Array.isArray(headerNames) ? headerNames : null;
+  const allowedHeaders = new Set((headerList ?? []).map(asciiLower));
   const wildcardHeaders = !credentialed && allowedHeaders.has('*');
-  const wildcardMethods = !credentialed && (methods ?? []).includes('*');
+  const wildcardMethods = !credentialed && (methodList ?? []).includes('*');
   let maxAge: CorsReport['maxAge'] = null;
 
   steps.add(
@@ -212,12 +218,25 @@ function addPreflightRules(
       id: 'preflight-lists',
       where,
       section,
-      rule: 'Access-Control-Allow-Methods and Access-Control-Allow-Headers are read',
+      rule: 'Access-Control-Allow-Methods and Access-Control-Allow-Headers are lists of names (tokens)',
     },
-    () =>
-      pass(
-        `Allowed methods: ${methods === null ? 'header absent' : listed(methods)}. Allowed headers: ${headerNames === null ? 'header absent' : listed(headerNames)}.`,
-      ),
+    () => {
+      if (methods === 'failure') {
+        const line = firstBadListLine(entries, 'access-control-allow-methods');
+        return fail(
+          `Access-Control-Allow-Methods on line ${line} is not a comma separated list of method names, so the browser treats the whole preflight as failed. Look for a space inside a name, a quote or another character a name cannot hold.`,
+        );
+      }
+      if (headerNames === 'failure') {
+        const line = firstBadListLine(entries, 'access-control-allow-headers');
+        return fail(
+          `Access-Control-Allow-Headers on line ${line} is not a comma separated list of header names, so the browser treats the whole preflight as failed. Look for a space inside a name, a quote or another character a name cannot hold.`,
+        );
+      }
+      return pass(
+        `Allowed methods: ${methodList === null ? 'header absent' : listed(methodList)}. Allowed headers: ${headerList === null ? 'header absent' : listed(headerList)}.`,
+      );
+    },
   );
 
   steps.add(
@@ -228,16 +247,17 @@ function addPreflightRules(
       rule: 'The method is listed, is GET, HEAD or POST, or is allowed by * when credentials are not included',
     },
     () => {
-      if ((methods ?? []).includes(plan.method)) return pass(`${visible(plan.method, 40)} is listed.`);
-      if (isCorsSafelistedMethod(plan.method))
+      if ((methodList ?? []).includes(plan.method)) return pass(`${visible(plan.method, 40)} is listed.`);
+      if (isCorsSafelistedMethod(plan.method)) {
         return pass(`${plan.method} is one of GET, HEAD and POST, which need no listing.`);
+      }
       if (wildcardMethods) return pass('* allows every method because credentials are not included.');
       const why =
-        methods === null
+        methodList === null
           ? 'Access-Control-Allow-Methods is absent.'
-          : credentialed && methods.includes('*')
+          : credentialed && methodList.includes('*')
             ? '* is not a wildcard when credentials are included.'
-            : `The list holds: ${listed(methods)}. The comparison is byte for byte, so letter case matters.`;
+            : `The list holds: ${listed(methodList)}. The comparison is byte for byte, so letter case matters.`;
       return fail(`${visible(plan.method, 40)} is not allowed. ${why}`);
     },
   );
@@ -250,8 +270,8 @@ function addPreflightRules(
       rule: 'Authorization, when sent, is named in Access-Control-Allow-Headers (a wildcard never covers it)',
     },
     () => {
-      const sends = plan.unsafeNames.includes('authorization');
-      if (!sends) return pass('Nothing to check: no Authorization header is sent.');
+      if (!plan.unsafeNames.includes('authorization'))
+        return pass('Nothing to check: no Authorization header is sent.');
       return allowedHeaders.has('authorization')
         ? pass('authorization is named in Access-Control-Allow-Headers.')
         : fail(
@@ -272,11 +292,11 @@ function addPreflightRules(
       for (const name of plan.unsafeNames) {
         if (allowedHeaders.has(name) || wildcardHeaders) continue;
         const why =
-          headerNames === null
+          headerList === null
             ? 'Access-Control-Allow-Headers is absent.'
             : credentialed && allowedHeaders.has('*')
               ? '* is not a wildcard when credentials are included.'
-              : `The list holds: ${listed(headerNames)}.`;
+              : `The list holds: ${listed(headerList)}.`;
         return fail(`${visible(name, 40)} is not listed. ${why}`);
       }
       return pass(`Covered: ${listed(plan.unsafeNames)}.`);
@@ -291,18 +311,63 @@ function addPreflightRules(
       rule: 'The browser may keep the preflight answer for Access-Control-Max-Age seconds (5 when absent or invalid)',
     },
     () => {
-      const values = getEntries(entries, 'access-control-max-age');
-      const parsed = values.length === 1 ? parseDeltaSeconds(values[0]?.value ?? '') : null;
-      maxAge = parsed === null ? { seconds: 5, fromHeader: false } : { seconds: parsed, fromHeader: true };
+      const raw = extractHeaderListValues(entries, 'access-control-max-age');
+      const digits = Array.isArray(raw) && raw.length === 1 ? (raw[0] ?? null) : null;
+      maxAge =
+        digits === null ? { seconds: 5, fromHeader: false } : { seconds: deltaSeconds(digits), fromHeader: true };
       return info(
-        parsed === null
+        digits === null
           ? 'Access-Control-Max-Age is absent or not a whole number, so the browser uses 5 seconds.'
-          : `Access-Control-Max-Age is ${parsed} seconds.`,
+          : `Access-Control-Max-Age is ${maxAge.seconds} seconds.`,
       );
     },
   );
 
   return { maxAge };
+}
+
+/** Which response headers script can read, once the CORS check passed. */
+function readableHeaders(plan: RequestPlan, entries: HeaderEntry[]): ReadableHeader[] {
+  const credentialed = plan.credentials === 'include';
+  const exposed = extractHeaderListValues(entries, 'access-control-expose-headers');
+  const exposedNames = new Set(Array.isArray(exposed) ? exposed.map(asciiLower) : []);
+  const everything = !credentialed && exposedNames.has('*');
+  const seen = new Set<string>();
+  const rows: ReadableHeader[] = [];
+  for (const entry of entries) {
+    const lower = asciiLower(entry.name);
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    if (rows.length >= MAX_READABLE_ROWS) break;
+    const name = visible(entry.name, 40);
+    if (isForbiddenResponseHeaderName(lower)) {
+      rows.push({
+        name,
+        readable: false,
+        why: 'Set-Cookie and Set-Cookie2 are never given to script, whatever Access-Control-Expose-Headers says.',
+      });
+    } else if (isCorsSafelistedResponseHeaderName(lower)) {
+      rows.push({ name, readable: true, why: 'One of the seven names every cross-origin response shows to script.' });
+    } else if (everything) {
+      rows.push({
+        name,
+        readable: true,
+        why: 'Access-Control-Expose-Headers holds *, which names every header when credentials are not included.',
+      });
+    } else if (exposedNames.has(lower)) {
+      rows.push({ name, readable: true, why: 'Listed in Access-Control-Expose-Headers.' });
+    } else {
+      rows.push({
+        name,
+        readable: false,
+        why:
+          credentialed && exposedNames.has('*')
+            ? 'Access-Control-Expose-Headers holds *, but with credentials included it only names a header called *.'
+            : 'Not one of the seven safelisted names and not listed in Access-Control-Expose-Headers.',
+      });
+    }
+  }
+  return rows;
 }
 
 function preflightText(plan: RequestPlan): string {
@@ -318,7 +383,7 @@ function preflightText(plan: RequestPlan): string {
   return lines.join('\n');
 }
 
-function summarise(verdict: Verdict, failure: CorsStep | null): string {
+function summarise(verdict: Verdict, failure: CorsStep | null, plan: RequestPlan): string {
   switch (verdict) {
     case 'readable':
       return 'A browser following the Fetch Standard would let the page read this response.';
@@ -331,7 +396,79 @@ function summarise(verdict: Verdict, failure: CorsStep | null): string {
     case 'opaque':
       return 'A no-cors request to another origin is sent, but the page gets an opaque response: its status, headers and body cannot be read.';
     case 'refused-request':
-      return 'The browser would refuse to build this request.';
+      return `The browser would refuse to build this request, so nothing is sent. ${plan.refused ?? ''}`.trim();
+  }
+}
+
+/** Neutral things to change on the server (or in the request) for the rule that failed. */
+function adviceFor(plan: RequestPlan, failure: CorsStep | null, verdict: Verdict, response: HeaderEntry[]): string[] {
+  const credentialed = plan.credentials === 'include';
+  const origin = plan.requestOrigin;
+  if (verdict === 'opaque') {
+    return [
+      'A no-cors request never gives the page a readable response. Use mode cors when the page needs to read the answer.',
+    ];
+  }
+  if (verdict === 'readable') {
+    const value = getCombined(response, 'access-control-allow-origin');
+    const vary = getCombined(response, 'vary');
+    const variesOnOrigin =
+      vary !== null && vary.split(',').some((item) => asciiLower(item.trim()) === 'origin' || item.trim() === '*');
+    if (value !== null && value !== '*' && !variesOnOrigin) {
+      return [
+        'Access-Control-Allow-Origin names one origin, so also send Vary: Origin on every answer, so that a shared cache keeps one copy for each origin.',
+      ];
+    }
+    return [];
+  }
+  if (failure === null) return [];
+  const forPreflight = failure.id.startsWith('preflight-') ? ' on the answer to the preflight' : '';
+  switch (failure.id) {
+    case 'request-refused':
+      return plan.mode === 'no-cors'
+        ? [
+            'Use mode cors when the page must send a method other than GET, HEAD or POST, and send the headers the server expects.',
+          ]
+        : [
+            'Send the request with a method and header values the browser accepts: CONNECT, TRACE and TRACK are never sent from script, and a header value may only hold characters up to U+00FF.',
+          ];
+    case 'preflight-acao-present':
+    case 'response-acao-present':
+      return [
+        `Send Access-Control-Allow-Origin${forPreflight} with the value ${origin}${credentialed ? '' : ', or * when no credentials are included'}. A preflight needs it on its own answer as well as on the real one.`,
+      ];
+    case 'preflight-acao-match':
+    case 'response-acao-match':
+      return credentialed
+        ? [
+            `Send one Access-Control-Allow-Origin${forPreflight} with the exact origin ${origin} (never *) and Access-Control-Allow-Credentials: true. If the server answers several origins, it should compare the Origin of the request with a list of origins it has chosen to trust and send back only the one that matches, never any origin it is given, and add Vary: Origin.`,
+          ]
+        : [
+            `Send one Access-Control-Allow-Origin${forPreflight}: either * or the exact origin ${origin}. For several origins, compare the Origin of the request with a list the server trusts, send back the one that matches, and add Vary: Origin.`,
+          ];
+    case 'preflight-acac':
+    case 'response-acac':
+      return [
+        `Send Access-Control-Allow-Credentials: true${forPreflight}, written exactly like that, together with the exact origin ${origin}.`,
+      ];
+    case 'preflight-status':
+      return ['Answer the preflight with a status from 200 to 299 (204 is usual) and without a redirect.'];
+    case 'preflight-lists':
+      return [
+        'Write Access-Control-Allow-Methods and Access-Control-Allow-Headers as comma separated lists of names, with no space inside a name and no quotes.',
+      ];
+    case 'preflight-method':
+      return [
+        `Add ${visible(plan.method, 40)} to Access-Control-Allow-Methods, written exactly as the page sends it: the comparison is case sensitive${credentialed ? ', and * does not work when credentials are included' : ''}.`,
+      ];
+    case 'preflight-authorization':
+      return ['Name Authorization in Access-Control-Allow-Headers. A * never covers it.'];
+    case 'preflight-headers':
+      return [
+        `Add ${listed(plan.unsafeNames)} to Access-Control-Allow-Headers${credentialed ? '. A * does not work when credentials are included' : ', or send * when no credentials are included (Authorization still has to be named)'}.`,
+      ];
+    default:
+      return [];
   }
 }
 
@@ -346,8 +483,21 @@ export function checkCors(input: CorsInput): CorsReport {
   const steps = new Steps();
   let maxAge: CorsReport['maxAge'] = null;
   let verdict: Verdict;
+  let response: HeaderEntry[] = [];
+  let readable: ReadableHeader[] = [];
 
-  if (!plan.crossOrigin) {
+  if (plan.refused !== null) {
+    steps.add(
+      {
+        id: 'request-refused',
+        where: 'Request',
+        section: 'Request constructor',
+        rule: 'The browser accepts the request: the method is allowed and every header value is a byte string',
+      },
+      () => fail(plan.refused ?? ''),
+    );
+    verdict = 'refused-request';
+  } else if (!plan.crossOrigin) {
     steps.add(
       {
         id: 'same-origin',
@@ -370,31 +520,23 @@ export function checkCors(input: CorsInput): CorsReport {
     );
     verdict = 'opaque';
   } else {
+    const decision: StepMeta = {
+      id: 'preflight-needed',
+      where: 'Request',
+      section: 'Fetch, HTTP fetch',
+      rule: 'A preflight is sent when the method is not GET, HEAD or POST or a header is CORS-unsafe',
+    };
     if (plan.preflight.sent) {
       const preflight = readBlock(input.preflightHeaders, 'preflight headers').entries;
-      steps.add(
-        {
-          id: 'preflight-needed',
-          where: 'Request',
-          section: 'Fetch, HTTP fetch',
-          rule: 'A preflight is sent when the method is not GET, HEAD or POST or a header is CORS-unsafe',
-        },
-        () => info(plan.preflight.reasons.join(' ')),
-      );
+      steps.add(decision, () => info(plan.preflight.reasons.join(' ')));
       addCorsCheck(steps, 'preflight', 'Preflight', plan, preflight);
       maxAge = addPreflightRules(steps, plan, input, preflight).maxAge;
     } else {
-      steps.add(
-        {
-          id: 'preflight-needed',
-          where: 'Request',
-          section: 'Fetch, HTTP fetch',
-          rule: 'A preflight is sent when the method is not GET, HEAD or POST or a header is CORS-unsafe',
-        },
-        () => info('No preflight: the method is GET, HEAD or POST and no request header is CORS-unsafe.'),
+      steps.add(decision, () =>
+        info('No preflight: the method is GET, HEAD or POST and no request header is CORS-unsafe.'),
       );
     }
-    const response = readBlock(input.responseHeaders, 'response headers').entries;
+    response = readBlock(input.responseHeaders, 'response headers').entries;
     addCorsCheck(steps, 'response', 'Response', plan, response);
     verdict =
       steps.failure === null
@@ -402,6 +544,7 @@ export function checkCors(input: CorsInput): CorsReport {
         : steps.failure.id.startsWith('preflight-')
           ? 'blocked-preflight'
           : 'blocked-response';
+    if (verdict === 'readable') readable = readableHeaders(plan, response);
   }
 
   return {
@@ -409,10 +552,10 @@ export function checkCors(input: CorsInput): CorsReport {
     steps: steps.list,
     firstFailure: steps.failure,
     verdict,
-    summary: summarise(verdict, steps.failure),
+    summary: summarise(verdict, steps.failure, plan),
     preflightText: plan.preflight.sent ? preflightText(plan) : null,
-    readable: [],
-    advice: [],
+    readable,
+    advice: adviceFor(plan, steps.failure, verdict, response),
     maxAge,
   };
 }
