@@ -24,4 +24,8 @@ export { countLookups } from './spf-tree';
 export type { TreeCount, TreeLoop, TreeRecordInput, TreeRow } from './spf-tree';
 export { buildSpf, toTxtValue } from './spf-build';
 export type { BuildField, BuildProblem, BuiltSpf, SpfEnding, SpfFields } from './spf-build';
+export { TABLE_2_ORDER, parseDmarc, parseUriList } from './dmarc-parse';
+export type { DmarcRecord, DmarcStatus, DmarcTag, DmarcUri } from './dmarc-parse';
+export { checkDmarc, pickDmarcRecord } from './dmarc-check';
+export type { DmarcAddress, DmarcPick, DmarcPolicies, DmarcReport } from './dmarc-check';
 export { MAX_SHOWN_PATH, MAX_SHOWN_PATTERN, visible } from './visible';

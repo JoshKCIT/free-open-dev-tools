@@ -7,7 +7,7 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Paste an SPF record, bare or as a zone-file TXT line, and read each term with its position, every syntax error by character position, and the terms that cause DNS lookups counted against the limit of 10 in RFC 7208 section 4.6.4, or build an SPF record from fields. The page reads only the text you give it and never queries DNS, so nothing is looked up and nothing is sent.
+Paste an SPF record or a DMARC record, bare or as a zone-file TXT line, and read each term or tag with its meaning, every syntax error by character position, and for SPF the terms that cause DNS lookups counted against the limit of 10 in RFC 7208 section 4.6.4; or build either record from fields. DMARC records are read under RFC 9989: every tag with its default, the policy that applies to the domain, its subdomains and its non-existent subdomains, and the report addresses as written. The page reads only the text you give it and never queries DNS, so nothing is looked up and nothing is sent.
 
 ## Supported
 
@@ -18,6 +18,9 @@ Paste an SPF record, bare or as a zone-file TXT line, and read each term with it
 - Notes on the size of the record (keep it under 450 octets, one string holds at most 255 octets), on +all, ?all and ~all, on ptr, on a record with no all and no redirect, on repeated terms and on the extra address lookups an mx term can cause
 - A whole-tree count: further lines of the SPF box are records with their names (name: v=spf1 ... or a zone-file line), and the count follows include and redirect through them only, in evaluation order, with a loop cut at once and named, a name that was not pasted listed, and counting stopped at 11
 - An SPF builder: addresses, networks, includes, a, mx and an ending of -all, ~all, ?all or a redirect, written in a fixed order and checked by the same parser before it is shown
+- A bare DMARC record, or a zone-file TXT line with several quoted strings (the form of the RFC 9989 Appendix B examples, comment lines included): the tags are listed in record order with their value, meaning, default and status, then every tag the record does not hold with its default, in the order of RFC 9989 Table 2
+- The policy a receiver reads for the domain, for its existing subdomains (sp, else p) and for its non-existent subdomains (np, else sp, else p), and the report addresses of rua and ruf as written
+- pct, rf and ri are marked retired in RFC 9989, never as syntax errors
 
 ## Limits
 
@@ -26,6 +29,7 @@ Paste an SPF record, bare or as a zone-file TXT line, and read each term with it
 - A record that checks clean here can still fail in practice: it does not mean mail will be delivered or that SPF will pass for a message, which depends on the sending server and the address it uses.
 - A paste is limited to 65,536 characters per box, 100 records and 16,384 characters in one record; the table of terms shows at most 500 rows and says how many were left out. A larger input is refused before any work, naming the box and the position and never repeating what was typed.
 - Tab and other white space between terms is a syntax error here, because RFC 7208 separates terms by spaces only; curly quotes in a pasted zone line are replaced with straight quotes and the page says so.
+- DMARC is checked against RFC 9989 (May 2026). Receivers that still follow RFC 7489 also read pct, rf and ri; the page marks them retired, not wrong. The DNS tree walk that finds the record is not performed, and a record that checks clean here can still fail in practice: it does not mean mail will be delivered or that DMARC will pass for a message.
 
 ## Ambiguous cases, and what this does about them
 
@@ -36,6 +40,8 @@ Paste an SPF record, bare or as a zone-file TXT line, and read each term with it
 ## Defined by
 
 - [RFC 7208: Sender Policy Framework (SPF) for Authorizing Use of Domains in Email, Version 1](https://www.rfc-editor.org/rfc/rfc7208)
+- [RFC 9989: Domain-based Message Authentication, Reporting, and Conformance (DMARC)](https://www.rfc-editor.org/rfc/rfc9989)
+- [RFC 9990: DMARC Aggregate Reporting](https://www.rfc-editor.org/rfc/rfc9990)
 
 ## Use it on its own
 
