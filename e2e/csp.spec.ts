@@ -48,8 +48,14 @@ import {
  * on a fresh page, before any compile.
  *
  * The outside address is a local recording server (so a leak shows as a server hit) or, when E2E_BASE_URL points at a
- * deployed site, `https://example.invalid/` (an https page cannot reach a plain http server), and proof relies on
- * violations and behaviour alone; the positive controls that need a reachable server run only against the local build.
+ * deployed site, `https://example.invalid/` (an https page cannot reach a plain http server). That address fails by name
+ * lookup with or without a policy, so against the deployed site every negative control rests on a RECORDED violation
+ * (the worker controls included: a worker event, or a console line on WebKit), and what cannot be recorded is skipped
+ * rather than passed: the positive controls and the closed preview frame link run only against the local build.
+ *
+ * The worker controls end on the first decisive event (the worker's message, an error event, a thrown constructor or a
+ * `worker-src` violation), never at the end of a fixed window; their long backstop only stops a control that hears
+ * nothing, and a refusal still needs its recorded violation to pass.
  *
  * One representative page is tested for each DISTINCT policy string the build serves, found from the served pages, so a
  * new combination of needs gets every control with no edit here.
@@ -228,7 +234,13 @@ test.describe('the violation probe sees what the policy refuses', () => {
       expect(worker.inner, `the worker's own outside fetch must fail (${worker.detail})`).toBe('failed');
     });
     expect(seen, 'the recording server saw nothing from the worker').toEqual([]);
-    expect(probe.findings().length, 'the refusal is visible somewhere (event or console line)').toBeGreaterThan(0);
+    // The refusal is recorded in every engine: as a worker event through the Blob prefix in Chromium and Firefox, as a
+    // console line naming connect-src in WebKit. Against the deployed site the outside address fails by name lookup
+    // whatever the policy says, so this recorded refusal, not the failed fetch, is the proof there.
+    expect(
+      probe.findings().some((finding) => namesDirective(finding, 'connect-src')),
+      `the worker's refused fetch is recorded, naming connect-src (${lines(probe.findings())})`,
+    ).toBe(true);
   });
 
   test('a class that extends Blob keeps its own class and methods with the probe armed', async ({ page }) => {
@@ -289,17 +301,17 @@ test.describe('the violation probe sees what the policy refuses', () => {
         });
       }, outside);
       await openToolPage(page, 'base64');
-      await page.waitForTimeout(500);
+      // Which directive an engine names for an image started this early differs (Chromium says connect-src), so the
+      // finding is recognised by the address it refused. Waited for as an event, not a fixed pause.
+      await expect
+        .poll(
+          () =>
+            probe.findings().filter((finding) => (finding.blocked ?? finding.text ?? '').includes('load-time.png'))
+              .length,
+          { message: `the image refused during load is in the probe (${lines(probe.findings())})`, timeout: 10_000 },
+        )
+        .toBeGreaterThan(0);
     });
-    // Which directive an engine names for an image started this early differs (Chromium says connect-src), so the
-    // finding is recognised by the address it refused.
-    const recorded = probe
-      .findings()
-      .filter((finding) => (finding.blocked ?? finding.text ?? '').includes('load-time.png'));
-    expect(
-      recorded.length,
-      `the image refused during load is in the probe (${lines(probe.findings())})`,
-    ).toBeGreaterThan(0);
   });
 });
 
@@ -398,6 +410,11 @@ for (const rep of discovery.representatives) {
       await openToolPage(page, rep.id);
       const result = await addressWorkerOutcome(page);
       expect(result.outcome, `${rep.id}: a worker from an address started (${result.detail})`).toBe('refused');
+      // Every engine records this refusal (worker-src), so the control cannot pass by the worker simply staying quiet.
+      expect(
+        recorded(result, 'worker-src'),
+        `${rep.id}: the refused address worker was not recorded (${result.detail}; ${lines(result.findings)})`,
+      ).toBe(true);
     });
 
     test(`a blob worker is ${grants.blobWorkers ? 'allowed, and its own outside fetch fails' : 'refused'}`, async ({
@@ -412,8 +429,19 @@ for (const rep of discovery.representatives) {
           expect(result.inner, `${rep.id}: the worker's outside fetch was not refused (${result.detail})`).toBe(
             'failed',
           );
+          // The failed fetch alone proves nothing against the deployed site (the address fails by name lookup there),
+          // so the refusal must also be recorded: a worker event in Chromium and Firefox, a console line in WebKit.
+          expect(
+            recorded(result, 'connect-src'),
+            `${rep.id}: the worker's refused fetch was not recorded (${result.detail}; ${lines(result.findings)})`,
+          ).toBe(true);
         } else {
           expect(result.outcome, `${rep.id}: a blob worker started on a page with no worker grant`).toBe('refused');
+          // Every engine records this refusal (worker-src), so the control cannot pass by the worker staying quiet.
+          expect(
+            recorded(result, 'worker-src'),
+            `${rep.id}: the refused blob worker was not recorded (${result.detail}; ${lines(result.findings)})`,
+          ).toBe(true);
         }
       });
       expect(seen, `${rep.id}: the recording server saw a request from a worker`).toEqual([]);
@@ -509,6 +537,10 @@ test('the Mermaid frame draws under its hashes with no violation, and cannot fet
 });
 
 test('a link clicked in the closed preview frame reaches nothing', async ({ page }) => {
+  // No engine raises an event for this refusal (measured), so the proof is the recording server's silence. Against
+  // the deployed site the link would go to an address that fails by name lookup with or without the policy, so the
+  // test would prove nothing there and is skipped instead of passing.
+  test.skip(deployed, 'needs the local recording server; against the deployed site the click proves nothing');
   const probe = await armCspProbe(page);
   await openToolPage(page, 'markdown-html');
   const seen = await withOutsideAddress(async (outside) => {

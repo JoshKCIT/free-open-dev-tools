@@ -274,8 +274,34 @@ export async function outsideRequestOutcomes(
 }
 
 /**
+ * How long a worker control waits for an answer when nothing at all happens. The controls decide by events (the
+ * worker's own message, an error event, a thrown constructor, a `worker-src` violation on the document), so this is
+ * only a backstop; a control that ends on it says so in its detail (`ended by the backstop`), and the tests that need
+ * a refusal also require the recorded violation, so the backstop alone can never make a refusal pass.
+ */
+const WORKER_BACKSTOP_MS = 10_000;
+
+/**
+ * Page code that ends a worker control on the first decisive event. `finish(how)` resolves once; a `worker-src`
+ * violation on the document ends it as `violation`; the backstop ends it as `backstop`.
+ */
+const WORKER_SETTLE = `let settled = false;
+      let resolveOnce;
+      const done = new Promise((resolve) => { resolveOnce = resolve; });
+      const onViolation = (e) => { if (String(e.effectiveDirective).startsWith('worker-src')) finish('violation'); };
+      const finish = (how) => {
+        if (settled) return;
+        settled = true;
+        document.removeEventListener('securitypolicyviolation', onViolation);
+        resolveOnce(how);
+      };
+      document.addEventListener('securitypolicyviolation', onViolation);
+      setTimeout(() => finish('backstop'), ${WORKER_BACKSTOP_MS});`;
+
+/**
  * A worker started from a real same-origin script address. The address is served by `page.route`, so on a page
- * with no policy it would start; on any page of this site it must never start.
+ * with no policy it would start; on any page of this site it must never start. Ends on the worker's message, an
+ * error event, a thrown constructor or a `worker-src` violation, whichever comes first.
  */
 export async function addressWorkerOutcome(page: Page): Promise<ControlResult> {
   await page.route(ADDRESS_WORKER_ROUTE, (route) =>
@@ -283,23 +309,27 @@ export async function addressWorkerOutcome(page: Page): Promise<ControlResult> {
   );
   const { result, findings } = await runProbeBody(
     page,
-    `return await new Promise((resolve) => {
-      const got = [];
-      let worker;
-      try { worker = new Worker(location.origin + ${JSON.stringify(ADDRESS_WORKER_PATH)}); } catch (e) { resolve('threw:' + e.name); return; }
-      worker.onmessage = (e) => { got.push(String(e.data)); resolve('started'); };
-      worker.onerror = () => resolve('error-event');
-      setTimeout(() => resolve('timeout'), 2500);
-    });`,
+    `${WORKER_SETTLE}
+      try {
+        const worker = new Worker(location.origin + ${JSON.stringify(ADDRESS_WORKER_PATH)});
+        worker.onmessage = () => finish('started');
+        worker.onerror = () => finish('error-event');
+      } catch (e) { finish('threw:' + e.name); }
+      return await done;`,
     800,
   );
-  const detail = String(result);
-  return { outcome: detail === 'started' ? 'allowed' : 'refused', findings, detail: `address worker: ${detail}` };
+  const how = String(result);
+  return {
+    outcome: how === 'started' ? 'allowed' : 'refused',
+    findings,
+    detail: `address worker: ${how === 'backstop' ? 'ended by the backstop' : how}`,
+  };
 }
 
 /**
  * A worker from a JavaScript blob, which then tries an outside fetch. `allowed` means the worker started; `inner`
- * says what its own outside fetch did (`failed` is what the policy must make it do).
+ * says what its own outside fetch did (`failed` is what the policy must make it do). Ends when the worker reports
+ * what its fetch did, or on an error event, a thrown constructor or a `worker-src` violation, whichever comes first.
  */
 export async function blobWorkerOutcome(
   page: Page,
@@ -308,24 +338,26 @@ export async function blobWorkerOutcome(
   const { result, findings } = await runProbeBody(
     page,
     `const source = 'postMessage("started");fetch(' + JSON.stringify(${JSON.stringify(outsideUrl)} + 'worker-fetch') + ',{mode:"no-cors"}).then(function(){postMessage("fetch:sent")},function(){postMessage("fetch:failed")});';
-    return await new Promise((resolve) => {
       const got = [];
-      let worker;
-      try { worker = new Worker(URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))); } catch (e) { resolve({ ctor: 'threw:' + e.name, got }); return; }
-      worker.onmessage = (e) => got.push(String(e.data));
-      worker.onerror = () => got.push('error-event');
-      setTimeout(() => resolve({ ctor: 'ok', got }), 2000);
-    });`,
+      ${WORKER_SETTLE}
+      try {
+        const worker = new Worker(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })));
+        worker.onmessage = (e) => { got.push(String(e.data)); if (String(e.data).startsWith('fetch:')) finish('fetch-answered'); };
+        worker.onerror = () => { got.push('error-event'); finish('error-event'); };
+      } catch (e) { finish('threw:' + e.name); }
+      const how = await done;
+      return { how, got };`,
     800,
   );
-  const record = result as { ctor?: string; got?: string[] } | undefined;
+  const record = result as { how?: string; got?: string[] } | undefined;
   const got = record?.got ?? [];
   const started = got.includes('started');
   const inner = got.includes('fetch:failed') ? 'failed' : got.includes('fetch:sent') ? 'sent' : 'none';
+  const how = record?.how === 'backstop' ? 'ended by the backstop' : (record?.how ?? '?');
   return {
     outcome: started ? 'allowed' : 'refused',
     findings,
-    detail: `blob worker: ${record?.ctor ?? '?'} ${got.join(',')}`,
+    detail: `blob worker: ${how} ${got.join(',')}`,
     inner,
   };
 }
