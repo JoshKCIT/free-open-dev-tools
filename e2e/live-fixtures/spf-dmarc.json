@@ -1,8 +1,13 @@
 {
   "id": "spf-dmarc",
-  "label": "RFC 7208 section 4.6.4: a, mx and two includes are four terms that cause DNS lookups",
+  "label": "RFC 7208 section 4.6.4: a, mx and two includes are four terms that cause DNS lookups; RFC 9989 Appendix B.2.2 record with a failure report address",
   "steps": [
-    { "action": "fill", "field": "spfText", "value": "v=spf1 a mx include:example.com include:example.org -all" }
+    { "action": "fill", "field": "spfText", "value": "v=spf1 a mx include:example.com include:example.org -all" },
+    {
+      "action": "fill",
+      "field": "dmarcText",
+      "value": "_dmarc  IN TXT ( \"v=DMARC1; p=none; \"\n \"rua=mailto:dmarc-feedback@example.com; \"\n \"ruf=mailto:auth-reports@example.com\" )"
+    }
   ],
-  "expect": ["4 of 10"]
+  "expect": ["4 of 10", "auth-reports@example.com"]
 }

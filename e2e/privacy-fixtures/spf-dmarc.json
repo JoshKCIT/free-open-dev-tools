@@ -1,7 +1,9 @@
 [
   {
     "values": {
-      "spfText": "v=spf1 ip4:192.0.2.0/24 mx include:_spf.example.net -all\n_spf.example.net: v=spf1 ip6:2001:db8::/32 -all"
+      "spfText": "v=spf1 ip4:192.0.2.0/24 mx include:_spf.example.net -all\n_spf.example.net: v=spf1 ip6:2001:db8::/32 -all",
+      "dmarcText": "v=DMARC1; p=quarantine; pct=50; rua=mailto:reports@example.net; t=y",
+      "domain": "example.com"
     },
     "attachesFile": false
   },

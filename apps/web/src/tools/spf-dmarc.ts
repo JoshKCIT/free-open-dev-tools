@@ -4,14 +4,19 @@ import {
   MAX_TERMS_SHOWN,
   SpfDmarcError,
   buildSpf,
+  checkDmarc,
   checkSpf,
   countLookups,
   describeTerm,
   parseSpf,
+  pickDmarcRecord,
   readTxtRecords,
   toTxtValue,
   visible,
   withCommas,
+  type DmarcReport,
+  type DmarcStatus,
+  type DmarcTag,
   type SpfEnding,
   type SpfNote,
   type SpfReport,
@@ -130,7 +135,7 @@ function treeNotes(tree: TreeCount): string[] {
   return items;
 }
 
-function checkBlocks(text: string): OutputBlock[] {
+function spfBlocks(text: string): OutputBlock[] {
   const records = readTxtRecords(text, 'spf');
   const first = records[0];
   if (first === undefined) return [];
@@ -185,6 +190,87 @@ function checkBlocks(text: string): OutputBlock[] {
   const worth = [...first.warnings, ...report.notes.map(noteItem), ...(tree === null ? [] : treeNotes(tree))];
   if (worth.length > 0) blocks.push({ kind: 'list', label: 'Worth a look', items: worth });
   return blocks;
+}
+
+/** What the Status cell of the tags table says. */
+const STATUS_TEXT: Record<DmarcStatus, string> = {
+  ok: 'Read',
+  'default-used': 'Not in the record, default used',
+  retired: 'retired in RFC 9989',
+  unknown: 'Unknown tag, ignored',
+  invalid: 'Not valid, default used',
+  repeated: 'Repeated, first value used',
+};
+
+function statusCell(tag: DmarcTag): string {
+  return STATUS_TEXT[tag.status];
+}
+
+function dmarcVerdict(report: DmarcReport, first: boolean): OutputBlock {
+  const lead = first ? `${NOTE_FIRST} ` : '';
+  if (!report.record.isDmarc) {
+    return {
+      kind: 'note',
+      tone: 'warn',
+      value: `${lead}This text does not start with v=DMARC1, so a receiver ignores the whole record (RFC 9989 section 4.7).`,
+    };
+  }
+  return {
+    kind: 'note',
+    tone: 'success',
+    value: `${lead}The DMARC record reads without a syntax error under RFC 9989. What a receiver decides for a message is not checked here.`,
+  };
+}
+
+function dmarcBlocks(text: string, domain: string, first: boolean): OutputBlock[] {
+  const pick = pickDmarcRecord(readTxtRecords(text, 'dmarc'));
+  if (pick === null) return [];
+  const report = checkDmarc(pick.record, domain);
+  const record = report.record;
+  const blocks: OutputBlock[] = [dmarcVerdict(report, first)];
+  if (!record.isDmarc) {
+    blocks.push({ kind: 'list', label: 'Problems', items: [record.ignored ?? 'This text is not a DMARC record.'] });
+    return blocks;
+  }
+  blocks.push({
+    kind: 'keyvalue',
+    label: 'The DMARC record',
+    pairs: [
+      ['Record', visible(record.text, SHOWN_CELL)],
+      ['Effective policy for the domain', report.policy.domain],
+      ['Effective policy for subdomains', report.policy.subdomains],
+      ['Effective policy for non-existent subdomains', report.policy.nonExistent],
+    ],
+  });
+  const shown = record.tags.slice(0, MAX_TERMS_SHOWN);
+  blocks.push({
+    kind: 'table',
+    label: 'Tags',
+    table: {
+      headers: ['Tag', 'Value', 'Meaning', 'Default', 'Status'],
+      rows: shown.map((tag) => [
+        visible(tag.name, SHOWN_CELL),
+        tag.value === null ? '(not in the record)' : visible(tag.value, SHOWN_CELL),
+        tag.meaning,
+        tag.default,
+        statusCell(tag),
+      ]),
+      mono: [0, 1],
+    },
+  });
+  if (record.tags.length > shown.length) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `The table shows the first ${withCommas(shown.length)} of ${withCommas(record.tags.length)} tags.`,
+    });
+  }
+  return blocks;
+}
+
+function checkBlocks(values: Values): OutputBlock[] {
+  const spf = spfBlocks(str(values, 'spfText'));
+  return [...spf, ...dmarcBlocks(str(values, 'dmarcText'), str(values, 'domain').trim(), spf.length === 0)];
 }
 
 function buildBlocks(values: Values): OutputBlock[] {
@@ -253,6 +339,25 @@ export default defineTool({
       placeholder: PASTE_PLACEHOLDER,
       help: 'A bare record, or a zone-file line with one or more quoted strings. The first record is the one checked. Further lines are records with their names (name: v=spf1 ... or a zone-file line), used only to count lookups through include and redirect.',
       wide: true,
+      visible: only('check'),
+    },
+    {
+      name: 'dmarcText',
+      label: 'DMARC record',
+      type: 'textarea',
+      rows: 5,
+      placeholder: PASTE_PLACEHOLDER,
+      help: 'A bare record, or a zone-file line with one or more quoted strings, the parenthesis form and comment lines included.',
+      wide: true,
+      visible: only('check'),
+    },
+    {
+      name: 'domain',
+      label: 'Domain the DMARC record is published for (optional)',
+      type: 'text',
+      placeholder: 'example.com',
+      help: 'Used to write the name a report address in another domain needs. Nothing is looked up.',
+      mono: true,
       visible: only('check'),
     },
     {
@@ -340,6 +445,16 @@ export default defineTool({
       },
     },
     {
+      label: 'RFC 9989 Appendix B.2.2: monitoring mode with an aggregate and a failure report address',
+      values: {
+        mode: 'check',
+        spfText: 'v=spf1 a mx include:example.com include:example.org -all',
+        dmarcText:
+          '_dmarc  IN TXT ( "v=DMARC1; p=none; "\n "rua=mailto:dmarc-feedback@example.com; "\n "ruf=mailto:auth-reports@example.com" )',
+        domain: 'example.com',
+      },
+    },
+    {
       label: 'Build a record for two networks and one include',
       values: {
         mode: 'build-spf',
@@ -354,7 +469,7 @@ export default defineTool({
   ],
   run(values: Values): ToolResult {
     try {
-      const blocks = readMode(values) === 'build-spf' ? buildBlocks(values) : checkBlocks(str(values, 'spfText'));
+      const blocks = readMode(values) === 'build-spf' ? buildBlocks(values) : checkBlocks(values);
       return { outputs: blocks };
     } catch (err) {
       if (err instanceof SpfDmarcError) return { outputs: [], errors: [{ message: err.message }] };
