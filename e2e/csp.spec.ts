@@ -101,7 +101,14 @@ async function openToolPage(page: Page, id: string): Promise<void> {
 const lines = (findings: CspFinding[]): string => findings.map(describeFinding).join(' | ') || 'none';
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Policy discovery: one representative per distinct policy string, found from the served pages.
+// Policy groups: one representative per distinct policy, from the repository; then every served page is read once.
+//
+// The groups, their labels, their representatives and their grants come from each catalog tool's declared needs
+// (`tools/<id>/src/meta.json`), which every process reads identically, so no test title depends on a network read
+// (a title that changed between the main process and a worker would stop the group with "Test not found in the
+// worker process"). Whether the served pages agree is a test of its own: it reads every catalog page, fails on any page
+// it could not read (an unread page could hide a whole policy group), and fails when a page serves a policy other than
+// the one its needs give, or two groups serve the same policy.
 // ---------------------------------------------------------------------------------------------------------------------
 
 type ParsedPolicy = Map<string, string[]>;
@@ -120,12 +127,13 @@ const POLICY_META = /<meta http-equiv="Content-Security-Policy" content="([^"]+)
 
 interface Representative {
   id: string;
-  policy: string;
-  pages: number;
+  /** Every catalog tool whose declared needs give this policy, sorted; the representative is the first. */
+  members: string[];
   label: string;
-  parsed: ParsedPolicy;
+  grants: { eval: boolean; wasm: boolean; blobWorkers: boolean };
 }
 
+/** The label a served policy earns, read from the policy text itself. */
 function labelOf(parsed: ParsedPolicy): string {
   const script = parsed.get('script-src') ?? [];
   const parts: string[] = [];
@@ -137,61 +145,102 @@ function labelOf(parsed: ParsedPolicy): string {
   return parts.length > 0 ? parts.join(' + ') : 'baseline';
 }
 
-async function pageText(id: string): Promise<string | undefined> {
-  try {
-    const response = await fetch(new URL(`tools/${id}`, baseUrl));
-    if (response.ok) return await response.text();
-  } catch {
-    /* fall through to the built files */
+/**
+ * The label a tool's declared needs give, in the same words and order as `labelOf` reads from a served policy:
+ * `sandboxed-html` and `mermaid-frame` both add inline styles, and `mermaid-frame` adds the two frame hashes.
+ */
+function labelOfNeeds(needs: readonly string[]): string {
+  const n = new Set(needs);
+  const parts: string[] = [];
+  if (n.has('eval')) parts.push('eval');
+  if (n.has('wasm')) parts.push('wasm');
+  if (n.has('workers')) parts.push('workers');
+  if (n.has('sandboxed-html') || n.has('mermaid-frame')) parts.push('inline styles');
+  if (n.has('mermaid-frame')) parts.push('frame hashes');
+  return parts.length > 0 ? parts.join(' + ') : 'baseline';
+}
+
+const CATALOG_IDS = (JSON.parse(readFileSync(join(root, 'docs', 'catalog.json'), 'utf8')) as { id: string }[])
+  .map((entry) => entry.id)
+  .sort();
+
+/** The policy group of every catalog tool, from its declared needs (no `needs` means the baseline). */
+const GROUP_OF = new Map(
+  CATALOG_IDS.map((id) => {
+    const meta = JSON.parse(readFileSync(join(root, 'tools', id, 'src', 'meta.json'), 'utf8')) as { needs?: string[] };
+    return [id, labelOfNeeds(meta.needs ?? [])] as const;
+  }),
+);
+
+const REPRESENTATIVES: Representative[] = [...new Set(GROUP_OF.values())]
+  .map((label) => {
+    const members = CATALOG_IDS.filter((id) => GROUP_OF.get(id) === label);
+    const parts = new Set(label.split(' + '));
+    return {
+      id: members[0]!,
+      members,
+      label,
+      grants: {
+        eval: parts.has('eval'),
+        wasm: parts.has('eval') || parts.has('wasm'),
+        blobWorkers: parts.has('workers'),
+      },
+    };
+  })
+  .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+
+/**
+ * The served text of one tool page, asked up to three times with a short pause (a single failed read must not hide a
+ * page). Against the local build a page that still cannot be asked for is read from the built files the preview serves;
+ * against a deployed site there is no such fallback, because the built files there are not the site under test.
+ */
+async function servedPageText(id: string): Promise<string | undefined> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(new URL(`tools/${id}`, baseUrl));
+      if (response.ok) return await response.text();
+    } catch {
+      /* asked again below */
+    }
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
   }
+  if (deployed) return undefined;
   const built = join(root, 'apps', 'web', 'dist', 'tools', `${id}.html`);
   return existsSync(built) ? readFileSync(built, 'utf8') : undefined;
 }
 
-async function discover(): Promise<{ representatives: Representative[]; problem?: string }> {
-  const catalog = JSON.parse(readFileSync(join(root, 'docs', 'catalog.json'), 'utf8')) as { id: string }[];
-  const ids = catalog.map((entry) => entry.id).sort();
-  const groups = new Map<string, string[]>();
-  let unread = 0;
-  for (let start = 0; start < ids.length; start += 24) {
-    const texts = await Promise.all(ids.slice(start, start + 24).map((id) => pageText(id)));
-    texts.forEach((text, index) => {
-      const policy = text ? POLICY_META.exec(text)?.[1] : undefined;
-      const id = ids[start + index]!;
-      if (!policy) {
-        unread += 1;
-        return;
-      }
-      groups.set(policy, [...(groups.get(policy) ?? []), id]);
+test('every catalog page is read and serves the policy its declared needs give, one distinct policy per group', async () => {
+  test.setTimeout(240_000);
+  const served = new Map<string, string | undefined>();
+  for (let start = 0; start < CATALOG_IDS.length; start += 24) {
+    const batch = CATALOG_IDS.slice(start, start + 24);
+    const texts = await Promise.all(batch.map((id) => servedPageText(id)));
+    batch.forEach((id, index) => {
+      const text = texts[index];
+      served.set(id, text ? POLICY_META.exec(text)?.[1] : undefined);
     });
   }
-  const representatives = [...groups.entries()]
-    .map(([policy, members]) => {
-      const parsed = parsePolicyText(policy);
-      return { id: [...members].sort()[0]!, policy, pages: members.length, label: labelOf(parsed), parsed };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
-  return unread > 0 && representatives.length === 0
-    ? { representatives, problem: `no page of the catalog could be read from ${baseUrl} or the built files` }
-    : { representatives };
-}
-
-const discovery = await discover();
-
-test('the representatives found cover every distinct policy the build serves', async () => {
-  const testInfo = test.info();
-  expect(discovery.problem, 'the served pages could not be read').toBeUndefined();
-  const total = discovery.representatives.reduce((sum, rep) => sum + rep.pages, 0);
-  testInfo.annotations.push({
-    type: 'representatives',
-    description: discovery.representatives.map((rep) => `${rep.label}: ${rep.id} (${rep.pages})`).join('; '),
+  test.info().annotations.push({
+    type: 'policy groups',
+    description: REPRESENTATIVES.map((rep) => `${rep.label}: ${rep.id} (${rep.members.length} pages)`).join('; '),
   });
-  expect(discovery.representatives.length, 'at least the baseline and the worker policies are served').toBeGreaterThan(
-    1,
+
+  const unread = CATALOG_IDS.filter((id) => served.get(id) === undefined);
+  expect(
+    unread,
+    'every catalog page must be read with its policy; an unread page could hide a whole policy group',
+  ).toEqual([]);
+  const disagreeing = CATALOG_IDS.filter((id) => labelOf(parsePolicyText(served.get(id)!)) !== GROUP_OF.get(id)).map(
+    (id) => `${id} declares ${GROUP_OF.get(id)} but serves ${labelOf(parsePolicyText(served.get(id)!))}`,
   );
-  expect(total, 'every catalog page with a policy is in exactly one group').toBeGreaterThan(0);
-  // Every group has a different whole policy string, by construction; the labels may repeat, so say so loudly.
-  expect(new Set(discovery.representatives.map((rep) => rep.policy)).size).toBe(discovery.representatives.length);
+  expect(disagreeing, 'every page serves the policy its declared needs give').toEqual([]);
+  for (const rep of REPRESENTATIVES) {
+    const policies = new Set(rep.members.map((id) => served.get(id)));
+    expect(policies.size, `every page of the ${rep.label} group serves one and the same policy`).toBe(1);
+  }
+  const groupPolicies = REPRESENTATIVES.map((rep) => served.get(rep.id));
+  expect(new Set(groupPolicies).size, 'no two groups serve the same policy').toBe(REPRESENTATIVES.length);
+  expect(REPRESENTATIVES.length, 'at least the baseline and the worker policies are served').toBeGreaterThan(1);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -364,23 +413,21 @@ function recorded(result: ControlResult, directive: string): boolean {
   return result.findings.some((finding) => namesDirective(finding, directive));
 }
 
-for (const rep of discovery.representatives) {
-  const grants = {
-    eval: (rep.parsed.get('script-src') ?? []).includes("'unsafe-eval'"),
-    wasm:
-      (rep.parsed.get('script-src') ?? []).includes("'unsafe-eval'") ||
-      (rep.parsed.get('script-src') ?? []).includes("'wasm-unsafe-eval'"),
-    blobWorkers: (rep.parsed.get('worker-src') ?? []).includes('blob:'),
-  };
+for (const rep of REPRESENTATIVES) {
+  const grants = rep.grants;
 
-  test.describe(`policy ${rep.label}: ${rep.id} stands for ${rep.pages} pages`, () => {
+  test.describe(`policy ${rep.label}: ${rep.id}`, () => {
     test('loads clean, with the policy first in the head and the charset second', async ({ page }) => {
+      test.info().annotations.push({ type: 'stands for', description: `${rep.members.length} pages` });
       const probe = await armCspProbe(page);
       await openToolPage(page, rep.id);
       const written = await page.evaluate(
         () => document.head.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content') ?? '',
       );
-      expect(written, 'the policy in the live page is the one the representative stands for').toBe(rep.policy);
+      expect(
+        labelOf(parsePolicyText(written)),
+        `the policy in the live page is the one the ${rep.label} group stands for (${written})`,
+      ).toBe(rep.label);
       await expectStructure(page, rep.id);
       expect(probe.findings().map(describeFinding), `${rep.id} raised a violation while loading`).toEqual([]);
     });
