@@ -88,10 +88,10 @@ The [privacy page](apps/web/src/pages/Privacy.tsx) is written to be precise rath
 - **Nothing is loaded from a third party.** No CDN, no web font service, no analytics, no icon host. A third-party
   request would hand that party your IP address and the page you are on, so there are none.
 - **Each page has its own content security policy.** It sits in the page markup (GitHub Pages cannot set headers), is
-  written at build time and forbids the page from requesting anything. It is a second layer behind the lint rules, the
-  static gate and the browser test, not a wall: a policy in markup gives no framing protection, cannot report
-  violations, cannot sandbox a page the way a header can, cannot stop you following a link or a page navigating away,
-  does not govern WebRTC or connection hints in every browser, and browser extensions sit outside it.
+  written at build time and forbids the page from requesting anything outside the site. It is a second layer behind
+  the lint rules, the static gate and the browser test, not a wall: a policy in markup gives no framing protection,
+  cannot report violations, cannot sandbox a page the way a header can, cannot stop you following a link or a page
+  navigating away, does not govern WebRTC or connection hints in every browser, and browser extensions sit outside it.
   `docs/ARCHITECTURE.md` has the detail.
 
 [`e2e/privacy.spec.ts`](e2e/privacy.spec.ts) enforces this. For every tool page it types a unique canary string into

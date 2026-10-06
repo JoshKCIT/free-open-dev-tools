@@ -29,6 +29,13 @@ export const STALE_PHRASES = [
   'there is no content security policy here',
   'not set today only because GitHub Pages cannot',
   'GitHub Pages sends no policy at all',
+  // Claims wider than the policy: the page loads its own scripts and styles, the theme script and the Mermaid frame
+  // scripts are inline (hashed), a page can still navigate away, and not every code-generation page is a validator.
+  'forbids the page from requesting anything.',
+  'forbids a page from requesting anything and',
+  'whatever its code tries',
+  'No page gets inline scripts',
+  'generating code for a validator,',
 ];
 
 /**
@@ -78,7 +85,7 @@ export function between(text, start, end) {
 export const FILES = [
   {
     path: 'apps/web/src/pages/Privacy.tsx',
-    required: [...TRUTH_WORDS, 'Each page has its own content security policy'],
+    required: [...TRUTH_WORDS, 'Each page has its own content security policy', 'a short fixed list of pages'],
     sections: [
       ['<h2>Each page has its own content security policy</h2>', '<h2>Tools that would need the network</h2>'],
     ],
@@ -106,6 +113,7 @@ export const FILES = [
       'inlineFiles',
       'fresh document',
       'Content security policy per page',
+      "no `'unsafe-inline'` for scripts",
       ...EVAL_PAGES,
     ],
     sections: [['### Content security policy per page', '## The privacy harness']],
@@ -129,12 +137,19 @@ export const FILES = [
   },
   {
     path: 'CONTRIBUTING.md',
-    required: ['its own', 'needs', 'meta.json', 'content security policy', 'build fails when'],
+    required: [
+      'its own',
+      'needs',
+      'meta.json',
+      'content security policy',
+      'build fails when',
+      'requesting anything outside the site',
+    ],
     sections: [['### 6. It must declare what its page needs', '## Adding a tool, step by step']],
   },
   {
     path: 'README.md',
-    required: TRUTH_WORDS,
+    required: [...TRUTH_WORDS, 'requesting anything outside the site'],
     sections: [['- **Each page has its own content security policy.**', '[`e2e/privacy.spec.ts`]']],
     limits: ['- **Each page has its own content security policy.**', '[`e2e/privacy.spec.ts`]'],
   },

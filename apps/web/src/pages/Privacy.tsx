@@ -135,8 +135,8 @@ export default function Privacy() {
         </li>
         <li>
           Scripts from anywhere except this site, apart from one small inline script that sets your theme. A page adds
-          only what its own tool needs, such as a background worker, WebAssembly, or generating code for a validator,
-          and nothing broader.
+          only what its own tool needs, such as a background worker, WebAssembly, or generating code while it runs
+          (which only a short fixed list of pages may do, such as the schema validators), and nothing broader.
         </li>
       </ul>
       <p>

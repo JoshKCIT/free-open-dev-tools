@@ -96,7 +96,7 @@ and cases where conversion loses information.
 ### 6. It must declare what its page needs
 
 Every page carries its own content security policy in its markup, written at build time, and the baseline forbids a
-page from requesting anything and from running more than the site's own scripts. If your tool's page needs more than
+page from requesting anything outside the site and from running more than the site's own scripts. If your tool's page needs more than
 that, say so in `src/meta.json` under `needs`, using only these five words: `workers` (a background worker, always
 started from a blob address), `wasm` (WebAssembly), `eval` (run-time code generation, which only a short
 fixed list of pages in the gate may use), `sandboxed-html` (a preview frame that needs inline styles) and

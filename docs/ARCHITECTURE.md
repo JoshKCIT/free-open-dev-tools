@@ -124,7 +124,7 @@ carry the same policy.
 theme script, which is computed from the final HTML and never written by hand. Styles may come only from the site
 itself, and images only from data and blob addresses. Every other kind of outside load (connections, fonts, frames,
 media, objects, the web app manifest, form posts, workers and the page base) is set to none. So a page cannot fetch, send a beacon, open a socket or an event
-stream, or load anything from another site, whatever its code tries.
+stream, or load a resource from another site into itself.
 
 **What a page adds.** A tool declares what it needs in `tools/<id>/src/meta.json`, under `needs`, from a closed list of
 five terms. A page with no `needs` gets the baseline and nothing else.
@@ -140,7 +140,9 @@ five terms. A page with no `needs` gets the baseline and nothing else.
 Run-time code generation is limited to eight pages, fixed in the gate and in its test: `docker-compose-validator`,
 `docker-run-to-compose` (it compiles the Compose schema when its page loads), `github-actions-validator`,
 `json-schema-validator`, `k8s-validator`, `openapi-validator`, `sass-less-compiler`, and `font-inspector`, which is
-reserved for a later phase. No page gets inline scripts.
+reserved for a later phase. No page's policy allows inline scripts in general (no `'unsafe-inline'` for scripts): the
+only inline scripts that run are the hashed theme script on every page and, on the Mermaid page, the two hashed frame
+scripts.
 
 **The gate.** `scripts/check-csp.mjs` is the last step of the production build. It finds the built code each tool page
 loads, scans it for the code each term allows, and fails the build when a tool's `needs` and its built code disagree
