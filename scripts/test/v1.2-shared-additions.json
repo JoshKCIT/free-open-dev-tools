@@ -15,7 +15,7 @@
       "category": "network",
       "phase": 18,
       "needs": [],
-      "outputKinds": ["table", "keyvalue", "note"],
+      "outputKinds": ["table", "keyvalue", "list", "note"],
       "sharedAdditions": []
     },
     {

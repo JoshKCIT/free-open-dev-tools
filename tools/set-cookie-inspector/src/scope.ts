@@ -88,5 +88,5 @@ export function describeScope(scope: CookieScope, written: boolean): string {
   const secure = scope.secureOnly ? 'only over a secure connection' : 'over plain http as well as https';
   const script = scope.httpOnly ? 'never to page script (HttpOnly)' : 'and page script can read it (no HttpOnly)';
   const sameSite = describeSameSite(scope.sameSite, written);
-  return `Sent to ${where}, for ${paths}, ${secure}, ${script}. ${sameSite}`;
+  return `Would be sent to ${where}, for ${paths}, ${secure}, ${script}. ${sameSite}`;
 }

@@ -7,6 +7,8 @@ import {
   type CookieReport,
   type CookieRow,
   type Outcome,
+  withCommas,
+  MAX_NAME_VALUE_OCTETS,
   type RequestContext,
 } from '@fodt/set-cookie-inspector';
 import { bool, defineTool, str, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
@@ -27,6 +29,14 @@ const RESULT_TEXT: Record<Outcome, string> = {
 };
 
 const SHOWN_CELL = 200;
+const SHOWN_LONG = 400;
+const MAX_ROWS_SHOWN = 500;
+const MAX_DETAILS = 25;
+const MAX_ATTRIBUTES_SHOWN = 30;
+const MAX_LISTED = 100;
+
+const CLOSING =
+  'Judged by draft-ietf-httpbis-rfc6265bis-22 (1 December 2025), which is still an Internet-Draft. A Stored result says what the draft says a browser would do with the text you gave, not what one browser will certainly do: browsers differ in the SameSite default, third-party cookie blocking, partitioning and size limits. The public suffix list is not consulted and the cookie store is not modelled, so replacing an existing cookie and per-domain limits are not checked. Partitioned and Priority are shown and not judged.';
 
 const CONTEXTS: ReadonlyArray<{ value: RequestContext; label: string }> = [
   { value: 'same-site', label: 'A request from the same site' },
@@ -57,25 +67,131 @@ function nameCell(row: CookieRow): string {
   return row.name === '' ? '(no name)' : visible(row.name, SHOWN_CELL);
 }
 
-function blocksOf(report: CookieReport): OutputBlock[] {
-  return [
-    { kind: 'note', tone: 'info', value: LEAD },
-    {
-      kind: 'table',
-      label: 'Cookies',
-      table: {
-        headers: ['#', 'Name', 'Value', 'Result', 'Why'],
-        rows: report.cookies.map((row) => [
-          row.line,
-          nameCell(row),
-          visible(row.valueShown, SHOWN_CELL),
-          RESULT_TEXT[row.decision.outcome],
-          row.decision.reason,
-        ]),
-        mono: [1, 2],
-      },
-    },
+/** The Lives until cell: the end of the cookie, or why there is none. */
+function livesUntil(row: CookieRow): string {
+  const lifetime = row.decision.lifetime;
+  if (lifetime === null) return '-';
+  if (lifetime.kind === 'session') return 'End of the browser session';
+  if (lifetime.kind === 'deleted') return 'Deleted at once';
+  return `${lifetime.until ?? ''}${lifetime.clamped ? ' (reduced to 400 days)' : ''}`;
+}
+
+function sentCell(row: CookieRow): string {
+  return row.sentTo === '' ? '-' : visible(row.sentTo, SHOWN_LONG);
+}
+
+function yesNo(value: boolean | undefined): string {
+  return value === true ? 'Yes' : 'No';
+}
+
+/** One `keyvalue` block for a cookie: everything the table has no room for. */
+function detailsOf(row: CookieRow): OutputBlock {
+  const decision = row.decision;
+  const scope = decision.scope;
+  const pairs: [string, string][] = [
+    ['Name', nameCell(row)],
+    ['Value', visible(row.valueShown, SHOWN_CELL)],
+    [
+      'Size in octets',
+      `${withCommas(row.octets)} of ${withCommas(MAX_NAME_VALUE_OCTETS)} allowed for name and value together`,
+    ],
   ];
+  row.attributes.slice(0, MAX_ATTRIBUTES_SHOWN).forEach((attribute, index) => {
+    const written = attribute.valueShown === '' ? '' : `=${visible(attribute.valueShown, 100)} `;
+    pairs.push([
+      `Attribute ${index + 1}: ${attribute.name === '' ? '(no name)' : visible(attribute.name, 40)}`,
+      `${written}${attribute.use === 'used' ? 'Used' : 'Ignored'}. ${attribute.reason}`,
+    ]);
+  });
+  if (row.attributes.length > MAX_ATTRIBUTES_SHOWN) {
+    pairs.push(['More attributes', `and ${row.attributes.length - MAX_ATTRIBUTES_SHOWN} more are not listed here`]);
+  }
+  pairs.push(['Result', RESULT_TEXT[decision.outcome]], ['Why', decision.reason]);
+  pairs.push([
+    'Storage steps checked',
+    decision.stepsApplied
+      .map((step) => {
+        const mark =
+          step.result === 'fail' ? ' (stopped here)' : step.result === 'not-modelled' ? ' (not modelled)' : '';
+        return `${step.section} step ${step.step}${mark}`;
+      })
+      .join(', '),
+  ]);
+  pairs.push(['Lifetime', decision.lifetime === null ? '-' : decision.lifetime.text]);
+  pairs.push(['Domain handling', row.domainHandling === '' ? '-' : row.domainHandling]);
+  pairs.push(['Path', row.pathHandling === '' ? '-' : row.pathHandling]);
+  pairs.push(['Secure', scope === null ? '-' : yesNo(scope.secureOnly)]);
+  pairs.push(['HttpOnly', scope === null ? '-' : yesNo(scope.httpOnly)]);
+  pairs.push(['SameSite', row.sameSiteText === '' ? '-' : row.sameSiteText]);
+  pairs.push(['Prefix rule', row.prefixRule]);
+  return { kind: 'keyvalue', label: `Line ${row.line}: ${nameCell(row)}`, pairs };
+}
+
+function blocksOf(report: CookieReport): OutputBlock[] {
+  const shown = report.cookies.slice(0, MAX_ROWS_SHOWN);
+  const blocks: OutputBlock[] = [{ kind: 'note', tone: 'info', value: LEAD }];
+  if (report.request?.trustedHost === true) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value:
+        'This address is localhost or a loopback address. Browsers treat localhost as a secure connection, so a Secure cookie is accepted over http here; check your browser for the loopback addresses.',
+    });
+  }
+  blocks.push({
+    kind: 'table',
+    label: 'Cookies',
+    table: {
+      headers: ['#', 'Name', 'Value', 'Result', 'Why', 'Lives until', 'Sent to'],
+      rows: shown.map((row) => [
+        row.line,
+        nameCell(row),
+        visible(row.valueShown, SHOWN_CELL),
+        RESULT_TEXT[row.decision.outcome],
+        visible(row.decision.reason, SHOWN_LONG),
+        livesUntil(row),
+        sentCell(row),
+      ]),
+      mono: [1, 2],
+    },
+  });
+  if (report.cookies.length > shown.length) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `The table shows the first ${withCommas(shown.length)} cookies; ${withCommas(report.cookies.length - shown.length)} more are not listed.`,
+    });
+  }
+  for (const row of shown.slice(0, MAX_DETAILS)) blocks.push(detailsOf(row));
+  if (shown.length > MAX_DETAILS) {
+    blocks.push({
+      kind: 'note',
+      tone: 'info',
+      value: `Details are shown for the first ${MAX_DETAILS} cookies; the table above lists every one.`,
+    });
+  }
+  if (report.sendOrder.length > 1) {
+    const byLine = new Map(report.cookies.map((row) => [row.line, row]));
+    blocks.push({
+      kind: 'list',
+      label:
+        'Order a browser lists these cookies in a Cookie header for a request to this address (longer paths first)',
+      ordered: true,
+      items: report.sendOrder.slice(0, MAX_LISTED).map((line) => {
+        const row = byLine.get(line);
+        const path = row?.decision.scope?.path ?? '/';
+        return `Line ${line}: ${row === undefined ? '' : nameCell(row)} (path ${visible(path, 60)})`;
+      }),
+    });
+  }
+  if (report.worthALook.length > 0) {
+    const items = report.worthALook.slice(0, MAX_LISTED).map((remark) => remark.text);
+    if (report.worthALook.length > MAX_LISTED)
+      items.push(`and ${withCommas(report.worthALook.length - MAX_LISTED)} more`);
+    blocks.push({ kind: 'list', label: 'Worth a look', items });
+  }
+  blocks.push({ kind: 'note', tone: 'info', value: CLOSING });
+  return blocks;
 }
 
 export default defineTool({

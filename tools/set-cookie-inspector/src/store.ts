@@ -367,7 +367,7 @@ export function decide(cookie: ParsedCookie, request: RequestInfo, nowMs: number
     outcome: 'stored',
     stepsApplied: steps,
     failedStep: null,
-    reason: 'No step of the storage model stops it.',
+    reason: 'A browser following the draft would store it: no step of the storage model stops it.',
     lifetime,
     scope,
   };
