@@ -24,7 +24,7 @@ import {
 /**
  * Proof that every page's own content security policy refuses what it must, and that the instrument noticing a refusal
  * can fail. The shared probe lives in `e2e/csp-probe.ts` and is also armed inside the per-tool test of
- * `e2e/privacy.spec.ts`, so all 211 tool pages are driven through every control state with zero violations allowed.
+ * `e2e/privacy.spec.ts`, so every tool page is driven through every control state with zero violations allowed.
  *
  * Page code for the controls is served by `page.route` from `__fodt-probe.js` and loaded as a script element, never run
  * through `page.evaluate`: code run by `evaluate` is not subject to the page's `script-src` and its `eval` and
@@ -734,11 +734,22 @@ for (const path of SITE_PAGES) {
       'a[href^="#"]',
       'a[href^="http"]',
     ];
+    const siteOrigin = new URL(baseUrl).origin;
     for (const selector of kinds) {
       const link = page.locator(selector).first();
       if ((await link.count()) === 0) continue;
+      const href = (await link.getAttribute('href')) ?? '';
+      const toAnotherSite = new URL(href, page.url()).origin !== siteOrigin;
+      const before = followed.length;
       await link.focus();
-      await link.click({ noWaitAfter: false }).catch(() => undefined);
+      // A click that fails is a finding, never skipped: this test claims each kind of link was followed.
+      await link.click();
+      if (toAnotherSite) {
+        // The link to another site really was followed (answered locally, so nothing left the machine).
+        await expect
+          .poll(() => followed.length, { message: `${path}: the link to ${href} was not followed`, timeout: 10_000 })
+          .toBeGreaterThan(before);
+      }
       await page.waitForLoadState('load');
       await page.waitForTimeout(300);
       await page.goto(rel(path));
