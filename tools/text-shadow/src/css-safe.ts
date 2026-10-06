@@ -8,9 +8,10 @@
  * visitor's field values must never load a resource and must never let text
  * escape the declaration, rule or stylesheet it was written into. This
  * matters because the live preview the CSS is applied to (CssPreview.tsx)
- * runs on the unsandboxed page -- there is no content security policy
- * stopping a resource-loading value from firing a real request the moment
- * the stylesheet is adopted.
+ * runs on the unsandboxed page. The page's own content security policy
+ * refuses the request a resource-loading value would fire the moment the
+ * stylesheet is adopted, but that policy is only a second layer: this file
+ * is what keeps such a value out of the stylesheet in the first place.
  *
  * CSS Syntax Level 3 (https://www.w3.org/TR/css-syntax-3/), section 2.1
  * "Escaping": "CSS escape sequences start with a backslash (\), and

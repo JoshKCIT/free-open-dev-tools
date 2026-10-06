@@ -479,7 +479,7 @@ it('typed bubble text reaches only the tree and the escaped markup, never the CS
 
 it('css-safe.ts is the canonical copy', () => {
   const bytes = readFileSync(new URL('../src/css-safe.ts', import.meta.url));
-  expect(createHash('md5').update(bytes).digest('hex')).toBe('ad0bffed52987b6b331c6d39227b080f');
+  expect(createHash('md5').update(bytes).digest('hex')).toBe('9fe7f3cafc6240284c78b958bde1343b');
 });
 
 it('nothing is written to the console while generating shapes', () => {

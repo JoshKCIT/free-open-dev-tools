@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from '../lib/catalog.mjs';
 import { EVAL_PAGES } from '../check-csp.mjs';
@@ -29,6 +29,7 @@ export const STALE_PHRASES = [
   'there is no content security policy here',
   'not set today only because GitHub Pages cannot',
   'GitHub Pages sends no policy at all',
+  'there is no content security policy stopping',
   // Claims wider than the policy: the page loads its own scripts and styles, the theme script and the Mermaid frame
   // scripts are inline (hashed), a page can still navigate away, and not every code-generation page is a validator.
   'forbids the page from requesting anything.',
@@ -266,6 +267,24 @@ describe('the deploy workflow checks the live site without a catalog size in any
   it('finds a counted step name when one is written', () => {
     const names = stepNames('steps:\n  - name: The 211 tool pages load\n    run: true');
     expect(names.filter((name) => COUNTED_PAGES.test(name))).toEqual(['The 211 tool pages load']);
+  });
+});
+
+/** Every copy of the canonical CSS safety writer, which says why the live preview needs it. */
+const CSS_SAFE_COPIES = readdirSync(join(ROOT, 'tools'))
+  .map((id) => `tools/${id}/src/css-safe.ts`)
+  .filter((path) => existsSync(join(ROOT, path)));
+
+describe('every copy of the CSS safety writer describes the page policy truthfully', () => {
+  it('finds the copies and they are byte for byte the same', () => {
+    expect(CSS_SAFE_COPIES.length).toBeGreaterThan(0);
+    expect(new Set(CSS_SAFE_COPIES.map(read)).size).toBe(1);
+  });
+
+  it('names the page policy as a second layer and holds none of the stale phrases', () => {
+    const text = read(CSS_SAFE_COPIES[0]);
+    expect(missingWords(text, ["page's own content security policy", 'second layer'])).toEqual([]);
+    expect(stalePhrasesIn(text)).toEqual([]);
   });
 });
 
