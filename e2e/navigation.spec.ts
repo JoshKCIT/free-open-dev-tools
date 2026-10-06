@@ -31,8 +31,8 @@ function addressOf(path: string, baseURL: string | undefined): string {
 }
 
 /**
- * Two addresses that differ only by a trailing slash are the same place. At the deploy base the router writes the home
- * link as the base path without its closing slash, and the host answers that with a redirect to the slash form.
+ * Two addresses that differ only by a trailing slash are the same place: a host may answer a page address with a
+ * redirect to its slash form. The home link is held to its exact address in its own test.
  */
 const sameAddress = (a: string, b: string) => a.replace(/\/$/, '') === b.replace(/\/$/, '');
 
@@ -73,10 +73,14 @@ async function followAndExpectFreshDocument(
 test.describe('every in-site link loads a fresh document', () => {
   test('the brand link from a tool page loads the home page as a new document', async ({ page, baseURL }) => {
     await page.goto(rel('/tools/base64'));
-    // No heading check here: at the deploy base the link is the base path without its closing slash, which the host
-    // answers with a redirect to the slash form. A static preview server has no such redirect, so the document check
-    // (marker gone, address right) is what this test proves, and the deployed-site run proves the redirect.
-    await followAndExpectFreshDocument(page, baseURL, page.locator('a.brand'), '/');
+    // The link is the base path with its closing slash, so the home page loads with no redirect, on the host and on a
+    // static server that has none.
+    const brand = page.locator('a.brand');
+    const home = addressOf('/', baseURL);
+    expect(new URL((await brand.getAttribute('href')) ?? '', page.url()).toString()).toBe(home);
+    await followAndExpectFreshDocument(page, baseURL, brand, '/');
+    expect(page.url()).toBe(home);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Free developer tools/);
   });
 
   for (const [name, path] of [
@@ -243,9 +247,7 @@ test.describe('in-site addresses keep the base path', () => {
         const url = new URL(href);
         // Links that leave the site are not in scope.
         if (url.origin !== base.origin) continue;
-        // The home link is the base path itself, written without its closing slash (see sameAddress).
-        const inBase = url.pathname.startsWith(base.pathname) || url.pathname === base.pathname.replace(/\/$/, '');
-        expect(inBase, `${href} on ${path} starts with ${base.pathname}`).toBe(true);
+        expect(url.pathname.startsWith(base.pathname), `${href} on ${path} starts with ${base.pathname}`).toBe(true);
         url.hash = '';
         url.search = '';
         seen.add(url.toString());
@@ -253,14 +255,9 @@ test.describe('in-site addresses keep the base path', () => {
     }
     // Enough distinct addresses that the check cannot pass by finding nothing.
     expect(seen.size).toBeGreaterThan(15);
-    // A static preview server does not do the host's redirect from the base path without its closing slash to the slash
-    // form, so on a local address the slash form is asked for. On the deployed site the exact address is asked for.
-    const local = ['127.0.0.1', 'localhost'].includes(base.hostname);
-    const bare = new URL(base.origin + base.pathname.replace(/\/$/, '')).toString();
     for (const address of seen) {
-      const asked = local && base.pathname !== '/' && address === bare ? base.toString() : address;
-      const response = await request.get(asked);
-      expect(response.status(), asked).toBe(200);
+      const response = await request.get(address);
+      expect(response.status(), address).toBe(200);
     }
   });
 });

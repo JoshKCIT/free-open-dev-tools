@@ -34,12 +34,16 @@ export default function App() {
       </a>
       <header className="site-header">
         <div className="wrap">
-          <SiteLink className="brand" to="/">
+          {/*
+            A plain link to the base path with its closing slash, so the home page loads as a new document at any
+            base with no redirect from the host. The router would write the base path without the slash.
+          */}
+          <a className="brand" href={import.meta.env.BASE_URL}>
             <span style={{ color: 'var(--accent)', display: 'flex' }}>
               <Logo />
             </span>
             Free &amp; Open Dev Tools
-          </SiteLink>
+          </a>
           <nav className="nav" aria-label="Main">
             <SiteNavLink to="/tools">Tools</SiteNavLink>
             <SiteNavLink to="/catalog">Catalog</SiteNavLink>
