@@ -1,0 +1,71 @@
+{
+  "id": "pkce-builder",
+  "name": "PKCE & OAuth Request Builder",
+  "summary": "Make a PKCE verifier and challenge, build an OAuth 2.0 authorization request and read the code or error out of a redirect address, all offline.",
+  "about": "Make a PKCE code verifier and its S256 challenge with the browser's own random number generator and SHA-256, build an OAuth 2.0 authorization request address from fields (with a state and, for OpenID Connect, a nonce made for it), or paste a redirect address and read the code, state or error out of it. Everything is made on this device, nothing is sent, and the address it builds is shown only as text.",
+  "supports": [
+    "A PKCE code verifier of 43 to 128 characters from A-Z, a-z, 0-9, hyphen, period, underscore and tilde (RFC 7636 section 4.1), made from the browser's random number generator when the field is left blank, or checked rule by rule when you type one: a verifier that is too short, too long or holds a character outside that set is refused by the rule, naming the first such character as a U+ code and never repeating the verifier",
+    "The S256 code challenge, the base64url of the SHA-256 of the verifier without padding, made with the browser's Web Crypto digest and reproducing the RFC 7636 Appendix B pair (verifier dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk gives E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM); the plain method is offered with the warning that it exposes the verifier in the request",
+    "An authorization request address from fields: the endpoint (an existing query is kept, a fragment is refused), client_id, redirect_uri, scope, response_type code or token, state and nonce (made when blank, a nonce only when the scope holds openid), the PKCE challenge, and the OpenID Connect extras response_mode, display, prompt, max_age, ui_locales, login_hint and acr_values, each written once, percent-encoded with %20 for a space, in a fixed order",
+    "The redirect address checks of RFC 6749 section 3.1.2 and RFC 8252: absolute, no fragment, https unless a loopback IP literal or a private-use scheme with a period in it, localhost flagged as not recommended; response_type token flagged as RFC 9700 says it should not be used",
+    "A redirect address, a bare query, a bare fragment or a form body read from both the query and the fragment, with a plus sign as a space and every parameter kept in the order written, repeats included: code, state, error, error_description, error_uri and iss are shown, an id_token or access_token only as present with its first characters and its length, an error code explained in a plain sentence, and the returned state and iss compared with the values you give",
+    "The body of the token request that would trade the code for tokens, as text only; this page has no field for a client secret and says that a secret belongs on a server"
+  ],
+  "limits": [
+    "Everything is made on this device with the browser's random number generator. Nothing is sent, the request address is only text and the page never opens it; opening it is your choice.",
+    "The verifier, state and nonce are not saved anywhere and are not kept between runs. A made value changes on every Run, so copy it into its field to keep it, and keep the verifier in your application's memory until the code is exchanged.",
+    "The page cannot know what your authorization server supports or requires, so a request can be well formed and still be refused: an unknown client, a redirect address that is not registered, a scope that is not allowed or a response mode the server does not offer.",
+    "A returned state is compared only with the value you generated or typed here, and the issuer only with the value you give; your application must make those checks itself, and a response that lacks a state cannot be checked at all.",
+    "Parameters follow RFC 6749, RFC 7636, RFC 9700 and OpenID Connect Core 1.0; extensions your provider adds are not offered. The plain method is offered only with a warning, and OAuth 2.1 is not modelled because it is still a draft.",
+    "A redirect paste is limited to 65,536 characters and 200 parameters, an address to 16,384 characters and a scope to 2,048 characters; a larger input is refused before any work, naming the part and never repeating what was typed. Tab and line break characters inside a pasted address are dropped, as an address parser drops them."
+  ],
+  "ambiguities": [
+    "A verifier made on this page is 43 characters (32 random bytes written in base64url), which is the length RFC 7636 recommends; with a chosen length from 44 to 128 each character is picked from the 64 symbols of the base64url alphabet, so the period and the tilde, which the RFC also allows, never appear in a made verifier.",
+    "A plus sign in a query or a fragment is read as a space and %2B as a plus sign, the form encoding of RFC 6749 appendix B; some servers write a space as %20 only, and both are read the same way here.",
+    "OpenID Connect Core says redirect_uri is required while RFC 6749 says it is optional; the page leaves it out when the field is blank and says so when the scope holds openid."
+  ],
+  "standards": [
+    {
+      "label": "RFC 7636: Proof Key for Code Exchange by OAuth Public Clients",
+      "url": "https://www.rfc-editor.org/rfc/rfc7636"
+    },
+    {
+      "label": "RFC 6749: The OAuth 2.0 Authorization Framework",
+      "url": "https://www.rfc-editor.org/rfc/rfc6749"
+    },
+    {
+      "label": "RFC 9700: Best Current Practice for OAuth 2.0 Security",
+      "url": "https://www.rfc-editor.org/rfc/rfc9700"
+    },
+    {
+      "label": "RFC 8252: OAuth 2.0 for Native Apps",
+      "url": "https://www.rfc-editor.org/rfc/rfc8252"
+    },
+    {
+      "label": "RFC 9207: OAuth 2.0 Authorization Server Issuer Identification",
+      "url": "https://www.rfc-editor.org/rfc/rfc9207"
+    },
+    {
+      "label": "OpenID Connect Core 1.0",
+      "url": "https://openid.net/specs/openid-connect-core-1_0.html"
+    }
+  ],
+  "keywords": [
+    "pkce",
+    "oauth",
+    "oauth2",
+    "oidc",
+    "openid connect",
+    "code verifier",
+    "code challenge",
+    "s256",
+    "authorization request",
+    "redirect uri",
+    "state",
+    "nonce"
+  ],
+  "primaryExport": "s256Challenge",
+  "usage": "import { s256Challenge, checkVerifier } from '@fodt/pkce-builder';\n\n// RFC 7636 appendix B\nconst verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';\n\ncheckVerifier(verifier); // []\nawait s256Challenge(verifier); // 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'",
+  "apiNotes": "`s256Challenge(verifier)` checks the verifier against RFC 7636 section 4.1 (`checkVerifier` lists the broken rules, each naming the rule and never the verifier) and resolves to the base64url of its SHA-256 without padding, made with `crypto.subtle.digest`; a verifier that breaks a rule throws a `PkceBuilderError` with `part` set to `verifier`. Random values are never read from a global: every function that makes one takes a `random(n)` function that returns `n` random bytes as a `Uint8Array`, and a page passes `(n) => crypto.getRandomValues(new Uint8Array(n))`. `randomUnreserved(length, random)` maps each byte onto the 64-symbol base64url alphabet with `& 63`, so there is no modulo bias and no retry loop; `randomBase64Url(byteCount, random)` writes the bytes as base64url. `buildAuthorizationRequest(fields)` resolves to the address, the ordered parameter list, the findings and the values it made; `readRedirect(text, expected)` returns every parameter in order with the ones that are found, the notes and the explained error; `checkRedirectUri(text)`, `tokenRequestText(fields)` and the `OAUTH_ERRORS` table are exported too. A refusal is a `PkceBuilderError` whose message names the part and never holds typed text; the package keeps no state between calls and prints nothing.",
+  "testNotes": "Expected values come from the specification text: the RFC 7636 appendix B pair (the 32 octets give the verifier, the verifier gives the challenge), the examples of RFC 6749 sections 4.1.1, 4.1.2 and 4.1.2.1 and of OpenID Connect Core sections 3.1.2.1 and 3.1.2.6 retyped with the attribution its notices ask for, and the loopback and private-use addresses of RFC 8252 sections 7.1 and 7.3. Node crypto is the second opinion for the S256 challenge of 1,000 generated verifiers, and Node's URL and URLSearchParams read back every built request. A full sweep of 256 byte values shows each of the 64 symbols exactly four times and never a period or a tilde. Two runs with different random sources make different values and a filled verifier gives the same challenge every time. Query names such as __proto__, constructor and toString, masked values, refusals that never repeat typed text and every parser on hostile strings at two sizes are tested."
+}

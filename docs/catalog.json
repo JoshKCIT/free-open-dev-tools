@@ -1489,5 +1489,12 @@
     "category": "network",
     "tier": 2,
     "summary": "Paste Set-Cookie lines and see whether a browser would store each cookie, how long it lives, where it is sent and why one is refused."
+  },
+  {
+    "id": "pkce-builder",
+    "name": "PKCE & OAuth Request Builder",
+    "category": "hashing",
+    "tier": 2,
+    "summary": "Make a PKCE verifier and challenge, build an OAuth 2.0 authorization request and read the code or error out of a redirect address, all offline."
   }
 ]
