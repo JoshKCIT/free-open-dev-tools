@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { MAX_AGE_LIMIT_SECONDS, maskValue } from '../src/index';
-import { inspect, NOW, one } from './helpers';
+import { inspect, NOW, one, PAGE } from './helpers';
 
 // Expected values are worked out from draft-ietf-httpbis-rfc6265bis-22 (1 December 2025): the section is named beside
 // each group. The fixed time is Tuesday 6 October 2026 12:00:00 UTC and the address is https://site.example/account/login.
@@ -265,4 +265,55 @@ it('the section 3.1 and 5.1.4 examples of the draft give the cookies and paths t
   const removed = one('Set-Cookie: lang=; Expires=Sun, 06 Nov 1994 08:49:37 GMT');
   expect(removed.decision.outcome).toBe('stored-then-deleted');
   expect(removed.value).toBe('');
+});
+
+it('the things worth a look are listed by line and never repeat a value', () => {
+  const remarksOf = (lines: string, url?: string): string[] =>
+    inspect(lines, url === undefined ? {} : { url }).worthALook.map((remark) => remark.text);
+  // Cookies joined by commas are one cookie to a browser: flagged, never split. A date with a comma is not a join.
+  const joined = inspect('a=1, b=2');
+  expect(joined.cookies).toHaveLength(1);
+  expect(joined.cookies[0]?.looksJoined).toBe(true);
+  expect(joined.worthALook[0]?.text).toContain('joined by commas');
+  expect(inspect('a=b; Expires=Fri, 01 Jan 2038 00:00:00 GMT, c=3').cookies[0]?.looksJoined).toBe(true);
+  expect(inspect('a=b; Expires=Fri, 01 Jan 2038 00:00:00 GMT').cookies[0]?.looksJoined).toBe(false);
+  expect(inspect('a=b, ,, =x').cookies[0]?.looksJoined).toBe(false);
+  expect(inspect('a=b,').cookies[0]?.looksJoined).toBe(false);
+  // A Domain with one label (the public suffix list is not consulted); the host itself is not flagged.
+  expect(remarksOf('a=1; Domain=example').some((text) => text.includes('single label'))).toBe(true);
+  expect(remarksOf('a=1; Domain=site.example').some((text) => text.includes('single label'))).toBe(false);
+  expect(remarksOf('a=1; Domain=localhost', 'http://localhost/').some((text) => text.includes('single label'))).toBe(
+    false,
+  );
+  // Secure over http, and a cookie without Secure that travels over http.
+  const insecure = remarksOf('a=1; Secure', 'http://site.example/');
+  expect(insecure.some((text) => text.includes('has Secure but the response address is plain http'))).toBe(true);
+  expect(remarksOf('a=1', 'http://site.example/').some((text) => text.includes('clear text'))).toBe(true);
+  expect(remarksOf('a=1', PAGE).some((text) => text.includes('clear text'))).toBe(false);
+  // A session cookie without HttpOnly.
+  const session = (line: string): boolean => remarksOf(line).some((text) => text.includes('no HttpOnly'));
+  expect(session('a=1')).toBe(true);
+  expect(session('a=1; HttpOnly')).toBe(false);
+  expect(session('a=1; Max-Age=60')).toBe(false);
+  // A value that looks like a token: long, made of the base64 characters, with letters and digits, or three dotted parts.
+  const token = (value: string): boolean => remarksOf(`a=${value}`).some((text) => text.includes('looks like a token'));
+  expect(token('abcdefghij1234567890')).toBe(true);
+  expect(token('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln')).toBe(true);
+  expect(token('abcdefghijklmnopqrst')).toBe(false);
+  expect(token('abc123')).toBe(false);
+  expect(token('abcdefghij 1234567890')).toBe(false);
+  // Non-ASCII text and quotes kept as part of the value.
+  const accent = String.fromCodePoint(0xe9);
+  expect(remarksOf(`a=caf${accent}`).some((text) => text.includes('non-ASCII'))).toBe(true);
+  expect(remarksOf('a=1; x=caf' + accent).some((text) => text.includes('non-ASCII'))).toBe(true);
+  expect(remarksOf('a=plain').some((text) => text.includes('non-ASCII'))).toBe(false);
+  expect(remarksOf('a="quoted"').some((text) => text.includes('double quote'))).toBe(true);
+  // The list follows the lines and never repeats a value or a masked one.
+  const secret = 'Zq9XkP2mV7wLr4TnB8sYd';
+  const report = inspect(`first=${secret}\nsecond=2\nthird=${secret}; Domain=example`);
+  expect(report.worthALook.map((remark) => remark.line)).toEqual(
+    [...report.worthALook.map((remark) => remark.line)].sort((a, b) => a - b),
+  );
+  expect(report.worthALook.length).toBeGreaterThan(3);
+  for (const remark of report.worthALook) expect(remark.text).not.toContain(secret);
 });

@@ -132,7 +132,7 @@ function attributeRows(attributes: readonly Attribute[], reveal: boolean): Attri
 function domainHandling(cookie: ParsedCookie, scope: CookieScope): string {
   const domain = visible(scope.domain, 100);
   if (scope.hostOnly) {
-    const why = cookie.domain === null ? 'There is no Domain attribute' : 'The Domain attribute is empty';
+    const why = cookie.domain === null ? 'there is no Domain attribute' : 'the Domain attribute is empty';
     return `Host-only: ${why}, so only ${domain} gets the cookie, not its subdomains.`;
   }
   return `Domain cookie: Domain=${domain} matches the host of the response address, so ${domain} and its subdomains get the cookie.`;

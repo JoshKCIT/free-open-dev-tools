@@ -72,7 +72,7 @@ function cookieStart(text: string, start: number, end: number): number {
 /** True for the characters that cannot be inside a cookie name: controls, space, tab and the separators of RFC 9110. */
 function isNameStopper(code: number): boolean {
   if (code <= 32 || code === 127) return true;
-  // ( ) < > @ , ; : \ " / [ ] ? { }
+  // ( ) < > @ , ; : \ " / [ ] ? = { }
   return (
     code === 40 ||
     code === 41 ||
@@ -81,6 +81,7 @@ function isNameStopper(code: number): boolean {
     code === 64 ||
     code === 44 ||
     code === 59 ||
+    code === 61 ||
     code === 58 ||
     code === 92 ||
     code === 34 ||
