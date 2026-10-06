@@ -1,5 +1,6 @@
 import { LOOKUP_LIMIT } from './limits';
-import type { SpfKind, SpfRecord, SpfTerm } from './spf-parse';
+import type { SpfKind, SpfQualifier, SpfRecord, SpfTerm } from './spf-parse';
+import { visible } from './visible';
 
 /** The kinds of term that cause a DNS lookup (RFC 7208 section 4.6.4). */
 export type LookupKind = 'include' | 'a' | 'mx' | 'ptr' | 'exists' | 'redirect';
@@ -40,6 +41,45 @@ export interface SpfReport {
 
 function isLookup(term: SpfTerm): term is SpfTerm & { kind: LookupKind } {
   return LOOKUP_KINDS.has(term.kind);
+}
+
+const RESULT_OF: Record<SpfQualifier, string> = {
+  '+': 'pass',
+  '-': 'fail',
+  '~': 'softfail',
+  '?': 'neutral',
+};
+
+/** What a term means, in one sentence that holds at most 40 characters of the pasted argument. */
+export function describeTerm(term: SpfTerm): string {
+  if (term.kind === 'invalid') return 'Not a term this page can read.';
+  const shown = visible(term.argument, 40);
+  const result = term.qualifier === null ? '' : RESULT_OF[term.qualifier];
+  const onMatch = result === '' ? '' : ` A match gives ${result}.`;
+  switch (term.kind) {
+    case 'all':
+      return `Matches every sender.${onMatch}`;
+    case 'include':
+      return `Checks the record of the domain named after the colon (${shown}); a pass there is a match.${onMatch}`;
+    case 'a':
+      return `Matches when the sender address is one of the addresses of ${term.argument === '' ? 'the domain being checked' : 'the named domain'}.${onMatch}`;
+    case 'mx':
+      return `Matches when the sender address is one of the addresses of the mail servers of ${term.argument === '' ? 'the domain being checked' : 'the named domain'}.${onMatch}`;
+    case 'ptr':
+      return `Matches by the reverse name of the sender address. RFC 7208 section 5.5 says not to publish it.${onMatch}`;
+    case 'ip4':
+      return `Matches a sender address in the IPv4 network ${shown}.${onMatch}`;
+    case 'ip6':
+      return `Matches a sender address in the IPv6 network ${shown}.${onMatch}`;
+    case 'exists':
+      return `Matches when the name built from ${shown} has an address record.${onMatch}`;
+    case 'redirect':
+      return `Continues with the record of the domain named after the equals sign (${shown}) when no mechanism matched.`;
+    case 'exp':
+      return `Names the domain whose text explains a fail result (${shown}).`;
+    default:
+      return `A modifier this page does not know, which is ignored.`;
+  }
 }
 
 /**

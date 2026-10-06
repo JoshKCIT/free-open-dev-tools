@@ -17,6 +17,6 @@ export { readTxtRecords } from './txt';
 export type { TxtRecord } from './txt';
 export { parseSpf } from './spf-parse';
 export type { SpfKind, SpfProblem, SpfQualifier, SpfRecord, SpfTerm } from './spf-parse';
-export { checkSpf } from './spf-check';
+export { checkSpf, describeTerm } from './spf-check';
 export type { LookupKind, LookupTerm, NoteTone, SpfNote, SpfReport } from './spf-check';
 export { MAX_SHOWN_PATH, MAX_SHOWN_PATTERN, visible } from './visible';

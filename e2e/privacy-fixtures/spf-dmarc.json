@@ -1,0 +1,1 @@
+[{ "values": { "spfText": "v=spf1 ip4:192.0.2.0/24 mx -all" }, "attachesFile": false }]

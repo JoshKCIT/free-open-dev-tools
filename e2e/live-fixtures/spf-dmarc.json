@@ -1,0 +1,8 @@
+{
+  "id": "spf-dmarc",
+  "label": "RFC 7208 section 4.6.4: a, mx and two includes are four terms that cause DNS lookups",
+  "steps": [
+    { "action": "fill", "field": "spfText", "value": "v=spf1 a mx include:example.com include:example.org -all" }
+  ],
+  "expect": ["4 of 10"]
+}

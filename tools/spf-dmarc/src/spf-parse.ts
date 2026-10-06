@@ -38,6 +38,8 @@ export interface SpfRecord {
   text: string;
   /** Its length in characters. */
   length: number;
+  /** Its length in octets (UTF-8), which is what the size limits of RFC 7208 section 3.4 count. */
+  octets: number;
   /** Whether it starts with v=spf1 followed by a space or the end (RFC 7208 section 4.5). */
   isSpf: boolean;
   terms: SpfTerm[];
@@ -169,7 +171,14 @@ function parseTerm(text: string, from: number, to: number, index: number, seen: 
  */
 export function parseSpf(text: string): SpfRecord {
   checkRecordLength(text, 'spf');
-  const record: SpfRecord = { text, length: text.length, isSpf: false, terms: [], errors: [] };
+  const record: SpfRecord = {
+    text,
+    length: text.length,
+    octets: new TextEncoder().encode(text).length,
+    isSpf: false,
+    terms: [],
+    errors: [],
+  };
   const versionEnds = text.length === 6 || (text.length > 6 && text.charCodeAt(6) === SPACE);
   if (text.slice(0, 6).toLowerCase() !== 'v=spf1' || !versionEnds) {
     record.errors.push({
