@@ -304,7 +304,7 @@ export default function OutputView({ block }: { block: OutputBlock }) {
                 }}
               >
                 <span style={{ fontFamily: 'var(--mono)', overflowWrap: 'anywhere' }}>{f.name}</span>
-                <span style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}>
+                <span className="file-size" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   {typeof f.content === 'string' ? `${f.content.length} chars` : `${f.content.byteLength} bytes`}
                 </span>
                 <span style={{ marginLeft: 'auto' }}>

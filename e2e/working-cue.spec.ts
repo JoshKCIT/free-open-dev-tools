@@ -1,4 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
+import { createRequire } from 'node:module';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 /**
  * HARD-01 (D-217): a background run that is still going after about a second shows a working cue beside the output.
@@ -41,7 +46,7 @@ const START_SENTENCE = 'Working. This stops by itself after 1.5 seconds.';
 const ELLIPSIS = '…';
 
 /** The dim values the styles use, and the least blended contrast any text may have (WCAG AA for normal text). */
-const DIM = { dark: 0.8, light: 0.92 } as const;
+const DIM = { dark: 0.8, light: 0.94 } as const;
 const MIN_CONTRAST = 4.5;
 
 function output(page: Page) {
@@ -838,5 +843,147 @@ for (const theme of ['dark', 'light'] as const) {
     // The measured values, for the record (printed with the test output).
     console.log(`CONTRAST\n${lines.join('\n')}`);
     expect(tooLow, `text under ${MIN_CONTRAST}:1 once dimmed in the ${theme} theme`).toEqual([]);
+  });
+}
+
+/*
+ * Blocks the regex tester never shows. The `files` block (13 pages with a run limit show it) and the `diff` block (the
+ * XML formatter's Compare mode) can be dimmed under the cue too, so their text is measured the same way, from static
+ * markup: the real `OutputView` component is rendered with `react-dom/server` inside a dimmed Output panel and loaded
+ * with `setContent` next to the production stylesheet, so no tool page and no held worker is needed. Playwright compiles
+ * an imported `.tsx` file with its own JSX runtime, so the shipped source files are compiled in memory with the
+ * repository's own TypeScript instead, as `e2e/tree-block.spec.ts` does. Needs the build for the stylesheet.
+ */
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const webRequire = createRequire(join(repoRoot, 'apps', 'web', 'package.json'));
+
+/** Compiles one source file of the web app to CommonJS in memory and runs it; `deps` answers its relative imports. */
+function loadWebSource(file: string, deps: Record<string, unknown>): Record<string, unknown> {
+  const ts = createRequire(join(repoRoot, 'package.json'))('typescript') as typeof import('typescript');
+  const source = readFileSync(join(repoRoot, 'apps', 'web', 'src', file), 'utf8');
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
+      esModuleInterop: true,
+    },
+  });
+  const mod: { exports: Record<string, unknown> } = { exports: {} };
+  const localRequire = (id: string): unknown => (id in deps ? deps[id] : webRequire(id));
+  const run = vm.runInThisContext(`(function (require, module, exports) {${outputText}\n})`, { filename: file }) as (
+    r: typeof localRequire,
+    m: typeof mod,
+    e: typeof mod.exports,
+  ) => void;
+  run(localRequire, mod, mod.exports);
+  return mod.exports;
+}
+
+/** The markup of the real output blocks, as the runner wraps them (a `div` inside the Output body). */
+function outputBlocksMarkup(blocks: unknown[]): string {
+  // react and its types live under apps/web, out of reach of this folder's type check, so the calls used are typed here.
+  const React = webRequire('react') as {
+    createElement(type: unknown, props: unknown, ...children: unknown[]): unknown;
+  };
+  const { renderToStaticMarkup } = webRequire('react-dom/server') as { renderToStaticMarkup(element: unknown): string };
+  const tree = loadWebSource('lib/tree.ts', {});
+  const OutputView = loadWebSource('components/OutputView.tsx', {
+    '../lib/tree': tree,
+    '../lib/download-mime': loadWebSource('lib/download-mime.ts', {}),
+    './Countdown': loadWebSource('components/Countdown.tsx', {}),
+    './CssPreview': loadWebSource('components/CssPreview.tsx', {
+      '../lib/css-preview-guard': loadWebSource('lib/css-preview-guard.ts', {}),
+    }),
+    './TreeView': loadWebSource('components/TreeView.tsx', { '../lib/tree': tree }),
+  }).default;
+  return renderToStaticMarkup(
+    React.createElement('div', null, ...blocks.map((block, i) => React.createElement(OutputView, { block, key: i }))),
+  );
+}
+
+function builtStyles(): string {
+  const dir = join(repoRoot, 'apps', 'web', 'dist', 'assets');
+  if (!existsSync(dir)) throw new Error('apps/web/dist/assets is missing: run pnpm run build:web first');
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.css'))
+    .map((f) => readFileSync(join(dir, f), 'utf8'))
+    .join('\n');
+}
+
+const OTHER_BLOCKS = [
+  {
+    kind: 'files',
+    label: 'Files',
+    files: [
+      { name: 'page-1.png', mime: 'image/png', content: new Uint8Array(1234) },
+      { name: 'notes.txt', mime: 'text/plain;charset=utf-8', content: 'hello' },
+    ],
+  },
+  {
+    kind: 'diff',
+    label: 'Differences',
+    lines: [
+      { type: 'meta', text: '@@ -1,3 +1,3 @@' },
+      { type: 'ctx', text: '<root>' },
+      { type: 'del', text: '  <a>1</a>' },
+      { type: 'add', text: '  <a>2</a>' },
+    ],
+  },
+];
+
+/** Every text element of those blocks: the block label, a file's size line, and each kind of diff line. */
+const OTHER_SELECTORS = [
+  '.output-label',
+  '.file-size',
+  '.diff-meta',
+  '.diff-add',
+  '.diff-del',
+  '.diff-line:not([class*=" "])',
+];
+
+for (const theme of ['dark', 'light'] as const) {
+  test(`files and diff blocks: dimmed text keeps at least 4.5 to 1 in the ${theme} theme, measured on the real markup`, async ({
+    page,
+  }) => {
+    const body = outputBlocksMarkup(OTHER_BLOCKS);
+    await page.setContent(
+      `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><title>blocks</title>` +
+        `<style>${builtStyles()}</style></head><body><main><div class="tool-layout">` +
+        `<section class="panel" aria-label="Output"><div class="panel-body output-stale">${body}</div></section>` +
+        `</div></main></body></html>`,
+    );
+    await expect
+      .poll(async () => outputBody(page).evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeCloseTo(DIM[theme], 3);
+
+    const rows = await measureContrast(page, OTHER_SELECTORS);
+    const tooLow: string[] = [];
+    for (const row of rows) {
+      expect(row.missing, `${row.selector} is on screen`).toBe(false);
+      if (row.dimmed < MIN_CONTRAST) tooLow.push(`${row.selector} reads ${row.dimmed.toFixed(2)} dimmed`);
+      if (row.undimmed < MIN_CONTRAST) tooLow.push(`${row.selector} reads ${row.undimmed.toFixed(2)} undimmed`);
+    }
+    console.log(
+      `CONTRAST\n${rows.map((r) => `${theme} | ${r.selector} | blended ${r.dimmed.toFixed(2)} | undimmed ${r.undimmed.toFixed(2)}`).join('\n')}`,
+    );
+    expect(tooLow, `text under ${MIN_CONTRAST}:1 in the ${theme} theme`).toEqual([]);
+  });
+
+  test(`bcrypt: the empty output hint keeps at least 4.5 to 1 in the ${theme} theme`, async ({ page }) => {
+    if (theme === 'light') {
+      await page.addInitScript(() => {
+        window.localStorage.setItem('fodt-theme', 'light');
+      });
+    }
+    await page.goto(rel('/tools/bcrypt'));
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    await expect(outputBody(page).locator('.output-empty')).toHaveText('Choose your input, then press Run.');
+    const [row] = await measureContrast(page, ['.output-empty']);
+    expect(row?.missing).toBe(false);
+    expect(row?.opacity).toBe(1);
+    expect(row?.undimmed ?? 0, `the empty output hint reads ${row?.undimmed.toFixed(2)}`).toBeGreaterThanOrEqual(
+      MIN_CONTRAST,
+    );
   });
 }

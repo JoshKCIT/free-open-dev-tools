@@ -701,8 +701,9 @@ input[type='file'] {
   font-size: 0.84rem;
   font-variant-numeric: tabular-nums;
 }
-/* The previous result while a newer run is going: dimmed (0.8 in the dark theme, 0.92 in the light one, chosen so every
-   text colour on the page keeps at least 4.5:1 once blended, measured in e2e/working-cue.spec.ts) and marked by a dashed
+/* The previous result while a newer run is going: dimmed (0.8 in the dark theme, 0.94 in the light one, chosen so every
+   text colour on the page keeps at least 4.5:1 once blended, measured in e2e/working-cue.spec.ts; at 0.94 the lowest
+   light values are a diff header at about 4.68:1 and the cancelled note at about 4.76:1) and marked by a dashed
    edge. No filter, so the blended colours stay exact. The padding gives back the width the border takes. */
 .output-stale {
   opacity: 0.8;
@@ -710,7 +711,7 @@ input[type='file'] {
   padding-left: 11px;
 }
 :root[data-theme='light'] .output-stale {
-  opacity: 0.92;
+  opacity: 0.94;
 }
 
 .tree-view {

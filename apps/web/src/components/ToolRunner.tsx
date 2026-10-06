@@ -681,7 +681,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
                 ))}
               </div>
             ) : !result?.errors?.length && !crashed ? (
-              <p style={{ color: 'var(--text-faint)', fontSize: '0.88rem', margin: 0 }}>
+              <p className="output-empty" style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: 0 }}>
                 {tool.autoRun === false ? 'Choose your input, then press Run.' : 'Output appears here as you type.'}
               </p>
             ) : null}
