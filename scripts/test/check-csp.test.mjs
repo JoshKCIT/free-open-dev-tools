@@ -18,6 +18,7 @@ import {
   judgePage,
   policyOfHtml,
   scanTokens,
+  unreachedChunks,
 } from '../check-csp.mjs';
 
 /**
@@ -235,6 +236,20 @@ describe('the fixed lists and the token table', () => {
     expect([...shell].sort()).toEqual(['_r.js', 'index.html']);
     expect([...pages.get('a')].sort()).toEqual(['_lazy.js', '_shared.js', 'src/tools/a.ts']);
     expect([...pages.get('b')]).toEqual(['src/tools/b.ts']);
+    expect(unreachedChunks(manifest, { shell, pages })).toEqual([]);
+  });
+
+  it('names a script chunk that neither the shell nor any tool page reaches, and ignores other assets', () => {
+    const manifest = {
+      'index.html': { file: 'i.js', imports: ['_r.js'], dynamicImports: ['src/tools/a.ts', 'src/pages/Lazy.tsx'] },
+      '_r.js': { file: 'r.js' },
+      'src/tools/a.ts': { file: 'a.js', imports: ['index.html'] },
+      'src/pages/Lazy.tsx': { file: 'lazy.js', imports: ['_part.js'] },
+      '_part.js': { file: 'part.js' },
+      'engine.wasm': { file: 'engine.wasm' },
+      'index.css': { file: 'index.css' },
+    };
+    expect(unreachedChunks(manifest, closures(manifest))).toEqual(['lazy.js', 'part.js']);
   });
 });
 
@@ -446,6 +461,18 @@ describe('a fake build through the real gate', () => {
     ];
     expect(expectPass(makeFakeBuild({ rows }))).toContain('CSP-GATE-OK');
     expectFail(makeFakeBuild({ rows: [{ ...rows[0], needs: [] }] }), 'does not declare "workers"');
+  });
+
+  it('fails a script chunk that only the shell loads on demand, since no closure reads it', () => {
+    const root = makeFakeBuild({ rows: goodRows() });
+    const dist = join(root, 'apps', 'web', 'dist');
+    const manifestPath = join(dist, '.vite', 'manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    manifest['index.html'].dynamicImports.push('src/pages/Lazy.tsx');
+    manifest['src/pages/Lazy.tsx'] = { file: 'assets/lazy.js', isDynamicEntry: true };
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    write(join(dist, 'assets', 'lazy.js'), WORKER_CODE);
+    expectFail(root, 'the chunk assets/lazy.js is in neither the shared shell nor any tool page');
   });
 
   it('fails a page that is written but has no manifest entry, and a manifest entry with no page', () => {

@@ -13,6 +13,7 @@
  *   never declares WebAssembly or code generation;
  * - no network call (the fetch class) appears in any page closure without a reviewed acknowledgement, and none of
  *   the four code-behaviour token classes appears in the shell chunks;
+ * - every script chunk in the manifest is in the shell or in some tool page's closure, so none goes unscanned;
  * - every written HTML file opens its head with exactly one policy, equal to the one the page's needs produce.
  *
  * Every check calls note() and keeps going; one report-and-exit block runs at the end. The gate never prints text it
@@ -132,6 +133,26 @@ export function closures(manifest) {
     pages.set(match[1], seen);
   }
   return { shell, pages };
+}
+
+/**
+ * The script chunks no closure reaches: in neither the shell nor any tool page's closure, so nobody reads their tokens.
+ * A lazily loaded site page or shared component that is not a tool entry would land here.
+ *
+ * @param {Record<string, { file: string }>} manifest
+ * @param {{ shell: Set<string>, pages: Map<string, Set<string>> }} split what `closures` returned for that manifest
+ * @returns {string[]} the built file names, sorted
+ */
+export function unreachedChunks(manifest, { shell, pages }) {
+  const reached = new Set(shell);
+  for (const keys of pages.values()) for (const key of keys) reached.add(key);
+  const reachedFiles = new Set([...reached].map((key) => manifest[key]?.file).filter(Boolean));
+  const files = new Set();
+  for (const [key, entry] of Object.entries(manifest)) {
+    const file = entry?.file ?? '';
+    if (!reached.has(key) && /\.m?js$/.test(file) && !reachedFiles.has(file)) files.add(file);
+  }
+  return [...files].sort();
 }
 
 /**
@@ -588,6 +609,11 @@ async function main() {
   if (manifest) {
     const { shell, pages } = closures(manifest);
     if (shell.size === 0) note('the manifest has no index.html entry, so the shared shell cannot be told apart.');
+    for (const file of unreachedChunks(manifest, { shell, pages })) {
+      note(
+        `the chunk ${file} is in neither the shared shell nor any tool page's closure, so its code is never scanned. Load it from a tool page or statically from the shell, or teach the gate where it belongs.`,
+      );
+    }
 
     const shellTokens = new Set();
     for (const key of shell) {
