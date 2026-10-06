@@ -1,0 +1,155 @@
+{
+  "tools": [
+    {
+      "id": "cors-checker",
+      "name": "CORS checker",
+      "category": "network",
+      "phase": 18,
+      "needs": [],
+      "outputKinds": ["keyvalue", "table", "code", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "set-cookie-inspector",
+      "name": "Set-Cookie inspector",
+      "category": "network",
+      "phase": 18,
+      "needs": [],
+      "outputKinds": ["table", "keyvalue", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "spf-dmarc",
+      "name": "SPF and DMARC checker and builder",
+      "category": "network",
+      "phase": 18,
+      "needs": [],
+      "outputKinds": ["table", "code", "keyvalue", "list", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "eml-viewer",
+      "name": ".eml viewer and header analyzer",
+      "category": "network",
+      "phase": 18,
+      "needs": ["sandboxed-html", "workers"],
+      "outputKinds": ["keyvalue", "table", "tree", "sandboxed-html", "files", "list", "note"],
+      "sharedAdditions": ["tree", "runLimit", "working cue", "inline fixture files"]
+    },
+    {
+      "id": "saml-decoder",
+      "name": "SAML decoder",
+      "category": "hashing",
+      "phase": 18,
+      "needs": [],
+      "needsNote": "Add workers only if a 2 MiB decode moves to a worker; the default is the main thread with size caps.",
+      "outputKinds": ["code", "keyvalue", "table", "list", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "pkce-builder",
+      "name": "PKCE and OAuth builder",
+      "category": "hashing",
+      "phase": 18,
+      "needs": [],
+      "outputKinds": ["keyvalue", "code", "table", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "source-map-decoder",
+      "name": "Source map decoder",
+      "category": "code",
+      "phase": 19,
+      "needs": ["workers"],
+      "outputKinds": ["table", "code", "keyvalue", "note"],
+      "sharedAdditions": ["runLimit", "working cue"]
+    },
+    {
+      "id": "asn1-viewer",
+      "name": "ASN.1 viewer",
+      "category": "hashing",
+      "phase": 19,
+      "needs": ["workers"],
+      "needsNote": "Workers only if the 10 MiB path runs in a worker; if it stays on the main thread with a node cap, the page declares no need.",
+      "outputKinds": ["tree", "code", "table", "note"],
+      "sharedAdditions": ["tree", "inline fixture files"]
+    },
+    {
+      "id": "wasm-inspector",
+      "name": "WebAssembly inspector",
+      "category": "code",
+      "phase": 19,
+      "needs": ["workers"],
+      "needsNote": "Reads module bytes only: it never compiles or runs a module, so it never declares wasm and never eval.",
+      "outputKinds": ["tree", "table", "keyvalue", "code", "note"],
+      "sharedAdditions": ["tree", "inline fixture files", "probe controls"]
+    },
+    {
+      "id": "font-inspector",
+      "name": "Font inspector and converter",
+      "category": "media",
+      "phase": 19,
+      "needs": ["eval", "wasm", "workers"],
+      "needsNote": "The one new page that may generate code at run time; its id is reserved in the policy gate.",
+      "outputKinds": ["keyvalue", "table", "image", "code", "files", "note"],
+      "sharedAdditions": ["runLimit", "working cue", "inline fixture files"]
+    },
+    {
+      "id": "sms-segments",
+      "name": "SMS segment calculator",
+      "category": "text",
+      "phase": 20,
+      "needs": [],
+      "outputKinds": ["table", "keyvalue", "list", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "conventional-commit",
+      "name": "Conventional Commit checker",
+      "category": "devops",
+      "phase": 20,
+      "needs": [],
+      "outputKinds": ["table", "code", "keyvalue", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "editorconfig",
+      "name": "EditorConfig resolver",
+      "category": "devops",
+      "phase": 20,
+      "needs": [],
+      "outputKinds": ["table", "list", "note"],
+      "sharedAdditions": []
+    }
+  ],
+  "upgrades": [
+    {
+      "id": "hex-viewer",
+      "name": "Hex viewer code arrays",
+      "category": "media",
+      "phase": 19,
+      "needs": ["workers"],
+      "outputKinds": ["code", "files", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "number-base",
+      "name": "Number base programmer's calculator",
+      "category": "encoding",
+      "phase": 20,
+      "needs": [],
+      "needsNote": "Workers only if evaluation moves to a worker; the default is the main thread with caps.",
+      "outputKinds": ["keyvalue", "table", "note"],
+      "sharedAdditions": []
+    },
+    {
+      "id": "glob-tester",
+      "name": "Glob tester CODEOWNERS mode",
+      "category": "devops",
+      "phase": 20,
+      "needs": ["workers"],
+      "outputKinds": ["table", "list", "note"],
+      "sharedAdditions": []
+    }
+  ]
+}
