@@ -1,5 +1,16 @@
+import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { PkceBuilderError, base64UrlEncode, checkVerifier, randomBase64Url, s256Challenge } from '../src/index';
+import {
+  PkceBuilderError,
+  base64UrlEncode,
+  buildAuthorizationRequest,
+  checkVerifier,
+  plainChallenge,
+  randomBase64Url,
+  randomUnreserved,
+  s256Challenge,
+} from '../src/index';
+import { fields, mulberry32, seeded } from './helpers';
 
 // Every literal below is retyped from RFC 7636 (September 2015). The section is named beside it.
 
@@ -90,4 +101,99 @@ it('verifiers of 42 and 129 characters and a disallowed character are refused by
     expect((thrown as PkceBuilderError).part).toBe('verifier');
     expect((thrown as PkceBuilderError).message).not.toContain(bad.slice(0, 6));
   }
+});
+
+it('1,000 generated verifiers have the right length and alphabet and a challenge equal to Node crypto', async () => {
+  // Section 4.1: 43 to 128 characters of the unreserved set. Section 4.2: the challenge is the base64url of the SHA-256.
+  const source = seeded(20261006);
+  const next = mulberry32(7);
+  for (let i = 0; i < 1000; i++) {
+    const length = 43 + Math.floor(next() * 86);
+    const verifier = length === 43 ? randomBase64Url(32, source) : randomUnreserved(length, source);
+    expect(verifier).toHaveLength(length);
+    expect(verifier).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(checkVerifier(verifier)).toEqual([]);
+    const expected = createHash('sha256').update(verifier, 'ascii').digest('base64url');
+    expect(await s256Challenge(verifier)).toBe(expected);
+  }
+});
+
+it('every byte value maps onto the base64url alphabet exactly four times, so there is no modulo bias', () => {
+  // RFC 4648 section 5, table 2: the 64 symbols in order. A byte b is written as the symbol at index b & 63.
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const sweep = Uint8Array.from({ length: 256 }, (_, i) => i);
+  const made = randomUnreserved(256, (count) => {
+    expect(count).toBe(256);
+    return sweep;
+  });
+  expect(made).toHaveLength(256);
+  const counts = new Map<string, number>();
+  for (const symbol of made) counts.set(symbol, (counts.get(symbol) ?? 0) + 1);
+  expect(counts.size).toBe(64);
+  for (const symbol of alphabet) expect(counts.get(symbol)).toBe(4);
+  // Each byte lands on the symbol its low six bits name, and the period and the tilde are never made.
+  for (let b = 0; b < 256; b++) expect(made.charAt(b)).toBe(alphabet.charAt(b & 63));
+  expect(made).not.toContain('.');
+  expect(made).not.toContain('~');
+  // A source that gives the wrong number of bytes is refused, and so is a count outside 1 to 1,024.
+  expect(() => randomUnreserved(5, () => new Uint8Array(4))).toThrow(PkceBuilderError);
+  expect(() => randomUnreserved(0, () => new Uint8Array(0))).toThrow(PkceBuilderError);
+  expect(() => randomBase64Url(1025, () => new Uint8Array(1025))).toThrow(PkceBuilderError);
+});
+
+it('two runs with blank fields make different values and a filled verifier gives the same challenge every time', async () => {
+  const blank = (seed: number) =>
+    buildAuthorizationRequest(fields({ verifier: '', state: '', nonce: '', random: seeded(seed) }));
+  const first = await blank(1);
+  const second = await blank(2);
+  // A verifier, a state and a nonce are made, in that order, and every one differs between the two runs.
+  expect(first.made.map((value) => value.name)).toEqual(['verifier', 'state', 'nonce']);
+  expect(second.made.map((value) => value.name)).toEqual(['verifier', 'state', 'nonce']);
+  for (let i = 0; i < 3; i++) expect(first.made[i]?.value).not.toBe(second.made[i]?.value);
+  expect(first.made[0]?.value).toHaveLength(43);
+  expect(first.made[1]?.value).toHaveLength(22);
+  expect(first.made[2]?.value).toHaveLength(22);
+  expect(first.challenge).toBe(
+    createHash('sha256')
+      .update(first.made[0]?.value ?? '', 'ascii')
+      .digest('base64url'),
+  );
+  expect(first.challenge).not.toBe(second.challenge);
+  // The package keeps no state: the same seed gives the same request again, with other runs in between.
+  expect(await blank(1)).toStrictEqual(first);
+  expect(await blank(2)).toStrictEqual(second);
+  expect(await blank(1)).toStrictEqual(first);
+  // A chosen length other than 43 makes one character for each random byte.
+  const sixty = await buildAuthorizationRequest(fields({ verifier: '', verifierLength: 60, random: seeded(3) }));
+  expect(sixty.made.find((value) => value.name === 'verifier')?.value).toHaveLength(60);
+  // A filled verifier gives the RFC 7636 appendix B challenge on every run, whatever the random source gives.
+  for (const seed of [1, 2, 3, 99]) {
+    const filled = await buildAuthorizationRequest(fields({ state: '', nonce: '', random: seeded(seed) }));
+    expect(filled.challenge).toBe('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+    expect(filled.made.map((value) => value.name)).toEqual(['state', 'nonce']);
+  }
+});
+
+it('base64url without padding writes the same text as Node for every length from 0 to 100', () => {
+  const next = mulberry32(42);
+  for (let length = 0; length <= 100; length++) {
+    const bytes = Uint8Array.from({ length }, () => Math.floor(next() * 256));
+    const expected = Buffer.from(bytes).toString('base64url');
+    expect(base64UrlEncode(bytes)).toBe(expected);
+    expect(expected).not.toContain('=');
+  }
+});
+
+it('the plain method gives the verifier back with the RFC 7636 and RFC 9700 warning', async () => {
+  // Section 4.2: code_challenge = code_verifier for plain.
+  const plain = plainChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+  expect(plain.challenge).toBe('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+  expect(plain.warning).toContain('RFC 7636');
+  expect(plain.warning).toContain('RFC 9700');
+  expect(plain.warning).toContain('S256');
+  expect(() => plainChallenge('short')).toThrow(PkceBuilderError);
+  const request = await buildAuthorizationRequest(fields({ method: 'plain' }));
+  expect(request.url).toContain('code_challenge_method=plain');
+  expect(request.url).toContain('code_challenge=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk');
+  expect(request.problems.some((problem) => problem.tone === 'warn' && problem.message.includes('plain'))).toBe(true);
 });
