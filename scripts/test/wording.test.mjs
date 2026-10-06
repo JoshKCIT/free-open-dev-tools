@@ -173,6 +173,43 @@ describe('the page policy is described truthfully in every listed file', () => {
   }
 });
 
+/** The names of the steps and jobs of a workflow file, read line by line (no YAML library is needed for names). */
+export function stepNames(workflowText) {
+  return workflowText
+    .split(/\r?\n/)
+    .map((line) => /^\s*(?:-\s+)?name:\s*(.+?)\s*$/.exec(line))
+    .filter(Boolean)
+    .map((match) => match[1]);
+}
+
+const COUNTED_PAGES = /\d+\s+tool pages/;
+const LIVE_ADDRESS = 'https://joshkcit.github.io/free-open-dev-tools';
+
+describe('the deploy workflow checks the live site without a catalog size in any step name', () => {
+  const text = read('.github/workflows/deploy.yml');
+
+  it('has no step name holding a number of tool pages', () => {
+    expect(stepNames(text).filter((name) => COUNTED_PAGES.test(name))).toEqual([]);
+  });
+
+  it('checks every live page policy after a deploy', () => {
+    expect(text).toContain(`node scripts/check-csp.mjs --live ${LIVE_ADDRESS}/`);
+  });
+
+  it('runs the navigation and policy specs against the live site', () => {
+    const lines = text.split(/\r?\n/);
+    const at = lines.findIndex((entry) => entry.includes('e2e/navigation.spec.ts e2e/csp.spec.ts'));
+    expect(at, 'no step runs both specs').toBeGreaterThan(-1);
+    expect(lines[at]).toContain('--project=chromium');
+    expect(lines.slice(at, at + 4).join('\n')).toContain(`E2E_BASE_URL: ${LIVE_ADDRESS}`);
+  });
+
+  it('finds a counted step name when one is written', () => {
+    const names = stepNames('steps:\n  - name: The 211 tool pages load\n    run: true');
+    expect(names.filter((name) => COUNTED_PAGES.test(name))).toEqual(['The 211 tool pages load']);
+  });
+});
+
 describe('the list of checked files', () => {
   it('covers at least eight files and names each only once', () => {
     expect(FILES.length).toBeGreaterThanOrEqual(8);

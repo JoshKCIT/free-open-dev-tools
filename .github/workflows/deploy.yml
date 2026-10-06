@@ -214,8 +214,16 @@ jobs:
       - name: Install browser engines
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: The 211 tool pages load and their JavaScript is clean
+      - name: Every tool page loads and its JavaScript is clean
         run: pnpm exec playwright test e2e/all-tool-chunks.spec.ts --project=chromium
         env:
           E2E_BASE_URL: https://joshkcit.github.io/free-open-dev-tools
           PROVENANCE_DENYLIST: ${{ secrets.PROVENANCE_DENYLIST }}
+
+      - name: Every live page carries its own content security policy first in its head
+        run: node scripts/check-csp.mjs --live https://joshkcit.github.io/free-open-dev-tools/
+
+      - name: In-site links load fresh pages and each page policy refuses outside requests
+        run: pnpm exec playwright test e2e/navigation.spec.ts e2e/csp.spec.ts --project=chromium
+        env:
+          E2E_BASE_URL: https://joshkcit.github.io/free-open-dev-tools
