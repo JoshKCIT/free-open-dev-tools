@@ -238,12 +238,23 @@ const POLICY_META = /<meta\s[^>]*http-equiv\s*=\s*["']?Content-Security-Policy["
 const CHARSET_META = /^<meta\s+charset\s*=/i;
 const FORBIDDEN_IN_META = ['frame-ancestors', 'report-uri', 'report-to', 'sandbox'];
 
-/** The policy text of a page's policy meta, or null when there is none. */
+/** One attribute of a start tag: its name, then a double-quoted, single-quoted or unquoted value, or no value. */
+const ATTRIBUTE = /\s([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+
+/**
+ * The policy text of a page's policy meta: null when there is no policy meta, and an empty string when the meta has
+ * no `content` attribute the browser would read. The tag is read attribute by attribute the way a browser reads it,
+ * so a single-quoted or unquoted value is found, a lookalike such as `data-content` is never taken for it, and the
+ * first `content` attribute wins when there are two.
+ */
 export function policyOfHtml(html) {
   const tag = new RegExp(POLICY_META.source, 'i').exec(html);
   if (!tag) return null;
-  const content = /content\s*=\s*"([^"]*)"/i.exec(tag[0]);
-  return content ? content[1] : null;
+  const attributes = tag[0].replace(/^<meta/i, '').replace(/\/?>$/, '');
+  for (const [, name, double, single, bare] of attributes.matchAll(ATTRIBUTE)) {
+    if (name.toLowerCase() === 'content') return double ?? single ?? bare ?? '';
+  }
+  return '';
 }
 
 /** A policy cut into `[name, tokens]` pairs in written order, duplicates kept. */
@@ -301,7 +312,10 @@ export function checkHtml({ file, html, needs, frameHashes = [] }) {
   }
 
   const policy = policyOfHtml(html);
-  if (policy !== null) {
+  if (policy !== null && policy.trim() === '') {
+    // A policy meta whose policy cannot be read would skip every rule below, so it fails here instead.
+    fail('the policy meta has no content attribute the gate can read, so its policy cannot be checked.');
+  } else if (policy !== null) {
     const directives = directivesOf(policy);
     const names = directives.map(([name]) => name);
     for (const name of new Set(names)) {
@@ -609,7 +623,7 @@ async function main() {
     for (const problem of checkHtml({ file: path, html, needs, frameHashes })) note(problem);
     const policy = policyOfHtml(html);
     // One entry per route (the `.html` twin and the folder index carry the same text), counted once.
-    if (policy !== null && routes.get(route) === null) {
+    if (policy && routes.get(route) === null) {
       routes.set(route, policy);
       policies.push(policy);
     }

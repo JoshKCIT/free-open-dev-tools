@@ -16,6 +16,7 @@ import {
   checkHtml,
   closures,
   judgePage,
+  policyOfHtml,
   scanTokens,
 } from '../check-csp.mjs';
 
@@ -506,6 +507,57 @@ describe('the page structure rules on one written file', () => {
     const html = good();
     const policy = /content="([^"]*)"/.exec(html)[1];
     expect(check(html.replace(policy, change(policy)))).toContain(message);
+  });
+
+  describe('a policy meta that is not written with a double-quoted content attribute', () => {
+    const withTag = (tag) => good().replace(/<meta http-equiv[^>]*>/, tag);
+    const baseline = () => /content="([^"]*)"/.exec(good())[1];
+
+    it.each([
+      [
+        'a single-quoted wide policy',
+        () =>
+          `<meta http-equiv="Content-Security-Policy" content='script-src * data: blob:; connect-src *; worker-src *' />`,
+        "worker-src must be exactly 'none' or blob:",
+      ],
+      [
+        'a lookalike data-content attribute in front of a wide content attribute',
+        () =>
+          `<meta http-equiv="Content-Security-Policy" data-content="${baseline()}" content="script-src *; connect-src *" />`,
+        'script-src allows the outside source *',
+      ],
+      [
+        'an unquoted policy',
+        () => '<meta http-equiv="Content-Security-Policy" content=connect-src:* />',
+        "worker-src must be exactly 'none' or blob:",
+      ],
+      [
+        'no content attribute at all',
+        () => '<meta http-equiv="Content-Security-Policy" />',
+        'has no content attribute the gate can read',
+      ],
+      [
+        'an empty content attribute',
+        () => '<meta http-equiv="Content-Security-Policy" content="" />',
+        'has no content attribute the gate can read',
+      ],
+    ])('fails %s', (_label, tag, message) => {
+      expect(check(withTag(tag()))).toContain(message);
+    });
+
+    it('reads the policy the browser reads from each written form', () => {
+      expect(policyOfHtml(`<head><meta http-equiv="Content-Security-Policy" content='a-src b'></head>`)).toBe(
+        'a-src b',
+      );
+      expect(policyOfHtml('<head><meta http-equiv="Content-Security-Policy" content=a-src></head>')).toBe('a-src');
+      expect(
+        policyOfHtml(
+          '<head><meta data-content="x" http-equiv="Content-Security-Policy" CONTENT="y" content="z"></head>',
+        ),
+      ).toBe('y');
+      expect(policyOfHtml('<head><meta http-equiv="Content-Security-Policy"></head>')).toBe('');
+      expect(policyOfHtml('<head><meta charset="utf-8"></head>')).toBe(null);
+    });
   });
 
   it('fails a policy that differs from the one the declared needs produce, even if each part looks safe', () => {
