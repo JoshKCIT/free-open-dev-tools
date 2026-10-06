@@ -99,6 +99,7 @@ function makeFakeBuild({ rows, acks = NO_ACKS, shellCode = 'const shell=1;', mut
 
   if (manifest) write(join(dist, '.vite', 'manifest.json'), JSON.stringify(entries));
   for (const [path, html] of Object.entries(written)) write(join(dist, path), mutate ? mutate(path, html) : html);
+  write(join(root, 'docs', 'catalog.json'), JSON.stringify(rows.map((r) => ({ id: r.id }))));
   const routes = ['', 'tools', ...rows.map((r) => `tools/${r.id}`)];
   write(
     join(dist, 'sitemap.xml'),
@@ -661,10 +662,17 @@ describe('the live mode against a local server serving a fake build', () => {
   const run = promisify(execFile);
 
   /** Serves a build folder the way the real host does: a clean address maps to its html file, unknown ones get 404.html. */
-  function serve(dist, { unknownStatus = 404 } = {}) {
+  function serve(dist, { unknownStatus = 404, failOnce = [], failAlways = [] } = {}) {
+    const asked = new Map();
     return new Promise((resolveServer) => {
       const server = createServer((request, response) => {
         const path = decodeURIComponent(new globalThis.URL(request.url, 'http://x').pathname).replace(/^\//, '');
+        asked.set(path, (asked.get(path) ?? 0) + 1);
+        if (failAlways.includes(path) || (failOnce.includes(path) && asked.get(path) === 1)) {
+          response.writeHead(503, { 'content-type': 'text/plain' });
+          response.end('busy');
+          return;
+        }
         const candidates = path === '' ? ['index.html'] : [path, `${path}.html`, join(path, 'index.html')];
         const hit = candidates.find((c) => {
           try {
@@ -701,9 +709,66 @@ describe('the live mode against a local server serving a fake build', () => {
     try {
       const result = await live(root, server);
       expect(result.err).toBe('');
-      expect(result.out.trim()).toBe('CSP-LIVE-OK pages=8');
+      expect(result.out.trim()).toBe('CSP-LIVE-OK pages=8 addresses=14');
     } finally {
       server.close();
+    }
+  });
+
+  it('fails a folder twin that lost its policy while the html twin kept it, naming the slash address', async () => {
+    const root = makeFakeBuild({ rows: goodRows() });
+    const dist = join(root, 'apps', 'web', 'dist');
+    const file = join(dist, 'tools', 'worker-page', 'index.html');
+    writeFileSync(file, readFileSync(file, 'utf8').replace(/<meta http-equiv[^>]*>\s*/, ''));
+    const server = await serve(dist);
+    try {
+      const result = await live(root, server);
+      expect(result.code).toBe(1);
+      expect(result.err).toContain('/tools/worker-page/: the page has no policy meta');
+      expect(result.err).not.toContain('/tools/worker-page: the page has no policy meta');
+    } finally {
+      server.close();
+    }
+  });
+
+  it('fails a sitemap that names fewer tool pages than the catalog holds', async () => {
+    const root = makeFakeBuild({ rows: goodRows() });
+    const dist = join(root, 'apps', 'web', 'dist');
+    const sitemap = join(dist, 'sitemap.xml');
+    writeFileSync(
+      sitemap,
+      readFileSync(sitemap, 'utf8').replace('<url><loc>https://example.test/site/tools/plain</loc></url>', ''),
+    );
+    const server = await serve(dist);
+    try {
+      const result = await live(root, server);
+      expect(result.code).toBe(1);
+      expect(result.err).toContain(
+        'the sitemap names 4 tool pages but docs/catalog.json has 5 tools; not in the sitemap: plain.',
+      );
+    } finally {
+      server.close();
+    }
+  });
+
+  it('retries an address once after a server error and passes, and fails one that keeps failing', async () => {
+    const root = makeFakeBuild({ rows: goodRows() });
+    const dist = join(root, 'apps', 'web', 'dist');
+    const once = await serve(dist, { failOnce: ['tools/plain', 'sitemap.xml'] });
+    try {
+      const result = await live(root, once);
+      expect(result.err).toBe('');
+      expect(result.out.trim()).toBe('CSP-LIVE-OK pages=8 addresses=14');
+    } finally {
+      once.close();
+    }
+    const always = await serve(dist, { failAlways: ['tools/plain'] });
+    try {
+      const result = await live(root, always);
+      expect(result.code).toBe(1);
+      expect(result.err).toContain('/tools/plain answered 503, expected 200.');
+    } finally {
+      always.close();
     }
   });
 

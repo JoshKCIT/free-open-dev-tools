@@ -27,6 +27,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Buffer } from 'node:buffer';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { ROOT } from './lib/catalog.mjs';
 import { NEEDS, inlineScriptHashes, mermaidFrameHashes, parsePolicy, policyFor } from './lib/csp.mjs';
 
@@ -518,47 +519,111 @@ function parseArgs(argv) {
   return options;
 }
 
-/** The deployed-site mode: the page structure rules over the sitemap's routes and one unknown address. */
+/** The pause before the one retry of an address in live mode. */
+const LIVE_RETRY_MS = 1000;
+
+/**
+ * Reads one address of the live site, with one retry after a short pause when the request fails outright or the host
+ * answers 5xx, so a single passing hiccup does not fail a deployment. A second failure is returned as it is.
+ *
+ * @returns {Promise<{ status: number, text: string } | { error: string }>}
+ */
+async function liveGet(url) {
+  let last;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await sleep(LIVE_RETRY_MS);
+    try {
+      const response = await globalThis.fetch(url);
+      const text = await response.text();
+      last = { status: response.status, text };
+      if (response.status < 500) return last;
+    } catch (error) {
+      last = { error: error.message };
+    }
+  }
+  return last;
+}
+
+/** The tool ids in the catalog of the checked-out commit, or null (noted) when it cannot be read. */
+function catalogIds(note) {
+  const path = join(ROOT, 'docs', 'catalog.json');
+  try {
+    return new Set(JSON.parse(readFileSync(path, 'utf8')).map((entry) => entry.id));
+  } catch (error) {
+    note(`docs/catalog.json cannot be read, so the sitemap's tool pages cannot be counted: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * The deployed-site mode: the page structure rules over both written forms of every route the sitemap names (the
+ * `<path>.html` twin answers `<path>` and the folder index answers `<path>/`), and one unknown address. The sitemap's
+ * tool pages must be exactly the tools in `docs/catalog.json`, so a truncated sitemap cannot pass by naming fewer.
+ */
 async function runLive(base, problems, note) {
   const root = base.endsWith('/') ? base : `${base}/`;
-  const sitemapResponse = await globalThis.fetch(`${root}sitemap.xml`);
-  if (!sitemapResponse.ok) {
-    note(`${root}sitemap.xml answered ${sitemapResponse.status}.`);
-    return 0;
+  const sitemap = await liveGet(`${root}sitemap.xml`);
+  if (sitemap.error || sitemap.status !== 200) {
+    note(`${root}sitemap.xml ${sitemap.error ? `could not be read: ${sitemap.error}` : `answered ${sitemap.status}`}.`);
+    return { pages: 0, addresses: 0 };
   }
-  const locs = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const locs = [...sitemap.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   if (locs.length === 0) {
     note('the sitemap names no pages.');
-    return 0;
+    return { pages: 0, addresses: 0 };
   }
   // The sitemap carries the public address; the shortest entry is the home page, and the rest are routes below it.
   const home = [...locs].sort((a, b) => a.length - b.length)[0];
   const prefix = home.endsWith('/') ? home : `${home}/`;
   const routes = locs.map((loc) => (loc.startsWith(prefix) ? loc.slice(prefix.length) : null));
   if (routes.includes(null)) note('the sitemap names a page that is not below its home address.');
+  const pageRoutes = [...new Set(routes.filter((r) => r !== null))];
 
-  const targets = [...new Set(routes.filter((r) => r !== null))].map((route) => ({ route, expected: 200 }));
-  targets.push({ route: '__no-such-page__', expected: 404 });
+  const listed = new Set(pageRoutes.map((route) => TOOL_ROUTE.exec(route)?.[1]).filter(Boolean));
+  const catalog = catalogIds(note);
+  if (catalog) {
+    const missing = [...catalog].filter((id) => !listed.has(id)).sort();
+    const extra = [...listed].filter((id) => !catalog.has(id)).sort();
+    if (missing.length > 0 || extra.length > 0) {
+      const show = (ids) => `${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ` and ${ids.length - 5} more` : ''}`;
+      note(
+        `the sitemap names ${listed.size} tool pages but docs/catalog.json has ${catalog.size} tools` +
+          (missing.length > 0 ? `; not in the sitemap: ${show(missing)}` : '') +
+          (extra.length > 0 ? `; not in the catalog: ${show(extra)}` : '') +
+          '.',
+      );
+    }
+  }
+
+  const targets = [];
+  for (const route of pageRoutes) {
+    targets.push({ route, address: route, expected: 200 });
+    if (route !== '') targets.push({ route, address: `${route}/`, expected: 200 });
+  }
+  targets.push({ route: '__no-such-page__', address: '__no-such-page__', expected: 404 });
 
   const needsById = new Map();
   for (const { route } of targets) {
     const match = TOOL_ROUTE.exec(route);
-    if (match) needsById.set(match[1], readNeeds(match[1], note));
+    if (match && !needsById.has(match[1])) needsById.set(match[1], readNeeds(match[1], note));
   }
   const frameHashes = frameHashesFor([...needsById.values()], note);
 
-  for (const { route, expected } of targets) {
-    const url = `${root}${route}`;
-    const response = await globalThis.fetch(url);
+  for (const { route, address, expected } of targets) {
+    const url = `${root}${address}`;
+    const response = await liveGet(url);
+    if (response.error) {
+      note(`${url} could not be read, twice: ${response.error}`);
+      continue;
+    }
     if (response.status !== expected) {
       note(`${url} answered ${response.status}, expected ${expected}.`);
     }
-    const html = await response.text();
     const match = TOOL_ROUTE.exec(route);
     const needs = match ? needsById.get(match[1]) : [];
-    for (const problem of checkHtml({ file: url, html, needs, frameHashes })) problems.push(problem);
+    for (const problem of checkHtml({ file: url, html: response.text, needs, frameHashes })) problems.push(problem);
   }
-  return targets.length;
+  return { pages: pageRoutes.length + 1, addresses: targets.length };
 }
 
 async function main() {
@@ -567,13 +632,13 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
 
   if (options.live) {
-    const pages = await runLive(options.live, problems, note);
+    const { pages, addresses } = await runLive(options.live, problems, note);
     if (problems.length > 0) {
       console.error(`CSP live check failed with ${problems.length} problem${problems.length === 1 ? '' : 's'}:\n`);
       for (const p of problems) console.error(`  - ${p}`);
       process.exit(1);
     }
-    console.log(`CSP-LIVE-OK pages=${pages}`);
+    console.log(`CSP-LIVE-OK pages=${pages} addresses=${addresses}`);
     return;
   }
 
