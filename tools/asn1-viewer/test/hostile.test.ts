@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { describeBytes, describeStructure, readBer, readInput, type Description } from '../src/index';
 import { STRUCTURES } from './fixtures/openssl/structures';
 import { PERSONNEL_HEX } from './fixtures/x690';
-import { der, fromHex, mulberry32, readHex, toHex } from './helpers';
+import { der, fromHex, mulberry32, problemsOf, readHex, toHex } from './helpers';
 import { MAX_SCALING_RATIO, scalingRatio } from './scaling';
 
 /*
@@ -26,10 +26,12 @@ it('nesting beyond 40 levels is not entered and says so, and reading stops at 10
   expect(nested.nodes[39]!.notRead).toBe('nesting');
   expect(nested.cut.depth).toMatchObject({ count: 1, firstOffset: 78 });
   expect(nested.cut.stopped).toEqual({ offset: 78, bytesLeft: 5_242_880 - 78 });
-  expect(nested.findings).toHaveLength(1);
-  expect(nested.findings[0]!.message).toContain('nested more than 40 levels deep');
-  expect(nested.findings[0]!.message).toContain('5,242,802 bytes were left unread');
-  expect(nested.findings[0]!.message).toContain('offset 78');
+  // One problem; the 40 indefinite lengths also get a note each, which DER would not allow.
+  expect(problemsOf(nested)).toHaveLength(1);
+  expect(problemsOf(nested)[0]!.message).toContain('nested more than 40 levels deep');
+  expect(problemsOf(nested)[0]!.message).toContain('5,242,802 bytes were left unread');
+  expect(problemsOf(nested)[0]!.message).toContain('offset 78');
+  expect(nested.findings.filter((finding) => finding.kind === 'note')).toHaveLength(40);
   expect(nested.nodes[39]!.value?.text).toBe('contents not read: nested more than 40 levels');
 
   // 100,000 definite SEQUENCEs inside one another can be skipped by their lengths: the 40th is shown and the rest is stepped over.
@@ -43,8 +45,8 @@ it('nesting beyond 40 levels is not entered and says so, and reading stops at 10
   expect(skipped.nodes).toHaveLength(40);
   expect(skipped.cut.depth).toMatchObject({ count: 1, firstOffset: 234 });
   expect(skipped.cut.stopped).toBeNull();
-  expect(skipped.findings).toHaveLength(1);
-  expect(skipped.findings[0]!.message).toContain('599,766 bytes were skipped');
+  expect(problemsOf(skipped)).toHaveLength(1);
+  expect(problemsOf(skipped)[0]!.message).toContain('599,766 bytes were skipped');
 
   // Exactly 40 levels are read in full; the 41st is where the cut is.
   let forty = [0x05, 0x00];

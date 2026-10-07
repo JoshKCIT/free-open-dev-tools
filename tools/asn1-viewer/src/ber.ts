@@ -190,6 +190,12 @@ export function readBer(bytes: Uint8Array, options: BerOptions = {}): BerResult 
         break;
       }
       if (tag < 31) tagNotMinimal = true;
+      if (tagNotMinimal) {
+        list.add(
+          start,
+          `The tag number at offset ${start} is not written in its shortest form (X.690 clauses 8.1.2.2 and 8.1.2.4.2).`,
+        );
+      }
     }
 
     if (pos >= limit) {

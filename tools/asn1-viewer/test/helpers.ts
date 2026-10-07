@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describeStructure, type Asn1Node, type Description } from '../src/index';
+import { describeStructure, type Asn1Node, type Description, type Finding } from '../src/index';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +36,11 @@ export function mulberry32(seed: number): () => number {
 /** Reads hex as a structure, without looking inside OCTET STRING contents unless asked. */
 export function readHex(hex: string, tryInside = false): Description {
   return describeStructure({ data: hex, format: 'hex', tryInside });
+}
+
+/** What could not be read: the findings that are problems, leaving out the notes for valid BER that is not DER. */
+export function problemsOf(description: Description): Finding[] {
+  return description.findings.filter((finding) => finding.kind === 'problem');
 }
 
 /** The node at an offset, or a failure naming the offset. */

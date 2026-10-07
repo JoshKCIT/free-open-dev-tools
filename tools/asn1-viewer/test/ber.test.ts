@@ -10,7 +10,7 @@ import {
   tryInside,
 } from '../src/index';
 import { PERSONNEL_HEX, PERSONNEL_STRINGS } from './fixtures/x690';
-import { der, fromHex, readHex, toHex } from './helpers';
+import { der, fromHex, problemsOf, readHex, toHex } from './helpers';
 
 /*
  * The tracer: the personnel record of ITU-T X.690 (02/2021) annex A.3, pasted as hex and read as a tree. The expected
@@ -144,23 +144,24 @@ it('indefinite lengths read to their end-of-contents and a missing end-of-conten
   expect(nested.findings.filter((finding) => finding.kind === 'problem')).toEqual([]);
 
   // Data that ends before the end-of-contents octets: one finding, at the offset where the data ended, in plain words.
+  // (The indefinite length itself also gets a note, because DER does not allow it; only the problems are counted here.)
   const missing = readHex('3080020105');
-  expect(missing.findings).toHaveLength(1);
-  expect(missing.findings[0]).toMatchObject({ offset: 5, kind: 'problem' });
-  expect(missing.findings[0]!.message).toMatch(/end-of-contents octets \(00 00\) are missing/);
-  expect(missing.findings[0]!.message).toContain('offset 0');
+  expect(problemsOf(missing)).toHaveLength(1);
+  expect(problemsOf(missing)[0]).toMatchObject({ offset: 5, kind: 'problem' });
+  expect(problemsOf(missing)[0]!.message).toMatch(/end-of-contents octets \(00 00\) are missing/);
+  expect(problemsOf(missing)[0]!.message).toContain('offset 0');
   expect(missing.nodes[0]!.missingEoc).toBe(true);
   expect(missing.cut.stopped).toBeNull();
 
   // Two containers left open give one finding each, innermost first.
   const both = readHex('30803080');
-  expect(both.findings.map((finding) => finding.offset)).toEqual([4, 4]);
+  expect(problemsOf(both).map((finding) => finding.offset)).toEqual([4, 4]);
 
   // An indefinite length on an element that is not constructed (clause 8.1.3.6): the length octet is named, reading stops.
   const primitive = readHex('04800102');
-  expect(primitive.findings).toHaveLength(1);
-  expect(primitive.findings[0]).toMatchObject({ offset: 1, kind: 'problem' });
-  expect(primitive.findings[0]!.message).toContain('not constructed');
+  expect(problemsOf(primitive)).toHaveLength(1);
+  expect(problemsOf(primitive)[0]).toMatchObject({ offset: 1, kind: 'problem' });
+  expect(problemsOf(primitive)[0]!.message).toContain('not constructed');
   expect(primitive.cut.stopped).toMatchObject({ offset: 1 });
 
   // Tag 0 outside an indefinite container is not end-of-contents octets.
@@ -297,8 +298,17 @@ it('OCTET STRING and BIT STRING contents are shown as ASN.1 only when they read 
   expect(withInside('0306003003020105').nodes[0]!.inside).toHaveLength(2);
   expect(withInside('0306013003020105').nodes[0]!.inside).toBeUndefined();
 
-  // Contents that stop short, leave a byte over, are text, are empty or are one byte are not shown.
-  for (const hex of ['040430030201', '04063003020105ff', '040568656c6c6f', '0400', '040105']) {
+  // Contents that stop short, leave a byte over, are text, are empty or are one byte are not shown, and neither are contents
+  // that read to the end but with a finding on the way (an indefinite length never closed, a tag in the long form for 2).
+  for (const hex of [
+    '040430030201',
+    '04063003020105ff',
+    '040568656c6c6f',
+    '0400',
+    '040105',
+    '04053080020105',
+    '04031f0200',
+  ]) {
     expect(withInside(hex).nodes[0]!.inside, hex).toBeUndefined();
   }
 

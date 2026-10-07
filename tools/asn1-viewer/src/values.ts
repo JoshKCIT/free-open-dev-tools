@@ -1,6 +1,6 @@
 import type { Asn1Node } from './ber';
 import { MAX_DECIMAL_BYTES, MAX_DEPTH, MAX_HEX_SHOWN, MAX_OID_BYTES, MAX_TEXT_SHOWN, withCommas } from './limits';
-import { oidName } from './oids';
+import { lookupOidName } from './oids-extra';
 import { visible } from './visible';
 
 /** What a primitive element holds, written for a person. */
@@ -14,6 +14,10 @@ export interface ValueInfo {
   /** The dotted digits of an OBJECT IDENTIFIER, and the name from the built-in lists when there is one. */
   oid?: string;
   name?: string;
+  /** The value of a REAL as a number (infinity, not-a-number and minus zero included). */
+  number?: number;
+  /** A UTCTime or GeneralizedTime as ISO text. */
+  time?: string;
   /** Facts about the content that are wrong or odd, each a short sentence without the content in it. */
   problems: string[];
 }
@@ -276,7 +280,7 @@ function describeObjectIdentifier(content: Uint8Array, relative: boolean): Value
   if (padded) problems.push(`An arc of the ${label} starts with a padding octet 80 (X.690 clause 8.19.2).`);
   const dotted = arcs.join('.');
   if (relative) return { text: dotted === '' ? 'no complete arc' : dotted, oid: dotted, problems };
-  const name = oidName(dotted);
+  const name = lookupOidName(dotted);
   return {
     text: name === undefined ? dotted : `${dotted} (${name})`,
     oid: dotted,
@@ -295,13 +299,328 @@ function describeBitString(content: Uint8Array): ValueInfo {
   if (unused > 7 || (content.length === 1 && unused !== 0)) {
     problems.push('The BIT STRING gives an impossible number of unused bits (X.690 clauses 8.6.2.2 and 8.6.2.3).');
   }
-  const bits = (content.length - 1) * 8 - (unused > 7 ? 0 : unused);
-  const body = content.subarray(1);
-  return {
-    text: `${withCommas(bits)} bits${unused > 0 ? `, ${unused} unused` : ''}: ${shownHex(body)}`,
-    problems,
-  };
+  return { text: bitStringText(content.subarray(1), unused), problems };
 }
+
+/** The text of a BIT STRING: its size in bits, the unused bits, and the bytes as hex. */
+function bitStringText(body: Uint8Array, unused: number): string {
+  const bits = body.length * 8 - (unused > 7 ? 0 : unused);
+  return `${withCommas(Math.max(0, bits))} bits${unused > 0 ? `, ${unused} unused` : ''}: ${shownHex(body)}`;
+}
+
+/** A number as text: minus zero is written as such, and the others as JavaScript writes them. */
+function numberText(value: number): string {
+  return Object.is(value, -0) ? '-0' : String(value);
+}
+
+function isDigit(code: number): boolean {
+  return code >= 48 && code <= 57;
+}
+
+/** A decimal REAL of form NR1, NR2 or NR3 of ISO 6093: the number, or null when the characters do not fit the form. */
+function decimalReal(text: string, form: number): number | null {
+  const trimmed = text.trim();
+  let i = 0;
+  if (trimmed.charAt(i) === '+' || trimmed.charAt(i) === '-') i++;
+  let before = 0;
+  let after = 0;
+  let mark = false;
+  let exponent = false;
+  while (i < trimmed.length && isDigit(trimmed.charCodeAt(i))) {
+    i++;
+    before++;
+  }
+  if (trimmed.charAt(i) === '.' || trimmed.charAt(i) === ',') {
+    mark = true;
+    i++;
+    while (i < trimmed.length && isDigit(trimmed.charCodeAt(i))) {
+      i++;
+      after++;
+    }
+  }
+  if (trimmed.charAt(i) === 'E' || trimmed.charAt(i) === 'e') {
+    exponent = true;
+    i++;
+    if (trimmed.charAt(i) === '+' || trimmed.charAt(i) === '-') i++;
+    let digits = 0;
+    while (i < trimmed.length && isDigit(trimmed.charCodeAt(i))) {
+      i++;
+      digits++;
+    }
+    if (digits === 0) return null;
+  }
+  if (i !== trimmed.length || before + after === 0) return null;
+  if (form === 1 && (mark || exponent)) return null;
+  if (form === 2 && (!mark || exponent)) return null;
+  if (form === 3 && !exponent) return null;
+  return Number(trimmed.replace(',', '.'));
+}
+
+/** A REAL (X.690 clause 8.5): binary with base 2, 8 or 16 and a scaling factor, decimal NR1 to NR3, or a special value. */
+function describeReal(content: Uint8Array): ValueInfo {
+  const problems: string[] = [];
+  if (content.length === 0) return { text: '0', number: 0, problems };
+  const first = content[0]!;
+  if ((first & 0x80) !== 0) {
+    const sign = (first & 0x40) !== 0 ? -1 : 1;
+    const baseBits = (first >> 4) & 3;
+    if (baseBits === 3) {
+      problems.push('The REAL uses the base bits 11, which are reserved (X.690 clause 8.5.7.2).');
+      return { text: shownHex(content), problems };
+    }
+    const base = baseBits === 0 ? 2 : baseBits === 1 ? 8 : 16;
+    const scale = (first >> 2) & 3;
+    let at = 1;
+    let exponentLength = (first & 3) + 1;
+    if ((first & 3) === 3) {
+      exponentLength = content[1] ?? 0;
+      at = 2;
+      if (exponentLength === 0) {
+        problems.push('The REAL gives the number of exponent octets as zero (X.690 clause 8.5.7.4).');
+        return { text: shownHex(content), problems };
+      }
+    }
+    if (at + exponentLength > content.length) {
+      problems.push('The REAL ends inside its exponent (X.690 clause 8.5.7.4).');
+      return { text: shownHex(content), problems };
+    }
+    const exponentBytes = content.subarray(at, at + exponentLength);
+    const mantissaBytes = content.subarray(at + exponentLength);
+    if (mantissaBytes.length === 0) problems.push('The REAL has no mantissa octets (X.690 clause 8.5.7.5).');
+    if (exponentBytes.length > 8 || mantissaBytes.length > MAX_DECIMAL_BYTES) {
+      return {
+        text: `a binary REAL with an exponent of ${exponentBytes.length} bytes and a mantissa of ${withCommas(mantissaBytes.length)} bytes`,
+        problems,
+      };
+    }
+    const exponent = BigInt.asIntN(exponentBytes.length * 8, BigInt('0x' + hexOf(exponentBytes)));
+    const mantissa = mantissaBytes.length === 0 ? 0n : BigInt('0x' + hexOf(mantissaBytes));
+    const power = exponent * BigInt(base === 2 ? 1 : base === 8 ? 3 : 4) + BigInt(scale);
+    let value: number;
+    if (mantissa === 0n) value = sign * 0;
+    else if (power > 2300n) value = sign * Infinity;
+    else if (power < -2900n) value = sign * 0;
+    else {
+      // Two halves, so a result that fits is never lost to a power of two that does not.
+      const whole = Number(power);
+      const half = Math.trunc(whole / 2);
+      value = sign * Number(mantissa) * 2 ** half * 2 ** (whole - half);
+    }
+    const detail = `binary base ${base}, mantissa ${mantissa}, exponent ${exponent}${scale > 0 ? `, scaling factor ${scale}` : ''}`;
+    return { text: `${numberText(value)} (${detail})`, number: value, problems };
+  }
+  if ((first & 0x40) !== 0) {
+    // X.690 clause 8.5.9: PLUS-INFINITY, MINUS-INFINITY, NOT-A-NUMBER and minus zero are one octet each.
+    const special = new Map<number, [string, number]>([
+      [0x40, ['PLUS-INFINITY', Infinity]],
+      [0x41, ['MINUS-INFINITY', -Infinity]],
+      [0x42, ['NOT-A-NUMBER', NaN]],
+      [0x43, ['minus zero', -0]],
+    ]).get(first);
+    if (special === undefined || content.length !== 1) {
+      problems.push('The REAL has a reserved special value (X.690 clause 8.5.9).');
+      return { text: shownHex(content), problems };
+    }
+    return { text: special[0], number: special[1], problems };
+  }
+  const form = first & 0x3f;
+  if (form < 1 || form > 3) {
+    problems.push('The REAL has a decimal form other than NR1, NR2 and NR3 (X.690 clause 8.5.8).');
+    return { text: shownHex(content), problems };
+  }
+  const body = singleByteText(content.subarray(1), false).text;
+  const value = decimalReal(body, form);
+  if (value === null) {
+    problems.push(`The REAL does not fit the decimal form NR${form} of ISO 6093 (X.690 clause 8.5.8).`);
+    return { text: shownHex(content), problems };
+  }
+  return { text: `${numberText(value)} (decimal NR${form} ${visible(body, MAX_TEXT_SHOWN)})`, number: value, problems };
+}
+
+/** A UTCTime or GeneralizedTime as it was written. */
+export interface ParsedTime {
+  /** ISO text: date, time, the fraction when there is one, and Z or the offset when there is one. */
+  iso: string;
+  /** Whether the seconds are written. */
+  seconds: boolean;
+  /** `Z`, an `offset` such as +0530, or `local` for a GeneralizedTime with no zone. */
+  zone: 'Z' | 'offset' | 'local';
+  /** The digits after the decimal mark, and whether the mark is a comma. */
+  fraction: string;
+  comma: boolean;
+}
+
+function daysIn(year: number, month: number): number {
+  if (month === 2) return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28;
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
+/**
+ * Reads the characters of a UTCTime (YYMMDDhhmm, seconds optional, then Z or +hhmm) or a GeneralizedTime (YYYYMMDDhh,
+ * minutes and seconds optional, a fraction after the seconds, then Z, an offset or nothing), or returns null. Two-digit
+ * years from 50 to 99 are 19xx and the others 20xx, as RFC 5280 reads them. The ranges are checked: month, day in its month,
+ * hour 0 to 23 (24 is not allowed, X.690 clause 11.7.5), minute and second 0 to 59.
+ */
+export function parseTime(content: Uint8Array, generalized: boolean): ParsedTime | null {
+  let at = 0;
+  const read = (count: number): number => {
+    if (at + count > content.length) return -1;
+    let value = 0;
+    for (let i = 0; i < count; i++) {
+      const code = content[at + i]!;
+      if (!isDigit(code)) return -1;
+      value = value * 10 + (code - 48);
+    }
+    at += count;
+    return value;
+  };
+  const digitNext = (): boolean => at < content.length && isDigit(content[at]!);
+  let year: number;
+  if (generalized) year = read(4);
+  else {
+    const short = read(2);
+    year = short < 0 ? -1 : short >= 50 ? 1900 + short : 2000 + short;
+  }
+  const month = read(2);
+  const day = read(2);
+  const hour = read(2);
+  if (year < 0 || month < 1 || month > 12 || day < 1 || day > daysIn(year, month) || hour < 0 || hour > 23) return null;
+  let minute = 0;
+  let second = 0;
+  let seconds = false;
+  if (!generalized || digitNext()) {
+    minute = read(2);
+    if (minute < 0 || minute > 59) return null;
+    if (digitNext()) {
+      second = read(2);
+      if (second < 0 || second > 59) return null;
+      seconds = true;
+    }
+  }
+  let fraction = '';
+  let comma = false;
+  if (generalized && seconds && (content[at] === 0x2e || content[at] === 0x2c)) {
+    comma = content[at] === 0x2c;
+    at++;
+    while (digitNext()) fraction += String.fromCharCode(content[at++]!);
+    if (fraction === '') return null;
+  }
+  let zone: ParsedTime['zone'] = 'local';
+  let suffix = '';
+  if (content[at] === 0x5a) {
+    at++;
+    zone = 'Z';
+    suffix = 'Z';
+  } else if (content[at] === 0x2b || content[at] === 0x2d) {
+    const sign = String.fromCharCode(content[at++]!);
+    const offsetHour = read(2);
+    let offsetMinute = 0;
+    if (offsetHour < 0 || offsetHour > 23) return null;
+    if (digitNext() || !generalized) {
+      offsetMinute = read(2);
+      if (offsetMinute < 0 || offsetMinute > 59) return null;
+    }
+    zone = 'offset';
+    suffix = `${sign}${String(offsetHour).padStart(2, '0')}:${String(offsetMinute).padStart(2, '0')}`;
+  } else if (!generalized) {
+    return null;
+  }
+  if (at !== content.length) return null;
+  const pad = (n: number, width = 2): string => String(n).padStart(width, '0');
+  const iso = `${pad(year, 4)}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}${fraction === '' ? '' : `.${fraction}`}${suffix}`;
+  return { iso, seconds, zone, fraction, comma };
+}
+
+function describeTime(content: Uint8Array, generalized: boolean): ValueInfo {
+  const problems: string[] = [];
+  const name = generalized ? 'GeneralizedTime' : 'UTCTime';
+  const parsed = parseTime(content, generalized);
+  const original = singleByteText(content, true).text;
+  if (parsed === null) {
+    problems.push(`The ${name} is not a time in the form X.680 gives, or holds a date or time that does not exist.`);
+    return { text: `"${visible(original, MAX_TEXT_SHOWN)}"`, problems };
+  }
+  const note = parsed.zone === 'local' ? ', local time' : '';
+  return { text: `${parsed.iso} (${visible(original, MAX_TEXT_SHOWN)}${note})`, time: parsed.iso, problems };
+}
+
+/** The universal tags of the string types whose constructed form is segments of OCTET STRING (X.690 clause 8.23.6). */
+const SEGMENTED_TAGS: ReadonlySet<number> = new Set([4, 12, 18, 19, 20, 21, 22, 25, 26, 27, 28, 30]);
+
+/** Whether a node is a constructed BIT STRING, OCTET STRING or restricted character string. */
+export function isConstructedString(node: Asn1Node): boolean {
+  return node.constructed && node.cls === 'universal' && (node.tag === 3 || SEGMENTED_TAGS.has(node.tag));
+}
+
+/**
+ * The value of a constructed string (X.690 clauses 8.6.4, 8.7.3 and 8.23.6): the segments below it, in order, put end to
+ * end. A segment is a primitive OCTET STRING, or a primitive BIT STRING for a BIT STRING; a constructed segment is read
+ * through to its own segments. A different kind of element below it is a problem.
+ */
+export function describeConstructedString(bytes: Uint8Array, nodes: readonly Asn1Node[], index: number): ValueInfo {
+  const node = nodes[index]!;
+  const problems: string[] = [];
+  const wanted = node.tag === 3 ? 3 : 4;
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  let unused = 0;
+  let wrong = false;
+  let lastUnusedSeen = false;
+  for (let i = index + 1; i < nodes.length && nodes[i]!.depth > node.depth; i++) {
+    const child = nodes[i]!;
+    if (child.eoc || child.constructed || child.length === null) continue;
+    if (child.cls !== 'universal' || child.tag !== wanted) {
+      wrong = true;
+      continue;
+    }
+    const content = bytes.subarray(child.offset + child.headerLength, child.end);
+    if (wanted === 3) {
+      if (content.length === 0) continue;
+      if (lastUnusedSeen && unused !== 0)
+        problems.push('Only the last segment of a constructed BIT STRING may have unused bits (X.690 clause 8.6.4).');
+      unused = content[0]!;
+      lastUnusedSeen = true;
+      parts.push(content.subarray(1));
+      total += content.length - 1;
+    } else {
+      parts.push(content);
+      total += content.length;
+    }
+  }
+  if (wrong)
+    problems.push('A segment of a constructed string is not an OCTET STRING (X.690 clauses 8.7.3.2 and 8.23.6).');
+  if (index + 1 >= nodes.length || nodes[index + 1]!.depth <= node.depth) return { text: '', problems };
+  const joined = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) {
+    joined.set(part, at);
+    at += part.length;
+  }
+  if (wanted === 3) return { text: bitStringText(joined, unused), problems };
+  if (node.tag === 4) {
+    const hex = shownHex(joined);
+    if (!printable(joined)) return { text: hex, problems };
+    const { shown } = shownString(singleByteText(joined, false).text);
+    return { text: `${hex} = "${shown}"`, string: shown, problems };
+  }
+  const characters = decodeCharacters(node.tag, joined);
+  if (characters === null) return { text: shownHex(joined), problems };
+  if (characters.replaced)
+    problems.push(`The ${UNIVERSAL_NAMES.get(node.tag) ?? 'string'} holds bytes that are not valid for its type.`);
+  const { shown, label } = shownString(characters.text);
+  return { text: label, string: shown, problems };
+}
+
+/** Universal types whose encoding is always primitive, with the clause that says so. */
+const PRIMITIVE_ONLY: ReadonlyMap<number, [string, string]> = new Map([
+  [1, ['BOOLEAN', '8.2.1']],
+  [2, ['INTEGER', '8.3.1']],
+  [5, ['NULL', '8.8.1']],
+  [6, ['OBJECT IDENTIFIER', '8.19.1']],
+  [9, ['REAL', '8.5.1']],
+  [10, ['ENUMERATED', '8.4']],
+  [13, ['RELATIVE-OID', '8.20.1']],
+]);
 
 /** The value of one element, in words. Reads only the element's own content and never throws. */
 export function describeValue(bytes: Uint8Array, node: Asn1Node): ValueInfo {
@@ -316,7 +635,12 @@ export function describeValue(bytes: Uint8Array, node: Asn1Node): ValueInfo {
       problems,
     };
   }
-  if (node.constructed) return { text: '', problems };
+  if (node.constructed) {
+    const rule = node.cls === 'universal' ? PRIMITIVE_ONLY.get(node.tag) : undefined;
+    if (rule !== undefined)
+      problems.push(`The ${rule[0]} must be primitive (X.690 clause ${rule[1]}), but this one is constructed.`);
+    return { text: '', problems };
+  }
   const content = bytes.subarray(node.offset + node.headerLength, node.end);
 
   if (node.cls === 'universal') {
@@ -346,6 +670,14 @@ export function describeValue(bytes: Uint8Array, node: Asn1Node): ValueInfo {
       }
       case 6:
         return describeObjectIdentifier(content, false);
+      case 9:
+        return describeReal(content);
+      case 13:
+        return describeObjectIdentifier(content, true);
+      case 23:
+        return describeTime(content, false);
+      case 24:
+        return describeTime(content, true);
       default: {
         const characters = decodeCharacters(node.tag, content);
         if (characters !== null) {

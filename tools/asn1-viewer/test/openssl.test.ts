@@ -96,14 +96,16 @@ interface WycheproofTest {
 const WYCHEPROOF = JSON.parse(readFixture('wycheproof', 'ecdsa-p256-sha256.json')) as { tests: WycheproofTest[] };
 
 /**
- * The InvalidEncoding vectors that the reader does not flag, by tcId. They are the ones a reader that does not know the
- * schema cannot tell from a correct encoding: the reason for each is written beside the list in the SUMMARY of plan 19-03
- * (an empty signature, an element that is itself well formed, a tag changed to another well formed tag, lengths that stay
- * consistent). Listing them here keeps every one of them named, never dropped.
+ * The InvalidEncoding vectors that the reader does not flag, by tcId. Each is something a reader that does not know the
+ * schema cannot tell from a correct encoding: tcId 21 is an empty signature (no element, so nothing to find), and tcIds 38
+ * and 39 are well-formed BER whose first octets (2e and 2f) are a constructed universal tag 14 and tag 15 where the
+ * signature should have a SEQUENCE. The research prototype listed eight; it did not check a short-form length against the
+ * container (tcIds 45 and 116 run past it), a constructed string (41), the unused-bits octet of a BIT STRING (97), a
+ * constructed NULL (28) or a constructed INTEGER (31, 32, 88, 101, 131, 144), and this reader does.
  */
-const UNFLAGGED_INVALID_ENCODING = [21, 28, 38, 39, 41, 45, 97, 116];
+const UNFLAGGED_INVALID_ENCODING = [21, 38, 39];
 
-it('the Wycheproof ECDSA signatures never throw: 10 valid give no finding, 7 of 7 BER are flagged and 84 of 92 invalid are flagged', () => {
+it('the Wycheproof ECDSA signatures never throw: 10 valid give no finding, 7 of 7 BER are flagged and 89 of 92 invalid are flagged', () => {
   expect(WYCHEPROOF.tests).toHaveLength(484);
   const flagged = (test: WycheproofTest): boolean => {
     const result = describeBytes(fromHex(test.sig), { tryInside: false });
@@ -122,6 +124,6 @@ it('the Wycheproof ECDSA signatures never throw: 10 valid give no finding, 7 of 
   for (const test of ber) expect(flagged(test), `tcId ${test.tcId} is BER and not DER`).toBe(true);
 
   const missed = invalid.filter((test) => !flagged(test)).map((test) => test.tcId);
-  expect(invalid.length - missed.length).toBe(84);
+  expect(invalid.length - missed.length).toBe(89);
   expect(missed).toEqual(UNFLAGGED_INVALID_ENCODING);
 });
