@@ -342,3 +342,27 @@ it('transfer encodings decode like Node and read broken input leniently', () => 
   expect(qp('end   \t\r\nnext=20\r\n')).toBe('end\r\nnext \r\n');
   expect(qp('keep =\r\nthis')).toBe('keep this');
 });
+
+it('a quoted-printable soft line break followed by spaces or tabs before the line end is still a soft break, RFC 2045 section 6.7', () => {
+  // RFC 2045 section 6.7: a qp-segment ends in "=" followed by transport-padding and CRLF, and rule (3) deletes white
+  // space at the end of a line before decoding, so "=" then spaces or tabs then the line end joins the two lines.
+  const qp = (input: string): string => new TextDecoder().decode(decodeQuotedPrintable(bytesOf(input)));
+  expect(qp('abc=  \r\ndef')).toBe('abcdef');
+  expect(qp('abc=\t \ndef')).toBe('abcdef');
+  expect(qp('abc= \t\rdef')).toBe('abcdef');
+  // At the very end of the data the padded = is dropped, as a bare trailing = is.
+  expect(qp('abc=  ')).toBe('abc');
+  expect(qp('abc=\t')).toBe('abc');
+  // White space before the = belongs to the text and is kept; the next line break is a hard one.
+  expect(qp('keep  =  \r\n\r\nnext')).toBe('keep  \r\nnext');
+  expect(qp('keep  =\r\n\r\nnext')).toBe('keep  \r\nnext');
+  expect(qp('keep  = \n\nnext')).toBe('keep  \nnext');
+  // An = followed by white space and then more text is not a soft break and stays as written.
+  expect(qp('a= b')).toBe('a= b');
+  expect(qp('a= 4F')).toBe('a= 4F');
+  expect(qp('a=\t41')).toBe('a=\t41');
+  expect(qp('a=  \tb\r\n')).toBe('a=  \tb\r\n');
+  // A quoted-printable attachment written with padded soft breaks is saved with the bytes its sender meant.
+  const bytes = decodeQuotedPrintable(bytesOf('=00=01=  \r\n=02=FF=\t\r\n=80'));
+  expect(Array.from(bytes)).toEqual([0x00, 0x01, 0x02, 0xff, 0x80]);
+});

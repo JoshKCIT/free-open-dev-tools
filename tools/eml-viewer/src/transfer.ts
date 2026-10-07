@@ -42,9 +42,10 @@ function hexValue(byte: number): number {
 }
 
 /**
- * Quoted-printable (RFC 2045 section 6.7): =XX in either case, soft line breaks (= at the end of a line) removed, a
- * trailing = at the end of the data dropped, a = that does not start a valid sequence kept as it is, and spaces and tabs
- * before a hard line break dropped as transport padding. Line breaks stay as they are written.
+ * Quoted-printable (RFC 2045 section 6.7): =XX in either case, soft line breaks (= at the end of a line, with or without
+ * spaces and tabs after it) removed, a trailing = at the end of the data dropped, a = that does not start a valid
+ * sequence kept as it is, and spaces and tabs before a hard line break dropped as transport padding. Line breaks stay as
+ * they are written.
  */
 export function decodeQuotedPrintable(bytes: Uint8Array, start: number = 0, end: number = bytes.length): Uint8Array {
   const out = new Uint8Array(end - start);
@@ -55,20 +56,28 @@ export function decodeQuotedPrintable(bytes: Uint8Array, start: number = 0, end:
   while (i < end) {
     const byte = bytes[i] ?? 0;
     if (byte === 0x3d) {
-      const a = i + 1 < end ? (bytes[i + 1] ?? 0) : -1;
+      // A soft line break: = then optional spaces and tabs (transport padding, rule 3 deletes them) then a line break or
+      // the end of the data. The white space before the = is text, so it is no longer padding. The run after the = is
+      // read once here; when it does not end a line, the bytes are read again below as ordinary text.
+      let k = i + 1;
+      while (k < end && (bytes[k] === 0x20 || bytes[k] === 0x09)) k++;
+      const a = k < end ? (bytes[k] ?? 0) : -1;
       if (a === 0x0a) {
-        i += 2;
+        padStart = -1;
+        i = k + 1;
         continue;
       }
       if (a === 0x0d) {
-        i += i + 2 < end && bytes[i + 2] === 0x0a ? 3 : 2;
+        padStart = -1;
+        i = k + 1 < end && bytes[k + 1] === 0x0a ? k + 2 : k + 1;
         continue;
       }
       if (a === -1) {
-        i++;
+        padStart = -1;
+        i = end;
         continue;
       }
-      const high = hexValue(a);
+      const high = hexValue(bytes[i + 1] ?? 0);
       const low = i + 2 < end ? hexValue(bytes[i + 2] ?? 0) : -1;
       if (high >= 0 && low >= 0) {
         out[produced++] = (high << 4) | low;
