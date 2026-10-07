@@ -206,6 +206,18 @@ export function readTxtRecords(text: string, part: SpfDmarcPart = 'spf'): TxtRec
       let stop = end;
       if (stop > entryStart && text.charCodeAt(stop - 1) === RETURN) stop--;
       const raw = text.slice(entryStart, stop);
+      // An open parenthesis carried the entry past its first line: those lines were read into it and are named.
+      const swallowed: string[] = [];
+      if (i > end + 1) {
+        const lastLine = text.charCodeAt(i - 1) === NEWLINE ? line - 1 : line;
+        const taken =
+          lastLine > entryLine + 1
+            ? `lines ${withCommas(entryLine + 1)} to ${withCommas(lastLine)} were`
+            : `line ${withCommas(entryLine + 1)} was`;
+        swallowed.push(
+          `The parenthesis on line ${withCommas(entryLine)} holds no quoted string, so ${taken} read as part of line ${withCommas(entryLine)} and not as records. Put the record in double quotes inside the parentheses.`,
+        );
+      }
       // A labelled record: a name that ends in a colon, then a record that starts with v= (name: v=spf1 ...).
       let word = 0;
       while (word < raw.length && !isBlank(raw.charCodeAt(word))) word++;
@@ -218,11 +230,11 @@ export function readTxtRecords(text: string, part: SpfDmarcPart = 'spf'): TxtRec
         raw.charCodeAt(rest + 1) === 61;
       if (labelled) {
         push(
-          { label: raw.slice(0, word - 1), text: raw.slice(rest), strings: [], warnings: [], line: entryLine },
+          { label: raw.slice(0, word - 1), text: raw.slice(rest), strings: [], warnings: swallowed, line: entryLine },
           entryStart,
         );
       } else {
-        push({ label: null, text: raw, strings: [], warnings: [], line: entryLine }, entryStart);
+        push({ label: null, text: raw, strings: [], warnings: swallowed, line: entryLine }, entryStart);
       }
       continue;
     }

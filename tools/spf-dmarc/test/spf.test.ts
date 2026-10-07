@@ -689,6 +689,30 @@ it('a builder entry typed with the prefix the builder writes itself is written o
   expect(buildSpf({ ...none, includes: 'spf.protection.example' }).adjusted).toEqual([]);
 });
 
+it('a zone line whose open parenthesis holds no quoted string says which lines it swallowed', () => {
+  // An open parenthesis carries a zone-file entry over the line break. With no quoted string in it, the entry is read as
+  // its first line only, and the lines the parenthesis took are named so the page says what was skipped.
+  const records = readTxtRecords(`example.com. IN TXT (\n  v=spf1 -all ${MARK} )\nv=spf1 a -all`);
+  expect(records.map((r) => [r.line, r.text])).toEqual([
+    [1, 'example.com. IN TXT ('],
+    [3, 'v=spf1 a -all'],
+  ]);
+  expect(records[0]?.warnings.length).toBe(1);
+  expect(records[0]?.warnings[0]).toContain('parenthesis on line 1');
+  expect(records[0]?.warnings[0]).toContain('line 2 was read');
+  expect(records[0]?.warnings[0]).not.toContain(MARK);
+  expect(records[1]?.warnings).toEqual([]);
+  // A parenthesis left open to the end of the box: the warning names the last line it reached.
+  const open = readTxtRecords('x.example. IN TXT (\nv=spf1 -all\n\nv=spf1 a -all');
+  expect(open).toHaveLength(1);
+  expect(open[0]?.warnings[0]).toContain('lines 2 to 4 were read');
+  // A line without quotes or with a parenthesis closed on the same line is read as before, with no warning.
+  expect(readTxtRecords('example.com. IN TXT ( v=spf1 -all )')[0]?.warnings).toEqual([]);
+  expect(readTxtRecords('example.com: v=spf1 -all')[0]?.warnings).toEqual([]);
+  // The quoted form over several lines still reads the record.
+  expect(readTxtRecords('example.com. IN TXT (\n "v=spf1 " \n "-all" )')[0]?.text).toBe('v=spf1 -all');
+});
+
 it('terms keep record order and the lookup count is the same every time', () => {
   const texts = [
     'v=spf1 a mx include:example.com include:example.org -all',
