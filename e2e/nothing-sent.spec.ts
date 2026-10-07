@@ -57,6 +57,12 @@ const ADDED_2026_09_29_NETWORK_TOOL_IDS = ['data-size'];
 const PHASE_13_NETWORK_TOOL_IDS = ['har-viewer', 'wsdl-explorer'];
 
 /**
+ * The network-category tools Phase 18 adds (WEB-01, WEB-02, WEB-04, WEB-06; D-249). The email viewer reads a saved
+ * file by default and shows its text area only after "Pasted text" is chosen, so its test chooses that first.
+ */
+const PHASE_18_NETWORK_TOOL_IDS = ['cors-checker', 'set-cookie-inspector', 'spf-dmarc', 'eml-viewer'];
+
+/**
  * An absolute, real-shaped URL a visitor might genuinely paste. The
  * `.invalid` top-level domain is reserved by RFC 6761 section 6.4 and never
  * resolves, so a real network attempt would still be visible as an attempted
@@ -158,10 +164,17 @@ test('the nothing-sent list matches the network category of the catalog', () => 
     category: string;
   }[];
   // ip-subnet is a phase 2 tool already live in the network category; every
-  // other network-category id belongs to this phase, the 2026-09-29 batch or phase 13.
+  // other network-category id belongs to this phase, the 2026-09-29 batch, phase 13 or phase 18.
   const networkIds = catalog.filter((c) => c.category === 'network' && c.id !== 'ip-subnet').map((c) => c.id);
   expect(networkIds.slice().sort()).toEqual(
-    [...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS, ...PHASE_13_NETWORK_TOOL_IDS].slice().sort(),
+    [
+      ...PHASE_6_TOOL_IDS,
+      ...ADDED_2026_09_29_NETWORK_TOOL_IDS,
+      ...PHASE_13_NETWORK_TOOL_IDS,
+      ...PHASE_18_NETWORK_TOOL_IDS,
+    ]
+      .slice()
+      .sort(),
   );
 });
 
@@ -174,7 +187,12 @@ const builtIds = existsSync(pagesDir)
     )
   : new Set<string>();
 
-for (const id of [...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS, ...PHASE_13_NETWORK_TOOL_IDS]) {
+for (const id of [
+  ...PHASE_6_TOOL_IDS,
+  ...ADDED_2026_09_29_NETWORK_TOOL_IDS,
+  ...PHASE_13_NETWORK_TOOL_IDS,
+  ...PHASE_18_NETWORK_TOOL_IDS,
+]) {
   if (!builtIds.has(id)) continue;
 
   test(`${id}: a visitor URL typed into every field causes no request and no network call`, async ({ page }) => {
@@ -189,6 +207,11 @@ for (const id of [...PHASE_6_TOOL_IDS, ...ADDED_2026_09_29_NETWORK_TOOL_IDS, ...
     await page.goto(rel(`/tools/${id}`));
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    if (id === 'eml-viewer') {
+      // The email viewer opens on its file source; its text area appears once the pasted source is chosen.
+      await page.locator('input[name="source"][value="paste"]').click();
+      await page.locator('#f-pasted').waitFor();
+    }
 
     armed = true;
     await page.evaluate(() => {
