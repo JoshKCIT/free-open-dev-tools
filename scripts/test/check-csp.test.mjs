@@ -187,11 +187,8 @@ describe('the fixed lists and the token table', () => {
     ['a bare Function call with variable arguments', 'Function(a,b)', 'eval'],
     ['an eval at the very start of a chunk', 'eval(s)', 'eval'],
     ['the Function constructor passed as an argument', '(function(A,g){})(Function,h)', 'eval'],
-    ['the Function constructor passed as the last argument', 'make(a,Function)', 'eval'],
     ['the Function constructor assigned', 'const F=Function;', 'eval'],
     ['the Function constructor assigned without a keyword', 'F=Function,G=1', 'eval'],
-    ['the Function constructor in an array', 'const k=[Function,Object]', 'eval'],
-    ['the Function constructor as an object value', 'const o={ctor:Function}', 'eval'],
     ['a shared worker', 'new SharedWorker(u)', 'workers'],
     ['WebAssembly copied into a variable', 'const W=WebAssembly;W.instantiate(b)', 'wasm'],
     ['WebAssembly destructured', 'const{instantiate:i}=WebAssembly', 'wasm'],
@@ -221,6 +218,13 @@ describe('the fixed lists and the token table', () => {
       'refetch(x)',
       'such as a background worker, WebAssembly, or generating code',
       'a module (WebAssembly) in text',
+      // Shapes found in built pages that hold the name but never generate code: a type-check list and a list of global
+      // constructor names (pdf-lib and a JavaScript parser). A later argument, an array element and an object value are
+      // not matched; only the first argument of a call and an assignment are.
+      'check(e,"provider",[Function])',
+      '[Object,Array,Function,Number,String,Boolean,Error,Math,Date,RegExp]',
+      'make(a,Function)',
+      'const o={ctor:Function}',
       'x.Function',
       'a.b=x.Function;',
       'Functional(x)',
