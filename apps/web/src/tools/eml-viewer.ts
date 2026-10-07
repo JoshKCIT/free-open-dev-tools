@@ -1,5 +1,7 @@
 import {
   EmlViewerError,
+  MAX_ATTACHMENTS_OFFERED,
+  MAX_TEXT_BODY_SHOWN,
   checkFileSize,
   checkPasteSize,
   meta,
@@ -8,6 +10,7 @@ import {
   visible,
   withCommas,
   type EmlAnalysis,
+  type PreviewResult,
   type TreeOut,
 } from '@fodt/eml-viewer';
 import {
@@ -93,14 +96,87 @@ function headerRows(analysis: EmlAnalysis, all: boolean): (string | number)[][] 
   ]);
 }
 
+function asReceived(a: EmlAnalysis['attachments'][number]): string {
+  const own = a.rawName === '' ? '(no name given)' : a.nameChanged ? visible(a.rawName, 200) : '';
+  if (a.otherNames.length === 0) return own;
+  const others = a.otherNames.map((name) => visible(name, 100)).join(', ');
+  return own === '' ? `also named: ${others}` : `${own} (also named: ${others})`;
+}
+
 function attachmentRows(analysis: EmlAnalysis): (string | number)[][] {
   return analysis.attachments.map((a) => [
     a.name,
-    a.rawName === '' ? '(no name given)' : a.nameChanged ? visible(a.rawName, 200) : '',
+    asReceived(a),
     visible(a.declaredType, 100),
     `${withCommas(a.size)} bytes`,
     a.sha256,
   ]);
+}
+
+/** The HTML body: the closed frame and what was blocked, or the source as text when it is too big or too deep. */
+function htmlOutputs(html: string, analysis: EmlAnalysis): OutputBlock[] {
+  let preview: PreviewResult;
+  try {
+    preview = previewHtml(html, window, analysis.cidParts);
+  } catch {
+    return [{ kind: 'note', tone: 'warn', value: 'The HTML body could not be prepared, so it is not shown.' }];
+  }
+  if (preview.status === 'skipped') {
+    return [
+      { kind: 'note', tone: 'warn', value: preview.reason },
+      {
+        kind: 'code',
+        label: 'HTML body (shown as text, not rendered)',
+        language: 'html',
+        value: showBody(html.slice(0, MAX_TEXT_BODY_SHOWN)),
+      },
+    ];
+  }
+  const outputs: OutputBlock[] = [
+    {
+      kind: 'sandboxed-html',
+      label: 'HTML body (nothing loads, nothing navigates)',
+      html: preview.html,
+      copy: false,
+    },
+  ];
+  if (preview.notes.length > 0) {
+    outputs.push({ kind: 'note', label: 'What the preview changed', tone: 'info', value: preview.notes.join('\n') });
+  }
+  if (preview.blocked.length > 0) {
+    outputs.push({
+      kind: 'table',
+      label: 'Remote content that was blocked',
+      table: {
+        headers: ['Kind', 'Where', 'Address', 'Count'],
+        rows: preview.blocked.map((b) => [b.kind, b.where, visible(b.address, 200), b.count]),
+        mono: [2],
+      },
+    });
+  }
+  if (preview.links.length > 0) {
+    outputs.push({
+      kind: 'table',
+      label: 'Links in the message (not active)',
+      table: {
+        headers: ['Text', 'Address', 'Check'],
+        rows: preview.links.map((l) => [
+          l.text === '' ? '(no text)' : visible(l.text, 200),
+          l.target === '' ? '(removed: not a web or mail address)' : visible(l.target, 200),
+          l.mismatch ? 'The text names a different host than the link does.' : '',
+        ]),
+        mono: [1],
+      },
+    });
+  }
+  if (preview.omitted > 0) {
+    outputs.push({
+      kind: 'note',
+      tone: 'info',
+      value: `${withCommas(preview.omitted)} more references or links were found and are not listed.`,
+    });
+  }
+  return outputs;
 }
 
 function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[] {
@@ -117,6 +193,10 @@ function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[
       pairs: analysis.summary.map(([key, value]) => [key, visible(value, 200)] as [string, string]),
     },
   ];
+
+  if (analysis.notes.length > 0) {
+    outputs.push({ kind: 'note', label: 'Notes', tone: 'info', value: analysis.notes.join('\n') });
+  }
 
   if (analysis.tree !== null) {
     outputs.push({ kind: 'tree', label: 'MIME structure', nodes: [treeNodes(analysis.tree, 0)] });
@@ -143,17 +223,7 @@ function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[
     outputs.push({ kind: 'code', label: 'Plain text body', language: 'text', value: showBody(analysis.textBody.text) });
   }
 
-  if (analysis.htmlBody !== null) {
-    const preview = previewHtml(analysis.htmlBody, window, analysis.cidParts);
-    if (preview.status === 'shown') {
-      outputs.push({
-        kind: 'sandboxed-html',
-        label: 'HTML body (nothing loads, nothing navigates)',
-        html: preview.html,
-        copy: false,
-      });
-    }
-  }
+  if (analysis.htmlBody !== null) outputs.push(...htmlOutputs(analysis.htmlBody, analysis));
 
   if (analysis.attachments.length > 0) {
     outputs.push({
@@ -165,12 +235,19 @@ function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[
         mono: [4],
       },
     });
-    const saves: DownloadableFile[] = analysis.attachments.slice(0, 200).map((a) => ({
+    const saves: DownloadableFile[] = analysis.attachments.slice(0, MAX_ATTACHMENTS_OFFERED).map((a) => ({
       name: a.name,
       mime: 'application/octet-stream',
       content: a.bytes,
     }));
     outputs.push({ kind: 'files', label: 'Save', files: saves });
+    if (analysis.attachments.length > MAX_ATTACHMENTS_OFFERED) {
+      outputs.push({
+        kind: 'note',
+        tone: 'info',
+        value: `Only the first ${MAX_ATTACHMENTS_OFFERED} attachments have a Save button; the rest are listed in the table.`,
+      });
+    }
   }
   return outputs;
 }

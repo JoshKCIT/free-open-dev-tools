@@ -1,6 +1,6 @@
 {
   "id": "eml-viewer",
-  "label": "RFC 2047 encoded Subject and From decode and the attachment digest is the SHA-256 of its bytes",
+  "label": "RFC 2047 encoded Subject and From decode, the attachment digest is the SHA-256 of its bytes, and the tracking image address is listed as blocked text",
   "steps": [
     {
       "action": "attach",
@@ -21,6 +21,7 @@
     "Café menu",
     "José Baker",
     "report.txt",
-    "bc7a08d145d092e10bd36bf54fc04bbc54b5782f06a16769d72eca8a4bb358bd"
+    "bc7a08d145d092e10bd36bf54fc04bbc54b5782f06a16769d72eca8a4bb358bd",
+    "https://tracker.example/pixel.gif"
   ]
 }
