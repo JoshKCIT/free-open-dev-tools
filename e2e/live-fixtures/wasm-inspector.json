@@ -1,6 +1,6 @@
 {
   "id": "wasm-inspector",
-  "label": "a 329 byte module built with wabt 1.0.39 from the text in the tool folder shows its import env.limit and its exports twice and counter, and agrees with V8 on its imports and exports",
+  "label": "a 329 byte module built with wabt 1.0.39 shows its import env.limit, its exports add, twice, memory and counter, its 13 byte data segment and its name section, and agrees with V8 on imports, exports and custom sections",
   "steps": [
     {
       "action": "attach",
@@ -17,5 +17,5 @@
       "action": "run"
     }
   ],
-  "expect": ["env", "limit", "twice", "counter"]
+  "expect": ["env", "limit", "twice", "counter", "hello fixture"]
 }

@@ -20,6 +20,7 @@ export {
   withCommas,
 } from './limits';
 export { Cursor } from './cursor';
+export { visible } from './visible';
 export { readConstExpr } from './const-expr';
 export { SECTION_NAMES, readHeader, walkSections } from './sections';
 export type { Header, SectionInfo, SectionWalk } from './sections';

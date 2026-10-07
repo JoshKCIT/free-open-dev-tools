@@ -81,7 +81,7 @@
       "phase": 19,
       "needs": [],
       "needsNote": "Measured on the main thread: a 59 MiB module with a million functions is read in 130 ms, the reader never compiles or runs anything, and the page declares no need, so the browser itself refuses a compile attempt.",
-      "outputKinds": ["keyvalue", "table", "note"],
+      "outputKinds": ["keyvalue", "table", "list", "tree", "note"],
       "sharedAdditions": ["tree", "inline fixture files", "probe controls"]
     },
     {
