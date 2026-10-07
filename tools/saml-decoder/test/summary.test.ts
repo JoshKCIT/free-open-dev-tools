@@ -323,6 +323,90 @@ it('every ds:Signature is listed as present with its parent and where each Refer
     expect(keyed.signatures.signatures[0]?.references[0]).toMatchObject({ points: 'parent' });
     expect(points(sig(ref(`#${name}`))).reference).toMatchObject({ points: 'missing' });
   }
+
+  // XML Signature processors commonly resolve #a1 through an Id or id attribute as well as ID, so a second element that
+  // writes the same value as Id or id is the ID-confusion shape, and a Reference that only an Id reaches points at it.
+  for (const name of ['Id', 'id']) {
+    const confused = points(sig(ref('#a1')), `<saml:Advice ${name}="a1"/>`);
+    expect(confused.reference, name).toMatchObject({ points: 'duplicate' });
+    expect(confused.report.signatures.notes.join(' '), name).toMatch(/more than one element/i);
+    const reached = points(sig(ref('#adv')), `<saml:Advice ${name}="adv"/>`);
+    expect(reached.reference, name).toMatchObject({ points: 'other', target: 'saml:Advice adv' });
+  }
+  // One element that writes the same value as ID and as Id is still one element.
+  const twice = decodeSaml(
+    responseXml({
+      assertion: `<saml:Assertion ID="a1" Id="a1" Version="2.0" IssueInstant="2004-12-05T09:22:05Z"><saml:Issuer>i</saml:Issuer>${sig(ref('#a1'))}</saml:Assertion>`,
+    }),
+    { now: NOW },
+  );
+  expect(twice.signatures.signatures[0]?.references[0]).toMatchObject({ points: 'parent' });
+  expect(twice.notes.join(' ')).not.toContain('signature-wrapping');
+
+  // The signed original assertion moved inside another element while an unsigned one sits directly in the Response: the
+  // summary reads the unsigned one, so the report says the message holds more assertions than it summarises and that the
+  // summarised one is not what the Signature points at.
+  const original = `<saml:Assertion ID="orig" Version="2.0" IssueInstant="2004-12-05T09:22:05Z"><saml:Issuer>https://idp.example.org/SAML2</saml:Issuer>${sig(ref('#orig'))}<saml:Subject><saml:NameID>user@example.com</saml:NameID></saml:Subject></saml:Assertion>`;
+  const forged = (inside: string) =>
+    `<saml:Assertion ID="evil" Version="2.0" IssueInstant="2004-12-05T09:22:05Z"><saml:Issuer>https://idp.example.org/SAML2</saml:Issuer>${inside}<saml:Subject><saml:NameID>admin</saml:NameID></saml:Subject></saml:Assertion>`;
+  const wrapped = [
+    [
+      'in samlp:Extensions',
+      responseXml({ assertion: forged(''), extra: `<samlp:Extensions>${original}</samlp:Extensions>` }),
+    ],
+    [
+      'in the Advice of the forged assertion',
+      responseXml({ assertion: forged(`<saml:Advice>${original}</saml:Advice>`) }),
+    ],
+  ] as const;
+  for (const [where, xml] of wrapped) {
+    const report = decodeSaml(xml, { now: NOW });
+    expect(pairsOf(report).get('Assertion ID'), where).toBe('evil');
+    expect(report.signatures.signedElements, where).toEqual(['saml:Assertion orig']);
+    const said = report.notes.join(' ');
+    expect(said, where).toContain('holds 2 Assertion elements');
+    expect(said, where).toContain('directly in the Response');
+    expect(said, where).toContain('(saml:Assertion evil) is not an element any Signature points at');
+    expect(said, where).toContain('they point at saml:Assertion orig');
+    expect(report.notes.filter((n) => n.includes('signature-wrapping')).length, where).toBe(2);
+  }
+  // The usual shapes raise neither note: a signed assertion, a signed Response around an unsigned assertion, no
+  // signature at all, and a bare signed Assertion.
+  const plain = [
+    responseXml({ assertion: assertionWith(sig(ref('#a1'))) }),
+    responseXml({ extra: sig(ref('#r1')) }),
+    responseXml(),
+    assertionWith(sig(ref('#a1'))).replace(
+      '<saml:Assertion ',
+      `<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" `,
+    ),
+  ];
+  for (const xml of plain) {
+    const report = decodeSaml(xml, { now: NOW });
+    expect(report.notes.join(' '), xml.slice(0, 80)).not.toContain('signature-wrapping');
+    expect(report.notes.join(' ')).not.toContain('Assertion elements');
+  }
+  // A bare Assertion whose own Signature points at an assertion nested in its Advice is the same shape.
+  const bare = forged(`<saml:Advice>${original}</saml:Advice>`).replace(
+    '<saml:Assertion ID="evil"',
+    '<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="evil"',
+  );
+  const bareReport = decodeSaml(bare, { now: NOW });
+  expect(bareReport.notes.join(' ')).toContain('(saml:Assertion evil) is not an element any Signature points at');
+  // When the Signature names no element it covers, its own note says so and the summarised assertion is not compared:
+  // a Reference to an ID that no element holds, and the placeholder Signature of the Technical Overview example.
+  const nowhere = decodeSaml(
+    responseXml({
+      assertion: forged(''),
+      extra: `<samlp:Extensions>${original.replace(' ID="orig"', '')}</samlp:Extensions>`,
+    }),
+    { now: NOW },
+  );
+  expect(nowhere.notes.join(' ')).toContain('Reference to an ID that no element of the message holds');
+  expect(nowhere.notes.join(' ')).toContain('holds 2 Assertion elements');
+  expect(nowhere.notes.join(' ')).not.toContain('is not an element any Signature points at');
+  const overview = decodeSaml(fixture('overview-response.xml'), { now: NOW });
+  expect(overview.notes.join(' ')).not.toContain('signature-wrapping');
 });
 
 it('the first embedded certificate is shown as PEM text and never read', () => {

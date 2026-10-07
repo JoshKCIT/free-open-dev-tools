@@ -1,5 +1,6 @@
 import meta from './meta.json';
 import { decodeBase64 } from './base64';
+import { NS_ASSERTION, allElements, childrenNamed, isNamed } from './dom';
 import { SamlDecoderError, type SamlDecoderPart } from './errors';
 import { formatXml, type FormattedXml } from './format';
 import { inflateCapped } from './inflate';
@@ -7,9 +8,10 @@ import { readInput, type InputKind, type InputReading, type MessageParameter } f
 import { MAX_NOTES, MAX_XML_BYTES, TOO_LARGE_MESSAGE, checkPaste, utf8Length, withCommas } from './limits';
 import { parseSaml } from './parse';
 import { prescan } from './prescan';
-import { describeSignatureAlgorithm, describeSignatures, type SignatureReport } from './signature';
+import { describeSignatureAlgorithm, describeSignatures, elementLabel, type SignatureReport } from './signature';
 import { summarize, type SamlSummary } from './summary';
 import { UTF32_MESSAGE, decodeXml, looksLikeUtf32 } from './text';
+import { visible } from './visible';
 import { DOCTYPE_REFUSAL_MESSAGE, findDoctype } from './xml-doctype';
 import { ENTITY_REFUSAL_MESSAGE, findEntityDeclaration } from './xml-entity';
 
@@ -120,6 +122,54 @@ function transportOf(reading: InputReading): TransportDetails | undefined {
   return transport;
 }
 
+/** How many of the elements the Signatures cover a note names before it says "and more". */
+const SIGNED_NAMED = 3;
+
+/**
+ * The two signature-wrapping shapes that only show when the summary and the signatures are read together. The summary
+ * reads the assertions that sit directly in a Response, so (1) an Assertion element anywhere else in the message is noted,
+ * and (2) when the Signatures point at elements but none of them is the root, an assertion the summary reads that no
+ * Signature points at is noted, with the elements they do point at. A message with no Signature, or whose Signatures name
+ * nothing they cover, gets no second note: those have notes of their own.
+ */
+function wrappingNotes(document: Document, summary: SamlSummary, signatures: SignatureReport): string[] {
+  const root = document.documentElement;
+  let summarised: Element[] = [];
+  if (summary.kind === 'Assertion') summarised = [root];
+  else if (summary.kind === 'Response') summarised = childrenNamed(root, NS_ASSERTION, 'Assertion');
+  else return [];
+  const notes: string[] = [];
+  if (summary.kind === 'Response') {
+    const total = allElements(root).filter((element) => isNamed(element, NS_ASSERTION, 'Assertion')).length;
+    const direct = summarised.length;
+    if (total > direct) {
+      notes.push(
+        direct === 0
+          ? `The message holds ${withCommas(total)} Assertion element${total === 1 ? '' : 's'}, none of them directly in the Response, so the summary reads none of them; an assertion inside another element is a signature-wrapping shape.`
+          : `The message holds ${withCommas(total)} Assertion elements, but the summary reads only the ${withCommas(direct)} that ${direct === 1 ? 'sits' : 'sit'} directly in the Response; the others sit inside other elements, a signature-wrapping shape.`,
+      );
+    }
+  }
+  // A Signature that names nothing it covers (no SignedInfo, no Reference, a Reference to no element or outside the
+  // message) already has its own note, and then nothing here can be compared.
+  const signed = signatures.signedElements;
+  if (signed.length === 0) return notes;
+  if (signed.includes(elementLabel(root)) || signed.includes('the whole document')) return notes;
+  const covered = ` (they point at ${signed
+    .slice(0, SIGNED_NAMED)
+    .map((name) => visible(name, 80))
+    .join(', ')}${signed.length > SIGNED_NAMED ? ', and more' : ''})`;
+  for (const assertion of summarised) {
+    const name = elementLabel(assertion);
+    if (signed.includes(name)) continue;
+    notes.push(
+      `The assertion summarised here (${visible(name, 80)}) is not an element any Signature points at${covered}: a signature-wrapping shape.`,
+    );
+    if (notes.length >= MAX_NOTES) break;
+  }
+  return notes;
+}
+
 /**
  * Decodes a SAML 2.0 message pasted as an HTTP-Redirect address, an HTTP-POST form or value, or raw XML. Each step runs once,
  * in this order: read the input, undo Base64, undo compression, decode the text, refuse a DOCTYPE or entity declaration,
@@ -199,7 +249,7 @@ export function decodeSaml(text: string, options: DecodeOptions): SamlReport {
     signatureParts.push('a Signature parameter is in the redirect address, not verified');
   summary.pairs.push(['Signatures', signatureParts.length > 0 ? signatureParts.join('; ') : 'None present']);
 
-  const notes = [...summary.notes, ...signatures.notes];
+  const notes = [...summary.notes, ...signatures.notes, ...wrappingNotes(parsed.document, summary, signatures)];
   const hasSignature = signatures.signatures.length > 0 || transport?.signaturePresent === true;
   if (!hasSignature) {
     notes.push(

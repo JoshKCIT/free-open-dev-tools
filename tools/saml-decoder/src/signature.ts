@@ -92,9 +92,25 @@ function nameOf(uri: string | undefined, table: ReadonlyMap<string, string>): st
   return known === undefined ? `${visible(uri, SHOWN)} (an address this page does not know)` : known;
 }
 
-/** The qualified name of an element and its ID, as a short label. */
-function label(element: Element): string {
-  const id = attr(element, 'ID');
+/**
+ * The attribute names a same-document Reference such as `#a1` can be resolved through. SAML writes `ID`, but XML Signature
+ * processors commonly accept `Id` and `id` as well, so every one of them counts when a Reference is matched: two elements
+ * that share a value through different names are the ID-confusion shape of signature wrapping.
+ */
+const ID_ATTRIBUTES = ['ID', 'Id', 'id'] as const;
+
+/** The value of the first ID-like attribute an element writes, in the order of `ID_ATTRIBUTES`. */
+function idOf(element: Element): string | undefined {
+  for (const name of ID_ATTRIBUTES) {
+    const id = attr(element, name);
+    if (id !== undefined) return id;
+  }
+  return undefined;
+}
+
+/** The qualified name of an element and its ID, as a short label: `saml:Assertion identifier_3`. */
+export function elementLabel(element: Element): string {
+  const id = idOf(element);
   return id === undefined ? element.tagName : `${element.tagName} ${id}`;
 }
 
@@ -140,11 +156,15 @@ export function describeSignatures(document: Document): SignatureReport {
   const elements = allElements(root);
   const ids = new Map<string, Element[]>();
   for (const element of elements) {
-    const id = attr(element, 'ID');
-    if (id === undefined) continue;
-    const list = ids.get(id);
-    if (list) list.push(element);
-    else ids.set(id, [element]);
+    for (const name of ID_ATTRIBUTES) {
+      const id = attr(element, name);
+      if (id === undefined) continue;
+      const list = ids.get(id);
+      if (!list) ids.set(id, [element]);
+      // The names of one element are read one after another, so an element that writes the same value twice is the last
+      // one in its list: it is counted once, and the check costs one comparison.
+      else if (list[list.length - 1] !== element) list.push(element);
+    }
   }
   const signatures: SignatureInfo[] = [];
   const rows: string[][] = [];
@@ -169,7 +189,7 @@ export function describeSignatures(document: Document): SignatureReport {
       parent: parent ? parent.tagName : '(the document)',
       references: [],
     };
-    const parentId = parent ? attr(parent, 'ID') : undefined;
+    const parentId = parent ? idOf(parent) : undefined;
     if (parentId !== undefined) info.parentId = parentId;
     const signedInfo = firstNamed(element, NS_DS, 'SignedInfo');
     if (signedInfo === null) {
@@ -226,7 +246,7 @@ export function describeSignatures(document: Document): SignatureReport {
             entry.points = 'parent';
           } else {
             entry.points = 'other';
-            entry.target = label(matches[0]!);
+            entry.target = elementLabel(matches[0]!);
             note(
               `Signature ${index} has a Reference that points at ${visible(entry.target, 80)}, not at the element it sits in: a signature-wrapping shape.`,
             );
@@ -236,7 +256,7 @@ export function describeSignatures(document: Document): SignatureReport {
           note(`Signature ${index} has a Reference that points outside the message.`);
         }
         info.references.push(entry);
-        if (entry.points === 'parent' && parent) signedElements.push(label(parent));
+        if (entry.points === 'parent' && parent) signedElements.push(elementLabel(parent));
         else if (entry.points === 'other' && entry.target) signedElements.push(entry.target);
         else if (entry.points === 'document') signedElements.push('the whole document');
       }
