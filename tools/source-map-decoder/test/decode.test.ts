@@ -479,3 +479,45 @@ it('the 5,000 line limit counts lines the way the trace is split: a line feed, a
   expect(refused(CR.repeat(1_000_000))).toBe('The trace has 1,000,001 lines. The limit is 5,000 lines.');
   expect(() => decodeStackTrace({ trace: CR.repeat(1_000_000), maps: '' })).toThrow(SourceMapError);
 });
+
+it('kept segments are stored as 32-bit integers and a position past 2,147,483,647 is a finding, never kept', () => {
+  // Five 4 byte numbers per kept segment: 20 bytes, half of what eight byte numbers take at the 4,000,000 segment cap.
+  const plain = decodeNeededLines(buildMappings([[{ col: 0, source: 0, line: 3, ocol: 4 }, { col: 9 }]]), [0], {
+    sources: 1,
+    names: 0,
+  });
+  const line = plain.lines.get(0)!;
+  expect(line.data).toBeInstanceOf(Int32Array);
+  expect(line.count).toBe(2);
+  expect(Array.from(line.data.subarray(0, 10))).toEqual([0, 0, 3, 4, -1, 9, -1, -1, -1, -1]);
+
+  // The largest value one VLQ holds is 2,147,483,647; a second one carries the generated column past it. That segment
+  // is a finding and is not kept, so no stored number wraps around.
+  const largest = 2_147_483_647;
+  const past = decodeNeededLines(`${encodeVlq(largest)},${encodeVlq(1)},${encodeVlq(-largest)}`, [0], {
+    sources: 1,
+    names: 0,
+  });
+  const kept = past.lines.get(0)!;
+  expect(kept.count).toBe(2);
+  // The third segment comes back to column 1, so the line is sorted: column 1 first, then the largest.
+  expect(Array.from(kept.data.subarray(0, 10))).toEqual([1, -1, -1, -1, -1, largest, -1, -1, -1, -1]);
+  expect(past.findings.map((finding) => finding.message)).toEqual([
+    'Generated line 1 has a segment whose position is past 2,147,483,647, the largest this page keeps.',
+  ]);
+  // The original line and column are held to the same rule.
+  const original = buildMappings([
+    [
+      { col: 0, source: 0, line: largest, ocol: 0 },
+      { col: 1, source: 0, line: largest, ocol: largest },
+    ],
+  ]);
+  const deep = decodeNeededLines(`${original},${encodeVlq(1)}${encodeVlq(0)}${encodeVlq(1)}${encodeVlq(0)}`, [0], {
+    sources: 1,
+    names: 0,
+  });
+  expect(deep.lines.get(0)!.count).toBe(2);
+  expect(deep.findings.map((finding) => finding.message)).toEqual([
+    'Generated line 1 has a segment whose position is past 2,147,483,647, the largest this page keeps.',
+  ]);
+});
