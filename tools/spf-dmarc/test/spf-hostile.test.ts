@@ -2,6 +2,9 @@ import { expect, it } from 'vitest';
 import { checkSpf, parseSpf, readTxtRecords } from '../src/index';
 import { HOSTILE, MAX_SCALING_RATIO, scalingRatio } from './scaling';
 
+/** A run of quotes: to the zone reader, many empty quoted strings. */
+const QUOTES = (n: number): string => '"'.repeat(n);
+
 // The six shared hostile strings plus this tool's own: a record of many ip4 terms, many includes, many quotes and many
 // parentheses and semicolons for the zone reader. Each parser is timed on an input of size n and of size 2n; a ratio over 6
 // means it does more than a bounded number of passes over its input.
@@ -9,7 +12,7 @@ const OWN: ReadonlyArray<(n: number) => string> = [
   (n) => 'ip4:1.2.3.4 '.repeat(Math.ceil(n / 12)),
   (n) => 'include:a.example '.repeat(Math.ceil(n / 18)),
   (n) => 'a '.repeat(Math.ceil(n / 2)),
-  (n) => '"'.repeat(n),
+  QUOTES,
   (n) => '(;'.repeat(Math.floor(n / 2)),
   (n) => '%{'.repeat(Math.floor(n / 2)),
   (n) => 'a:' + '%{d}'.repeat(Math.floor(n / 4)),
@@ -30,6 +33,25 @@ const SLASHES: ReadonlyArray<[string, (n: number) => string]> = [
 // The record sizes stay inside the 16,384 character cap at 2n; the box sizes stay inside 65,536.
 const RECORD_N = 4_000;
 const BOX_N = 16_000;
+// The zone reader takes a run of quotes as thousands of tiny strings, quick enough at BOX_N that a pause of the machine
+// can decide the ratio (it read 7.1 once under load). That run is measured on a box twice as big, still inside 65,536 at
+// 2n with the quotes around it.
+const QUOTES_BOX_N = 32_000;
+
+/**
+ * The zone reader's ratio on one input. For the run of quotes the limit is not loosened: a ratio over it is measured twice
+ * more and the median of the three is judged, so one slow moment cannot fail the reader while a reader that really grows
+ * too fast fails all three.
+ */
+function zoneRatio(make: (n: number) => string, quoted: boolean): number {
+  const read = (input: string): unknown => readTxtRecords(input, 'spf');
+  const input = quoted ? (n: number): string => 'TXT "' + make(n) + '"' : make;
+  if (make !== QUOTES) return scalingRatio(read, input, BOX_N);
+  const ratio = scalingRatio(read, input, QUOTES_BOX_N);
+  if (ratio <= MAX_SCALING_RATIO) return ratio;
+  const three = [ratio, scalingRatio(read, input, QUOTES_BOX_N), scalingRatio(read, input, QUOTES_BOX_N)];
+  return three.sort((a, b) => a - b)[1] ?? ratio;
+}
 
 it('every SPF parser stays linear on hostile input', () => {
   const makers = [...HOSTILE, ...OWN];
@@ -40,14 +62,8 @@ it('every SPF parser stays linear on hostile input', () => {
     expect(ratio, `parseSpf and checkSpf, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
   }
   for (const [i, make] of makers.entries()) {
-    const ratio = scalingRatio((input) => readTxtRecords(input, 'spf'), make, BOX_N);
-    expect(ratio, `readTxtRecords, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
-    const quoted = scalingRatio(
-      (input) => readTxtRecords(input, 'spf'),
-      (n) => 'TXT "' + make(n) + '"',
-      BOX_N,
-    );
-    expect(quoted, `readTxtRecords inside quotes, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
+    expect(zoneRatio(make, false), `readTxtRecords, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
+    expect(zoneRatio(make, true), `readTxtRecords inside quotes, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
   }
   // Many lines that hold no record (comments and blank lines) are skipped one by one.
   const lines = scalingRatio(
