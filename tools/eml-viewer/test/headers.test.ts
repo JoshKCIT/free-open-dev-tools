@@ -220,3 +220,71 @@ it('RFC 5322 dates read obsolete zones and two-digit years as section 4.3 says',
   expect(readMailDate('1 Jan 49 12:00:00 EST')?.notes.join(' ')).toContain('2049');
   expect(readMailDate('1 Jan 2000 12:00:00 Z')?.notes.join(' ')).toContain('-0000');
 });
+
+it('a negative delay is shown as a clock note, not an error', async () => {
+  // RFC 8617 Appendix B: four Received lines whose stated times do not run in order. The line at the bottom (clochette) is
+  // the first hop, at 15:03:15, and the line before it in the list (segv) states 15:00:01, which is 194 seconds earlier.
+  const analysis = await analyzeMessage(
+    build(
+      [
+        'Return-Path: <jqd@d1.example>',
+        'Received: from example.org (example.org [208.69.40.157])',
+        '    by gmail.example with ESMTP id d200mr22663000ykb.93.1421363207',
+        '    for <fmartin@example.com>; Thu, 14 Jan 2015 15:02:40 -0800 (PST)',
+        'Received: from segv.d1.example (segv.d1.example [72.52.75.15])',
+        '    by lists.example.org (8.14.5/8.14.5) with ESMTP id t0EKaNU9010123',
+        '    for <arc@example.org>; Thu, 14 Jan 2015 15:01:30 -0800 (PST)',
+        '    (envelope-from jqd@d1.example)',
+        'Received: from [2001:DB8::1A] (w-x-y-z.dsl.static.isp.example [w.x.y.z])',
+        '    (authenticated bits=0)',
+        '    by segv.d1.example with ESMTP id t0FN4a8O084569;',
+        '    Thu, 14 Jan 2015 15:00:01 -0800 (PST)',
+        '    (envelope-from jqd@d1.example)',
+        'Received: from mail-ob0-f188.google.example',
+        '    (mail-ob0-f188.google.example [208.69.40.157]) by',
+        '    clochette.example.org with ESMTP id d200mr22663000ykb.93.1421363268',
+        '    for <fmartin@example.org>; Thu, 14 Jan 2015 15:03:15 -0800 (PST)',
+        'Date: Thu, 14 Jan 2015 15:00:01 -0800',
+        'From: John Q Doe <jqd@d1.example>',
+        'To: arc@dmarc.example',
+        'Subject: [List 2] Example 1',
+      ],
+      'Hey gang,\r\nThis is a test message.\r\n--J.\r\n',
+    ),
+  );
+  expect(analysis.hops.map((hop) => hop.from)).toEqual([
+    'mail-ob0-f188.google.example',
+    '[2001:DB8::1A]',
+    'segv.d1.example',
+    'example.org',
+  ]);
+  expect(analysis.hops.map((hop) => hop.time)).toEqual([
+    '2015-01-14 23:03:15',
+    '2015-01-14 23:00:01',
+    '2015-01-14 23:01:30',
+    '2015-01-14 23:02:40',
+  ]);
+  expect(analysis.hops.map((hop) => hop.delaySeconds)).toEqual([null, -194, 89, 70]);
+  expect(analysis.hops.map((hop) => hop.delay)).toEqual(['', '-3 min 14 s', '1 min 29 s', '1 min 10 s']);
+  // The negative delay is a note on that hop and in the list of observations; nothing is thrown and nothing is called wrong.
+  expect(analysis.hops[1]?.note).toContain('clocks');
+  expect(analysis.hops[0]?.note).toBe('');
+  expect(analysis.hops[2]?.note).toBe('');
+  expect(analysis.observations.join(' ')).toContain('earlier than the line before it');
+  for (const text of [...analysis.hops.map((h) => h.note), ...analysis.observations]) {
+    expect(text).not.toMatch(/error|forged|fake|spoof|unsafe|safe|verified|trusted/i);
+  }
+  // The same clock note appears for a hop with no stated date, which has no delay at all.
+  const missing = await analyzeMessage(
+    build(
+      [
+        'Received: from b.example by c.example; 21 Nov 1997 10:05:43 -0600',
+        'Received: from a.example by b.example',
+        'From: a@example.com',
+      ],
+      'x',
+    ),
+  );
+  expect(missing.hops.map((hop) => hop.delay)).toEqual(['', '']);
+  expect(missing.hops[0]?.note).toContain('no date');
+});

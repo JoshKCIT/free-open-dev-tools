@@ -1,0 +1,85 @@
+{
+  "description": "The corpus the recorded Python email output was made from. Each message is a JSON string with CRLF escapes (never an .eml file: the repository normalises line endings).",
+  "messages": {
+    "rfc5322-a1-1-simple": {
+      "source": "RFC 5322 Appendix A.1.1",
+      "text": "From: John Doe <jdoe@machine.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: Fri, 21 Nov 1997 09:55:06 -0600\r\nMessage-ID: <1234@local.machine.example>\r\n\r\nThis is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc5322-a1-2-mailboxes": {
+      "source": "RFC 5322 Appendix A.1.2",
+      "text": "From: \"Joe Q. Public\" <john.q.public@example.com>\r\nTo: Mary Smith <mary@x.test>, jdoe@example.org, Who? <one@y.test>\r\nCc: <boss@nil.test>, \"Giant; \\\"Big\\\" Box\" <sysservices@example.net>\r\nDate: Tue, 1 Jul 2003 10:52:37 +0200\r\nMessage-ID: <5678.21-Nov-1997@example.com>\r\n\r\nHi everyone.\r\n"
+    },
+    "rfc5322-a1-3-groups": {
+      "source": "RFC 5322 Appendix A.1.3",
+      "text": "From: Pete <pete@silly.example>\r\nTo: A Group:Ed Jones <c@a.test>,joe@where.test,John <jdoe@one.test>;\r\nCc: Undisclosed recipients:;\r\nDate: Thu, 13 Feb 1969 23:32:54 -0330\r\nMessage-ID: <testabcd.1234@silly.example>\r\n\r\nTesting.\r\n"
+    },
+    "rfc5322-a2-reply": {
+      "source": "RFC 5322 Appendix A.2 (the reply)",
+      "text": "From: Mary Smith <mary@example.net>\r\nTo: John Doe <jdoe@machine.example>\r\nReply-To: \"Mary Smith: Personal Account\" <smith@home.example>\r\nSubject: Re: Saying Hello\r\nDate: Fri, 21 Nov 1997 10:01:10 -0600\r\nMessage-ID: <3456@example.net>\r\nIn-Reply-To: <1234@local.machine.example>\r\nReferences: <1234@local.machine.example>\r\n\r\nThis is a reply to your hello.\r\n"
+    },
+    "rfc5322-a3-resent": {
+      "source": "RFC 5322 Appendix A.3",
+      "text": "Resent-From: Mary Smith <mary@example.net>\r\nResent-To: Jane Brown <j-brown@other.example>\r\nResent-Date: Mon, 24 Nov 1997 14:22:01 -0800\r\nResent-Message-ID: <78910@example.net>\r\nFrom: John Doe <jdoe@machine.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: Fri, 21 Nov 1997 09:55:06 -0600\r\nMessage-ID: <1234@local.machine.example>\r\n\r\nThis is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc5322-a4-trace": {
+      "source": "RFC 5322 Appendix A.4",
+      "text": "Received: from x.y.test\r\n   by example.net\r\n   via TCP\r\n   with ESMTP\r\n   id ABC12345\r\n   for <mary@example.net>;  21 Nov 1997 10:05:43 -0600\r\nReceived: from node.example by x.y.test; 21 Nov 1997 10:01:22 -0600\r\nFrom: John Doe <jdoe@node.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: Fri, 21 Nov 1997 09:55:06 -0600\r\nMessage-ID: <1234@local.node.example>\r\n\r\nThis is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc5322-a5-oddities": {
+      "source": "RFC 5322 Appendix A.5",
+      "text": "From: Pete(A nice \\) chap) <pete(his account)@silly.test(his host)>\r\nTo:A Group(Some people)\r\n     :Chris Jones <c@(Chris's host.)public.example>,\r\n         joe@example.org,\r\n  John <jdoe@one.test> (my dear friend); (the end of the group)\r\nCc:(Empty list)(start)Hidden recipients  :(nobody(that I know))  ;\r\nDate: Thu,\r\n      13\r\n        Feb\r\n          1969\r\n      23:32\r\n               -0330 (Newfoundland Time)\r\nMessage-ID:              <testabcd.1234@silly.test>\r\n\r\nTesting.\r\n"
+    },
+    "rfc5322-a6-1-obsolete-addresses": {
+      "source": "RFC 5322 Appendix A.6.1",
+      "text": "From: Joe Q. Public <john.q.public@example.com>\r\nTo: Mary Smith <@node.test:mary@example.net>, , jdoe@test  . example\r\nDate: Tue, 1 Jul 2003 10:52:37 +0200\r\nMessage-ID: <5678.21-Nov-1997@example.com>\r\n\r\nHi everyone.\r\n"
+    },
+    "rfc5322-a6-2-obsolete-date": {
+      "source": "RFC 5322 Appendix A.6.2",
+      "text": "From: John Doe <jdoe@machine.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: 21 Nov 97 09:55:06 GMT\r\nMessage-ID: <1234@local.machine.example>\r\n\r\nThis is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc2047-section-8": {
+      "source": "RFC 2047 section 8 (the header examples, with the two-charset subject)",
+      "text": "From: =?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>\r\nTo: =?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?= <keld@dkuug.dk>\r\nCC: =?ISO-8859-1?Q?Andr=E9?= Pirard <PIRARD@vm1.ulg.ac.be>\r\nSubject: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=\r\n =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=\r\n\r\nThe first header examples of section 8.\r\n"
+    },
+    "rfc2049-appendix-a": {
+      "source": "RFC 2049 Appendix A (the complete MIME example)",
+      "text": "MIME-Version: 1.0\r\nFrom: Nathaniel Borenstein <nsb@nsb.fv.com>\r\nTo: Ned Freed <ned@innosoft.com>\r\nDate: Fri, 07 Oct 1994 16:15:05 -0700 (PDT)\r\nSubject: A multipart example\r\nContent-Type: multipart/mixed;\r\n              boundary=unique-boundary-1\r\n\r\nThis is the preamble area of a multipart message.\r\nMail readers that understand multipart format\r\nshould ignore this preamble.\r\n\r\nIf you are reading this text, you might want to\r\nconsider changing to a mail reader that understands\r\nhow to properly display multipart messages.\r\n\r\n--unique-boundary-1\r\n\r\n  ... Some text appears here ...\r\n\r\n[Note that the blank between the boundary and the start\r\n of the text in this part means no header fields were\r\n given and this is text in the US-ASCII character set.\r\n It could have been done with explicit typing as in the\r\n next part.]\r\n\r\n--unique-boundary-1\r\nContent-type: text/plain; charset=US-ASCII\r\n\r\nThis could have been part of the previous part, but\r\nillustrates explicit versus implicit typing of body\r\nparts.\r\n\r\n--unique-boundary-1\r\nContent-Type: multipart/parallel; boundary=unique-boundary-2\r\n\r\n--unique-boundary-2\r\nContent-Type: audio/basic\r\nContent-Transfer-Encoding: base64\r\n\r\n  ... base64-encoded 8000 Hz single-channel\r\n      mu-law-format audio data goes here ...\r\n\r\n--unique-boundary-2\r\nContent-Type: image/jpeg\r\nContent-Transfer-Encoding: base64\r\n\r\n  ... base64-encoded image data goes here ...\r\n\r\n--unique-boundary-2--\r\n\r\n--unique-boundary-1\r\nContent-type: text/enriched\r\n\r\nThis is <bold><italic>enriched.</italic></bold>\r\n<smaller>as defined in RFC 1896</smaller>\r\n\r\nIsn't it\r\n<bigger><bigger>cool?</bigger></bigger>\r\n\r\n--unique-boundary-1\r\nContent-Type: message/rfc822\r\n\r\nFrom: (mailbox in US-ASCII)\r\nTo: (address in US-ASCII)\r\nSubject: (subject in US-ASCII)\r\nContent-Type: Text/plain; charset=ISO-8859-1\r\nContent-Transfer-Encoding: Quoted-printable\r\n\r\n  ... Additional text in ISO-8859-1 goes here ...\r\n\r\n--unique-boundary-1--\r\n"
+    },
+    "welcome": {
+      "source": "an invented message (the fixture the live page test uses)",
+      "text": "Received: from relay.example.net (relay.example.net [192.0.2.25])\r\n        by mx.example.org with ESMTPS id abc123\r\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:09 +0000\r\nReceived: from sender.example.com (sender.example.com [192.0.2.10])\r\n        by relay.example.net with ESMTP id r1\r\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:03 +0000\r\nAuthentication-Results: mx.example.org;\r\n        spf=pass smtp.mailfrom=example.com;\r\n        dkim=pass header.d=example.com header.s=sel1;\r\n        dmarc=pass header.from=example.com\r\nDKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=sel1;\r\n        t=1791280800; x=1791367200; h=from:to:subject:date:message-id;\r\n        bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;\r\n        b=c2lnbmF0dXJlLW5vdC1yZWFs\r\nFrom: =?UTF-8?B?Sm9zw6kgQmFrZXI=?= <jose@example.com>\r\nTo: Alice <alice@example.org>\r\nSubject: =?UTF-8?Q?Caf=C3=A9_menu?=\r\nDate: Tue, 06 Oct 2026 09:59:58 +0000\r\nMessage-ID: <msg-1@example.com>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"BOUNDARY-1\"\r\n\r\n--BOUNDARY-1\r\nContent-Type: multipart/alternative; boundary=\"ALT-1\"\r\n\r\n--ALT-1\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nHello Alice, the menu is attached.=20\r\n--ALT-1\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>Hello <b>Alice</b>, see <a href=\"https://tracker.example/click?u=1\">the menu</a>.</p>\r\n<img src=\"https://tracker.example/pixel.gif\" width=\"1\" height=\"1\">\r\n--ALT-1--\r\n--BOUNDARY-1\r\nContent-Type: text/plain; name=\"report.txt\"\r\nContent-Disposition: attachment; filename=\"report.txt\"\r\nContent-Transfer-Encoding: base64\r\n\r\nUXVhcnRlcmx5IGZpZ3VyZXM6IDQyIHVuaXRzIHNoaXBwZWQuCg==\r\n--BOUNDARY-1--\r\n"
+    },
+    "nested-forward": {
+      "source": "an invented message: a forwarded message attached as message/rfc822",
+      "text": "From: Bob <bob@example.net>\r\nTo: Cy <cy@example.com>\r\nSubject: Fwd: Original note\r\nDate: Mon, 05 Oct 2026 09:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"FWD-1\"\r\n\r\n--FWD-1\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\nSee below.\r\n--FWD-1\r\nContent-Type: message/rfc822\r\nContent-Disposition: attachment; filename=\"forwarded.eml\"\r\n\r\nFrom: Ann Lee <ann@example.org>\r\nTo: Bob <bob@example.net>\r\nSubject: Original note\r\nDate: Mon, 05 Oct 2026 08:00:00 +0000\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\nThis is the forwarded note.\r\n--FWD-1--\r\n"
+    },
+    "rfc2231-attachment-name": {
+      "source": "RFC 2231 section 4.1 (the combined example, used as a file name)",
+      "text": "From: Dee <dee@example.com>\r\nTo: Eve <eve@example.org>\r\nSubject: A file with an extended name\r\nDate: Tue, 06 Oct 2026 11:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"X-2231\"\r\n\r\n--X-2231\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\nThe attachment has an extended name.\r\n--X-2231\r\nContent-Type: application/octet-stream\r\nContent-Disposition: attachment;\r\n filename*0*=us-ascii'en'This%20is%20even%20more%20;\r\n filename*1*=%2A%2A%2Afun%2A%2A%2A%20;\r\n filename*2=\"isn't it!\"\r\nContent-Transfer-Encoding: base64\r\n\r\nAAECAwQFBgcICQ==\r\n--X-2231\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Disposition: attachment; filename*=UTF-8''%E2%82%AC%20rates.txt\r\nContent-Transfer-Encoding: 7bit\r\n\r\nRates are in euros.\r\n--X-2231--\r\n"
+    },
+    "charset-iso-8859-2": {
+      "source": "an invented message: a plain text body in iso-8859-2, Base64",
+      "text": "From: Fay <fay@example.com>\r\nTo: Gus <gus@example.org>\r\nSubject: Polish text\r\nDate: Tue, 06 Oct 2026 12:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=iso-8859-2\r\nContent-Transfer-Encoding: base64\r\n\r\nWmG/87PmIGfqtmyxIGphvPEuDQpEemnqa3Vq6iBiYXJkem8uDQo=\r\n"
+    },
+    "charset-gb18030": {
+      "source": "an invented message: a plain text body in gb18030, Base64",
+      "text": "From: Fay <fay@example.com>\r\nTo: Gus <gus@example.org>\r\nSubject: Chinese text\r\nDate: Tue, 06 Oct 2026 12:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=gb18030\r\nContent-Transfer-Encoding: base64\r\n\r\nxOO6w6OsysC956GjDQrV4srH0ru49rLiytShow0K\r\n"
+    },
+    "charset-euc-kr": {
+      "source": "an invented message: a plain text body in euc-kr, Base64",
+      "text": "From: Fay <fay@example.com>\r\nTo: Gus <gus@example.org>\r\nSubject: Korean text\r\nDate: Tue, 06 Oct 2026 12:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=euc-kr\r\nContent-Transfer-Encoding: base64\r\n\r\nvsiz58fPvLy/5CwgvLyw6C4NCsXXvbrGriC43r3DwfbA1LTPtNkuDQo=\r\n"
+    },
+    "charset-windows-1252": {
+      "source": "an invented message: windows-1252 bytes 0x80 to 0x9F in quoted-printable",
+      "text": "From: Hal <hal@example.com>\r\nTo: Ida <ida@example.org>\r\nSubject: Smart quotes\r\nDate: Tue, 06 Oct 2026 13:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=windows-1252\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nHe said =93quoted=94 and it cost =805 =96 not =A35.\r\n"
+    },
+    "quoted-printable-soft-breaks": {
+      "source": "an invented message: a quoted-printable body with soft line breaks and =3D",
+      "text": "From: Jo <jo@example.com>\r\nTo: Kim <kim@example.org>\r\nSubject: Soft breaks\r\nDate: Tue, 06 Oct 2026 14:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nThis line is long enough that a mail system folded it with a soft break so =\r\nit continues here, and an equals sign is written =3D in the text. Caf=C3=A9 =\r\nis spelled with two bytes.\r\nThe last line ends with a soft break =\r\n"
+    },
+    "base64-line-noise": {
+      "source": "an invented message: a Base64 body with a stray character, a blank line and a space",
+      "text": "From: Lee <lee@example.com>\r\nTo: Max <max@example.org>\r\nSubject: Noisy Base64\r\nDate: Tue, 06 Oct 2026 15:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: base64\r\n\r\nVGhlIHF1aWNrIGJyb3duIGZveCBqdW1w\r\ncyBvdmVyIH!RoZSBsYXp5IGRvZy4gUGFj\r\n\r\nayBte SBib3ggd2l0aCBmaXZlIGRvemVu\r\nIGxpcXVvciBqdWdzLg0K\r\n"
+    }
+  }
+}

@@ -1,0 +1,739 @@
+{
+  "recordedAt": "2026-10-07T03:09:41Z",
+  "python": "3.14.3",
+  "library": "email, policy email.policy.default",
+  "messages": {
+    "rfc5322-a1-1-simple": {
+      "from": "John Doe <jdoe@machine.example>",
+      "to": "Mary Smith <mary@example.net>",
+      "subject": "Saying Hello",
+      "fromMailboxes": [
+        {
+          "name": "John Doe",
+          "address": "jdoe@machine.example"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@example.net"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 52,
+          "sha256": "8d5a03f1d676da8bd4ceba1005266a26ec26156f6c0dfddd88d364ce6e9a22e1"
+        }
+      ],
+      "firstText": "This is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc5322-a1-2-mailboxes": {
+      "from": "\"Joe Q. Public\" <john.q.public@example.com>",
+      "to": "Mary Smith <mary@x.test>, jdoe@example.org, Who? <one@y.test>",
+      "subject": "",
+      "fromMailboxes": [
+        {
+          "name": "Joe Q. Public",
+          "address": "john.q.public@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@x.test"
+        },
+        {
+          "name": "",
+          "address": "jdoe@example.org"
+        },
+        {
+          "name": "Who?",
+          "address": "one@y.test"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 14,
+          "sha256": "1cd16d8b5bec03dee6fe4d33e035de6d4962cfe622b20eccce59f4e43c50402a"
+        }
+      ],
+      "firstText": "Hi everyone.\r\n"
+    },
+    "rfc5322-a1-3-groups": {
+      "from": "Pete <pete@silly.example>",
+      "to": "A Group: Ed Jones <c@a.test>, joe@where.test, John <jdoe@one.test>;",
+      "subject": "",
+      "fromMailboxes": [
+        {
+          "name": "Pete",
+          "address": "pete@silly.example"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Ed Jones",
+          "address": "c@a.test"
+        },
+        {
+          "name": "",
+          "address": "joe@where.test"
+        },
+        {
+          "name": "John",
+          "address": "jdoe@one.test"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 10,
+          "sha256": "95e358c299d1e62ce28c32bad80bd01acabbbd40c2f868fdfdf37940bad2c433"
+        }
+      ],
+      "firstText": "Testing.\r\n"
+    },
+    "rfc5322-a2-reply": {
+      "from": "Mary Smith <mary@example.net>",
+      "to": "John Doe <jdoe@machine.example>",
+      "subject": "Re: Saying Hello",
+      "fromMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@example.net"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "John Doe",
+          "address": "jdoe@machine.example"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 32,
+          "sha256": "f59531053168ff9cd5365feb311d3cc1ef7fac0e2e658d4ab92b4599b37b3138"
+        }
+      ],
+      "firstText": "This is a reply to your hello.\r\n"
+    },
+    "rfc5322-a3-resent": {
+      "from": "John Doe <jdoe@machine.example>",
+      "to": "Mary Smith <mary@example.net>",
+      "subject": "Saying Hello",
+      "fromMailboxes": [
+        {
+          "name": "John Doe",
+          "address": "jdoe@machine.example"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@example.net"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 52,
+          "sha256": "8d5a03f1d676da8bd4ceba1005266a26ec26156f6c0dfddd88d364ce6e9a22e1"
+        }
+      ],
+      "firstText": "This is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc5322-a4-trace": {
+      "from": "John Doe <jdoe@node.example>",
+      "to": "Mary Smith <mary@example.net>",
+      "subject": "Saying Hello",
+      "fromMailboxes": [
+        {
+          "name": "John Doe",
+          "address": "jdoe@node.example"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@example.net"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 52,
+          "sha256": "8d5a03f1d676da8bd4ceba1005266a26ec26156f6c0dfddd88d364ce6e9a22e1"
+        }
+      ],
+      "firstText": "This is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc5322-a5-oddities": {
+      "from": "Pete <pete@silly.test>",
+      "to": "A Group: Chris Jones <c@public.example>, joe@example.org, John <jdoe@one.test>;",
+      "subject": "",
+      "fromMailboxes": [
+        {
+          "name": "Pete",
+          "address": "pete@silly.test"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Chris Jones",
+          "address": "c@public.example"
+        },
+        {
+          "name": "",
+          "address": "joe@example.org"
+        },
+        {
+          "name": "John",
+          "address": "jdoe@one.test"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 10,
+          "sha256": "95e358c299d1e62ce28c32bad80bd01acabbbd40c2f868fdfdf37940bad2c433"
+        }
+      ],
+      "firstText": "Testing.\r\n"
+    },
+    "rfc5322-a6-1-obsolete-addresses": {
+      "from": "\"Joe Q. Public\" <john.q.public@example.com>",
+      "to": "Mary Smith <mary@example.net>, jdoe@test.example",
+      "subject": "",
+      "fromMailboxes": [
+        {
+          "name": "Joe Q. Public",
+          "address": "john.q.public@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@example.net"
+        },
+        {
+          "name": "",
+          "address": "jdoe@test.example"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 14,
+          "sha256": "1cd16d8b5bec03dee6fe4d33e035de6d4962cfe622b20eccce59f4e43c50402a"
+        }
+      ],
+      "firstText": "Hi everyone.\r\n"
+    },
+    "rfc5322-a6-2-obsolete-date": {
+      "from": "John Doe <jdoe@machine.example>",
+      "to": "Mary Smith <mary@example.net>",
+      "subject": "Saying Hello",
+      "fromMailboxes": [
+        {
+          "name": "John Doe",
+          "address": "jdoe@machine.example"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Mary Smith",
+          "address": "mary@example.net"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 52,
+          "sha256": "8d5a03f1d676da8bd4ceba1005266a26ec26156f6c0dfddd88d364ce6e9a22e1"
+        }
+      ],
+      "firstText": "This is a message just to say hello.\r\nSo, \"Hello\".\r\n"
+    },
+    "rfc2047-section-8": {
+      "from": "Keith Moore <moore@cs.utk.edu>",
+      "to": "Keld J\u00f8rn Simonsen <keld@dkuug.dk>",
+      "subject": "If you can read this you understand the example.",
+      "fromMailboxes": [
+        {
+          "name": "Keith Moore",
+          "address": "moore@cs.utk.edu"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Keld J\u00f8rn Simonsen",
+          "address": "keld@dkuug.dk"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 41,
+          "sha256": "6eb56fb8fec80b50c1e22aa99e841129521371acfbd73bab2b6a5dae1ec44a3f"
+        }
+      ],
+      "firstText": "The first header examples of section 8.\r\n"
+    },
+    "rfc2049-appendix-a": {
+      "from": "Nathaniel Borenstein <nsb@nsb.fv.com>",
+      "to": "Ned Freed <ned@innosoft.com>",
+      "subject": "A multipart example",
+      "fromMailboxes": [
+        {
+          "name": "Nathaniel Borenstein",
+          "address": "nsb@nsb.fv.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Ned Freed",
+          "address": "ned@innosoft.com"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "multipart/mixed",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "1",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "",
+          "size": 275,
+          "sha256": "bb14c139531c2d7c0702519b5e05474116c62289d32d727d7119466c28e10e20"
+        },
+        {
+          "path": "2",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "us-ascii",
+          "size": 114,
+          "sha256": "45c909b3568986819a5799da71fd1de4c5df469ff84a6c9b8cffb84b8bf82b9b"
+        },
+        {
+          "path": "3",
+          "contentType": "multipart/parallel",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "3.1",
+          "contentType": "audio/basic",
+          "filename": "",
+          "charset": "",
+          "size": 45,
+          "sha256": "75d4a5c5f6de93c72cb9c74da2ad914c0fb5664867ef3bb8a16dd9cae6a895ff"
+        },
+        {
+          "path": "3.2",
+          "contentType": "image/jpeg",
+          "filename": "",
+          "charset": "",
+          "size": 22,
+          "sha256": "2239e8cb06dcff0a4376c4472e00af42ef47a3ad2f042e4f146b79231aa11c0d"
+        },
+        {
+          "path": "4",
+          "contentType": "text/enriched",
+          "filename": "",
+          "charset": "",
+          "size": 145,
+          "sha256": "a931ee8c82b075851cd00a07325e2845c9527283d730e9668ad9da24a3edeb90"
+        },
+        {
+          "path": "5",
+          "contentType": "message/rfc822",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "5.1",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "iso-8859-1",
+          "size": 51,
+          "sha256": "e8052ee352381b55e4d33bc26ae92acf4ed77dba108a5d71c5501b2dd11dbd4f"
+        }
+      ],
+      "firstText": "  ... Some text appears here ...\r\n\r\n[Note that the blank between the boundary and the start\r\n of the text in this part means no header fields were\r\n given and this is text in the US-ASCII character set.\r\n It could have been done with explicit typing as in the\r\n next part.]\r\n"
+    },
+    "welcome": {
+      "from": "Jos\u00e9 Baker <jose@example.com>",
+      "to": "Alice <alice@example.org>",
+      "subject": "Caf\u00e9 menu",
+      "fromMailboxes": [
+        {
+          "name": "Jos\u00e9 Baker",
+          "address": "jose@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Alice",
+          "address": "alice@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "multipart/mixed",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "1",
+          "contentType": "multipart/alternative",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "1.1",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "utf-8",
+          "size": 35,
+          "sha256": "17a9435988511b8d3ec8b96bb05c7fee18b6bf759ab761b20e84353dce95f2dc"
+        },
+        {
+          "path": "1.2",
+          "contentType": "text/html",
+          "filename": "",
+          "charset": "utf-8",
+          "size": 156,
+          "sha256": "5f8a774e19354f866c24d570977486ea9a75bac04f9bdea7353a9805f6627e92"
+        },
+        {
+          "path": "2",
+          "contentType": "text/plain",
+          "filename": "report.txt",
+          "charset": "",
+          "size": 37,
+          "sha256": "bc7a08d145d092e10bd36bf54fc04bbc54b5782f06a16769d72eca8a4bb358bd"
+        }
+      ],
+      "firstText": "Hello Alice, the menu is attached. "
+    },
+    "nested-forward": {
+      "from": "Bob <bob@example.net>",
+      "to": "Cy <cy@example.com>",
+      "subject": "Fwd: Original note",
+      "fromMailboxes": [
+        {
+          "name": "Bob",
+          "address": "bob@example.net"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Cy",
+          "address": "cy@example.com"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "multipart/mixed",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "1",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "us-ascii",
+          "size": 10,
+          "sha256": "e4396b6f8ecb9b2f388dc05a545cc5c2ff5165fa0b6294f4ae34b1a88fba8d83"
+        },
+        {
+          "path": "2",
+          "contentType": "message/rfc822",
+          "filename": "forwarded.eml",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "2.1",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "us-ascii",
+          "size": 27,
+          "sha256": "0cbb6510e1536d086f200447a6011f460a30a36fcf323c2f67df7b2f96e8e3c2"
+        }
+      ],
+      "firstText": "See below."
+    },
+    "rfc2231-attachment-name": {
+      "from": "Dee <dee@example.com>",
+      "to": "Eve <eve@example.org>",
+      "subject": "A file with an extended name",
+      "fromMailboxes": [
+        {
+          "name": "Dee",
+          "address": "dee@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Eve",
+          "address": "eve@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "multipart/mixed",
+          "filename": "",
+          "charset": "",
+          "size": null,
+          "sha256": null
+        },
+        {
+          "path": "1",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "us-ascii",
+          "size": 36,
+          "sha256": "580499f660a61178dea94a636d164153d914363c94c69c281e7e1bbd886c1b3f"
+        },
+        {
+          "path": "2",
+          "contentType": "application/octet-stream",
+          "filename": "This is even more ***fun*** isn't it!",
+          "charset": "",
+          "size": 10,
+          "sha256": "1f825aa2f0020ef7cf91dfa30da4668d791c5d4824fc8e41354b89ec05795ab3"
+        },
+        {
+          "path": "3",
+          "contentType": "text/plain",
+          "filename": "\u20ac rates.txt",
+          "charset": "utf-8",
+          "size": 19,
+          "sha256": "3413c3ef44dc800dc293e0be52496142d70028fd559aaff3d120a679239d4a21"
+        }
+      ],
+      "firstText": "The attachment has an extended name."
+    },
+    "charset-iso-8859-2": {
+      "from": "Fay <fay@example.com>",
+      "to": "Gus <gus@example.org>",
+      "subject": "Polish text",
+      "fromMailboxes": [
+        {
+          "name": "Fay",
+          "address": "fay@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Gus",
+          "address": "gus@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "iso-8859-2",
+          "size": 38,
+          "sha256": "5b180a5da1e2e345c702c0a799263adf134e2b08d4e95d888bc235722ba2b7d5"
+        }
+      ],
+      "firstText": "Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144.\r\nDzi\u0119kuj\u0119 bardzo.\r\n"
+    },
+    "charset-gb18030": {
+      "from": "Fay <fay@example.com>",
+      "to": "Gus <gus@example.org>",
+      "subject": "Chinese text",
+      "fromMailboxes": [
+        {
+          "name": "Fay",
+          "address": "fay@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Gus",
+          "address": "gus@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "gb18030",
+          "size": 30,
+          "sha256": "26ba77719ce53f1748bdcf80ebc519056ae9da331dafed92f3b61b5e34cd7da3"
+        }
+      ],
+      "firstText": "\u4f60\u597d\uff0c\u4e16\u754c\u3002\r\n\u8fd9\u662f\u4e00\u4e2a\u6d4b\u8bd5\u3002\r\n"
+    },
+    "charset-euc-kr": {
+      "from": "Fay <fay@example.com>",
+      "to": "Gus <gus@example.org>",
+      "subject": "Korean text",
+      "fromMailboxes": [
+        {
+          "name": "Fay",
+          "address": "fay@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Gus",
+          "address": "gus@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "euc-kr",
+          "size": 41,
+          "sha256": "81ae2d937bc39d87030da58d882bf14e48a6ae54e9f27c00b01f146338dcf5a8"
+        }
+      ],
+      "firstText": "\uc548\ub155\ud558\uc138\uc694, \uc138\uacc4.\r\n\ud14c\uc2a4\ud2b8 \uba54\uc2dc\uc9c0\uc785\ub2c8\ub2e4.\r\n"
+    },
+    "charset-windows-1252": {
+      "from": "Hal <hal@example.com>",
+      "to": "Ida <ida@example.org>",
+      "subject": "Smart quotes",
+      "fromMailboxes": [
+        {
+          "name": "Hal",
+          "address": "hal@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Ida",
+          "address": "ida@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "windows-1252",
+          "size": 43,
+          "sha256": "f87789596f13401121a26c4018f833bfb317dca19f32dfa523f2854b0f6af312"
+        }
+      ],
+      "firstText": "He said \u201cquoted\u201d and it cost \u20ac5 \u2013 not \u00a35.\r\n"
+    },
+    "quoted-printable-soft-breaks": {
+      "from": "Jo <jo@example.com>",
+      "to": "Kim <kim@example.org>",
+      "subject": "Soft breaks",
+      "fromMailboxes": [
+        {
+          "name": "Jo",
+          "address": "jo@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Kim",
+          "address": "kim@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "utf-8",
+          "size": 210,
+          "sha256": "d875bbfcda24c2a638f57d3fd9726e7bc9c56bee4088ebc1a96ac78b3e9c3d2e"
+        }
+      ],
+      "firstText": "This line is long enough that a mail system folded it with a soft break so it continues here, and an equals sign is written = in the text. Caf\u00e9 is spelled with two bytes.\r\nThe last line ends with a soft break "
+    },
+    "base64-line-noise": {
+      "from": "Lee <lee@example.com>",
+      "to": "Max <max@example.org>",
+      "subject": "Noisy Base64",
+      "fromMailboxes": [
+        {
+          "name": "Lee",
+          "address": "lee@example.com"
+        }
+      ],
+      "toMailboxes": [
+        {
+          "name": "Max",
+          "address": "max@example.org"
+        }
+      ],
+      "parts": [
+        {
+          "path": "",
+          "contentType": "text/plain",
+          "filename": "",
+          "charset": "us-ascii",
+          "size": 87,
+          "sha256": "6677eababa71083e57d169190664884c70368f07681e25b00ddedcdb75a82e71"
+        }
+      ],
+      "firstText": "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.\r\n"
+    }
+  }
+}
