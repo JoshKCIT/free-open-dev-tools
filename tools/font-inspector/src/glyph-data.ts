@@ -75,6 +75,9 @@ const WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
 const WE_HAVE_A_TWO_BY_TWO = 0x0080;
 const WE_HAVE_INSTRUCTIONS = 0x0100;
 
+/** The sentence for a font whose glyphs hold more points than the check will take apart. */
+const BUDGET_SENTENCE = 'The glyphs of this font hold more points than the check can compare.';
+
 function bad(text: string): FontInspectorError {
   return new FontInspectorError(text);
 }
@@ -116,7 +119,7 @@ function simple(r: ByteReader, end: number, contours: number, box: Box, budget: 
   const total = (ends[contours - 1] ?? -1) + 1;
   budget.points += total;
   if (budget.points > MAX_COMPARE_POINTS) {
-    throw bad('The glyphs of this font hold more points than the check can compare.');
+    throw bad(BUDGET_SENTENCE);
   }
   const instructionLength = r.u16(p);
   p += 2;
@@ -302,7 +305,7 @@ export function compareGlyphs(a: GlyphTable, b: GlyphTable, numGlyphs: number): 
       try {
         x = readGlyphValue(a.glyf.subarray(sa, ea), budget);
       } catch (err) {
-        if (!(err instanceof FontInspectorError)) throw err;
+        if (!(err instanceof FontInspectorError) || err.message === BUDGET_SENTENCE) throw err;
         return {
           compared,
           firstDifference: g,
@@ -312,7 +315,7 @@ export function compareGlyphs(a: GlyphTable, b: GlyphTable, numGlyphs: number): 
       try {
         y = readGlyphValue(b.glyf.subarray(sb, eb), budget);
       } catch (err) {
-        if (!(err instanceof FontInspectorError)) throw err;
+        if (!(err instanceof FontInspectorError) || err.message === BUDGET_SENTENCE) throw err;
         return { compared, firstDifference: g, problem: `Glyph ${g} of the converted font could not be read back.` };
       }
       if (!sameGlyphValue(x, y)) {

@@ -131,6 +131,18 @@ export async function verifyConversion(
     const before = readSfntFont(inputSfnt, 0, false);
     const after = readSfntFont(decoded, 0, false);
     report.tablesTotal = before.order.length;
+    if (kind === 'woff2') {
+      // The unpacked font is exactly its directory and its padded tables. A header that states a larger size makes the
+      // decoder hand back zeros after the last table; one that states a smaller size cannot be unpacked at all.
+      let end = 12 + 16 * after.order.length;
+      for (const tag of after.order) {
+        const entry = after.tables.get(tag)!;
+        end = Math.max(end, entry.offset + ((entry.length + 3) & ~3));
+      }
+      if (decoded.length !== end) {
+        report.problems.push('The converted WOFF2 file unpacks to more bytes than its tables hold.');
+      }
+    }
     const sortedBefore = [...before.order].sort();
     const sortedAfter = [...after.order].sort();
     if (sortedBefore.length !== sortedAfter.length || sortedBefore.some((tag, i) => tag !== sortedAfter[i])) {
