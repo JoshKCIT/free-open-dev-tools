@@ -91,6 +91,25 @@
       "rfc 20"
     ]
   },
+  "asn1-viewer": {
+    "id": "asn1-viewer",
+    "name": "ASN.1 Viewer (DER/BER)",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "ASN.1",
+      "DER",
+      "BER",
+      "PEM",
+      "X.690",
+      "object identifier",
+      "OID",
+      "TLV",
+      "tree",
+      "asn1parse"
+    ]
+  },
   "aspect-ratio": {
     "id": "aspect-ratio",
     "name": "Aspect Ratio Calculator",
@@ -1210,6 +1229,31 @@
       "layout"
     ]
   },
+  "font-inspector": {
+    "id": "font-inspector",
+    "name": "Font Inspector & Web Font Converter",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "woff2-encoder": "2.0.0",
+      "fflate": "0.8.3"
+    },
+    "keywords": [
+      "font",
+      "TTF",
+      "OTF",
+      "WOFF",
+      "WOFF2",
+      "sfnt",
+      "OpenType",
+      "name table",
+      "glyphs",
+      "licence",
+      "OpenType features",
+      "variable font",
+      "Unicode blocks"
+    ]
+  },
   "form-control-styler": {
     "id": "form-control-styler",
     "name": "Form Control Styler (Buttons, Switches, Checkboxes, Radios, Sliders)",
@@ -1569,7 +1613,9 @@
       "file signature",
       "magic number",
       "file type",
-      "offset"
+      "offset",
+      "code array",
+      "xxd"
     ]
   },
   "hmac": {
@@ -3321,6 +3367,24 @@
       "transliterate"
     ]
   },
+  "source-map-decoder": {
+    "id": "source-map-decoder",
+    "name": "Source Map Stack Trace Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "source map",
+      "stack trace",
+      "sourcemap",
+      "minified",
+      "decode",
+      "ECMA-426",
+      "VLQ",
+      "mappings",
+      "index map"
+    ]
+  },
   "spf-dmarc": {
     "id": "spf-dmarc",
     "name": "SPF & DMARC Record Checker & Builder",
@@ -3834,6 +3898,25 @@
       "snowflake",
       "objectid",
       "mongodb"
+    ]
+  },
+  "wasm-inspector": {
+    "id": "wasm-inspector",
+    "name": "WebAssembly Module Inspector",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "WebAssembly",
+      "wasm",
+      "module",
+      "binary format",
+      "sections",
+      "imports",
+      "exports",
+      "name section",
+      "custom sections",
+      "LEB128"
     ]
   },
   "web-manifest-builder": {

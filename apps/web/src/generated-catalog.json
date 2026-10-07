@@ -1635,7 +1635,7 @@
       "category": "media",
       "categoryLabel": "Images, documents and archives",
       "tier": 2,
-      "summary": "View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature.",
+      "summary": "View any file as offset, hex and text columns, search it for bytes or text, name its type from its signature and export the bytes as a code array.",
       "implemented": true
     },
     {
@@ -1951,6 +1951,42 @@
       "categoryLabel": "Network and web",
       "tier": 3,
       "summary": "Open a saved email to read its headers, delivery hops, MIME parts, attachments and a closed preview of its HTML, with nothing loaded or sent.",
+      "implemented": true
+    },
+    {
+      "id": "source-map-decoder",
+      "name": "Source Map Stack Trace Decoder",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 3,
+      "summary": "Paste a minified stack trace and its source maps to see each frame's original file, line, column and name, with no address ever fetched.",
+      "implemented": true
+    },
+    {
+      "id": "asn1-viewer",
+      "name": "ASN.1 Viewer (DER/BER)",
+      "category": "hashing",
+      "categoryLabel": "Hashing, secrets and tokens",
+      "tier": 3,
+      "summary": "Paste PEM, Base64 or hex, or open a file, and read any DER or BER structure as a tree with offsets, tags, lengths, values and named object identifiers.",
+      "implemented": true
+    },
+    {
+      "id": "wasm-inspector",
+      "name": "WebAssembly Module Inspector",
+      "category": "code",
+      "categoryLabel": "Code and markup",
+      "tier": 3,
+      "summary": "Open a .wasm file to read its sections, types, imports, exports, memories, data and names without compiling or running it.",
+      "implemented": true
+    },
+    {
+      "id": "font-inspector",
+      "name": "Font Inspector & Web Font Converter",
+      "category": "media",
+      "categoryLabel": "Images, documents and archives",
+      "tier": 3,
+      "summary": "Read a font's names, licence text, metrics, glyphs, coverage and features, and convert it between TTF/OTF, WOFF and WOFF2 on your device.",
       "implemented": true
     }
   ]

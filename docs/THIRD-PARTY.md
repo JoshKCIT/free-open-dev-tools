@@ -188,7 +188,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastdom](https://github.com/wilsonpage/fastdom) | 1.0.12 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
-| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-splitter, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/pdf-text-metadata, tools/saml-decoder, tools/spreadsheet-converter |
+| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/font-inspector, tools/gzip-deflate, tools/image-splitter, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/pdf-text-metadata, tools/saml-decoder, tools/spreadsheet-converter |
 | [find-up]() | 4.1.0 | MIT | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [get-caller-file](https://github.com/stefanpenner/get-caller-file#readme) | 2.0.5 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-formatter, tools/graphql-to-typescript |
@@ -342,6 +342,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [unist-util-visit-parents]() | 6.0.2 | MIT | transitive (via mdast-util-find-and-replace, unist-util-visit) | tools/bbcode |
 | [uuid](https://github.com/uuidjs/uuid) | 14.0.2 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [which-module](https://github.com/nexdrew/which-module#readme) | 2.0.1 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
+| [woff2-encoder](https://github.com/itskyedo/woff2-encoder#readme) | 2.0.0 | MIT | direct | tools/font-inspector |
 | [wrap-ansi]() | 6.2.0 | MIT | transitive (via cliui) | tools/qr-generator, tools/totp-generator |
 | [xml-naming](https://github.com/NaturalIntelligence/xml-naming) | 0.3.0 | MIT | transitive (via fast-xml-builder, fast-xml-parser) | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [xpath](https://github.com/goto100/xpath) | 0.0.34 | MIT | direct | tools/xpath-tester |
@@ -12316,6 +12317,34 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ```
 
+### woff2-encoder 2.0.0
+
+Licence: MIT
+
+```text
+MIT License
+
+Copyright (c) 2023-PRESENT Kyedo <https://github.com/itskyedo>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### wrap-ansi 6.2.0
 
 Licence: MIT
@@ -12551,6 +12580,10 @@ Data files bundled directly into a tool folder rather than installed as an npm d
 | Compose Specification JSON Schema | Apache-2.0 | `tools/docker-run-to-compose` | [source](https://github.com/compose-spec/compose-spec) |
 | Unicode emoji-test.txt 18.0 | Unicode-3.0 | `tools/emoji-picker` | [source](https://www.unicode.org/Public/emoji/latest/emoji-test.txt) |
 | Biome ESLint-migrate rule map | MIT | `tools/eslint-to-biome` | [source](https://github.com/biomejs/biome) |
+| Brotli (google/brotli) compiled into woff2-encoder 2.0.0 | MIT | `tools/font-inspector` | [source](https://github.com/google/brotli/tree/533843e3546cd24c8344eaa899c6b0b681c8d222) |
+| Emscripten runtime 3.1.46 compiled into woff2-encoder 2.0.0 | MIT | `tools/font-inspector` | [source](https://github.com/emscripten-core/emscripten/tree/3.1.46) |
+| Unicode 17.0.0 block list (Blocks-17.0.0.txt) compiled into src/blocks.ts | Unicode-3.0 | `tools/font-inspector` | [source](https://www.unicode.org/Public/17.0.0/ucd/Blocks.txt) |
+| WOFF2 reference library (google/woff2) compiled into woff2-encoder 2.0.0 | MIT | `tools/font-inspector` | [source](https://github.com/google/woff2/tree/4721483ad780ee2b63cb787bfee4aa64b61a0446) |
 | GitHub Actions Workflow JSON Schema | Apache-2.0 | `tools/github-actions-validator` | [source](https://github.com/SchemaStore/schemastore) |
 | github/gitignore templates | CC0-1.0 | `tools/gitignore-generator` | [source](https://github.com/github/gitignore) |
 | Go standard library 1.25.5 | BSD-3-Clause | `tools/go-formatter` | [source](https://github.com/golang/go/tree/go1.25.5/src/go/format) |
@@ -13653,6 +13686,231 @@ comes directly from Biome's own generated source, proven identical to a
 fresh parse of the vendored file by a required test. Biome's own migrate
 documentation and configuration reference (fetched separately) are quoted,
 never copied wholesale, in this package's own test comments.
+```
+
+### Brotli (google/brotli) compiled into woff2-encoder 2.0.0 (bundled into `tools/font-inspector`)
+
+Licence: MIT ([full text](https://github.com/google/brotli/blob/533843e3546cd24c8344eaa899c6b0b681c8d222/LICENSE))
+
+Attribution: Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors. Brotli is the library the WOFF2 reference code uses (its submodule at this commit) and is compiled into the same WebAssembly module inside woff2-encoder 2.0.0's dist/index.js, as a base64 data address that the licence gate cannot find.
+
+```text
+Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+### Emscripten runtime 3.1.46 compiled into woff2-encoder 2.0.0 (bundled into `tools/font-inspector`)
+
+Licence: MIT ([full text](https://github.com/emscripten-core/emscripten/blob/3.1.46/LICENSE))
+
+Attribution: Copyright (c) 2010-2014 Emscripten authors. The Dockerfile and Makefile of woff2-encoder 2.0.0 say its WebAssembly was built with Emscripten 3.1.46, and the Emscripten runtime and C library are part of that module. Emscripten is offered under the MIT licence and the University of Illinois/NCSA licence; the MIT licence is the one relied on here, and the notice file holds both texts.
+
+```text
+Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.
+
+Both are permissive open source licenses, with little if any
+practical difference between them.
+
+The reason for offering both is that (1) the MIT license is
+well-known, while (2) the University of Illinois/NCSA Open Source
+License allows Emscripten's code to be integrated upstream into
+LLVM, which uses that license, should the opportunity arise.
+
+The full text of both licenses follows.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal with the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+    Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimers.
+
+    Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimers
+    in the documentation and/or other materials provided with the
+    distribution.
+
+    Neither the names of Mozilla,
+    nor the names of its contributors may be used to endorse
+    or promote products derived from this Software without specific prior
+    written permission. 
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+
+==============================================================================
+
+This program uses portions of Node.js source code located in src/library_path.js,
+in accordance with the terms of the MIT license. Node's license follows:
+
+    """
+        Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to
+        deal in the Software without restriction, including without limitation the
+        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        IN THE SOFTWARE.
+    """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+```
+
+### Unicode 17.0.0 block list (Blocks-17.0.0.txt) compiled into src/blocks.ts (bundled into `tools/font-inspector`)
+
+Licence: Unicode-3.0 ([full text](https://www.unicode.org/license.txt))
+
+Attribution: "Blocks-17.0.0.txt", (c) 2025 Unicode, Inc., from the Unicode Character Database, licensed under the Unicode License V3 (https://www.unicode.org/license.txt), turned into this package's block table by a generator script.
+
+```text
+Unicode Block List 17.0.0 (Blocks-17.0.0.txt), compiled into src/blocks.ts
+Version: 17.0.0 (Unicode 17.0.0)
+Source: https://www.unicode.org/Public/17.0.0/ucd/Blocks.txt
+Compiled into: this package's block table (src/blocks.ts), which the page bundles
+Checked: 2026-10-07
+
+The block names and code point ranges the inspector uses to group a font's characters come from the Unicode Character Database file named above
+(11,663 bytes, md5 bbb54bbda639796d4d0e9344e537d892). The original file is kept in test/fixtures/unicode/Blocks-17.0.0.txt, and the
+generator that turns it into src/blocks.ts is test/fixtures/unicode/make-blocks.mjs.
+
+---
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright © 1991-2026 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
+```
+
+### WOFF2 reference library (google/woff2) compiled into woff2-encoder 2.0.0 (bundled into `tools/font-inspector`)
+
+Licence: MIT ([full text](https://github.com/google/woff2/blob/4721483ad780ee2b63cb787bfee4aa64b61a0446/LICENSE))
+
+Attribution: Copyright (c) 2013-2017 by the WOFF2 Authors. The code is compiled into the WebAssembly module that woff2-encoder 2.0.0 carries inside dist/index.js as a base64 data address, built from this commit by Emscripten 3.1.46, which is why the licence gate cannot find it among the package's files.
+
+```text
+Copyright (c) 2013-2017 by the WOFF2 Authors.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ### GitHub Actions Workflow JSON Schema (bundled into `tools/github-actions-validator`)
