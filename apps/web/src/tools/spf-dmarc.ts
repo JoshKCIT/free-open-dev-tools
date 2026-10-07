@@ -12,6 +12,7 @@ import {
   parseSpf,
   pickDmarcRecord,
   readTxtRecords,
+  spfVerdict,
   toTxtValue,
   toZoneForm,
   visible,
@@ -65,34 +66,10 @@ function readEnding(values: Values): SpfEnding {
   return chosen === '~all' || chosen === '?all' || chosen === 'redirect' ? chosen : '-all';
 }
 
-function verdict(report: SpfReport): OutputBlock {
-  if (!report.record.isSpf) {
-    return {
-      kind: 'note',
-      tone: 'warn',
-      value: `${NOTE_FIRST} This text does not start with v=spf1 followed by a space or the end, so it is not read as an SPF record.`,
-    };
-  }
-  if (report.record.errors.length > 0) {
-    const n = report.record.errors.length;
-    return {
-      kind: 'note',
-      tone: 'warn',
-      value: `${NOTE_FIRST} The record has ${n} syntax ${n === 1 ? 'error' : 'errors'}, and a receiver that finds one gives the result permerror (RFC 7208 section 4.6).`,
-    };
-  }
-  if (!report.withinLimit) {
-    return {
-      kind: 'note',
-      tone: 'warn',
-      value: `${NOTE_FIRST} The record reads without a syntax error, but ${report.lookupCount} terms cause lookups and the limit is ${LOOKUP_LIMIT}.`,
-    };
-  }
-  return {
-    kind: 'note',
-    tone: 'success',
-    value: `${NOTE_FIRST} The record reads without a syntax error and has ${report.lookupCount} of ${LOOKUP_LIMIT} terms that cause DNS lookups. What a receiver decides for a message is not checked here.`,
-  };
+/** The note at the top: the package verdict on the first record and, when more were pasted, on the whole tree. */
+function verdict(report: SpfReport, tree: TreeCount | null): OutputBlock {
+  const said = spfVerdict(report, tree);
+  return { kind: 'note', tone: said.tone, value: `${NOTE_FIRST} ${said.text}` };
 }
 
 function noteItem(note: SpfNote): string {
@@ -161,7 +138,7 @@ function spfBlocks(text: string): OutputBlock[] {
   const report = checkSpf(parseSpf(first.text), first.strings);
   const record = report.record;
   const tree = records.length > 1 ? countLookups(records, 0) : null;
-  const blocks: OutputBlock[] = [verdict(report)];
+  const blocks: OutputBlock[] = [verdict(report, tree)];
   blocks.push({
     kind: 'keyvalue',
     label: 'The record',

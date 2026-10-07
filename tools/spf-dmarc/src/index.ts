@@ -22,6 +22,8 @@ export { checkSpf, describeTerm } from './spf-check';
 export type { LookupKind, LookupTerm, NoteTone, SpfNote, SpfReport } from './spf-check';
 export { countLookups } from './spf-tree';
 export type { TreeCount, TreeLoop, TreeRecordInput, TreeRow } from './spf-tree';
+export { spfVerdict } from './spf-verdict';
+export type { SpfVerdict } from './spf-verdict';
 export { buildSpf, toTxtValue } from './spf-build';
 export type { BuildField, BuildProblem, BuiltSpf, SpfEnding, SpfFields } from './spf-build';
 export { TABLE_2_ORDER, parseDmarc, parseUriList } from './dmarc-parse';

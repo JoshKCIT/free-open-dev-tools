@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { SpfDmarcError, countLookups, readTxtRecords } from '../src/index';
+import { SpfDmarcError, checkSpf, countLookups, parseSpf, readTxtRecords, spfVerdict } from '../src/index';
 
 // The whole-evaluation count of RFC 7208 section 4.6.4 counts the terms of every record that include and redirect lead to.
 // The page never queries DNS, so it follows only the records the visitor pasted, matched by their name.
@@ -180,4 +180,49 @@ it('the lookup tree follows pasted labelled records, stops a loop and marks a mi
     ['other.example.', 'v=spf1 ip4:192.0.2.1 -all'],
   ]);
   expect(countLookups(read, 0).total).toBe(3);
+});
+
+it('the SPF verdict warns when the pasted records together cause more than 10 lookups', () => {
+  // RFC 7208 section 4.6.4 applies the limit of 10 to the whole evaluation, so a first record with 2 lookups of its own
+  // still gets permerror when the records it includes add 12 more.
+  const verdictOf = (box: string) => {
+    const records = readTxtRecords(box, 'spf');
+    const first = records[0];
+    if (first === undefined) throw new Error('the box gave no record');
+    const report = checkSpf(parseSpf(first.text), first.strings);
+    return spfVerdict(report, records.length > 1 ? countLookups(records, 0) : null);
+  };
+  const six = (term: string, name: string): string =>
+    [1, 2, 3, 4, 5, 6].map((n) => `${term}:${name}${n}.example`).join(' ');
+  const over = verdictOf(
+    [
+      'v=spf1 include:a.example include:b.example -all',
+      `a.example: v=spf1 ${six('include', 'c')} -all`,
+      `b.example: v=spf1 ${six('a', 'd')} -all`,
+    ].join('\n'),
+  );
+  expect(over.tone).toBe('warn');
+  expect(over.text).toContain('2 of 10');
+  expect(over.text).toContain('11 or more');
+  expect(over.text).toContain('permerror');
+  // The pasted records together within the limit: success, with the whole-tree count.
+  const within = verdictOf('v=spf1 include:_spf.example.net -all\n_spf.example.net: v=spf1 a mx -all');
+  expect(within.tone).toBe('success');
+  expect(within.text).toContain('3 of 10');
+  expect(within.text).not.toContain('lower bound');
+  // A name that was not pasted: the first record is fine and the whole-tree count is said to be a lower bound.
+  const partial = verdictOf(
+    'v=spf1 include:_spf.example.net include:missing.example -all\n_spf.example.net: v=spf1 a -all',
+  );
+  expect(partial.tone).toBe('success');
+  expect(partial.text).toContain('lower bound');
+  // One record alone reads as before.
+  expect(verdictOf('v=spf1 a mx include:example.com include:example.org -all')).toEqual({
+    tone: 'success',
+    text: 'The record reads without a syntax error and has 4 of 10 terms that cause DNS lookups. What a receiver decides for a message is not checked here.',
+  });
+  // The first record over the limit, a syntax error and a text that is not SPF are warnings whatever the tree says.
+  expect(verdictOf(`v=spf1 ${six('a', 'e')} ${six('mx', 'f')} -all`).tone).toBe('warn');
+  expect(verdictOf('v=spf1 ip4:999.1.1.1 -all\nx.example: v=spf1 -all').tone).toBe('warn');
+  expect(verdictOf('v=spf2 -all').tone).toBe('warn');
 });
