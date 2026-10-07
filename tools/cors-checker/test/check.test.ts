@@ -586,6 +586,25 @@ it('Access-Control-Max-Age is read as whole seconds and is 5 when absent or inva
   ).toBeNull();
 });
 
+it('Access-Control-Max-Age with leading zeros is read by its value and only a long number is cut', () => {
+  // delta-seconds is 1*DIGIT, so leading zeros are valid and do not change the number.
+  const maxAge = (value: string) =>
+    checkCors(
+      input({
+        method: 'PUT',
+        preflightHeaders: `${answer({ methods: 'PUT' })}\nAccess-Control-Max-Age: ${value}`,
+        responseHeaders: 'Access-Control-Allow-Origin: *',
+      }),
+    ).maxAge;
+  expect(maxAge('0000000000000600')).toEqual({ seconds: 600, fromHeader: true });
+  expect(maxAge('0'.repeat(40) + '86400')).toEqual({ seconds: 86400, fromHeader: true });
+  expect(maxAge('0'.repeat(20))).toEqual({ seconds: 0, fromHeader: true });
+  expect(maxAge('000')).toEqual({ seconds: 0, fromHeader: true });
+  // A number longer than 15 significant digits is still cut at the largest exact whole number.
+  expect(maxAge('1' + '0'.repeat(20))).toEqual({ seconds: Number.MAX_SAFE_INTEGER, fromHeader: true });
+  expect(maxAge('000' + '9'.repeat(15))).toEqual({ seconds: 999_999_999_999_999, fromHeader: true });
+});
+
 it('refusals name the part and the line and never repeat pasted text', () => {
   function refusal(parts: Partial<CorsInput>): CorsCheckerError {
     try {

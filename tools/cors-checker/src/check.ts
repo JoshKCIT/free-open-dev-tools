@@ -176,9 +176,16 @@ function addCorsCheck(
   );
 }
 
-/** Whole seconds from an Access-Control-Max-Age value of digits. Very long numbers are cut at the largest exact whole number. */
+/**
+ * Whole seconds from an Access-Control-Max-Age value of digits. Leading zeros are dropped first (delta-seconds is 1*DIGIT,
+ * so they are valid and change nothing); a number of more than 15 digits after that is cut at the largest exact whole
+ * number.
+ */
 function deltaSeconds(digits: string): number {
-  return digits.length > 15 ? Number.MAX_SAFE_INTEGER : Number(digits);
+  let zeros = 0;
+  while (zeros < digits.length - 1 && digits.charCodeAt(zeros) === 48) zeros++;
+  const significant = digits.slice(zeros);
+  return significant.length > 15 ? Number.MAX_SAFE_INTEGER : Number(significant);
 }
 
 /** The checks of the CORS-preflight fetch after the CORS check: status, lists, method, Authorization, headers, Max-Age. */
