@@ -115,6 +115,8 @@ export interface Woff2Header {
   streamSize: number;
   /** For a collection, how many fonts it holds; otherwise 1. */
   fontCount: number;
+  /** True when the reference decoder would refuse the file for expanding more than 100 times (see exceedsExpansionRatio). */
+  expansionExceeded: boolean;
   notes: string[];
 }
 
@@ -124,6 +126,19 @@ const FLAVOR_OTTO = 0x4f54544f;
 const FLAVOR_TRUE = 0x74727565;
 
 const round4 = (n: number): number => Math.ceil(n / 4) * 4;
+
+/**
+ * The reference decoder's plausibility rule, at its exact boundary. google/woff2 `src/woff2_dec.cc` at commit
+ * 4721483ad780ee2b63cb787bfee4aa64b61a0446 declares `const float kMaxPlausibleCompressionRatio = 100.0;` (line 67) and, in
+ * `ConvertWOFF2ToTTF` (lines 1368 to 1372), computes `(float) hdr.uncompressed_size / length` and fails the decode when that
+ * is GREATER than the constant. So a ratio of exactly 100 is read and anything above is refused, and the division is done
+ * in 32-bit floating point: both numbers are rounded to float first and the quotient is rounded to float again, which
+ * `Math.fround` reproduces exactly. `streamSize` is `uncompressed_size`, the sum of the table blocks of the decompressed
+ * stream, and `fileLength` is the length of the whole WOFF2 file.
+ */
+export function exceedsExpansionRatio(streamSize: number, fileLength: number): boolean {
+  return Math.fround(Math.fround(streamSize) / Math.fround(fileLength)) > MAX_EXPANSION_RATIO;
+}
 
 function layoutProblem(): FontInspectorError {
   return new FontInspectorError('The blocks of this WOFF2 file do not follow each other as the format says.', 'File');
@@ -167,8 +182,11 @@ function flavorName(value: number): Woff2Header['flavor'] {
  * sentence for anything the reference decoder would refuse, and for any size past the caps, so the engine is never
  * given a file whose header or directory lies about its size. A `totalSfntSize` that claims too much is refused, never
  * trusted; a non-zero `reserved` field is only a note, as the specification says a decoder must not reject it.
+ *
+ * A file that would expand more than 100 times is refused, unless `allowHighRatio` is given: the re-read check of a file
+ * this page has just made reads it that way, so it can say the plain sentence of its own, and sees `expansionExceeded`.
  */
-export function readWoff2Header(bytes: Uint8Array): Woff2Header {
+export function readWoff2Header(bytes: Uint8Array, options: { allowHighRatio?: boolean } = {}): Woff2Header {
   checkFileSize(bytes.length);
   if (bytes.length < 48) {
     throw new FontInspectorError('This file is too short to hold a WOFF2 header.', 'File');
@@ -260,7 +278,8 @@ export function readWoff2Header(bytes: Uint8Array): Woff2Header {
       'File',
     );
   }
-  if (streamSize > MAX_EXPANSION_RATIO * length) {
+  const expansionExceeded = exceedsExpansionRatio(streamSize, length);
+  if (expansionExceeded && options.allowHighRatio !== true) {
     throw new FontInspectorError(
       `This WOFF2 file would expand more than ${MAX_EXPANSION_RATIO} times when unpacked, which font readers refuse.`,
       'File',
@@ -345,6 +364,7 @@ export function readWoff2Header(bytes: Uint8Array): Woff2Header {
     sfntSize,
     streamSize,
     fontCount,
+    expansionExceeded,
     notes,
   };
 }
@@ -354,17 +374,50 @@ export function planWoff2(bytes: Uint8Array): Woff2Header {
   return readWoff2Header(bytes);
 }
 
+/**
+ * The container checks of a WOFF2 file this page has just made, before it is decoded again: the header and directory are
+ * read once more under every cap, and the problems that would make the file wrong as an output are listed in plain words.
+ * An output is never a collection, never expands more than 100 times when read, and carries no note of any kind (a note
+ * means the header or directory is not the way the writer should have left it). Anything the reader refuses outright is a
+ * problem too. The list is empty when the container is as it should be.
+ */
+export function checkWoff2Output(bytes: Uint8Array): { header: Woff2Header | null; problems: string[] } {
+  let header: Woff2Header;
+  try {
+    header = readWoff2Header(bytes, { allowHighRatio: true });
+  } catch (err) {
+    if (err instanceof FontInspectorError) {
+      return { header: null, problems: [`The converted WOFF2 file did not read back: ${err.message}`] };
+    }
+    throw err;
+  }
+  const problems: string[] = [];
+  if (header.flavor === 'collection')
+    problems.push('The converted WOFF2 file is a collection, which this page does not convert.');
+  if (header.expansionExceeded) problems.push(EXPANSION_REFUSAL);
+  for (const note of header.notes) problems.push(`The converted WOFF2 file reads back with a note: ${note}`);
+  return { header, problems };
+}
+
+/** The sentence for a WOFF2 file that would expand more than 100 times when read: no reader would accept it. */
+export const EXPANSION_REFUSAL = `A WOFF2 file made from this font would expand more than ${MAX_EXPANSION_RATIO} times when it is read, which font readers refuse, so it was not offered. Try WOFF instead.`;
+
 /** The engine's unpack call, given by the caller so this package never imports the engine itself. */
 export type Woff2Decompress = (input: Uint8Array) => Promise<Uint8Array>;
 
 const SIGNATURES = new Set([0x00010000, 0x74727565, 0x4f54544f, 0x74746366, 0x74797031]);
 
+/** Whether what the engine threw is the browser refusing to generate code at run time (never repeated, only recognised). */
+export function isCodeGenerationRefusal(err: unknown): boolean {
+  const name = err instanceof Error ? err.name : '';
+  const text = err instanceof Error ? err.message : '';
+  return name === 'EvalError' || /unsafe-eval|content security policy|code generation|blocked by csp/i.test(text);
+}
+
 /** Turns whatever the engine threw into one fixed sentence; nothing the engine says is repeated. */
 function engineFailure(err: unknown): FontInspectorError {
   if (err instanceof FontInspectorError) return err;
-  const name = err instanceof Error ? err.name : '';
-  const text = err instanceof Error ? err.message : '';
-  if (name === 'EvalError' || /unsafe-eval|content security policy|code generation|blocked by csp/i.test(text)) {
+  if (isCodeGenerationRefusal(err)) {
     return new FontInspectorError(
       'The browser did not allow this page to generate code at run time, which the WOFF2 engine needs, so the file could not be unpacked.',
       'File',

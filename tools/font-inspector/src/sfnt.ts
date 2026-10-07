@@ -221,6 +221,34 @@ export function readSfntFont(bytes: Uint8Array, offset: number, inCollection: bo
   };
 }
 
+/**
+ * A copy of a plain sfnt whose head table has its checksum adjustment set again: 0xB1B0AFBA minus the sum of the whole file
+ * with the adjustment counted as zero, modulo 2 to the 32 (OpenType, "head" table). A file without a usable head table
+ * comes back unchanged. The head table's checksum in the directory counts the adjustment as zero, so it does not change.
+ */
+export function withChecksumAdjustment(sfnt: Uint8Array): Uint8Array {
+  const out = sfnt.slice();
+  if (out.length < 12) return out;
+  const r = new ByteReader(out);
+  const flavor = r.u32(0);
+  if (flavor === SIG_TTCF) return out;
+  const count = r.u16(4);
+  if (!r.has(12, 16 * count)) return out;
+  for (let i = 0; i < count; i++) {
+    const e = 12 + 16 * i;
+    if (r.tag(e) !== 'head') continue;
+    const offset = r.u32(e + 8);
+    const length = r.u32(e + 12);
+    if (length < 12 || !r.has(offset, length)) return out;
+    const view = new DataView(out.buffer, out.byteOffset, out.byteLength);
+    view.setUint32(offset + 8, 0, false);
+    const sum = checksum(out, 0, out.length);
+    view.setUint32(offset + 8, (WHOLE_FILE_CHECKSUM - sum) >>> 0, false);
+    return out;
+  }
+  return out;
+}
+
 /** The bytes of a table that lies inside the file, or undefined. */
 export function tableBytes(bytes: Uint8Array, entry: TableEntry | undefined): Uint8Array | undefined {
   if (!entry || !entry.inFile) return undefined;

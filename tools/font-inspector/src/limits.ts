@@ -69,5 +69,12 @@ export const MAX_SAMPLE_CHARS = 10_000;
 /** Most missing characters listed from the sample text. */
 export const MAX_MISSING_LISTED = 100;
 
-/** The reference WOFF2 decoder refuses a file that expands more than this many times. */
+/** The reference WOFF2 decoder refuses a file that expands more than this many times (a ratio of exactly 100 is read). */
 export const MAX_EXPANSION_RATIO = 100;
+
+/**
+ * Most points of simple glyphs the re-read check of a conversion takes apart, counted over both fonts together. A real
+ * font of 20 MiB holds a few million points; a flag byte can repeat for 256 points, so a hostile glyph table could claim
+ * billions from a few kilobytes, and the check stops there instead.
+ */
+export const MAX_COMPARE_POINTS = 60_000_000;

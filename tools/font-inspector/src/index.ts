@@ -16,14 +16,27 @@ export {
   readContainer,
   readSfntFont,
   tableBytes,
+  withChecksumAdjustment,
   type Container,
   type ContainerKind,
   type SfntFont,
   type TableEntry,
 } from './sfnt';
-export { inflateTable, readWoff1Header, unwrapWoff1, type Woff1Header, type Woff1Table } from './woff1';
 export {
+  checkWoff1Output,
+  inflateTable,
+  readWoff1Header,
+  unwrapWoff1,
+  wrapWoff1,
+  type Woff1Header,
+  type Woff1Table,
+} from './woff1';
+export {
+  EXPANSION_REFUSAL,
   WOFF2_KNOWN_TAGS,
+  checkWoff2Output,
+  exceedsExpansionRatio,
+  isCodeGenerationRefusal,
   planWoff2,
   readWoff2Header,
   unpackWoff2,
@@ -31,6 +44,29 @@ export {
   type Woff2Header,
   type Woff2Table,
 } from './woff2';
+export {
+  cleanName,
+  conversionRefusal,
+  convertFont,
+  convertSfnt,
+  outputName,
+  type ConvertEngine,
+  type ConvertJob,
+  type ConvertTarget,
+  type ConvertedFont,
+  type OutputNames,
+} from './convert';
+export { verifyConversion, type ConversionReport, type VerifyEngine } from './verify';
+export {
+  compareGlyphs,
+  glyphRanges,
+  readGlyphValue,
+  sameGlyphValue,
+  type GlyphBudget,
+  type GlyphComparison,
+  type GlyphTable,
+  type GlyphValue,
+} from './glyph-data';
 export {
   NAME_ID_LABELS,
   decodeNameBytes,
@@ -44,6 +80,7 @@ export {
   describeEmbedding,
   longDateTime,
   readMetrics,
+  restrictsEmbedding,
   verticalMetricsNote,
   type Embedding,
   type HeadInfo,

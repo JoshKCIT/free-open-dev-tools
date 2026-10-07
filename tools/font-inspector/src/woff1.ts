@@ -1,4 +1,4 @@
-import { Unzlib } from 'fflate';
+import { Unzlib, zlibSync } from 'fflate';
 import { ByteReader } from './bytes';
 import { FontInspectorError } from './errors';
 import { MAX_SFNT_BYTES, MAX_TABLES } from './limits';
@@ -202,4 +202,117 @@ export function unwrapWoff1(bytes: Uint8Array): Uint8Array {
     return { tag: t.tag, data, checksum: t.checksum };
   });
   return assembleSfnt(header.flavor, parts);
+}
+
+/**
+ * The container checks of a WOFF 1.0 file this page has just made, before it is unpacked again: the header and directory
+ * are read once more under every cap, and any note the reader makes (a directory out of tag order, a `totalSfntSize` that
+ * is not the formula's value, a block outside the file) is a problem, because the writer leaves none. Anything the reader
+ * refuses outright is a problem too. The list is empty when the container is as it should be.
+ */
+export function checkWoff1Output(bytes: Uint8Array): { header: Woff1Header | null; problems: string[] } {
+  let header: Woff1Header;
+  try {
+    header = readWoff1Header(bytes);
+  } catch (err) {
+    if (err instanceof FontInspectorError) {
+      return { header: null, problems: [`The converted WOFF file did not read back: ${err.message}`] };
+    }
+    throw err;
+  }
+  return {
+    header,
+    problems: header.notes.map((note) => `The converted WOFF file reads back with a note: ${note}`),
+  };
+}
+
+const SFNT_FLAVORS = new Set([0x00010000, 0x74727565, 0x4f54544f]);
+
+/**
+ * Wraps a plain sfnt (TrueType or OpenType, not a collection) as a WOFF 1.0 file (W3C Recommendation, 13 December 2012):
+ * the directory is sorted by tag, every table is compressed with zlib at level 9 and stored that way only when that makes
+ * it smaller (otherwise it is stored as it is, with the compressed length equal to the original length), tables start on
+ * 4-byte boundaries and are padded with zeros while the directory states the unpadded lengths, the checksum of each table
+ * is the one the sfnt's directory states, and `totalSfntSize` is `12 + 16 * numTables + the sum of each table's length
+ * rounded up to 4`. No metadata or private data block is written. The result is the same bytes every time for the same
+ * input. Every failure is a `FontInspectorError`.
+ */
+export function wrapWoff1(sfnt: Uint8Array): Uint8Array {
+  if (sfnt.length < 12) throw new FontInspectorError('This font is too short to hold a table directory.', 'File');
+  const r = new ByteReader(sfnt);
+  const flavor = r.u32(0);
+  if (!SFNT_FLAVORS.has(flavor)) {
+    throw new FontInspectorError(
+      'This is not a TrueType or OpenType font, so it cannot be put in a WOFF file.',
+      'File',
+    );
+  }
+  const count = r.u16(4);
+  if (count === 0) throw new FontInspectorError('This font lists no tables.', 'File', 4);
+  if (count > MAX_TABLES) {
+    throw new FontInspectorError(`This font lists more than the ${MAX_TABLES} tables this page converts.`, 'File', 4);
+  }
+  if (!r.has(12, 16 * count)) {
+    throw new FontInspectorError('The font’s table directory runs past the end of the file.', 'File', 12);
+  }
+  const seen = new Set<string>();
+  const tables: { tag: string; checksum: number; raw: Uint8Array; data: Uint8Array }[] = [];
+  for (let i = 0; i < count; i++) {
+    const e = 12 + 16 * i;
+    const tag = r.tag(e);
+    const offset = r.u32(e + 8);
+    const length = r.u32(e + 12);
+    if (seen.has(tag)) {
+      throw new FontInspectorError('This font lists the same table twice, which a WOFF file cannot hold.', 'File', e);
+    }
+    seen.add(tag);
+    if (!r.has(offset, length)) {
+      throw new FontInspectorError(
+        'A table of this font lies outside the file, so the font cannot be converted.',
+        'File',
+        e + 8,
+      );
+    }
+    const raw = sfnt.subarray(offset, offset + length);
+    const packed = zlibSync(raw, { level: 9 });
+    tables.push({ tag, checksum: r.u32(e + 4), raw, data: packed.length < raw.length ? packed : raw });
+  }
+  tables.sort((a, b) => (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0));
+
+  const directoryEnd = 44 + 20 * count;
+  let at = directoryEnd;
+  let totalSfntSize = 12 + 16 * count;
+  const placed = tables.map((t) => {
+    const start = at;
+    at += (t.data.length + 3) & ~3;
+    totalSfntSize += (t.raw.length + 3) & ~3;
+    return { ...t, start };
+  });
+  const out = new Uint8Array(at);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, 0x774f4646, false);
+  view.setUint32(4, flavor, false);
+  view.setUint32(8, at, false);
+  view.setUint16(12, count, false);
+  view.setUint32(16, totalSfntSize, false);
+  // The version of the WOFF file follows the font's own revision (the head table's Fixed number), 1.0 when there is none.
+  let major = 1;
+  let minor = 0;
+  const head = placed.find((t) => t.tag === 'head');
+  if (head && head.raw.length >= 8) {
+    major = (head.raw[4]! << 8) | head.raw[5]!;
+    minor = (head.raw[6]! << 8) | head.raw[7]!;
+  }
+  view.setUint16(20, major, false);
+  view.setUint16(22, minor, false);
+  placed.forEach((t, i) => {
+    const e = 44 + 20 * i;
+    for (let k = 0; k < 4; k++) out[e + k] = t.tag.charCodeAt(k) & 0xff;
+    view.setUint32(e + 4, t.start, false);
+    view.setUint32(e + 8, t.data.length, false);
+    view.setUint32(e + 12, t.raw.length, false);
+    view.setUint32(e + 16, t.checksum, false);
+    out.set(t.data, t.start);
+  });
+  return out;
 }

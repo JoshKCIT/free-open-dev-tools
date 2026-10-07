@@ -187,6 +187,15 @@ export function describeEmbedding(fsType: number): Embedding {
 }
 
 /**
+ * Whether the font's own embedding flags ask for any limit: anything but installable embedding, a request not to subset,
+ * or bitmap embedding only. The page uses this to remind a visitor to read the licence before publishing a converted file;
+ * it is a reminder and never a statement that a conversion is or is not allowed.
+ */
+export function restrictsEmbedding(e: Embedding): boolean {
+  return (e.fsType & 0x000f) !== 0 || e.noSubsetting || e.bitmapOnly;
+}
+
+/**
  * A note when the three places that state a font's vertical metrics (the hhea table, the OS/2 typographic values and the
  * OS/2 Windows values) do not agree, or null when they do or when a table is missing.
  */
