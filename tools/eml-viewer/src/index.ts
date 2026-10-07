@@ -3,16 +3,21 @@ import meta from './meta.json';
 export { meta };
 export { EmlViewerError, type EmlViewerPart } from './errors';
 export {
+  MAX_ADDRESSES,
   MAX_ADDRESS_CHARACTERS,
   MAX_ATTACHMENTS_OFFERED,
+  MAX_AUTH_HEADERS,
+  MAX_AUTH_RESULTS,
   MAX_CID_IMAGE_BYTES,
   MAX_CID_TOTAL_BYTES,
+  MAX_COMMENT_DEPTH,
   MAX_CONTINUATIONS,
   MAX_DEPTH,
   MAX_ENCODED_WORDS,
   MAX_FILENAME_CHARACTERS,
   MAX_HEADERS,
   MAX_HEADER_BYTES,
+  MAX_HOPS,
   MAX_HTML_DEPTH,
   MAX_HTML_PREVIEW_BYTES,
   MAX_HTML_TAGS,
@@ -27,7 +32,11 @@ export {
   withCommas,
 } from './limits';
 export { analyzeMessage } from './analyze';
-export type { AttachmentInfo, CidPart, EmlAnalysis, HeaderRow, TextBody, TreeOut } from './analyze';
+export type { AttachmentInfo, CidPart, EmlAnalysis, HeaderRow, Hop, TextBody, TreeOut } from './analyze';
+export { parseMailDate, readMailDate, formatDelay, formatUtc, type MailDate } from './dates';
+export { parseReceived, type ReceivedHop } from './received';
+export { parseAddressList, addressDomain, type AddressList, type Mailbox } from './addresses';
+export { stripComments, type StrippedComments } from './comments';
 export { previewHtml, scanHtml } from './html-preview';
 export type { BlockedReference, LinkInfo, PreviewResult } from './html-preview';
 export { decodeEncodedWords, type DecodedWords } from './encoded-words';

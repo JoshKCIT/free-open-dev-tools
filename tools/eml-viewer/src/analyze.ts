@@ -1,8 +1,10 @@
 import { decodeBytes } from './charset';
+import { formatDelay, formatUtc } from './dates';
 import { decodeEncodedWords } from './encoded-words';
 import { EmlViewerError } from './errors';
 import {
   MAX_CID_IMAGE_BYTES,
+  MAX_HOPS,
   MAX_HTML_PREVIEW_BYTES,
   MAX_MESSAGE_BYTES,
   MAX_TEXT_BODY_SHOWN,
@@ -11,6 +13,7 @@ import {
 import { decodePartBody, parseMime, type PartNode } from './mime';
 import { safeAttachmentName } from './names';
 import { findParam, type ParsedValue } from './params';
+import { parseReceived } from './received';
 import { visible } from './visible';
 
 /** One header as read: the value with encoded words decoded, and the unfolded text as written. */
@@ -65,6 +68,28 @@ export interface AttachmentInfo {
   bytes: Uint8Array;
 }
 
+/** One Received line read as a delivery hop. Everything in it is what the server that wrote the line chose to say. */
+export interface Hop {
+  /** The 1-based position among the listed hops, oldest first. */
+  index: number;
+  from: string;
+  /** The first comment in the from clause, usually the address the server saw. */
+  fromComment: string;
+  by: string;
+  via: string;
+  with: string;
+  id: string;
+  for: string;
+  /** The stated time in UTC as `YYYY-MM-DD HH:MM:SS`, or an empty string when the line states no readable date. */
+  time: string;
+  timeMs: number | null;
+  /** The time since the previous listed hop, as `N s` or `N min N s`, or an empty string for the first hop. */
+  delay: string;
+  delaySeconds: number | null;
+  /** What is worth knowing about this line: an assumption made reading its date, a missing date, a clock that disagrees. */
+  note: string;
+}
+
 /** A part a cid address may name: its Content-ID without the angle brackets, and its decoded bytes. */
 export interface CidPart {
   id: string;
@@ -76,6 +101,8 @@ export interface EmlAnalysis {
   size: number;
   summary: [string, string][];
   headers: HeaderRow[];
+  /** The Received lines as delivery hops, oldest first (the line at the bottom of the headers is the first hop). */
+  hops: Hop[];
   /** The MIME structure, or null when the message has headers and no body. */
   tree: TreeOut | null;
   textBody: TextBody | null;
@@ -132,6 +159,57 @@ function nameCandidates(node: PartNode): { raw: string; others: string[] } {
   add(node.type, 'name', false);
   const raw = found[0] ?? '';
   return { raw, others: found.slice(1) };
+}
+
+/** The clock note shown when a line states a time before the line before it. */
+const CLOCK_NOTE =
+  'This line states a time earlier than the line before it, so the clocks of the two servers disagree, or one of the lines was written by the sender.';
+
+/**
+ * Lists the Received lines oldest first: the line at the bottom of the headers is the first hop (RFC 5321 section 4.4: a
+ * server prepends its line). The delay of a hop is the whole seconds between its stated date and the previous listed hop's,
+ * each date read with its own zone applied; a negative delay is a clock note and never an error. At most 200 hops are
+ * listed, the oldest ones, and a note says how many were left out.
+ */
+function buildHops(headers: readonly HeaderRow[], addNote: (note: string) => void): Hop[] {
+  const lines: HeaderRow[] = [];
+  for (const row of headers) if (row.name.toLowerCase() === 'received') lines.push(row);
+  lines.reverse();
+  if (lines.length > MAX_HOPS) {
+    addNote(
+      `The message has ${withCommas(lines.length)} Received lines. Only the oldest ${MAX_HOPS} are listed as hops; the other ${withCommas(lines.length - MAX_HOPS)} were not read.`,
+    );
+    lines.length = MAX_HOPS;
+  }
+  const hops: Hop[] = [];
+  let previousMs: number | null = null;
+  for (const line of lines) {
+    const read = parseReceived(line.raw);
+    const timeMs = read.date === null ? null : read.date.ms;
+    const notes = [...read.notes];
+    let delaySeconds: number | null = null;
+    if (hops.length > 0 && timeMs !== null && previousMs !== null) {
+      delaySeconds = Math.round((timeMs - previousMs) / 1000);
+      if (delaySeconds < 0) notes.push(CLOCK_NOTE);
+    }
+    hops.push({
+      index: hops.length + 1,
+      from: read.from,
+      fromComment: read.fromComment,
+      by: read.by,
+      via: read.via,
+      with: read.with,
+      id: read.id,
+      for: read.for,
+      time: timeMs === null ? '' : formatUtc(timeMs),
+      timeMs,
+      delay: delaySeconds === null ? '' : formatDelay(delaySeconds),
+      delaySeconds,
+      note: notes.join(' '),
+    });
+    previousMs = timeMs;
+  }
+  return hops;
 }
 
 function isTextBodyType(contentType: string): boolean {
@@ -212,6 +290,8 @@ export async function analyzeMessage(bytes: Uint8Array): Promise<EmlAnalysis> {
       `The character set ${visible(label, 40)} in a header is not one this page can read, so that text is shown as escaped bytes.`,
     );
   }
+
+  const hops = buildHops(headers, addNote);
 
   const summary: [string, string][] = [];
   const pick = (label: string, lowerName: string): void => {
@@ -373,6 +453,7 @@ export async function analyzeMessage(bytes: Uint8Array): Promise<EmlAnalysis> {
     size: bytes.length,
     summary,
     headers,
+    hops,
     tree: bodyEmpty ? null : rootOut,
     textBody,
     htmlBody,

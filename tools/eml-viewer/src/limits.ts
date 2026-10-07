@@ -18,6 +18,16 @@ export const MAX_PARTS = 1_000;
 export const MAX_CONTINUATIONS = 100;
 /** The most parameters read from one header. */
 export const MAX_PARAMETERS = 200;
+/** The most mailboxes read from one address header. */
+export const MAX_ADDRESSES = 500;
+/** The most Received lines listed as delivery hops (the oldest 200). */
+export const MAX_HOPS = 200;
+/** The deepest nesting of comments read in a header; a deeper one stops the reading of that header. */
+export const MAX_COMMENT_DEPTH = 50;
+/** The most Authentication-Results, DKIM-Signature and ARC header fields read of each kind. */
+export const MAX_AUTH_HEADERS = 50;
+/** The most results read from one Authentication-Results header field. */
+export const MAX_AUTH_RESULTS = 100;
 /** The most attachments that get a Save button. */
 export const MAX_ATTACHMENTS_OFFERED = 200;
 /** The most characters of a plain text body shown. */
