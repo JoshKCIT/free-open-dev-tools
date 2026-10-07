@@ -1503,5 +1503,12 @@
     "category": "network",
     "tier": 3,
     "summary": "Check an SPF or DMARC record term by term, count the DNS lookups against the limit of 10 without making any, and build either record from fields."
+  },
+  {
+    "id": "saml-decoder",
+    "name": "SAML Message Decoder",
+    "category": "hashing",
+    "tier": 3,
+    "summary": "Decode a SAML request or response from a redirect link, form post or raw XML into formatted XML and a summary, without verifying anything."
   }
 ]

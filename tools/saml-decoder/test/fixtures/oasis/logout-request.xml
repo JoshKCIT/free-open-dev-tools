@@ -1,0 +1,6 @@
+<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="d2b7c388cec36fa7c39c28fd298644a8" IssueInstant="2004-01-21T19:00:49Z" Version="2.0">
+    <Issuer>https://IdentityProvider.com/SAML</Issuer>
+    <NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">005a06e0-ad82-110d-a556-004005b13a2b</NameID>
+    <samlp:SessionIndex>1</samlp:SessionIndex>
+</samlp:LogoutRequest>
