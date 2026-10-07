@@ -1,0 +1,21 @@
+{
+  "id": "wasm-inspector",
+  "label": "a 329 byte module built with wabt 1.0.39 from the text in the tool folder shows its import env.limit and its exports twice and counter, and agrees with V8 on its imports and exports",
+  "steps": [
+    {
+      "action": "attach",
+      "field": "file",
+      "files": [
+        {
+          "name": "fixture.wasm",
+          "mimeType": "application/wasm",
+          "base64": "AGFzbQEAAAABEwRgAX8AYAJ/fwF/YAF/AX9gAAACGAIDZW52A2xvZwAAA2VudgVsaW1pdAN/AAMEAwECAwQEAXAAAgUEAQEBBAYGAX8BQQcLByIEBm1lbW9yeQIAA2FkZAABBXR3aWNlAAIHY291bnRlcgMBCAEDCQgBAEEACwIBAgoYAwcAIAAgAWoLBwAgAEECbAsGACMAEAALCxMBAEEQCw1oZWxsbyBmaXh0dXJlAJUBBG5hbWUACAdmaXh0dXJlARkEAANsb2cBA2FkZAIFdHdpY2UDBXN0YXJ0AhkEAAEAAnAwAQIAAnAwAQJwMQIBAAJwMAMABBcEAAVsb2dfdAEFYWRkX3QCAnQyAwJ0MwUGAQADdGJsBgYBAANtZW0HEQIABWxpbWl0AQdjb3VudGVyCAUBAAJlMAkLAQAIZ3JlZXRpbmc="
+        }
+      ]
+    },
+    {
+      "action": "run"
+    }
+  ],
+  "expect": ["env", "limit", "twice", "counter"]
+}

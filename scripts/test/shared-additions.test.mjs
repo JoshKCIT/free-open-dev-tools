@@ -174,7 +174,7 @@ describe('the v1.2 shared additions table', () => {
     const rows = [...TABLE.tools, ...TABLE.upgrades];
     expect(rows.filter((row) => row.needs.includes('eval')).map((row) => row.id)).toEqual(['font-inspector']);
     const wasmPage = rows.find((row) => row.id === 'wasm-inspector');
-    expect(wasmPage.needs).toEqual(['workers']);
+    expect(wasmPage.needs).toEqual([]);
   });
 
   it('is consistent with the policy gate lists for the two reserved ids', () => {
