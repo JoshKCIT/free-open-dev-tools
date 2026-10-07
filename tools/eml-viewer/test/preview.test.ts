@@ -319,3 +319,80 @@ it('no parser is given a base element, because the page policy would report it, 
   previewHtml(plain, win as unknown as WindowLike, []);
   expect(seen[0]).toBe(plain);
 });
+
+it('an image whose address is only a fragment is listed and removed, and no node is ever put into the page document', () => {
+  const win = makeWindow();
+  const page = win.document as Document;
+  const nodeProto = (win as unknown as { Node: typeof Node }).Node.prototype;
+  // Every way a node can enter a document: if any of them targets the page's own document, a sanitised image could start
+  // a load there (an img with a fragment address resolves to the page's own address).
+  const intoPage: string[] = [];
+  const inPage = (target: Node): boolean => target === page || target.ownerDocument === page;
+  const realAppend = nodeProto.appendChild;
+  const realInsert = nodeProto.insertBefore;
+  const realReplace = nodeProto.replaceChild;
+  const realImport = page.importNode;
+  const realAdopt = page.adoptNode;
+  nodeProto.appendChild = function <T extends Node>(this: Node, child: T): T {
+    if (inPage(this)) intoPage.push(`appendChild ${child.nodeName}`);
+    return realAppend.call(this, child) as T;
+  };
+  nodeProto.insertBefore = function <T extends Node>(this: Node, child: T, ref: Node | null): T {
+    if (inPage(this)) intoPage.push(`insertBefore ${child.nodeName}`);
+    return realInsert.call(this, child, ref) as T;
+  };
+  nodeProto.replaceChild = function <T extends Node>(this: Node, child: Node, old: T): T {
+    if (inPage(this)) intoPage.push(`replaceChild ${child.nodeName}`);
+    return realReplace.call(this, child, old) as T;
+  };
+  page.importNode = function <T extends Node>(node: T, deep?: boolean): T {
+    intoPage.push(`importNode ${node.nodeName}`);
+    return realImport.call(page, node, deep) as T;
+  };
+  page.adoptNode = function <T extends Node>(node: T): T {
+    intoPage.push(`adoptNode ${node.nodeName}`);
+    return realAdopt.call(page, node) as T;
+  };
+  let result: ReturnType<typeof previewHtml>;
+  try {
+    result = previewHtml(
+      '<p>hello</p><img src="#x" alt="one"><image src="#y" alt="two"><img src=" #z" alt="three">' +
+        '<img src="data:image/png;base64,iVBORw0KGgo=" alt="four"><p style="color:red">after</p>',
+      win,
+      [],
+    );
+  } finally {
+    nodeProto.appendChild = realAppend;
+    nodeProto.insertBefore = realInsert;
+    nodeProto.replaceChild = realReplace;
+    page.importNode = realImport;
+    page.adoptNode = realAdopt;
+  }
+  expect(intoPage).toEqual([]);
+
+  // The markup keeps the four images and their words, and the only address left is the data image.
+  const html = shownHtml(result);
+  const doc = new (win as unknown as { DOMParser: typeof DOMParser }).DOMParser().parseFromString(html, 'text/html');
+  const images = Array.from(doc.querySelectorAll('img'));
+  expect(images.map((img) => img.getAttribute('alt'))).toEqual(['one', 'two', 'three', 'four']);
+  const sources = Array.from(doc.querySelectorAll('[src]')).map((el) => el.getAttribute('src') ?? '');
+  expect(sources).toEqual(['data:image/png;base64,iVBORw0KGgo=']);
+  expect(html).toContain('<p>hello</p>');
+  expect(html).toContain('color:red');
+
+  // Each fragment address is listed as what it was: an image source that names this page, never loaded.
+  expect(result.blocked.map((b) => `${b.kind} | ${b.where} | ${b.address}`)).toEqual([
+    'image source that names this page | img src | #x',
+    'image source that names this page | img src | #y',
+    'image source that names this page | img src | #z',
+  ]);
+  expect(result.blocked.map((b) => b.host)).toEqual(['', '', '']);
+
+  // A style address that is only a fragment names this page too: the declaration is dropped and listed.
+  const styled = previewHtml('<div style="background-image:url(#w);color:blue">s</div>', win, []);
+  expect(shownHtml(styled)).not.toContain('url(');
+  expect(shownHtml(styled)).toContain('color:blue');
+  expect(styled.blocked.map((b) => `${b.kind} | ${b.where} | ${b.address}`)).toEqual([
+    'style url | style attribute (div) | #w',
+  ]);
+});

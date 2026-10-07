@@ -10,7 +10,7 @@ import {
   MAX_LISTED_REFERENCES,
   withCommas,
 } from './limits';
-import { describeRemoved, sanitiseToFragment, serialiseFragment } from './sanitise';
+import { describeRemoved, sanitiseToFragment } from './sanitise';
 
 /** One remote reference found in the HTML body, with where it was and what it points at. It was removed, never loaded. */
 export interface BlockedReference {
@@ -235,13 +235,21 @@ function hostOf(address: string): string {
   }
 }
 
-function isLocalReference(address: string): boolean {
+/** True for a base64 PNG, GIF, JPEG or WebP data address: the only address an image or a style may keep. */
+function isDataImage(address: string): boolean {
   const lower = asciiLower(address.trim());
-  if (lower.startsWith('#')) return true;
   if (!lower.startsWith('data:image/')) return false;
   const afterType = lower.slice('data:image/'.length);
   const type = afterType.slice(0, Math.max(0, afterType.search(/[;,]/)));
   return ['png', 'gif', 'jpeg', 'webp'].includes(type) && lower.includes(';base64,');
+}
+
+/**
+ * True for an address that names a place in this document or an allowed data image. Only a link may name a place: an
+ * image or a style address that is only a fragment is resolved against the page's own address and loads that.
+ */
+function isLocalReference(address: string): boolean {
+  return asciiLower(address.trim()).startsWith('#') || isDataImage(address);
 }
 
 // ---- Style text ---------------------------------------------------------------------------------------------------
@@ -337,7 +345,7 @@ function styleAddresses(text: string): StyleAddress[] {
     const at = findFunction(low, 'url(', from);
     if (at === -1) break;
     const read = readAddressAt(text, at + 4);
-    if (!consumed.has(at) && !isLocalReference(read.address)) found.push({ kind: 'style url', address: read.address });
+    if (!consumed.has(at) && !isDataImage(read.address)) found.push({ kind: 'style url', address: read.address });
     from = Math.max(read.end, at + 4);
   }
 
@@ -498,11 +506,23 @@ function textHost(text: string): string {
 }
 
 /**
+ * The markup of a sanitised fragment, written out inside the document the fragment already belongs to (the sanitiser's
+ * own inert document, which has no window and loads nothing). An empty fragment is an empty string and touches nothing.
+ */
+function serialiseInert(fragment: DocumentFragment): string {
+  if (!fragment.hasChildNodes()) return '';
+  const holder = fragment.ownerDocument.createElement('div');
+  holder.appendChild(fragment);
+  return holder.innerHTML;
+}
+
+/**
  * Makes the HTML body of a message safe to show and lists what it tried to load. In order: the size, tag and nesting scan
  * (nothing is parsed if it fails); an inert parse that loads and runs nothing, in which every remote reference is
  * recorded as text and a cid image that names a PNG, JPEG, GIF or WebP part of at most 1 MiB (5 MiB in all) is rewritten
- * to a data address; the canonical sanitiser; then every anchor loses href, target, ping and rel, so no link navigates.
- * `win` is the caller's window: this file touches no DOM global of its own.
+ * to a data address; the canonical sanitiser; then every anchor loses href, target, ping and rel, so no link navigates,
+ * and every source that is not a data image is listed and removed. The markup is written out inside the sanitiser's inert
+ * document. `win` is the caller's window: this file touches no DOM global of its own and puts no node into its document.
  */
 export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart[] = []): PreviewResult {
   const scanned = scan(html);
@@ -635,8 +655,18 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
     for (const name of ['href', 'target', 'ping', 'rel', 'xlink:href']) anchor.removeAttribute(name);
   }
 
-  // Step 5: serialise.
-  const output = serialiseFragment(fragment, win, 'html');
+  // Every source the sanitiser kept that is not a data image is a fragment (#x): the frame resolves it against the page's
+  // own address and would try to load the page as an image. It is listed and removed, so only data images remain.
+  for (const el of Array.from(fragment.querySelectorAll('[src]'))) {
+    const src = el.getAttribute('src') ?? '';
+    if (isDataImage(src)) continue;
+    record('image source that names this page', `${el.localName.toLowerCase()} src`, src);
+    el.removeAttribute('src');
+  }
+
+  // Step 5: serialise inside the sanitiser's own inert document, never the page's: a node put into the page's document,
+  // even one that is never shown, starts loading its image there.
+  const output = serialiseInert(fragment);
   return {
     status: 'shown',
     html: output,

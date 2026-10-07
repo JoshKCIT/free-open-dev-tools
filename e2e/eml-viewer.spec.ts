@@ -117,7 +117,9 @@ const HOSTILE_HTML =
   '<iframe src="https://evil.example/frame"></iframe><object data="https://evil.example/o"></object><embed src="https://evil.example/e">' +
   '<form action="https://evil.example/post"><input name=q><button formaction="https://evil.example/f">go</button></form>' +
   '<script src="https://evil.example/s.js"></script><script>document.title="x"</script>' +
-  '<table background="https://evil.example/t.gif"><tr><td background="https://evil.example/td.gif">x</td></tr></table></body></html>';
+  '<table background="https://evil.example/t.gif"><tr><td background="https://evil.example/td.gif">x</td></tr></table>' +
+  // Addresses that are only a fragment resolve against the page's own address, so they would load the page itself.
+  '<img src="#x"><image src="#y"><img src=" #probe-fragment"><div style="background-image:url(#z)">fragment</div></body></html>';
 
 const HOSTILE_MESSAGE = message(
   'From: Eve <eve@evil.example>',
@@ -321,6 +323,7 @@ test('eml-viewer: a hostile message loads nothing and a click on its link text d
   const probe = await armCspProbe(page);
   const requests = recordRequests(page);
   await openTool(page);
+  const opened = requests.length;
   await attachMessage(page, 'hostile.eml', HOSTILE_MESSAGE);
   await runButton(page).click();
 
@@ -348,6 +351,10 @@ test('eml-viewer: a hostile message loads nothing and a click on its link text d
   const outside = outsideRequests(requests, new URL(page.url()).origin);
   expect(outside, `requests outside the page's own files: ${outside.join(', ')}`).toEqual([]);
   expect(requests.filter((url) => url.includes('evil.example'))).toEqual([]);
+  // Once the page is open it never asks for its own address again (an image with a fragment address would).
+  const pagePath = new URL(page.url()).pathname;
+  const again = requests.slice(opened).filter((url) => !url.startsWith('blob:') && new URL(url).pathname === pagePath);
+  expect(again, `the page asked for its own address: ${again.join(', ')}`).toEqual([]);
   expect(probe.findings().map(describeFinding)).toEqual([]);
 });
 
