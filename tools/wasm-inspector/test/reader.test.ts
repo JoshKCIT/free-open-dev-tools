@@ -571,3 +571,21 @@ it('the 50 largest function bodies are listed with their names and the rest are 
   expect(byIndex.has(5)).toBe(false);
   expect(report.functions.bodyBytes).toBeGreaterThan(0);
 });
+
+it('a custom section kept past the first 2,000 sections is read when it is the first of a name this page decodes', () => {
+  // 2,000 empty custom sections, then the name, producers and sourceMappingURL sections, then a second name section.
+  const filler: number[] = [];
+  for (let i = 0; i < 2_000; i++) filler.push(...custom('x'));
+  const names = custom('name', [0x00, ...uleb(name('late').length), ...name('late')]);
+  const producers = custom('producers', [0x01, ...name('language'), 0x01, ...name('Rust'), ...name('')]);
+  const address = custom('sourceMappingURL', name('https://example.test/late.map'));
+  const again = custom('name', [0x00, ...uleb(name('again').length), ...name('again')]);
+  const report = inspect(moduleOf(filler, names, producers, address, again, custom('x')));
+  expect(report.sectionCount).toBe(2_005);
+  expect(report.names.moduleName).toBe('late');
+  expect(report.producers).toEqual([{ field: 'language', values: ['Rust'] }]);
+  expect(report.sourceMappingUrl).toBe('https://example.test/late.map');
+  // The second name section and the empty one after it are counted, not kept.
+  expect(report.sections.filter((s) => s.id === 0)).toHaveLength(2_003);
+  expect(report.customs.count).toBe(2_005);
+});

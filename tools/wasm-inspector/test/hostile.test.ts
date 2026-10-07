@@ -129,6 +129,11 @@ const SHAPES: readonly Shape[] = [
     make: (n) => moduleText(TYPE_SECTION) + hostile(n),
   })),
   { label: 'empty custom sections', make: (n) => moduleText(copies(n, [0x00, 0x01, 0x00]).slice(uleb(n).length)) },
+  {
+    // Past the first 2,000 sections the name of each custom section is looked at, to keep the first of each decoded name.
+    label: 'custom sections all named name',
+    make: (n) => moduleText(copies(n, custom('name')).slice(uleb(n).length)),
+  },
   { label: 'repeated sections', make: (n) => moduleText(copies(n, [0x01, 0x01, 0x00]).slice(uleb(n).length)) },
   { label: 'exports', make: (n) => moduleText(section(7, copies(n, [...name('e'), 0x00, 0x00]))) },
   { label: 'imports', make: (n) => moduleText(section(2, copies(n, [...name('m'), ...name('f'), 0x00, 0x00]))) },
