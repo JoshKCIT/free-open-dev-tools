@@ -289,3 +289,33 @@ it('inline styles lose only the declarations that load something, and style bloc
   expect(twice.blocked).toHaveLength(1);
   expect(twice.blocked[0]?.count).toBe(2);
 });
+
+it('no parser is given a base element, because the page policy would report it, and its address is still listed as text', () => {
+  const win = makeWindow() as unknown as { DOMParser: new () => DOMParser };
+  const Real = win.DOMParser;
+  const seen: string[] = [];
+  win.DOMParser = class extends Real {
+    override parseFromString(text: string, type: DOMParserSupportedType): Document {
+      seen.push(text);
+      return super.parseFromString(text, type);
+    }
+  };
+  const result = previewHtml(
+    '<head><base href="https://a.example/"><BASE HREF=https://b.example/><base\thref=c.example><base/href=d.example></head>' +
+      '<body><!-- <base href=e.example> --><p>text</p><x-base href="https://f.example/"></body>',
+    win as unknown as WindowLike,
+    [],
+  );
+  const html = shownHtml(result);
+  expect(seen.length).toBeGreaterThanOrEqual(2);
+  for (const text of seen) expect(text).not.toMatch(/<base[\s/>]/i);
+  expect(html).toContain('<p>text</p>');
+  expect(html.toLowerCase()).not.toContain('base');
+  const bases = result.blocked.filter((b) => b.kind === 'base address').map((b) => b.address);
+  expect(bases).toEqual(['https://a.example/', 'https://b.example/', 'c.example', 'd.example', 'https://f.example/']);
+  // The same markup with no base element in it is passed to the parser unchanged.
+  const plain = '<p>no base here</p>';
+  seen.length = 0;
+  previewHtml(plain, win as unknown as WindowLike, []);
+  expect(seen[0]).toBe(plain);
+});
