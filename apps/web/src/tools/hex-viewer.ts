@@ -496,7 +496,12 @@ export default defineTool({
       if (err instanceof HexViewerError || err instanceof HexViewerRunError) {
         return { outputs: [], errors: [{ message: err.message }] };
       }
-      const message = err instanceof Error ? err.message : 'Could not process that input.';
+      // Any other error (a picked file that changed or vanished makes the browser's read fail with its own text) gets
+      // one fixed sentence, never the browser's message (19-01 S10).
+      const fromFile = str(values, 'source', 'file') === 'file';
+      const message = fromFile
+        ? 'Could not read that file. If it changed or moved after you picked it, pick it again.'
+        : 'Could not process that input.';
       return { outputs: [], errors: [{ message }] };
     }
   },
