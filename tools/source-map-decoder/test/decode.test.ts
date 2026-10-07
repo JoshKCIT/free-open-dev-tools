@@ -9,6 +9,14 @@ import { LIVE_MAP, LIVE_MAP_TEXT, LIVE_TRACE } from './live-map';
  * (src/math.ts 3:11 and 11:19, src/main.ts 6:9, 12:10 and 15:1), never the decoder's own output.
  */
 
+/** What Node's source map reader answers for a position that has a mapping. */
+interface NodeEntry {
+  originalSource: string;
+  originalLine: number;
+  originalColumn: number;
+  name?: string;
+}
+
 const CANARY = 'CANARY-7f3a91-source-map-decoder-d4e8b2';
 
 /** [line, column] of each frame of LIVE_TRACE, one based as V8 prints them. */
@@ -31,12 +39,12 @@ it('the esbuild map of the live fixture decodes its five V8 frames to the positi
   const report = decodeStackTrace({ trace: LIVE_TRACE, maps: LIVE_MAP_TEXT });
   expect(report.rows).toHaveLength(5);
 
-  const node = new SourceMap(LIVE_MAP);
+  const node = new SourceMap({ ...LIVE_MAP, file: 'min.js', sourceRoot: '' });
   report.rows.forEach((row, i) => {
     const expected = EXPECTED[i];
     const [line, column] = FRAMES[i] ?? [0, 0];
     // Node counts from zero; V8 prints one based lines and columns.
-    const entry = node.findEntry(line - 1, column - 1);
+    const entry = node.findEntry(line - 1, column - 1) as NodeEntry;
     expect(row.status).toBe('mapped');
     expect(row.source).toBe(expected?.source);
     expect(row.originalLine).toBe(expected?.line);
