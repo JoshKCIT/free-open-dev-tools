@@ -451,9 +451,11 @@ function buildSpfBlocks(values: Values): OutputBlock[] {
       items: built.problems.map((problem) => `${problem.field}, line ${problem.line}: ${problem.message}`),
     });
   }
-  if (built.report.notes.length > 0) {
-    blocks.push({ kind: 'list', label: 'Worth a look', items: built.report.notes.map(noteItem) });
-  }
+  const worth = [
+    ...built.adjusted.map((entry) => `${entry.field}, line ${entry.line}: ${entry.message}`),
+    ...built.report.notes.map(noteItem),
+  ];
+  if (worth.length > 0) blocks.push({ kind: 'list', label: 'Worth a look', items: worth });
   return blocks;
 }
 
@@ -525,7 +527,7 @@ export default defineTool({
       type: 'textarea',
       rows: 3,
       placeholder: PASTE_PLACEHOLDER,
-      help: 'One per line. Each include adds a DNS lookup of its own.',
+      help: 'One domain per line, such as _spf.example.com: the builder writes include: itself. Each include adds a DNS lookup of its own.',
       visible: only('build-spf'),
     },
     {
@@ -560,7 +562,7 @@ export default defineTool({
       label: 'Redirect to this domain',
       type: 'text',
       placeholder: '_spf.example.com',
-      help: 'The domain whose SPF record takes over when no term above matched.',
+      help: 'The domain whose SPF record takes over when no term above matched. The builder writes redirect= itself.',
       mono: true,
       visible: (values) => readMode(values) === 'build-spf' && readEnding(values) === 'redirect',
     },

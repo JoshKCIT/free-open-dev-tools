@@ -40,6 +40,11 @@ export interface BuiltSpf {
   /** The number of terms of the record that cause DNS lookups. */
   lookups: number;
   problems: BuildProblem[];
+  /**
+   * Entries that were kept after the prefix the builder writes itself (ip4:, ip6:, include: or redirect=) was dropped from
+   * their start, with the field and the line. Never holds the entry.
+   */
+  adjusted: BuildProblem[];
   /** The record read back by the same parser and checker the page uses to check a pasted record. */
   report: SpfReport;
 }
@@ -80,6 +85,41 @@ function entriesOf(text: string, field: BuildField): Array<{ line: number; entry
   return out;
 }
 
+/** The prefix the builder writes before an entry of each field. */
+const PREFIXES: Record<BuildField, string> = {
+  ip4: 'ip4:',
+  ip6: 'ip6:',
+  includes: 'include:',
+  redirect: 'redirect=',
+};
+
+/** True when `entry` holds `prefix` at `at`, in any ASCII letter case, with something after it. */
+function prefixAt(entry: string, at: number, prefix: string): boolean {
+  if (entry.length - at <= prefix.length) return false;
+  for (let k = 0; k < prefix.length; k++) {
+    let c = entry.charCodeAt(at + k);
+    if (c >= 65 && c <= 90) c += 32;
+    if (c !== prefix.charCodeAt(k)) return false;
+  }
+  return true;
+}
+
+/**
+ * The entry without the prefix the builder writes itself, when it was typed with it (as provider documentation writes
+ * include:<name>). RFC 7208 allows a colon and an equals sign inside a domain-spec, so include:include:<name> would read
+ * as one valid include of a name that does not exist. The prefix is dropped as often as it repeats, in one pass.
+ */
+function dropOwnPrefix(entry: string, prefix: string): { entry: string; dropped: boolean } {
+  let at = 0;
+  while (prefixAt(entry, at, prefix)) at += prefix.length;
+  return at === 0 ? { entry, dropped: false } : { entry: entry.slice(at), dropped: true };
+}
+
+/** The line that says a prefix was dropped. Fixed text: it never holds the entry. */
+function droppedMessage(field: BuildField): string {
+  return `The entry started with ${PREFIXES[field]}, which the builder writes itself, so that prefix was dropped.`;
+}
+
 /** The term for one entry when it reads as exactly one term of the wanted kind with no problem, else the first problem. */
 function termFor(prefix: string, kind: string, entry: string): { term: string } | { message: string } {
   for (let i = 0; i < entry.length; i++) {
@@ -100,7 +140,8 @@ function termFor(prefix: string, kind: string, entry: string): { term: string } 
  * Builds an SPF record from fields. Every entry is checked by the same parser a pasted record goes through; one that does
  * not read as a single valid term is left out and listed as a problem (with its line, never its text). The terms are
  * always written in the same order whatever order the lines were typed in: v=spf1, ip4, ip6, a, mx, include, the ending.
- * The finished record is parsed and checked again before it is returned.
+ * An entry typed with the prefix the builder writes itself (include:<name>, for example) is kept without it and listed in
+ * `adjusted`. The finished record is parsed and checked again before it is returned.
  */
 export function buildSpf(fields: SpfFields): BuiltSpf {
   checkPaste(fields.ip4, 'builder');
@@ -108,19 +149,24 @@ export function buildSpf(fields: SpfFields): BuiltSpf {
   checkPaste(fields.includes, 'builder');
   checkPaste(fields.redirect, 'builder');
   const problems: BuildProblem[] = [];
+  const adjusted: BuildProblem[] = [];
   const terms: string[] = ['v=spf1'];
-  const add = (field: BuildField, prefix: string, kind: string, text: string): void => {
-    for (const { line, entry } of entriesOf(text, field)) {
-      const result = termFor(prefix, kind, entry);
-      if ('term' in result) terms.push(result.term);
-      else problems.push({ field, line, message: result.message });
-    }
+  const one = (field: BuildField, kind: string, line: number, typed: string): void => {
+    const own = dropOwnPrefix(typed, PREFIXES[field]);
+    const result = termFor(PREFIXES[field], kind, own.entry);
+    if ('term' in result) {
+      terms.push(result.term);
+      if (own.dropped) adjusted.push({ field, line, message: droppedMessage(field) });
+    } else problems.push({ field, line, message: result.message });
   };
-  add('ip4', 'ip4:', 'ip4', fields.ip4);
-  add('ip6', 'ip6:', 'ip6', fields.ip6);
+  const add = (field: BuildField, kind: string, text: string): void => {
+    for (const { line, entry } of entriesOf(text, field)) one(field, kind, line, entry);
+  };
+  add('ip4', 'ip4', fields.ip4);
+  add('ip6', 'ip6', fields.ip6);
   if (fields.a) terms.push('a');
   if (fields.mx) terms.push('mx');
-  add('includes', 'include:', 'include', fields.includes);
+  add('includes', 'include', fields.includes);
   if (fields.ending === 'redirect') {
     const target = entriesOf(fields.redirect, 'redirect');
     if (target.length === 0) {
@@ -128,9 +174,7 @@ export function buildSpf(fields: SpfFields): BuiltSpf {
     } else {
       const first = target[0];
       if (first !== undefined) {
-        const result = termFor('redirect=', 'redirect', first.entry);
-        if ('term' in result) terms.push(result.term);
-        else problems.push({ field: 'redirect', line: first.line, message: result.message });
+        one('redirect', 'redirect', first.line, first.entry);
         if (target.length > 1) {
           problems.push({
             field: 'redirect',
@@ -157,6 +201,7 @@ export function buildSpf(fields: SpfFields): BuiltSpf {
     octets: report.octets,
     lookups: report.lookupCount,
     problems,
+    adjusted,
     report,
   };
 }

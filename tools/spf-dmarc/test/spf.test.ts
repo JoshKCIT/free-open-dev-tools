@@ -638,6 +638,57 @@ it('a built SPF record checks clean and keeps the fixed term order', () => {
   expect(refused?.message).not.toContain('aaaa');
 });
 
+it('a builder entry typed with the prefix the builder writes itself is written once and the drop is reported', () => {
+  const none: SpfFields = { ip4: '', ip6: '', includes: '', a: false, mx: false, ending: '-all', redirect: '' };
+  // Provider documentation writes include:<name>; pasted as written it must not become include:include:<name>, which a
+  // receiver reads as an include of a name that does not exist (RFC 7208 section 5.2: permerror).
+  const included = buildSpf({ ...none, includes: 'include:_spf.example.com' });
+  expect(included.record).toBe('v=spf1 include:_spf.example.com -all');
+  expect(included.problems).toEqual([]);
+  expect(included.adjusted.map((a) => [a.field, a.line])).toEqual([['includes', 1]]);
+  expect(included.adjusted[0]?.message).toContain('include:');
+  expect(included.report.valid).toBe(true);
+  // The redirect box, in the form redirect=<name>.
+  const redirected = buildSpf({ ...none, ending: 'redirect', redirect: 'redirect=_spf.example.com' });
+  expect(redirected.record).toBe('v=spf1 redirect=_spf.example.com');
+  expect(redirected.adjusted.map((a) => [a.field, a.line])).toEqual([['redirect', 1]]);
+  // Any ASCII letter case, a prefix typed twice, and the ip4 and ip6 boxes the same way.
+  const mixed = buildSpf({
+    ...none,
+    ip4: 'IP4:192.0.2.10',
+    ip6: 'ip6:2001:db8::/32',
+    includes: 'Include:a.example\nINCLUDE:include:b.example\nc.example',
+  });
+  expect(mixed.record).toBe(
+    'v=spf1 ip4:192.0.2.10 ip6:2001:db8::/32 include:a.example include:b.example include:c.example -all',
+  );
+  expect(mixed.problems).toEqual([]);
+  expect(mixed.adjusted.map((a) => [a.field, a.line])).toEqual([
+    ['ip4', 1],
+    ['ip6', 1],
+    ['includes', 1],
+    ['includes', 2],
+  ]);
+  // No built record of this test holds a doubled prefix, and every record reads back clean.
+  for (const built of [included, redirected, mixed]) {
+    expect(built.record).not.toMatch(/include:include:|redirect=redirect=|ip4:ip4:|ip6:ip6:/i);
+    expect(parseSpf(built.record).errors).toEqual([]);
+  }
+  // A prefix with nothing after it is not dropped and the entry stays a problem; the message never repeats the entry.
+  const bare = buildSpf({ ...none, includes: `include:\n${MARK}:` });
+  expect(bare.adjusted).toEqual([]);
+  expect(bare.problems.map((p) => [p.field, p.line])).toEqual([
+    ['includes', 1],
+    ['includes', 2],
+  ]);
+  for (const message of [...bare.problems, ...mixed.adjusted].map((p) => p.message)) {
+    expect(message).not.toContain(MARK);
+    expect(message).not.toContain('example');
+  }
+  // An entry with no prefix gives no line in the list.
+  expect(buildSpf({ ...none, includes: 'spf.protection.example' }).adjusted).toEqual([]);
+});
+
 it('terms keep record order and the lookup count is the same every time', () => {
   const texts = [
     'v=spf1 a mx include:example.com include:example.org -all',
