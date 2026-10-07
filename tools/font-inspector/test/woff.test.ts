@@ -355,19 +355,15 @@ it('every WOFF2 fault built by editing a good file gives one plain sentence and 
   expect(readContainer(unpacked.sfnt).memberCount).toBe(2);
   expect(inspectFont(unpacked.sfnt, { member: 2 }).font.family).toBe('Preview Sans');
 
-  // When the engine says something, the package says its own sentence: an engine error with text of its own is not repeated,
-  // and a refusal by the browser to generate code is named in plain words.
+  // When the engine says something, the package says its own sentence: an engine error with text of its own is not repeated.
+  // (The browser refusing code generation does not reach a call at all: the real engine never starts, which
+  // engine-start.test.ts models.)
   const loud: Woff2Decompress = async () => {
     throw new Error(`${marker} something the engine said`);
   };
   const loudError = await unpackWoff2(good, loud).catch((e: Error) => e);
   expect(loudError).toBeInstanceOf(FontInspectorError);
   expect((loudError as Error).message).not.toContain(marker);
-  const evalRefused: Woff2Decompress = async () => {
-    throw new EvalError('Refused to evaluate a string as JavaScript because unsafe-eval is not allowed');
-  };
-  const evalError = await unpackWoff2(good, evalRefused).catch((e: Error) => e);
-  expect((evalError as Error).message).toContain('did not allow this page to generate code at run time');
   // An engine that returns something that is not a font, or nothing, is a sentence too.
   const notFont: Woff2Decompress = async () => new Uint8Array(100);
   await expect(unpackWoff2(good, notFont)).rejects.toThrow('did not unpack into a font');
