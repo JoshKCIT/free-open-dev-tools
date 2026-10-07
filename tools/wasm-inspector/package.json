@@ -40,6 +40,8 @@
   "devDependencies": {
     "typescript": "^5.7.3",
     "vitest": "^3.2.4",
+    "@wasm-fmt/gofmt": "0.7.3",
+    "@wasm-fmt/ruff_fmt": "0.15.20",
     "wabt": "1.0.39"
   },
   "repository": {
