@@ -295,24 +295,24 @@ function readSingleCidr(text: string, max: number, start: number, problems: SpfP
   return r.value;
 }
 
-/** True when `rest` is a slash followed only by digits and slashes, which reads as a prefix length. */
-function looksLikeCidr(rest: string): boolean {
-  if (rest.charCodeAt(0) !== SLASH) return false;
-  for (let i = 1; i < rest.length; i++) {
-    const c = rest.charCodeAt(i);
-    if (c !== SLASH && !isDigit(c)) return false;
-  }
-  return true;
-}
-
-/** Where the prefix length of an a or mx argument starts, or -1: the first slash outside a macro whose rest reads as one. */
+/**
+ * Where the prefix length of an a or mx argument starts, or -1: the first slash outside a macro whose rest holds only
+ * digits and slashes. The trailing run of digits and slashes is found once, from the end, so the argument is read twice
+ * at most, never once per slash.
+ */
 function cidrStart(argument: string): number {
+  let tail = argument.length;
+  while (tail > 0) {
+    const c = argument.charCodeAt(tail - 1);
+    if (c !== SLASH && !isDigit(c)) break;
+    tail--;
+  }
   let depth = 0;
   for (let i = 0; i < argument.length; i++) {
     const c = argument.charCodeAt(i);
     if (c === OPEN_BRACE && i > 0 && argument.charCodeAt(i - 1) === PERCENT) depth++;
     else if (c === CLOSE_BRACE && depth > 0) depth--;
-    else if (c === SLASH && depth === 0 && looksLikeCidr(argument.slice(i))) return i;
+    else if (c === SLASH && depth === 0 && i >= tail) return i;
   }
   return -1;
 }

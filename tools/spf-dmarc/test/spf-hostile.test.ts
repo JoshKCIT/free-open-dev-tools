@@ -15,6 +15,16 @@ const OWN: ReadonlyArray<(n: number) => string> = [
   (n) => 'a:' + '%{d}'.repeat(Math.floor(n / 4)),
   (n) => 'ip6:' + '1:'.repeat(Math.floor(n / 2)),
   (n) => '\\'.repeat(n),
+  (n) => 'a:x' + '/1'.repeat(Math.floor(n / 2)) + 'z',
+  (n) => 'mx:x' + '/1'.repeat(Math.floor(n / 2)) + 'z',
+];
+
+// Arguments of a and mx full of slashes, where a scan from every slash to the end of the argument is quadratic.
+const SLASHES: ReadonlyArray<[string, (n: number) => string]> = [
+  ['a:x/1/1/.../1z', (n) => 'a:x' + '/1'.repeat(Math.floor(n / 2)) + 'z'],
+  ['mx:x/1/1/.../1z', (n) => 'mx:x' + '/1'.repeat(Math.floor(n / 2)) + 'z'],
+  ['a:x/1/1/.../1', (n) => 'a:x' + '/1'.repeat(Math.floor(n / 2))],
+  ['mx:x/z/z/.../z/24', (n) => 'mx:x' + '/z'.repeat(Math.floor(n / 2)) + '/24'],
 ];
 
 // The record sizes stay inside the 16,384 character cap at 2n; the box sizes stay inside 65,536.
@@ -46,6 +56,36 @@ it('every SPF parser stays linear on hostile input', () => {
     BOX_N,
   );
   expect(lines, 'readTxtRecords over many lines').toBeLessThan(MAX_SCALING_RATIO);
+});
+
+it('the prefix length of an a or mx argument full of slashes is found in one pass', () => {
+  // Quadratic growth is about 4 times per doubling, which the limit of 6 lets through, so these inputs are also timed at a
+  // size four times as large: one pass gives about 4, a scan per slash about 16, and the limit is 12 (three times the
+  // linear 4, as 6 is three times the linear 2 of a doubling).
+  const parse = (input: string): unknown => checkSpf(parseSpf(input));
+  const quadrupled =
+    (make: (n: number) => string) =>
+    (m: number): string =>
+      'v=spf1 ' + make(Math.floor((m * m) / RECORD_N));
+  for (const [name, make] of SLASHES) {
+    let ratio = scalingRatio(parse, quadrupled(make), RECORD_N);
+    // The limit is not loosened. A ratio over it is measured twice more and the median of the three is judged.
+    if (ratio > 2 * MAX_SCALING_RATIO) {
+      const again = [ratio, scalingRatio(parse, quadrupled(make), RECORD_N)];
+      again.push(scalingRatio(parse, quadrupled(make), RECORD_N));
+      ratio = again.sort((a, b) => a - b)[1] ?? ratio;
+    }
+    expect(ratio, `${name}, four times as long`).toBeLessThan(2 * MAX_SCALING_RATIO);
+  }
+  // The split is unchanged: the prefix length starts at the first slash of the trailing run of digits and slashes.
+  const term = (text: string) => parseSpf(`v=spf1 ${text}`).terms[0];
+  expect(term('a:example.com/24')?.domain).toBe('example.com');
+  expect(term('a:example.com/24')?.cidr4).toBe(24);
+  expect(term('mx:example.com/24//64')?.cidr6).toBe(64);
+  expect(term('a:x/y/24')?.domain).toBe('x/y');
+  expect(term('a:%{d}/1.example/24')?.domain).toBe('%{d}/1.example');
+  expect(term('a:x/1/1z')?.domain).toBe('x/1/1z');
+  expect(term('a:x/1/1z')?.problems.length).toBeGreaterThan(0);
 });
 
 it('a record of 5,000 terms is read in one pass and the whole table of terms is kept for the page to cut', () => {
