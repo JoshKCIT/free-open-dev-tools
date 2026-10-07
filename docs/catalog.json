@@ -1531,5 +1531,12 @@
     "category": "hashing",
     "tier": 3,
     "summary": "Paste PEM, Base64 or hex, or open a file, and read any DER or BER structure as a tree with offsets, tags, lengths, values and named object identifiers."
+  },
+  {
+    "id": "wasm-inspector",
+    "name": "WebAssembly Module Inspector",
+    "category": "code",
+    "tier": 3,
+    "summary": "Open a .wasm file to read its sections, types, imports, exports, memories, data and names without compiling or running it."
   }
 ]
