@@ -73,9 +73,12 @@ function skipSpace(text: string, at: number): number {
   return i;
 }
 
-/** True when the white space at `at` is followed by `name=`: the next parameter, written with no semicolon before it. */
-function startsParameter(text: string, at: number): boolean {
-  let i = skipSpace(text, at);
+/**
+ * True when `name=` starts at `at`: the next parameter, written with no semicolon before it. The caller has already
+ * skipped the white space and comments before it, once, so a long run of them is never read again for each character.
+ */
+function startsParameterAt(text: string, at: number): boolean {
+  let i = at;
   const start = i;
   while (i < text.length) {
     const code = text.charCodeAt(i);
@@ -232,7 +235,14 @@ export function parseParameters(value: string): ParsedValue {
     } else {
       const start = i;
       while (i < length && value.charCodeAt(i) !== SEMICOLON) {
-        if (isWsp(value.charCodeAt(i)) && startsParameter(value, i)) break;
+        if (isWsp(value.charCodeAt(i))) {
+          // One pass over the run of white space and comments, then one look at where it ends: a name= there starts the
+          // next parameter; otherwise the value goes on after the run, which is never read again.
+          const after = skipSpace(value, i);
+          if (startsParameterAt(value, after)) break;
+          i = after;
+          continue;
+        }
         i++;
       }
       text = trimWsp(value.slice(start, i));

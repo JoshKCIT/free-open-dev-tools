@@ -29,7 +29,7 @@ import {
   withCommas,
   type PartNode,
 } from '../src/index';
-import { HOSTILE, scalingRatio } from './scaling';
+import { HOSTILE, MAX_SCALING_RATIO, scalingRatio } from './scaling';
 import { CRLF, build, bytesOf, makeWindow, multipart } from './helpers';
 
 /** `levels` nested multiparts with a text leaf in the innermost one: the leaf is at depth levels + 1. */
@@ -355,7 +355,85 @@ const OWN_HOSTILE: ReadonlyArray<readonly [string, (n: number) => string]> = [
   ['long attribute lists', (n) => '<a ' + 'b '.repeat(Math.floor(n / 2))],
   ['hidden characters', (n) => String.fromCodePoint(0x202e).repeat(n)],
   ['dots and slashes', (n) => '/.'.repeat(Math.floor(n / 2))],
+  ['spaces after a parameter value', (n) => 'text/plain; name=a' + ' '.repeat(n) + '!'],
+  ['open comments after a parameter value', (n) => 'text/plain; name=a' + ' ('.repeat(Math.floor(n / 2))],
 ];
+
+it('the parameter reader reads a long run of spaces or open comments after a value in one pass', async () => {
+  // Quadratic growth is about 4 times per doubling, which the limit of 6 lets through, so these inputs are timed at a size
+  // four times as large: one pass gives about 4, a rescan of the run for every space about 16, and the limit is 12 (three
+  // times the linear 4, as 6 is three times the linear 2 of a doubling). The shared helper is used as it is: the input is
+  // built for m * m / N, so its sizes N and 2N become N and 4N.
+  const N = 8_000;
+  const quadrupled =
+    (make: (n: number) => string) =>
+    (m: number): string =>
+      make(Math.floor((m * m) / N));
+  const header = (n: number): string => 'text/plain; name=a' + ' '.repeat(n) + '!';
+  const shapes: ReadonlyArray<readonly [string, (input: string) => unknown, (n: number) => string]> = [
+    ['parseParameters on spaces', (s) => parseParameters(s), header],
+    [
+      'parseParameters on open comments',
+      (s) => parseParameters(s),
+      (n) => 'text/plain; name=a' + ' ('.repeat(Math.floor(n / 2)),
+    ],
+    ['parseMime on a whole message', bytesFn((b) => parseMime(b)), (n) => `Content-Type: ${header(n)}\r\n\r\nbody`],
+  ];
+  const slow: string[] = [];
+  for (const [name, fn, make] of shapes) {
+    let ratio = scalingRatio(fn, quadrupled(make), N);
+    // The limit is not loosened. A ratio over it is measured twice more and the median of the three is judged.
+    if (ratio > 2 * MAX_SCALING_RATIO) {
+      const again = [ratio, scalingRatio(fn, quadrupled(make), N), scalingRatio(fn, quadrupled(make), N)];
+      ratio = again.sort((a, b) => a - b)[1] ?? ratio;
+    }
+    if (!(ratio < 2 * MAX_SCALING_RATIO)) slow.push(`${name}, four times as long: ${ratio.toFixed(1)}`);
+  }
+  expect(slow).toEqual([]);
+
+  // What is read is unchanged: the spaces stay inside the value, and a name= after white space starts the next parameter.
+  const long = parseParameters(header(65_000));
+  expect(findParam(long, 'name')?.value).toBe('a' + ' '.repeat(65_000) + '!');
+  const next = parseParameters('text/plain; name=a  (a comment) charset=utf-8');
+  expect(findParam(next, 'name')?.value).toBe('a');
+  expect(findParam(next, 'charset')?.value).toBe('utf-8');
+  const spaced = parseParameters('text/plain; name=two words here; charset=utf-8');
+  expect(findParam(spaced, 'name')?.value).toBe('two words here');
+  expect(findParam(spaced, 'charset')?.value).toBe('utf-8');
+  // The text inside a comment is not a parameter (RFC 2045 section 5.1 reads a comment as white space).
+  const inside = parseParameters('text/plain; name=a (x=y) z');
+  expect(findParam(inside, 'x')).toBeUndefined();
+  expect(findParam(inside, 'name')?.value).toBe('a (x=y) z');
+  const unclosed = parseParameters('text/plain; name=a' + ' ('.repeat(1_000));
+  expect(findParam(unclosed, 'name')?.value.startsWith('a (')).toBe(true);
+
+  // The whole message the review timed: one part whose Content-Type holds 65,000 spaces after name=a, inside the 64 KiB
+  // header cap, is read, and four such parts are read too.
+  const one = await analyzeMessage(
+    bytesOf(`Content-Type: ${header(65_000)}${CRLF}${CRLF}the body after the long header`),
+  );
+  // A text part with a name is listed as an attachment: its name is the whole value and its bytes are the body.
+  expect(one.attachments).toHaveLength(1);
+  expect(one.attachments[0]?.rawName).toBe('a' + ' '.repeat(65_000) + '!');
+  expect(new TextDecoder().decode(one.attachments[0]?.bytes)).toBe('the body after the long header');
+  expect(one.notes.join(' ')).not.toContain('longer than 65,536 bytes');
+  const four = await analyzeMessage(
+    build(
+      ['Content-Type: multipart/mixed; boundary=m'],
+      multipart(
+        'm',
+        Array.from({ length: 4 }, (_, i) => ({ headers: [`Content-Type: ${header(65_000)}`], body: `part ${i + 1}` })),
+      ),
+    ),
+  );
+  expect(four.partCount).toBe(4);
+  expect(four.attachments.map((a) => new TextDecoder().decode(a.bytes))).toEqual([
+    'part 1',
+    'part 2',
+    'part 3',
+    'part 4',
+  ]);
+}, 240_000);
 
 it('every parser stays linear on hostile input', () => {
   const parsers: ReadonlyArray<readonly [string, (input: string) => unknown]> = [
