@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
-import { MAX_MODULE_BYTES, WasmInspectorError, checkModuleSize, inspect } from '../src/index';
+import { MAX_MODULE_BYTES, WasmInspectorError, checkModuleSize, inspect, readModule, walkSections } from '../src/index';
+import { FindingList } from '../src/errors';
 import { fixtureBytes } from './fixtures/fixture';
 import { bytesOfLatin1, custom, HEADER, mulberry32, moduleOf, name, section, toHex, uleb, vec } from './helpers';
 import { HOSTILE, MAX_SCALING_RATIO, scalingRatio } from './scaling';
@@ -27,7 +28,46 @@ it('a module over 64 MiB is refused before reading', () => {
   expect(inspect(new Uint8Array(MAX_MODULE_BYTES)).kind).toBe('unreadable');
 });
 
-it('a million functions are measured as typed arrays and the 50 largest are listed', () => {
+it('a 64 MiB module of tiny function bodies keeps no record per function, only the 50 largest', () => {
+  // 22,369,615 bodies of 02 00 0b fill the largest file this page reads.
+  const total = MAX_MODULE_BYTES;
+  const bytes = new Uint8Array(total);
+  bytes.set(HEADER, 0);
+  const n = Math.floor((total - HEADER.length - 11) / 3);
+  const padded = (value: number): number[] => {
+    const out: number[] = [];
+    for (let i = 0; i < 5; i++) out.push(((value / 128 ** i) & 0x7f) | (i < 4 ? 0x80 : 0));
+    return out;
+  };
+  let at = HEADER.length;
+  bytes.set([10, ...padded(5 + 3 * n), ...padded(n)], at);
+  at += 11;
+  for (let i = 0; i < n; i++, at += 3) {
+    bytes[at] = 2;
+    bytes[at + 2] = 0x0b;
+  }
+  const module = bytes.subarray(0, at);
+
+  // What the module reader keeps holds no typed array and no list as long as the bodies.
+  const findings = new FindingList();
+  const data = readModule(module, walkSections(module, findings).sections, findings);
+  expect(data.bodyCount).toBe(n);
+  for (const [key, value] of Object.entries(data)) {
+    expect(ArrayBuffer.isView(value), `${key} is a typed array`).toBe(false);
+    if (Array.isArray(value)) expect(value.length, `${key} is a list per function`).toBeLessThan(1000);
+  }
+
+  // Reading the whole file grows the memory held in array buffers by less than 8 MB (the file itself is 64 MiB).
+  const before = process.memoryUsage().arrayBuffers;
+  const report = inspect(module);
+  const grown = process.memoryUsage().arrayBuffers - before;
+  expect(grown).toBeLessThan(8_000_000);
+  expect(report.functions.largest).toHaveLength(50);
+  expect(report.functions.largestLeftOut).toBe(n - 50);
+  expect(report.functions.bodyBytes).toBe(2 * n);
+}, 60_000);
+
+it('a million functions are measured in one pass and the 50 largest are listed', () => {
   const n = 1_000_000;
   const functionSection = Uint8Array.from([3, ...uleb(uleb(n).length + n), ...uleb(n), ...new Uint8Array(n)]);
   const bodies = new Uint8Array(n * 3);
