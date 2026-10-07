@@ -60,12 +60,16 @@ repository directly. The whole point is that you can vendor it: it is small enou
 import { decodeStackTrace } from '@fodt/source-map-decoder';
 
 const report = decodeStackTrace({
-  trace: 'Error: boom\n    at e (https://example.test/min.js:1:35)',
-  maps: mapJsonText,
+  trace: 'Error: boom\n    at e (https://example.test/min.js:1:35)\n    at f (https://example.test/min.js:1:128)',
+  maps: mapJsonText, // one or more maps, one after another, or a data: address that holds a map
+  files: [{ name: 'min.js.map', text: mapFileText }], // opened map files, already read as text
+  context: 2, // lines of original source either side of a frame, 0 to 5
 });
 
-report.rows[0]; // { number: 1, status: 'mapped', original: 'src/math.ts:3:11', name: 'value', ... }
-report.decoded; // the trace again, with each mapped frame written with its original place
+report.rows[0].original; // 'src/math.ts:3:11'
+report.rows[0].functionName; // the function read from the next frame's call site, or null
+report.decoded; // the trace again, each mapped frame written with its original place
+report.excerpts[0].lines; // the original source around frame 1
 ```
 
 `decodeStackTrace(input)` checks the sizes first (`checkInput`), reads the trace line by line (`parseTrace`), splits the pasted text into maps (`splitMaps`), reads each map (`parseMap`, with `parseSections` for an index map), gives each frame a map (`matchMaps`), reads each map once keeping only the generated lines the trace names (`decodeNeededLines`) and looks every frame up (`lookup`). A fault in a map is a finding, not an error; sizes and text that is not a map are refused with a `SourceMapError` that names the part, the map number or the character position and never repeats the input. The function holds no state between calls.
@@ -80,7 +84,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-The first test decodes the five V8 frames of a trace through an esbuild 0.25.12 map and compares each position with Node's own module.SourceMap on the same map.
+The tc39 source-map-tests suite at commit 9ea66b466fd37e8a4050033d23b3e1480973c3dc (99 cases) is vendored byte for byte with its licence and the blob sha of every file: the 32 valid maps read with no finding, the 67 invalid maps each get at least one finding, the 77 mapping checks and the ignore list check give their expected answers, and the 16 actions that need a map of a map are listed by name as not done. The stacks that Chromium 153, Firefox 155, WebKit 26.6 and Node 22.14 printed for one esbuild 0.25.12 bundle are recorded with their scripts and decode to the positions Node's own module.SourceMap gives (WebKit differs in one frame, listed in the test with its reason). Node's module.SourceMap and @jridgewell/trace-mapping 0.3.31 are lookup oracles only, on 2,000 seeded positions over maps made by esbuild, terser and TypeScript and two index maps joining them; no library gives a validity verdict, because they accept maps the suite calls invalid. Node gives a segment with no name field the last name it read, which the specification does not, so names are compared with trace-mapping, and with Node only where the segment has one. Index map offsets, VLQ limits, sourceRoot, the served-map prefix, data addresses, size limits, source excerpts and hostile input are tested from the text of ECMA-426, first edition.
 
 ## Licence
 

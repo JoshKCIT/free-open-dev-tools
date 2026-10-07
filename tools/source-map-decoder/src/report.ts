@@ -153,6 +153,8 @@ function excerptOf(
       if (c === 10 || c === 13 || c === 0x2028 || c === 0x2029) break;
       end++;
     }
+    // The empty piece after a final line terminator is not a line of its own.
+    if (end >= n && start === n && index > 0) break;
     if (index >= first && index <= last) {
       const text = content.slice(start, Math.min(end, start + MAX_EXCERPT_CHARS + 1));
       lines.push(
