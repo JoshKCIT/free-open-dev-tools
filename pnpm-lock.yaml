@@ -428,6 +428,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
 
+  tools/cors-checker:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
   tools/credit-card-payoff:
     dependencies:
       decimal.js:
@@ -833,6 +842,25 @@ importers:
 
   tools/email-extractor:
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
+  tools/eml-viewer:
+    dependencies:
+      dompurify:
+        specifier: 3.4.16
+        version: 3.4.16
+    devDependencies:
+      '@types/jsdom':
+        specifier: ^30.0.0
+        version: 30.0.0
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1(@noble/hashes@2.4.0)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -2070,6 +2098,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
 
+  tools/pkce-builder:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
   tools/placeholder-image:
     devDependencies:
       '@xmldom/xmldom':
@@ -2270,6 +2307,22 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
 
+  tools/saml-decoder:
+    dependencies:
+      '@xmldom/xmldom':
+        specifier: 0.9.12
+        version: 0.9.12
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
   tools/sass-less-compiler:
     dependencies:
       less:
@@ -2344,6 +2397,21 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
 
+  tools/set-cookie-inspector:
+    devDependencies:
+      cookie:
+        specifier: 1.1.1
+        version: 1.1.1
+      tough-cookie:
+        specifier: 6.0.2
+        version: 6.0.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
   tools/shell-formatter:
     dependencies:
       '@wasm-fmt/shfmt':
@@ -2370,6 +2438,15 @@ importers:
         version: 5.3.0(@types/node@22.20.4)
 
   tools/slug-generator:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
+  tools/spf-dmarc:
     devDependencies:
       typescript:
         specifier: ^5.7.3

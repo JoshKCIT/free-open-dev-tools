@@ -76,7 +76,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [@wasm-fmt/gofmt](https://github.com/wasm-fmt/gofmt) | 0.7.3 | MIT | direct | tools/go-formatter |
 | [@wasm-fmt/ruff_fmt](https://github.com/wasm-fmt/ruff_fmt) | 0.15.20 | MIT | direct | tools/python-formatter |
 | [@wasm-fmt/shfmt](https://github.com/wasm-fmt/shfmt) | 0.2.7 | MIT | direct | tools/shell-formatter |
-| [@xmldom/xmldom](https://github.com/xmldom/xmldom) | 0.9.12 | MIT | direct | tools/wsdl-explorer, tools/xpath-tester |
+| [@xmldom/xmldom](https://github.com/xmldom/xmldom) | 0.9.12 | MIT | direct | tools/saml-decoder, tools/wsdl-explorer, tools/xpath-tester |
 | [@zxcvbn-ts/core](https://github.com/zxcvbn-ts/zxcvbn) | 4.2.0 | MIT | direct | tools/password-strength |
 | [@zxcvbn-ts/dictionary-compression](https://github.com/zxcvbn-ts/dictionary-compression) | 3.0.1 | MIT | transitive (via @zxcvbn-ts/language-common, @zxcvbn-ts/language-en) | tools/password-strength |
 | [@zxcvbn-ts/language-common](https://github.com/zxcvbn-ts/zxcvbn) | 4.1.3 | MIT | direct | tools/password-strength |
@@ -172,7 +172,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [domelementtype](git://github.com/fb55/domelementtype) | 3.0.0 | BSD-2-Clause | transitive (via dom-serializer, domhandler, domutils, htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [domhandler](git://github.com/fb55/domhandler) | 5.0.3 | BSD-2-Clause | transitive (via css-select, dom-serializer, domutils) | tools/svg-optimizer |
 | [domhandler](git://github.com/fb55/domhandler) | 6.0.1 | BSD-2-Clause | transitive (via dom-serializer, domutils, htmlparser2) | tools/bbcode, tools/jsx-converter |
-| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) | direct | tools/bbcode, tools/markdown-html, tools/mermaid-renderer, tools/meta-tags, tools/readme-generator, tools/svg-optimizer |
+| [dompurify](https://github.com/cure53/DOMPurify) | 3.4.16 | (MPL-2.0 OR Apache-2.0) | direct | tools/bbcode, tools/eml-viewer, tools/markdown-html, tools/mermaid-renderer, tools/meta-tags, tools/readme-generator, tools/svg-optimizer |
 | [domutils](git://github.com/fb55/domutils) | 3.2.2 | BSD-2-Clause | transitive (via css-select) | tools/svg-optimizer |
 | [domutils](git://github.com/fb55/domutils) | 4.0.2 | BSD-2-Clause | transitive (via htmlparser2) | tools/bbcode, tools/jsx-converter |
 | [dot-case](https://github.com/blakeembrey/change-case/tree/master/packages/dot-case#readme) | 3.0.4 | MIT | transitive (via param-case) | tools/html-formatter |
@@ -188,7 +188,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) | 5.11.1 | MIT | direct | tools/data-convert, tools/json-schema-generator, tools/json-to-code, tools/svg-optimizer, tools/xml-formatter, tools/xml-json |
 | [fastdom](https://github.com/wilsonpage/fastdom) | 1.0.12 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [fastest-levenshtein](https://github.com/ka-weihe/fastest-levenshtein#README) | 1.0.16 | MIT | transitive (via @zxcvbn-ts/core) | tools/password-strength |
-| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-splitter, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/pdf-text-metadata, tools/spreadsheet-converter |
+| [fflate](https://101arrowz.github.io/fflate) | 0.8.3 | MIT | direct | tools/archive-toolkit, tools/gzip-deflate, tools/image-splitter, tools/image-to-pdf, tools/invoice-maker, tools/pdf-merge, tools/pdf-split, tools/pdf-text-metadata, tools/saml-decoder, tools/spreadsheet-converter |
 | [find-up]() | 4.1.0 | MIT | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [get-caller-file](https://github.com/stefanpenner/get-caller-file#readme) | 2.0.5 | ISC | transitive (via yargs) | tools/qr-generator, tools/totp-generator |
 | [graphql](https://github.com/graphql/graphql-js) | 17.0.2 | MIT | direct | tools/graphql-formatter, tools/graphql-to-typescript |

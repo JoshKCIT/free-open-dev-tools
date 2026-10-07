@@ -490,6 +490,23 @@
       "a11y"
     ]
   },
+  "cors-checker": {
+    "id": "cors-checker",
+    "name": "CORS Checker",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "cors",
+      "preflight",
+      "cross-origin",
+      "access-control",
+      "origin",
+      "options",
+      "headers",
+      "credentials"
+    ]
+  },
   "credit-card-payoff": {
     "id": "credit-card-payoff",
     "name": "Credit Card Payoff Calculator",
@@ -1071,6 +1088,31 @@
       "phone-number",
       "url-extraction",
       "pattern-matching"
+    ]
+  },
+  "eml-viewer": {
+    "id": "eml-viewer",
+    "name": "Email Message Viewer & Header Analyzer",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "dompurify": "3.4.16"
+    },
+    "keywords": [
+      "eml",
+      "email",
+      "mime",
+      "message/rfc822",
+      "headers",
+      "received",
+      "authentication-results",
+      "dkim",
+      "arc",
+      "encoded word",
+      "attachment",
+      "multipart",
+      "quoted-printable",
+      "html email"
     ]
   },
   "emoji-picker": {
@@ -2797,6 +2839,27 @@
       "deserialize"
     ]
   },
+  "pkce-builder": {
+    "id": "pkce-builder",
+    "name": "PKCE & OAuth Request Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "pkce",
+      "oauth",
+      "oauth2",
+      "oidc",
+      "openid connect",
+      "code verifier",
+      "code challenge",
+      "s256",
+      "authorization request",
+      "redirect uri",
+      "state",
+      "nonce"
+    ]
+  },
   "placeholder-image": {
     "id": "placeholder-image",
     "name": "Placeholder Image Generator",
@@ -3057,6 +3120,29 @@
       "rounding"
     ]
   },
+  "saml-decoder": {
+    "id": "saml-decoder",
+    "name": "SAML Message Decoder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {
+      "fflate": "0.8.3",
+      "@xmldom/xmldom": "0.9.12"
+    },
+    "keywords": [
+      "saml",
+      "saml request",
+      "saml response",
+      "sso",
+      "single sign-on",
+      "authnrequest",
+      "redirect binding",
+      "post binding",
+      "deflate",
+      "relaystate",
+      "assertion"
+    ]
+  },
   "sass-less-compiler": {
     "id": "sass-less-compiler",
     "name": "SCSS & Less Compiler",
@@ -3167,6 +3253,25 @@
       "precedence"
     ]
   },
+  "set-cookie-inspector": {
+    "id": "set-cookie-inspector",
+    "name": "Set-Cookie Inspector",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "cookie",
+      "set-cookie",
+      "samesite",
+      "httponly",
+      "secure",
+      "max-age",
+      "expires",
+      "__host-",
+      "__secure-",
+      "rfc6265bis"
+    ]
+  },
   "shell-formatter": {
     "id": "shell-formatter",
     "name": "Shell Script Formatter",
@@ -3214,6 +3319,25 @@
       "url",
       "permalink",
       "transliterate"
+    ]
+  },
+  "spf-dmarc": {
+    "id": "spf-dmarc",
+    "name": "SPF & DMARC Record Checker & Builder",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "spf",
+      "dmarc",
+      "dns",
+      "txt record",
+      "email authentication",
+      "spf record",
+      "dns lookup limit",
+      "include",
+      "mx",
+      "zone file"
     ]
   },
   "spreadsheet-converter": {
