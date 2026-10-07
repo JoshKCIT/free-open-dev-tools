@@ -447,6 +447,20 @@ function decodeCid(text: string): string {
 
 // ---- The preview --------------------------------------------------------------------------------------------------
 
+/** The most UTF-16 units of an element name used in the Where column. */
+const MAX_TAG_SHOWN = 40;
+
+/**
+ * An element's name for the Where column: lower case and at most 40 UTF-16 units, never cut through a pair of units. The
+ * HTML parser lets a name hold almost any character at any length; the page still escapes the hidden ones when it shows it.
+ */
+function shownTag(localName: string): string {
+  const lower = localName.toLowerCase();
+  if (lower.length <= MAX_TAG_SHOWN) return lower;
+  const last = lower.charCodeAt(MAX_TAG_SHOWN - 1);
+  return lower.slice(0, last >= 0xd800 && last <= 0xdbff ? MAX_TAG_SHOWN - 1 : MAX_TAG_SHOWN);
+}
+
 interface DomParserWindow {
   DOMParser: new () => DOMParser;
 }
@@ -556,7 +570,7 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
   let cidShown = 0;
 
   for (const el of Array.from(doc.querySelectorAll('*'))) {
-    const tag = el.localName.toLowerCase();
+    const tag = shownTag(el.localName);
 
     for (const [name, kind] of SOURCE_ATTRIBUTES) {
       const value = el.getAttribute(name);
@@ -660,7 +674,7 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
   for (const el of Array.from(fragment.querySelectorAll('[src]'))) {
     const src = el.getAttribute('src') ?? '';
     if (isDataImage(src)) continue;
-    record('image source that names this page', `${el.localName.toLowerCase()} src`, src);
+    record('image source that names this page', `${shownTag(el.localName)} src`, src);
     el.removeAttribute('src');
   }
 

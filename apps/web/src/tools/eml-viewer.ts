@@ -207,7 +207,7 @@ function htmlOutputs(html: string, analysis: EmlAnalysis): OutputBlock[] {
       label: 'Remote content that was blocked',
       table: {
         headers: ['Kind', 'Where', 'Address', 'Count'],
-        rows: preview.blocked.map((b) => [b.kind, b.where, visible(b.address, 200), b.count]),
+        rows: preview.blocked.map((b) => [b.kind, visible(b.where, 100), visible(b.address, 200), b.count]),
         mono: [2],
       },
     });

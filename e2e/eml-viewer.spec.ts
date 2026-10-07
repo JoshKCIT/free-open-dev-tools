@@ -100,6 +100,12 @@ const SAVE_MESSAGE = message(
   '--SAVE-1--',
 );
 
+/** The direction override, built at run time so the file holds no hidden character. */
+const RLO = String.fromCodePoint(0x202e);
+
+/** An element name that hides a direction override in front of a fake file name, then 300 more letters. */
+const HOSTILE_TAG = `x${RLO}gpj.exe${'y'.repeat(300)}`;
+
 /** A message whose HTML body names a remote address in every way a body can, and holds a link with text and a ping. */
 const HOSTILE_HTML =
   '<html><head><base href="https://evil.example/"><meta http-equiv="refresh" content="0;url=https://evil.example/r">' +
@@ -119,7 +125,9 @@ const HOSTILE_HTML =
   '<script src="https://evil.example/s.js"></script><script>document.title="x"</script>' +
   '<table background="https://evil.example/t.gif"><tr><td background="https://evil.example/td.gif">x</td></tr></table>' +
   // Addresses that are only a fragment resolve against the page's own address, so they would load the page itself.
-  '<img src="#x"><image src="#y"><img src=" #probe-fragment"><div style="background-image:url(#z)">fragment</div></body></html>';
+  '<img src="#x"><image src="#y"><img src=" #probe-fragment"><div style="background-image:url(#z)">fragment</div>' +
+  // An element name holding a direction override and hundreds of letters, named in the Where column of the blocked table.
+  `<${HOSTILE_TAG} style="background:url(https://evil.example/w.png)">where</${HOSTILE_TAG}></body></html>`;
 
 const HOSTILE_MESSAGE = message(
   'From: Eve <eve@evil.example>',
@@ -328,7 +336,18 @@ test('eml-viewer: a hostile message loads nothing and a click on its link text d
   await runButton(page).click();
 
   // Every remote reference is listed as text, and the body is shown in the closed frame.
-  await expect(blockOf(page, 'Remote content that was blocked')).toBeVisible({ timeout: 20_000 });
+  const blocked = blockOf(page, 'Remote content that was blocked');
+  await expect(blocked).toBeVisible({ timeout: 20_000 });
+  // The Where column names an element by a short part of its name, with the direction override written as an escape.
+  const where = await blocked.locator('tbody tr td:nth-child(2)').allTextContents();
+  expect
+    .soft(
+      where.filter((text) => text.includes(RLO)),
+      'a raw direction override in the Where column',
+    )
+    .toEqual([]);
+  expect.soft(where.filter((text) => text.length > 110)).toEqual([]);
+  expect.soft(where.some((text) => text.includes(`x${String.fromCodePoint(92)}u{202E}gpj.exe`))).toBe(true);
   const frameElement = page.locator('iframe.preview-frame').first();
   await expect(frameElement).toBeVisible();
   expect(await frameElement.getAttribute('sandbox')).toBe('');
@@ -354,7 +373,7 @@ test('eml-viewer: a hostile message loads nothing and a click on its link text d
   // Once the page is open it never asks for its own address again (an image with a fragment address would).
   const pagePath = new URL(page.url()).pathname;
   const again = requests.slice(opened).filter((url) => !url.startsWith('blob:') && new URL(url).pathname === pagePath);
-  expect(again, `the page asked for its own address: ${again.join(', ')}`).toEqual([]);
+  expect.soft(again, `the page asked for its own address: ${again.join(', ')}`).toEqual([]);
   expect(probe.findings().map(describeFinding)).toEqual([]);
 });
 

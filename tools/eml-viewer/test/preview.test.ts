@@ -396,3 +396,31 @@ it('an image whose address is only a fragment is listed and removed, and no node
     'style url | style attribute (div) | #w',
   ]);
 });
+
+it('the Where column names an element by at most 40 characters of its name, however long the name in the message', () => {
+  const win = makeWindow();
+  // An element name the HTML parser accepts: a direction override, a fake file name and 5,000 more letters.
+  const name = 'x' + String.fromCodePoint(0x202e) + 'gpj.exe' + 'y'.repeat(5_000);
+  const result = previewHtml(
+    `<${name} style="background:url(https://t.example/a.png)" src="https://t.example/b.png" ` +
+      `srcset="https://t.example/c.png 2x" href="https://t.example/d">t</${name}>` +
+      `<p style="background:url(https://t.example/e.png)">ok</p>`,
+    win,
+    [],
+  );
+  shownHtml(result);
+  const rows = result.blocked.map((b) => `${b.kind} | ${b.where}`);
+  const cut = name.slice(0, 40);
+  expect(rows).toEqual([
+    `source | ${cut} src`,
+    `srcset | ${cut} srcset`,
+    `reference | ${cut} href`,
+    `style url | style attribute (${cut})`,
+    'style url | style attribute (p)',
+  ]);
+  for (const b of result.blocked) expect(b.where.length, b.where).toBeLessThanOrEqual(60);
+  // A name whose 40th unit is the first half of a pair of UTF-16 units is cut before the pair, never through it.
+  const pair = 'z'.repeat(39) + String.fromCodePoint(0x1f600) + 'tail';
+  const split = previewHtml(`<${pair} src="https://t.example/f.png">t</${pair}>`, win, []);
+  expect(split.blocked.map((b) => b.where)).toEqual([`${'z'.repeat(39)} src`]);
+});
