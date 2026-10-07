@@ -7,28 +7,43 @@ package file, tests, licence and documentation, and does not import anything fro
 
 ## What it does
 
-Paste a SAML 2.0 request or response as an HTTP-Redirect address or query string, an HTTP-POST form or value, or raw XML, and read which binding was recognised, what was done to the text, the message as formatted XML and a summary of its issuer, destination, ID and type. Everything is decoded on this device with the DEFLATE and Base64 layers undone in the page. Nothing is verified: no signature, certificate or metadata is checked, and no address in the message is requested.
+Paste a SAML 2.0 request or response as an HTTP-Redirect address or query string, an HTTP-POST form or value, or raw XML, and read which binding was recognised, what was done to the text, the message as formatted XML and a summary of its issuer, destination, audience, validity window, subject identifier, attributes, InResponseTo and which elements carry a signature. The DEFLATE and Base64 layers are undone in the page. Nothing is verified: no signature, certificate or metadata is checked, no address in the message is requested, and nothing leaves your browser.
 
 ## Supported
 
-- An HTTP-Redirect message: a whole address or a bare query string holding SAMLRequest or SAMLResponse, URL-encoded, Base64 of a raw DEFLATE stream (RFC 1951, Bindings section 3.4.4.1), with RelayState, SigAlg and Signature read from the same address
-- Message types AuthnRequest, Response, LogoutRequest and LogoutResponse of SAML 2.0: ID, Version, IssueInstant, Issuer, Destination and InResponseTo
+- An HTTP-Redirect message: a whole address, a bare query string or a copied form body holding SAMLRequest or SAMLResponse, URL-encoded (once or twice), Base64 of a raw DEFLATE stream (RFC 1951, Bindings section 3.4.4.1), with RelayState, SigAlg and Signature read from the same text; a zlib or gzip wrapper is read when its header is there, and said
+- An HTTP-POST message: a whole HTML form or just its hidden input, in single, double or no quotes, with the value wrapped across lines and character references such as &#43; and &#x2b; read as the characters they stand for, or a bare Base64 value, standard or URL-safe, with its padding missing or wrong repaired and said
+- Raw XML, in UTF-8 or UTF-16 (with or without a byte order mark; UTF-32 is refused), after a DOCTYPE and entity check that runs before any XML is read
+- The types AuthnRequest, Response, LogoutRequest, LogoutResponse and a bare Assertion of SAML 2.0: ID, Version, IssueInstant, Issuer, Destination, InResponseTo, the status and its nested codes, the request's consumer address, name ID policy and requested context, each assertion's subject identifier and format, confirmation method, recipient and InResponseTo, conditions, every audience restriction, authentication context and session, and the attributes with name, format, friendly name, value and xsi:type
+- Every time judged against this device's clock or the time you type, in UTC and as written, strict xs:dateTime only, with an offset other than UTC and a missing time zone flagged and no clock skew allowed
+- Every ds:Signature listed as present and not verified, with the element it sits in and its ID, each Reference URI and whether it points at that element, at another element, at no element, at several, or outside the message (the shapes a signature-wrapping attack uses are flagged), the algorithm addresses as written, and the first embedded X509Certificate as PEM text that is not read
+- For a redirect address, the signed string the binding defines (SAMLRequest or SAMLResponse, RelayState and SigAlg, in that order) built from the substrings exactly as pasted and never re-encoded, the SigAlg as written, the Signature length, and a RelayState over 80 bytes noted
+- A comment inside a NameID or another text value shown with both readings (the first text node and the whole text) and a warning, and namespaces read by their address, so a prefix that differs from the usual one is still read
 
 ## Limits
 
 - Everything is decoded on this device. No address in the message is requested, and no metadata is fetched.
-- The page does not verify signatures, check certificates or decrypt anything. Never accept a message because this page shows it as decoded.
+- The page does not verify signatures, check certificates or decrypt anything. Signed means a signature element is present and which element it covers, not that it is correct or trusted. Never accept a message because this page shows it as signed.
 - Time checks use this device's clock, or the time you enter, and allow no clock skew.
-- A message that holds a DOCTYPE or an entity declaration is refused. A message over 2 MiB once decompressed, with more than 50,000 tags or nested deeper than 64 levels is refused before the XML is read.
+- Only SAML 2.0 Redirect and POST messages are read. Artifact references, SAML 1.x messages and SOAP envelopes are not, and an encrypted assertion is listed but not decrypted.
+- A message that holds a DOCTYPE or an entity declaration is refused before any XML is read. A paste over 3 MiB, a message over 2 MiB once decompressed, with more than 50,000 tags, nested deeper than 64 levels or with more than 200 attributes on one element is refused before the XML is read, and no refusal repeats what was pasted.
+- The summary is read from the XML as written. A malicious message can hold several assertions, a Reference that points at the wrong element or text split by a comment, so read the formatted XML as well. The formatted XML is cut at 20,000 lines, the attributes and signatures tables at 1,000 rows, each with a count of what was left out.
+- The Technical Overview examples used for testing are from a Committee Draft, not a standard, and the signature in its Response is the document's own placeholder, so no real signature or certificate is read.
 
 ## Ambiguous cases, and what this does about them
 
-- The Bindings document prints the example SigAlg as http://www.w3.org/200/09/xmldsig#rsa-sha1 (200 for 2000); the page shows it exactly as written and says it is not an algorithm address it knows.
+- The Bindings document prints the example SigAlg as http://www.w3.org/200/09/xmldsig#rsa-sha1 (200 for 2000) and a Signature that is the text NOTAREALSIGNATUREBUTTHEREALONEWOULDGOHERE; the page shows both exactly as written and says the algorithm address is not one it knows.
+- A message in an HTTP-Redirect parameter that was not compressed, or one in an HTTP-POST form that was compressed, breaks the binding's own rule; it is read anyway and the page says which rule was broken.
+- A plus sign in a Base64 value that arrives as a space (a plus turned into a space by a form decoder) is read as the plus sign again, and a value that was URL-encoded twice is decoded a second time; each is said.
+- xs:dateTime allows a time with no zone, and SAML Core says times are in UTC; a time with no zone is read as UTC and flagged, and a time with an offset is converted and flagged.
+- Readers differ on the text of an element that a comment splits; the page shows the first text node and the whole text side by side rather than choosing one.
 
 ## Defined by
 
 - [Bindings for the OASIS Security Assertion Markup Language (SAML) V2.0, OASIS Standard, 15 March 2005](https://docs.oasis-open.org/security/saml/v2.0/saml-bindings-2.0-os.pdf)
 - [Assertions and Protocols for the OASIS Security Assertion Markup Language (SAML) V2.0, OASIS Standard, 15 March 2005](https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf)
+- [Security Assertion Markup Language (SAML) V2.0 Technical Overview, Committee Draft 02, 25 March 2008](https://www.oasis-open.org/committees/download.php/27819/sstc-saml-tech-overview-2.0-cd-02.pdf)
+- [RFC 1951: DEFLATE Compressed Data Format Specification version 1.3](https://www.rfc-editor.org/rfc/rfc1951)
 
 ## Use it on its own
 
@@ -53,13 +68,16 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ```ts
 import { decodeSaml } from '@fodt/saml-decoder';
 
-// The OASIS Bindings 2.0 section 3.4.8 logout request address, read at a time the caller names
+// The logout request address of OASIS Bindings 2.0 section 3.4.8, judged at a time the caller names
 const report = decodeSaml(address, { now: Date.UTC(2004, 0, 21, 19, 5, 0) });
 report.binding; // 'HTTP-Redirect'
-report.summary.pairs; // [['Message', 'LogoutRequest'], ['ID', 'd2b7c388cec36fa7c39c28fd298644a8'], ...]
+report.xml; // the LogoutRequest, as text
+new Map(report.summary.pairs).get('ID'); // 'd2b7c388cec36fa7c39c28fd298644a8'
+report.transport?.signedString; // 'SAMLRequest=...&RelayState=...&SigAlg=...' exactly as pasted
+report.signatures.signatures; // every ds:Signature, present and not verified
 ```
 
-`decodeSaml(text, { now })` runs read input, Base64, inflate, text decoding, the DOCTYPE and entity refusal, the tag and depth pre-scan, parsing and the summary, each step once and in that order, and returns the binding, the steps taken, warnings, the summary and the formatted XML. A refusal is a `SamlDecoderError` whose message names the part and a position and never holds typed text. The package keeps no state between calls, makes no request and prints nothing.
+`decodeSaml(text, { now })` runs read input, Base64, inflate, text decoding, the DOCTYPE and entity refusal, the tag and depth pre-scan, parsing, the summary, the signature listing and the formatter, each step once and in that order, and returns the binding, the steps taken, the warnings about the wrapping, the decoded XML, the summary (pairs, times, attributes, notes), the signatures (rows, notes, the first certificate as PEM), the formatted XML cut at 20,000 lines, and for a redirect address or a form the RelayState, SigAlg and the signed string. A refusal is a `SamlDecoderError` whose message names the part and a position and never holds pasted text or the words of the XML reader. `inflateCapped(bytes, max)` feeds a decompressor 1 KiB at a time and stops at the cap; `prescan(text)` counts tags and depth in one pass. The package keeps no state between calls, makes no request and prints nothing, so the same text and time always give the same report.
 
 ## Dependencies
 
@@ -72,7 +90,7 @@ report.summary.pairs; // [['Message', 'LogoutRequest'], ['ID', 'd2b7c388cec36fa7
 npm test
 ```
 
-Expected values come from the OASIS SAML 2.0 Bindings examples: the logout request redirect address of section 3.4.8 is retyped under the OASIS notice and decoded in a test, with Node zlib inflateRawSync as the second opinion on the DEFLATE layer.
+Expected values come from the OASIS SAML 2.0 Bindings examples: the logout request and logout response redirect addresses of section 3.4.8 and the POST form of section 3.5.8 are retyped under the OASIS notice, each decoded in its own test, with the example SigAlg shown as printed (200 for 2000), and the AuthnRequest and Response of the Technical Overview Committee Draft 02 give the summary values (issuer, destination, audience, validity window, subject, signed assertion). Node zlib (deflateRawSync, deflateSync, gzipSync, inflateRawSync) is the second opinion on the DEFLATE layer, with 100 seeded generated messages at four compression levels, and Node Date.parse is the second opinion on the time reader. Wrapped, padded, plus-for-space, double-encoded, already inflated, zlib and gzip wrapped values, a DOCTYPE and an entity declaration in UTF-8 and UTF-16, a bomb refused at 2 MiB, nesting over 64 levels, more than 50,000 tags, more than 200 attributes, names such as __proto__ and constructor, refusals that never repeat pasted markup and every parser on hostile strings at two sizes are tested.
 
 ## Licence
 

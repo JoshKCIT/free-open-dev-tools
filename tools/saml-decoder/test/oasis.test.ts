@@ -85,7 +85,13 @@ it('the signed string is the original URL-encoded SAMLRequest, RelayState and Si
 
   // The parameters in another order, with a parameter the binding does not define, and with lower-case hex in the percent
   // codes: the string is still the three substrings exactly as pasted, in the binding's order.
-  const value = address.slice(address.indexOf('SAMLRequest=') + 'SAMLRequest='.length, address.indexOf('&RelayState='));
+  const canonical = address.slice(
+    address.indexOf('SAMLRequest=') + 'SAMLRequest='.length,
+    address.indexOf('&RelayState='),
+  );
+  // The message value is pasted with lower-case hex in its percent codes: a signer that wrote it that way signed it that way.
+  const value = canonical.replace(/%[0-9A-F]{2}/g, (code) => code.toLowerCase());
+  expect(value).not.toBe(canonical);
   const odd = `https://sp.example.test/slo?Signature=AAAA&extra=1&SigAlg=http%3a%2f%2fexample.test%2falg&RelayState=a%2fb%20c&SAMLRequest=${value}`;
   const reordered = decodeSaml(odd, { now: NOW });
   expect(reordered.transport?.signedString).toBe(

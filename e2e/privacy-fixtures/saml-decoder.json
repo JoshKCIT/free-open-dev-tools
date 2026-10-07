@@ -1,6 +1,13 @@
 [
   {
     "values": {
+      "message": "<form action=\"https://IdentityProvider.com/SAML/SLO/Response\" method=\"post\"><input type=\"hidden\" name=\"RelayState\" value=\"0043bfc1bc45110dae17004005b13a2b\"/><input type=\"hidden\" name=\"SAMLResponse\" value=\"PHNhbWxwOkxvZ291dFJlc3BvbnNlIHhtbG5zOnNhbWxwPSJ1cm46b2FzaXM6bmFt\nZXM6dGM6U0FNTDoyLjA6cHJvdG9jb2wiIHhtbG5zPSJ1cm46b2FzaXM6bmFtZXM6\ndGM6U0FNTDoyLjA6YXNzZXJ0aW9uIg0KICAgIElEPSJiMDczMGQyMWI2MjgxMTBk\nOGI3ZTAwNDAwNWIxM2EyYiIgSW5SZXNwb25zZVRvPSJkMmI3YzM4OGNlYzM2ZmE3\nYzM5YzI4ZmQyOTg2NDRhOCINCiAgICBJc3N1ZUluc3RhbnQ9IjIwMDQtMDEtMjFU\nMTk6MDA6NDlaIiBWZXJzaW9uPSIyLjAiPg0KICAgIDxJc3N1ZXI+aHR0cHM6Ly9T\nZXJ2aWNlUHJvdmlkZXIuY29tL1NBTUw8L0lzc3Vlcj4NCiAgICA8c2FtbHA6U3Rh\ndHVzPg0KICAgICAgICA8c2FtbHA6U3RhdHVzQ29kZSBWYWx1ZT0idXJuOm9hc2lz\nOm5hbWVzOnRjOlNBTUw6Mi4wOnN0YXR1czpTdWNjZXNzIi8+DQogICAgPC9zYW1s\ncDpTdGF0dXM+DQo8L3NhbWxwOkxvZ291dFJlc3BvbnNlPg==\"/></form>",
+      "now": "2004-01-21T19:05:00Z"
+    },
+    "attachesFile": false
+  },
+  {
+    "values": {
       "message": "<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" ID=\"identifier_2\" InResponseTo=\"identifier_1\" Version=\"2.0\" IssueInstant=\"2004-12-05T09:22:05Z\" Destination=\"https://sp.example.com/SAML2/SSO/POST\"><saml:Issuer>https://idp.example.org/SAML2</saml:Issuer><samlp:Status><samlp:StatusCode Value=\"urn:oasis:names:tc:SAML:2.0:status:Success\"/></samlp:Status><saml:Assertion ID=\"identifier_3\" Version=\"2.0\" IssueInstant=\"2004-12-05T09:22:05Z\"><saml:Issuer>https://idp.example.org/SAML2</saml:Issuer><ds:Signature xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">...</ds:Signature><saml:Subject><saml:NameID Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:transient\">3f7b3dcf-1674-4ecd-92c8-1544f346baf8</saml:NameID><saml:SubjectConfirmation Method=\"urn:oasis:names:tc:SAML:2.0:cm:bearer\"><saml:SubjectConfirmationData InResponseTo=\"identifier_1\" Recipient=\"https://sp.example.com/SAML2/SSO/POST\" NotOnOrAfter=\"2004-12-05T09:27:05Z\"/></saml:SubjectConfirmation></saml:Subject><saml:Conditions NotBefore=\"2004-12-05T09:17:05Z\" NotOnOrAfter=\"2004-12-05T09:27:05Z\"><saml:AudienceRestriction><saml:Audience>https://sp.example.com/SAML2</saml:Audience></saml:AudienceRestriction></saml:Conditions></saml:Assertion></samlp:Response>",
       "now": "2004-12-05T09:22:30Z"
     },

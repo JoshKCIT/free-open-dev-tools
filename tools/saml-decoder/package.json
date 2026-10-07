@@ -29,7 +29,9 @@
     "authnrequest",
     "redirect binding",
     "post binding",
-    "deflate"
+    "deflate",
+    "relaystate",
+    "assertion"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
