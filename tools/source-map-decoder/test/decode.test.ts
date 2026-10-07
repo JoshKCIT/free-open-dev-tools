@@ -456,3 +456,26 @@ it('more than 20 maps, a map over 50 MiB, over 20,000 sections and over 5,000 tr
   expect(() => decodeStackTrace({ trace, maps: '', context: 6 })).toThrow(/Lines of context/);
   expect(() => decodeStackTrace({ trace, maps: '', context: 1.5 })).toThrow(/Lines of context/);
 });
+
+it('the 5,000 line limit counts lines the way the trace is split: a line feed, a carriage return and line feed, or a lone carriage return', () => {
+  const refused = (trace: string): string => {
+    try {
+      checkInput({ trace, maps: '' });
+    } catch (err) {
+      if (err instanceof SourceMapError) return err.message;
+      throw err;
+    }
+    return '';
+  };
+  const CR = String.fromCharCode(13);
+  const LF = String.fromCharCode(10);
+  // 5,001 lines ended by lone carriage returns, or by a mix of the three line ends, are refused naming the number.
+  expect(refused(`x${CR}`.repeat(5000) + 'x')).toBe('The trace has 5,001 lines. The limit is 5,000 lines.');
+  expect(refused(`x${CR}x${LF}x${CR}${LF}`.repeat(1667))).toBe('The trace has 5,002 lines. The limit is 5,000 lines.');
+  // A carriage return and line feed is one line end, not two: 5,000 lines so ended are read.
+  expect(refused(`x${CR}${LF}`.repeat(4999) + 'x')).toBe('');
+  expect(refused(`x${CR}`.repeat(4999) + 'x')).toBe('');
+  // A trace of a million lone carriage returns, under the 1 MiB limit, is refused before it is split.
+  expect(refused(CR.repeat(1_000_000))).toBe('The trace has 1,000,001 lines. The limit is 5,000 lines.');
+  expect(() => decodeStackTrace({ trace: CR.repeat(1_000_000), maps: '' })).toThrow(SourceMapError);
+});
