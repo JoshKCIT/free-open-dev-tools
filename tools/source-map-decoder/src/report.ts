@@ -354,8 +354,12 @@ export function decodeStackTrace(input: DecodeInput): DecodeReport {
     });
   });
 
-  // Names from call sites, then the rows.
-  const named = scratch.map((s) => ({ name: s.result && s.result.kind === 'mapped' ? s.result.name : null }));
+  // Names from call sites, then the rows. A name from a map is text from the input like any other: its hidden and
+  // direction-changing characters are escaped and it is cut at 200 characters, in the table and in the decoded trace.
+  const shownName = (name: string | null): string | null => (name === null ? null : visible(name, 200));
+  const named = scratch.map((s) => ({
+    name: s.result && s.result.kind === 'mapped' ? shownName(s.result.name) : null,
+  }));
   const rows: FrameRow[] = [];
   frameLines.forEach((f, i) => {
     const s = scratch[i];
@@ -378,7 +382,7 @@ export function decodeStackTrace(input: DecodeInput): DecodeReport {
       originalLine,
       originalColumn,
       original,
-      name: mapped ? mapped.name : null,
+      name: mapped ? shownName(mapped.name) : null,
       traceFunction: visible(f.frame.functionName, 200),
       functionName,
       ignored: mapped ? mapped.ignored : false,
