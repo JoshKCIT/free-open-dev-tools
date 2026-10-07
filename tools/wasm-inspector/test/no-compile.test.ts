@@ -1,9 +1,12 @@
 import { expect, it } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+/** The site's page folder, beside this tool folder in the repository; absent when the folder is copied out on its own. */
+const PAGES = join(SRC, '..', '..', '..', 'apps', 'web', 'src', 'tools');
+const PAGE = join(PAGES, 'wasm-inspector.ts');
 
 /**
  * The lines of a source text that reach the WebAssembly object with a member or an index, generate code, or import at run
@@ -41,3 +44,13 @@ it('the source never touches the WebAssembly object, never generates code and ne
   }
   expect(all).toEqual([]);
 });
+
+// A policy blocks a compile but not a validate, so the page that shows the report is held to the same rule as the package.
+// Skipped only when this folder has been copied out of the repository on its own, where the site is not beside it.
+it.skipIf(!existsSync(PAGES))(
+  'the inspector page never touches the WebAssembly object, never generates code and never imports at run time',
+  () => {
+    expect(existsSync(PAGE), 'the page file is where the site keeps it').toBe(true);
+    expect(problemsIn(readFileSync(PAGE, 'utf8'))).toEqual([]);
+  },
+);
