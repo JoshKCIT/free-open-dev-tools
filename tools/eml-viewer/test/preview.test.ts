@@ -13,6 +13,7 @@ import {
   scanHtml,
 } from '../src/index';
 import { loadHostile, makeWindow, pngBytes } from './helpers';
+import { MAX_SCALING_RATIO, scalingRatio } from './scaling';
 
 it('no anchor keeps href, target, ping or rel after the post-pass', () => {
   const win = makeWindow();
@@ -93,6 +94,43 @@ it('the HTML pre-scan refuses over 1 MiB, more than 20,000 tags or a depth over 
   expect(scanHtml('<img src=x>'.repeat(1_000) + '<br/>'.repeat(1_000))).toEqual({ ok: true });
   // Comments and doctypes are not elements.
   expect(scanHtml('<!doctype html><!-- <div> -->' + '<p>ok</p>')).toEqual({ ok: true });
+});
+
+it('the HTML pre-scan finds the end of every start tag in one pass, even when no tag is ever closed', () => {
+  // Start tags with no closing bracket followed by plain text: a search from every tag to the end of the text is quadratic.
+  // Quadratic growth is about 4 times per doubling, which the limit of 6 lets through, so the input is timed at a size
+  // four times as large: one pass gives about 4, a search per tag about 16, and the limit is 12 (three times the linear 4,
+  // as 6 is three times the linear 2 of a doubling). Sizes stay under the 20,000 tag and 1 MiB caps.
+  const N = 24_000;
+  const quadrupled =
+    (make: (n: number) => string) =>
+    (m: number): string =>
+      make(Math.floor((m * m) / N));
+  const shapes: ReadonlyArray<readonly [string, (n: number) => string]> = [
+    ['void tags then text', (n) => '<br'.repeat(Math.floor(n / 6)) + 'x'.repeat(Math.floor(n / 2))],
+    [
+      'image tags with an attribute then text',
+      (n) => '<img a=b '.repeat(Math.floor(n / 18)) + 'x'.repeat(Math.floor(n / 2)),
+    ],
+  ];
+  const slow: string[] = [];
+  for (const [name, make] of shapes) {
+    expect(scanHtml(make(4 * N))).toEqual({ ok: true });
+    let ratio = scalingRatio((s) => scanHtml(s), quadrupled(make), N);
+    // The limit is not loosened. A ratio over it is measured twice more and the median of the three is judged.
+    if (ratio > 2 * MAX_SCALING_RATIO) {
+      const again = [ratio, scalingRatio((s) => scanHtml(s), quadrupled(make), N)];
+      again.push(scalingRatio((s) => scanHtml(s), quadrupled(make), N));
+      ratio = again.sort((a, b) => a - b)[1] ?? ratio;
+    }
+    if (!(ratio < 2 * MAX_SCALING_RATIO)) slow.push(`${name}, four times as long: ${ratio.toFixed(1)}`);
+  }
+  expect(slow).toEqual([]);
+  // The answer is the same: a slash right before the next closing bracket still closes every tag that reaches it.
+  expect(scanHtml('<div<span/>' + '<b>'.repeat(199))).toEqual({ ok: true });
+  expect(scanHtml('<div<span>' + '<b>'.repeat(199)).ok).toBe(false);
+  expect(scanHtml('<div' + '<b>'.repeat(199)).ok).toBe(true);
+  expect(scanHtml('<div' + '<b>'.repeat(200)).ok).toBe(false);
 });
 
 it('every remote reference in the hostile message is listed and removed, and a small cid image becomes a data address', () => {

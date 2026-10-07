@@ -137,6 +137,10 @@ function scan(html: string): ScanPassed | { ok: false; reason: string } {
   const open: string[] = [];
   const baseAt: number[] = [];
   let tags = 0;
+  // The first > at or after the end of the last start tag's name, kept between tags: a search starts again only when
+  // the tag being read ends past it, so the text is read once however many tags have no closing bracket. -1 means there
+  // is no > after the last search, so there is none after any later position either; -2 means nothing was searched yet.
+  let close = -2;
   let at = html.indexOf('<');
   while (at !== -1) {
     tags++;
@@ -168,7 +172,7 @@ function scan(html: string): ScanPassed | { ok: false; reason: string } {
         while (open.length > 0 && closes.includes(open[open.length - 1] ?? '')) open.pop();
       }
       // Find the end of the tag; a slash right before it closes the element.
-      const close = html.indexOf('>', end);
+      if (close !== -1 && close < end) close = html.indexOf('>', end);
       const selfClosing = close > 0 && html.charCodeAt(close - 1) === 0x2f;
       if (!VOID_ELEMENTS.has(name) && !selfClosing) {
         open.push(name);
