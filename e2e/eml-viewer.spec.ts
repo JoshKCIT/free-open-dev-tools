@@ -89,4 +89,24 @@ test('eml-viewer: pasted headers alone show the delivery hops and the authentica
   // The Authentication-Results header is in the list of headers.
   const headers = blockOf(page, 'Headers');
   await expect(headers.locator('tbody tr', { hasText: 'Authentication-Results' })).toHaveCount(1);
+
+  // The parsed lines: what the server said, one row per result, never a verdict of the page's own.
+  const auth = blockOf(page, 'Authentication-Results, as the server that wrote them said');
+  await expect(auth).toBeVisible();
+  const dkimResult = auth.locator('tbody tr', { hasText: 'dkim' });
+  await expect(dkimResult).toHaveCount(1);
+  await expect(dkimResult).toContainText('pass');
+  await expect(dkimResult).toContainText('header.d=example.com');
+  await expect(auth.locator('tbody tr')).toHaveCount(3);
+
+  // The DKIM-Signature tags: the d tag is example.com, and the key lookup name is shown as text.
+  const signature = blockOf(page, 'DKIM-Signature');
+  await expect(signature).toBeVisible();
+  const dTag = signature.locator('tbody tr', { has: page.locator('td:first-child', { hasText: /^d$/ }) });
+  await expect(dTag).toHaveCount(1);
+  await expect(dTag).toContainText('example.com');
+  await expect(signature).toContainText('sel1._domainkey.example.com');
+
+  // The page says nothing is verified.
+  await expect(outputArea(page)).toContainText('nothing is verified');
 });

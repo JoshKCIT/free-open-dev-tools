@@ -33,7 +33,7 @@
       "category": "network",
       "phase": 18,
       "needs": ["sandboxed-html", "workers"],
-      "outputKinds": ["keyvalue", "table", "tree", "code", "sandboxed-html", "files", "note"],
+      "outputKinds": ["keyvalue", "list", "table", "tree", "code", "sandboxed-html", "files", "note"],
       "sharedAdditions": ["tree", "runLimit", "working cue", "inline fixture files"]
     },
     {

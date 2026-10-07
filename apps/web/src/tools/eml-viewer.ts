@@ -37,6 +37,9 @@ import {
 /** How many decoded headers the table shows unless the visitor asks for all of them. */
 const HEADERS_SHOWN = 100;
 
+/** How many Authentication-Results rows the table shows. */
+const AUTH_ROWS_SHOWN = 200;
+
 /** The fixed sentences the worker helper can give, which are shown as they are. */
 const FIXED_MESSAGES = new Set([
   EML_VIEWER_NOT_STARTED_MESSAGE,
@@ -110,6 +113,44 @@ function hopRows(analysis: EmlAnalysis): (string | number)[][] {
       hop.delay,
       visible(hop.note, 300),
     ];
+  });
+}
+
+function authRows(analysis: EmlAnalysis): (string | number)[][] {
+  return analysis.authResults
+    .slice(0, AUTH_ROWS_SHOWN)
+    .map((row) => [
+      row.position,
+      visible(row.server, 200),
+      visible(row.method, 80),
+      visible(row.result, 80),
+      visible(row.properties, 300),
+      visible(row.reason, 200),
+    ]);
+}
+
+/** One block of rows per signature: a heading row, then a row for each tag the signature has. */
+function dkimRows(analysis: EmlAnalysis): (string | number)[][] {
+  const rows: (string | number)[][] = [];
+  analysis.dkim.forEach((entry, i) => {
+    const sig = entry.signature;
+    const notes = [...sig.issues, sig.alignment].filter((text) => text !== '').join(' ');
+    const lookup =
+      sig.lookupName === ''
+        ? ''
+        : `Key lookup name, shown as text only and never looked up: ${visible(sig.lookupName, 200)}`;
+    rows.push([`Signature ${i + 1} (header ${entry.header})`, '', lookup, visible(notes, 600)]);
+    for (const tag of sig.tags) {
+      rows.push([visible(tag.tag, 40), visible(tag.value, 200), tag.meaning, visible(tag.note, 400)]);
+    }
+  });
+  return rows;
+}
+
+function arcItems(analysis: EmlAnalysis): string[] {
+  return analysis.arc.map((set) => {
+    const issues = set.issues.length === 0 ? '' : ` Worth a look: ${set.issues.join(' ')}`;
+    return visible(`${set.summary}.${issues}`, 700);
   });
 }
 
@@ -215,6 +256,14 @@ function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[
     outputs.push({ kind: 'note', label: 'Notes', tone: 'info', value: analysis.notes.join('\n') });
   }
 
+  if (analysis.observations.length > 0) {
+    outputs.push({
+      kind: 'list',
+      label: 'Worth a look',
+      items: analysis.observations.map((text) => visible(text, 400)),
+    });
+  }
+
   if (analysis.hops.length > 0) {
     outputs.push({
       kind: 'table',
@@ -225,6 +274,41 @@ function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[
         mono: [1, 2, 3, 4, 5],
       },
     });
+  }
+
+  if (analysis.authResults.length > 0) {
+    outputs.push({
+      kind: 'table',
+      label: 'Authentication-Results, as the server that wrote them said',
+      table: {
+        headers: ['Position', 'Server', 'Method', 'Result', 'Properties', 'Reason'],
+        rows: authRows(analysis),
+        mono: [1, 2, 3, 4],
+      },
+    });
+    if (analysis.authResults.length > AUTH_ROWS_SHOWN) {
+      outputs.push({
+        kind: 'note',
+        tone: 'info',
+        value: `Showing the first ${AUTH_ROWS_SHOWN} of ${withCommas(analysis.authResults.length)} authentication results.`,
+      });
+    }
+  }
+
+  if (analysis.dkim.length > 0) {
+    outputs.push({
+      kind: 'table',
+      label: 'DKIM-Signature',
+      table: {
+        headers: ['Tag', 'Value', 'Meaning', 'Note'],
+        rows: dkimRows(analysis),
+        mono: [1],
+      },
+    });
+  }
+
+  if (analysis.arc.length > 0) {
+    outputs.push({ kind: 'list', label: 'ARC sets, as the servers that wrote them said', items: arcItems(analysis) });
   }
 
   if (analysis.tree !== null) {
