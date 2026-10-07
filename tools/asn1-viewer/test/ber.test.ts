@@ -415,3 +415,28 @@ it('PEM with several blocks, Base64, Base64url and hex with spaces or colons giv
     expect((caught as Asn1Error).message, text).toMatch(pattern);
   }
 });
+
+it('a file that is not text is read as its bytes whatever input form is chosen, and only a text file follows the choice', () => {
+  // The help beside the input form says so: a file that is not text is read as the bytes of the structure.
+  const bytes = Uint8Array.from([0x30, 0x05, 0x02, 0x01, 0x01, 0x05, 0x00]);
+  for (const format of ['auto', 'pem', 'base64', 'hex'] as const) {
+    const read = readInput(bytes, format);
+    expect(read.form, format).toBe('the bytes of the file');
+    expect(toHex(read.bytes), format).toBe('30050201010500');
+  }
+
+  // A text file follows the choice: the same hex text read as hex, as Base64, and refused as PEM.
+  const hexFile = new TextEncoder().encode('30050201010500');
+  expect(toHex(readInput(hexFile, 'hex').bytes)).toBe('30050201010500');
+  expect(readInput(hexFile, 'base64').form).toBe('Base64');
+  expect(() => readInput(hexFile, 'pem')).toThrow(/No PEM block/);
+
+  // A text file that starts with a UTF-8 byte order mark is still text, under every choice that fits it.
+  const pem = `-----BEGIN X-----\n${Buffer.from(bytes).toString('base64')}\n-----END X-----\n`;
+  const withMark = Uint8Array.from([0xef, 0xbb, 0xbf, ...new TextEncoder().encode(pem)]);
+  for (const format of ['auto', 'pem'] as const) {
+    const read = readInput(withMark, format);
+    expect(read.form, format).toBe('PEM');
+    expect(toHex(read.bytes), format).toBe('30050201010500');
+  }
+});
