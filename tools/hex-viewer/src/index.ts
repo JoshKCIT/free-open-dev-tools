@@ -4,6 +4,19 @@ import { SIGNATURES, type Signature, type SignaturePart } from './signatures';
 export { meta, SIGNATURES };
 export type { Signature, SignaturePart };
 
+export {
+  DEFAULT_EXPORT_PER_LINE,
+  EXPORT_LANGUAGES,
+  MAX_EXPORT_BYTES,
+  MAX_EXPORT_NAME_CHARS,
+  MAX_EXPORT_PER_LINE,
+  MAX_EXPORT_PREVIEW_CHARS,
+  cleanIdentifier,
+  exportCodeArray,
+  exportRange,
+} from './export';
+export type { ExportLanguage, ExportLanguageInfo, ExportOptions, ExportResult } from './export';
+
 /** A file can be viewed up to this many bytes (2 GiB): only the rows on screen are ever read. */
 export const MAX_VIEW_BYTES = 2147483648;
 /** A file can be searched up to this many bytes (1 GiB). */
