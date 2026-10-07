@@ -5,7 +5,7 @@ import { DEFAULT_GLYPHS_PER_GRID, MAX_GLYPHS_PER_GRID, MAX_GLYPH_START, MAX_NAME
 import { readMetrics } from './metrics';
 import { contoursToPath } from './outline';
 import { glyphNamesFromPost } from './post';
-import { readContainer, readSfntFont } from './sfnt';
+import { readContainer, readSfntFont, type SfntFont } from './sfnt';
 import { visible } from './visible';
 
 export interface NamedGlyphSource extends GlyphSource {
@@ -23,7 +23,11 @@ export function openGlyphs(sfnt: Uint8Array, member = 1): NamedGlyphSource {
   if (container.kind === 'woff' || container.kind === 'woff2' || offset === undefined) {
     throw new FontInspectorError('That font is not in this file.', 'Font number in a collection');
   }
-  const font = readSfntFont(sfnt, offset, container.kind === 'collection');
+  return openFontGlyphs(sfnt, readSfntFont(sfnt, offset, container.kind === 'collection'));
+}
+
+/** The same as `openGlyphs` for a font whose table directory has already been read, so the directory is read once. */
+export function openFontGlyphs(sfnt: Uint8Array, font: SfntFont): NamedGlyphSource {
   const metrics = readMetrics(sfnt, font);
   const numGlyphs = metrics.numGlyphs ?? 0;
   const long = (metrics.head?.indexToLocFormat ?? 0) === 1;

@@ -158,6 +158,11 @@ export function checksum(bytes: Uint8Array, offset: number, length: number, skip
  * Reads the table directory of the font that starts at `offset`. Every table range is compared with the file: a table
  * that leaves the file is listed as such and never read, and a table whose checksum is wrong is flagged without hiding
  * the rest. The number of tables is compared with the bytes that remain before the directory is read.
+ *
+ * A repeated tag is skipped before anything is summed, and the checksums share one budget of twice the file's size.
+ * Tables that do not overlap add up to less than the file, so a real font is always checked in full; a directory whose
+ * entries cover the file many times over costs about two passes of it, and the tables past the budget are listed with
+ * their checksum not checked (null) and a note.
  */
 export function readSfntFont(bytes: Uint8Array, offset: number, inCollection: boolean): SfntFont {
   const r = new ByteReader(bytes);
@@ -189,18 +194,27 @@ export function readSfntFont(bytes: Uint8Array, offset: number, inCollection: bo
   const order: string[] = [];
   const notes: string[] = [];
   let duplicates = 0;
+  let budget = 2 * bytes.length;
+  let unchecked = 0;
   for (let i = 0; i < count; i++) {
     const e = offset + 12 + 16 * i;
     const tag = r.tag(e);
+    if (tables.has(tag)) {
+      duplicates++;
+      continue;
+    }
     const stated = r.u32(e + 4);
     const start = r.u32(e + 8);
     const length = r.u32(e + 12);
     const inFile = r.has(start, length);
     let ok: boolean | null = null;
-    if (inFile) ok = checksum(bytes, start, length, tag === 'head') === stated;
-    if (tables.has(tag)) {
-      duplicates++;
-      continue;
+    if (inFile) {
+      if (length <= budget) {
+        budget -= length;
+        ok = checksum(bytes, start, length, tag === 'head') === stated;
+      } else {
+        unchecked++;
+      }
     }
     tables.set(tag, { tag, checksum: stated, offset: start, length, inFile, checksumOk: ok });
     order.push(tag);
@@ -208,6 +222,10 @@ export function readSfntFont(bytes: Uint8Array, offset: number, inCollection: bo
   if (duplicates > 0)
     notes.push(
       `${duplicates} repeated table tag${duplicates === 1 ? '' : 's'} in the directory; only the first of each is read.`,
+    );
+  if (unchecked > 0)
+    notes.push(
+      `The tables of this font overlap so much that ${unchecked === 1 ? 'the checksum of 1 table was' : `the checksums of ${unchecked} tables were`} not checked.`,
     );
   let wholeFileOk: boolean | null = null;
   if (!inCollection) wholeFileOk = checksum(bytes, 0, bytes.length) === WHOLE_FILE_CHECKSUM;

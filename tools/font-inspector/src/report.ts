@@ -3,7 +3,7 @@ import { readCmap, type CmapSubtable, type VariationSelector } from './cmap';
 import { FontInspectorError } from './errors';
 import { describeFeature } from './feature-tags';
 import { readFeatures } from './features';
-import { buildGrid, checkGridOptions, openGlyphs, type Grid } from './grid';
+import { buildGrid, checkGridOptions, openFontGlyphs, type Grid } from './grid';
 import { describeEmbedding, readMetrics, verticalMetricsNote, type Embedding, type Metrics } from './metrics';
 import { NAME_ID_LABELS, pickName, readNameTable, type NameRecord, type NameTable } from './names';
 import { readContainer, readSfntFont, type ContainerKind, type SfntFont } from './sfnt';
@@ -306,7 +306,8 @@ export function inspectFont(sfnt: Uint8Array, options: InspectOptions): FontRepo
     });
   }
 
-  const source = openGlyphs(sfnt, member);
+  // The directory read above is used again, so a font's tables are summed once per report.
+  const source = openFontGlyphs(sfnt, font);
   const wanted = new Set<number>();
   for (let g = grid.start; g < Math.min(source.count, grid.start + grid.count); g++) wanted.add(g);
   const codePointsOf = new Map<number, number[]>();
