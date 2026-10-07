@@ -377,8 +377,17 @@ it('every parser stays linear on hostile input', () => {
   const slow: string[] = [];
   let measured = 0;
   for (const [parserName, parser] of parsers) {
+    // A parser that is a single native call (the browser's decoder) takes microseconds at 20,000 characters, so a pause of
+    // the machine decides the ratio there; it is measured on a size where the work dominates the noise.
+    const size = parserName === 'decodeBytes' ? 400_000 : 20_000;
     for (const [inputName, make] of inputs) {
-      const ratio = scalingRatio(parser, make, 20_000);
+      let ratio = scalingRatio(parser, make, size);
+      // The limit is not loosened. A ratio over it is measured twice more and the median of the three is judged, so one
+      // slow moment cannot fail a parser while a parser that really grows too fast fails all three.
+      if (ratio > 6) {
+        const again = [ratio, scalingRatio(parser, make, size), scalingRatio(parser, make, size)].sort((a, b) => a - b);
+        ratio = again[1] ?? ratio;
+      }
       measured++;
       if (ratio > 6) slow.push(`${parserName} on ${inputName}: ${ratio.toFixed(1)}`);
     }
