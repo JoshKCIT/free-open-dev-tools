@@ -287,7 +287,7 @@ it('every ds:Signature is listed as present with its parent and where each Refer
 
   // A Reference to another element that exists is the shape signature wrapping uses.
   const other = points(sig(ref('#evil')), '<saml:Advice ID="evil"/>');
-  expect(other.reference).toMatchObject({ points: 'other', target: 'saml:Advice' });
+  expect(other.reference).toMatchObject({ points: 'other', target: 'saml:Advice evil' });
   expect(other.report.signatures.notes.join(' ')).toContain('signature-wrapping');
   expect(other.report.signatures.rows[0]?.join(' ')).toContain('another element');
   // A Reference to an element that is not in the message, one that matches two elements, no URI, a URI outside the message
@@ -295,7 +295,7 @@ it('every ds:Signature is listed as present with its parent and where each Refer
   expect(points(sig(ref('#nothere'))).reference).toMatchObject({ points: 'missing' });
   const duplicate = points(sig(ref('#a1')), '<saml:Advice ID="a1"/>');
   expect(duplicate.reference).toMatchObject({ points: 'duplicate' });
-  expect(duplicate.report.signatures.notes.join(' ')).toContain('more than one element');
+  expect(duplicate.report.signatures.notes.join(' ')).toMatch(/more than one element/i);
   expect(points(sig(ref(null))).reference).toMatchObject({ points: 'none' });
   expect(points(sig(ref('https://example.test/doc.xml'))).reference).toMatchObject({ points: 'outside' });
   expect(points(sig(ref("#xpointer(id('a1'))"))).reference).toMatchObject({ points: 'xpointer' });

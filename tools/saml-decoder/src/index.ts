@@ -1,13 +1,15 @@
 import meta from './meta.json';
 import { decodeBase64 } from './base64';
 import { SamlDecoderError, type SamlDecoderPart } from './errors';
+import { formatXml, type FormattedXml } from './format';
 import { inflateCapped } from './inflate';
-import { readInput, type InputKind } from './input';
-import { MAX_XML_BYTES, TOO_LARGE_MESSAGE, checkPaste, utf8Length } from './limits';
+import { readInput, type InputKind, type InputReading, type MessageParameter } from './input';
+import { MAX_NOTES, MAX_XML_BYTES, TOO_LARGE_MESSAGE, checkPaste, utf8Length, withCommas } from './limits';
 import { parseSaml } from './parse';
 import { prescan } from './prescan';
+import { describeSignatureAlgorithm, describeSignatures, type SignatureReport } from './signature';
 import { summarize, type SamlSummary } from './summary';
-import { decodeXml } from './text';
+import { UTF32_MESSAGE, decodeXml, looksLikeUtf32 } from './text';
 import { DOCTYPE_REFUSAL_MESSAGE, findDoctype } from './xml-doctype';
 import { ENTITY_REFUSAL_MESSAGE, findEntityDeclaration } from './xml-entity';
 
@@ -29,12 +31,32 @@ export { prescan } from './prescan';
 export { readInput } from './input';
 export { decodeBase64 } from './base64';
 export { describeTime, formatUtc, parseDateTime } from './times';
+export { describeSignatures, describeSignatureAlgorithm } from './signature';
+export { formatXml } from './format';
 export { visible } from './visible';
-export type { SamlSummary } from './summary';
+export type { SamlSummary, TimeRow, AttributeRow, SamlKind } from './summary';
+export type { SignatureReport, SignatureInfo, ReferenceInfo, ReferenceTarget } from './signature';
+export type { FormattedXml } from './format';
+export type { InputKind, MessageParameter } from './input';
 
 export interface DecodeOptions {
   /** The time, in milliseconds since 1970, that times in the message are judged against. */
   now: number;
+}
+
+/** What the binding carried next to the message. All of it is text exactly as pasted, or decoded once. */
+export interface TransportDetails {
+  parameter?: MessageParameter;
+  relayState?: string;
+  sigAlg?: string;
+  /** What the page can say about the SigAlg address: its name, or that it is not an address it knows. */
+  sigAlgNote?: string;
+  /** How long the Signature parameter is, and whether it is Base64. The value itself is never used. */
+  signatureLength?: string;
+  /** The octet string the HTTP-Redirect binding signs, from the pasted substrings and never re-encoded. */
+  signedString?: string;
+  /** True when a Signature parameter was pasted. */
+  signaturePresent: boolean;
 }
 
 export interface SamlReport {
@@ -43,10 +65,18 @@ export interface SamlReport {
   binding: string;
   /** What was done to the pasted text, in order. */
   steps: string[];
+  /** Unusual things about the wrapping of the message. */
   warnings: string[];
   /** The message as the XML text it decoded to. */
   xml: string;
+  xmlBytes: number;
   summary: SamlSummary;
+  signatures: SignatureReport;
+  formatted: FormattedXml;
+  /** What the binding carried next to the message, for a redirect address or a form. */
+  transport?: TransportDetails;
+  /** Things worth a look about the message itself, each one sentence. */
+  notes: string[];
 }
 
 /** True when the first bytes are the start of XML text in UTF-8 or UTF-16, so the data was not compressed. */
@@ -56,24 +86,52 @@ function startsLikeXml(bytes: Uint8Array): boolean {
   else if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) return true;
   while (i < bytes.length && (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)) i++;
   if (bytes[i] === 0x3c) return true;
-  return (bytes[i] === 0x3c && bytes[i + 1] === 0) || (bytes[i] === 0 && bytes[i + 1] === 0x3c);
+  return bytes[i] === 0 && bytes[i + 1] === 0x3c;
 }
 
-function containerWarning(container: string): string {
-  return `The data was wrapped as ${container}, but the HTTP-Redirect binding says raw DEFLATE with no wrapper. It was read anyway.`;
+function describeSignatureValue(signature: string): string {
+  let text = signature;
+  if (text.includes('%')) {
+    try {
+      text = decodeURIComponent(text);
+    } catch {
+      // Left as pasted: the length is still the length of what was pasted.
+    }
+  }
+  const length = `${withCommas(text.length)} characters`;
+  try {
+    return `${length}, Base64 for ${withCommas(decodeBase64(text).bytes.length)} bytes`;
+  } catch {
+    return `${length}, which is not Base64 text`;
+  }
+}
+
+function transportOf(reading: InputReading): TransportDetails | undefined {
+  if (reading.kind === 'xml' || reading.kind === 'base64') return undefined;
+  const transport: TransportDetails = { signaturePresent: reading.signature !== undefined };
+  if (reading.parameter !== undefined) transport.parameter = reading.parameter;
+  if (reading.relayState !== undefined) transport.relayState = reading.relayState;
+  if (reading.sigAlg !== undefined) {
+    transport.sigAlg = reading.sigAlg;
+    transport.sigAlgNote = describeSignatureAlgorithm(reading.sigAlg);
+  }
+  if (reading.signature !== undefined) transport.signatureLength = describeSignatureValue(reading.signature);
+  if (reading.signedString !== undefined) transport.signedString = reading.signedString;
+  return transport;
 }
 
 /**
- * Decodes a SAML 2.0 message pasted as an HTTP-Redirect address, or as raw XML. Each step runs once, in this order: read the
- * input, undo Base64, undo compression, decode the text, refuse a DOCTYPE or entity declaration, count tags and depth, read
- * the XML, summarise. Nothing is verified, nothing is fetched, and no state is kept between calls.
+ * Decodes a SAML 2.0 message pasted as an HTTP-Redirect address, an HTTP-POST form or value, or raw XML. Each step runs once,
+ * in this order: read the input, undo Base64, undo compression, decode the text, refuse a DOCTYPE or entity declaration,
+ * count tags and depth, read the XML, summarise, list the signatures, format. Nothing is verified, nothing is fetched, and no
+ * state is kept between calls, so the same text and time always give the same report.
  */
 export function decodeSaml(text: string, options: DecodeOptions): SamlReport {
-  void options;
   checkPaste(text);
   const reading = readInput(text);
   const steps = [...reading.steps];
   const warnings = [...reading.warnings];
+  let binding = reading.binding;
   let xml: string;
   if (reading.kind === 'xml') {
     if (utf8Length(reading.raw) > MAX_XML_BYTES) throw new SamlDecoderError(TOO_LARGE_MESSAGE, 'message');
@@ -81,16 +139,36 @@ export function decodeSaml(text: string, options: DecodeOptions): SamlReport {
   } else {
     const base64 = decodeBase64(reading.raw);
     warnings.push(...base64.warnings);
-    steps.push(`Undid Base64: ${base64.bytes.length} bytes.`);
+    steps.push(`Undid Base64: ${withCommas(base64.bytes.length)} bytes.`);
     let bytes = base64.bytes;
-    if (!startsLikeXml(bytes)) {
+    if (looksLikeUtf32(bytes)) throw new SamlDecoderError(UTF32_MESSAGE, 'message');
+    const compressed = !startsLikeXml(bytes);
+    if (compressed) {
       const inflated = inflateCapped(bytes, MAX_XML_BYTES);
       bytes = inflated.bytes;
-      steps.push(`Inflated the data (DEFLATE): ${bytes.length} bytes.`);
-      if (inflated.container !== 'raw') warnings.push(containerWarning(inflated.container));
+      steps.push(`Inflated the data (DEFLATE): ${withCommas(bytes.length)} bytes.`);
+      if (inflated.container !== 'raw') {
+        warnings.push(
+          `The data was wrapped as ${inflated.container}, but the binding says raw DEFLATE with no wrapper. It was read anyway.`,
+        );
+      }
+      if (reading.kind === 'post') {
+        warnings.push(
+          'The HTTP-POST binding does not compress the message, but this one was compressed. It was inflated.',
+        );
+      }
     } else {
       if (bytes.length > MAX_XML_BYTES) throw new SamlDecoderError(TOO_LARGE_MESSAGE, 'message');
       steps.push('The decoded data is XML text already, so it was not inflated.');
+      if (reading.kind === 'redirect' && reading.hasAddress) {
+        warnings.push(
+          'The message in the address was not compressed, but the HTTP-Redirect binding says DEFLATE (RFC 1951). It was read as it is.',
+        );
+      }
+    }
+    if (reading.kind === 'redirect' && !reading.hasAddress) binding = compressed ? 'HTTP-Redirect' : 'HTTP-POST';
+    if (reading.kind === 'base64') {
+      binding = compressed ? 'HTTP-Redirect encoding (value only)' : 'HTTP-POST encoding (value only)';
     }
     const decoded = decodeXml(bytes);
     steps.push(`Read the bytes as ${decoded.encoding} text.`);
@@ -103,5 +181,53 @@ export function decodeSaml(text: string, options: DecodeOptions): SamlReport {
   prescan(xml);
   const parsed = parseSaml(xml);
   warnings.push(...parsed.warnings);
-  return { kind: reading.kind, binding: reading.binding, steps, warnings, xml, summary: summarize(parsed.document) };
+  const summary = summarize(parsed.document, options.now);
+  const signatures = describeSignatures(parsed.document);
+  const formatted = formatXml(parsed.document);
+  const transport = transportOf(reading);
+
+  // The signatures, as one row of the summary.
+  const signatureParts: string[] = [];
+  if (signatures.signatures.length > 0) {
+    const places = signatures.signatures
+      .slice(0, 5)
+      .map((signature) => `in ${signature.parent}${signature.parentId === undefined ? '' : ` ${signature.parentId}`}`);
+    const covered = ` (${places.join(', ')}${signatures.signatures.length > 5 ? ', and more' : ''})`;
+    signatureParts.push(`${signatures.signatures.length} present, not verified${covered}`);
+  }
+  if (transport?.signaturePresent)
+    signatureParts.push('a Signature parameter is in the redirect address, not verified');
+  summary.pairs.push(['Signatures', signatureParts.length > 0 ? signatureParts.join('; ') : 'None present']);
+
+  const notes = [...summary.notes, ...signatures.notes];
+  const hasSignature = signatures.signatures.length > 0 || transport?.signaturePresent === true;
+  if (!hasSignature) {
+    notes.push(
+      'No signature is present in this message, so nothing in it says who wrote it. A signature that is present would still not be checked here.',
+    );
+  }
+  const protocolMessage = summary.kind !== 'Assertion' && summary.kind !== 'other';
+  if (hasSignature && protocolMessage && !parsed.document.documentElement.hasAttribute('Destination')) {
+    notes.push(
+      'The message is signed but has no Destination attribute; the bindings say a signed message must carry one (Bindings sections 3.4.5.2 and 3.5.5.2).',
+    );
+  }
+  if (transport?.relayState !== undefined && utf8Length(transport.relayState) > 80) {
+    notes.push(
+      `The RelayState is ${withCommas(utf8Length(transport.relayState))} bytes; the bindings say it must not exceed 80 bytes (Bindings sections 3.4.3 and 3.5.3).`,
+    );
+  }
+  return {
+    kind: reading.kind,
+    binding,
+    steps,
+    warnings,
+    xml,
+    xmlBytes: utf8Length(xml),
+    summary,
+    signatures,
+    formatted,
+    ...(transport ? { transport } : {}),
+    notes: notes.slice(0, MAX_NOTES * 2),
+  };
 }

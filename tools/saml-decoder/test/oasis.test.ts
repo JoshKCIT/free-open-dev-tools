@@ -53,7 +53,11 @@ it('the OASIS logout response redirect address and POST form decode to the same 
     expect(pairs.get('Status')).toBe('Success');
     expect(report.transport?.relayState).toBe('0043bfc1bc45110dae17004005b13a2b');
   }
-  expect(redirect.summary.pairs).toEqual(post.summary.pairs);
+  // The two summaries agree row for row, except that the redirect address carries a Signature parameter and the form does not.
+  const withoutSignatures = (report: typeof redirect) => report.summary.pairs.filter(([name]) => name !== 'Signatures');
+  expect(withoutSignatures(redirect)).toEqual(withoutSignatures(post));
+  expect(pairsOf(redirect).get('Signatures')).toBe('a Signature parameter is in the redirect address, not verified');
+  expect(pairsOf(post).get('Signatures')).toBe('None present');
   // The second opinion: Node reads the printed Base64 (wrapped at 64 columns, 466 bytes) to the same text.
   const printed = fixture('post-logout-response.html').split('value="')[2]?.split('"')[0] ?? '';
   expect(printed.split('\n').length).toBe(10);

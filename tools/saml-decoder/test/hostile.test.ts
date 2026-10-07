@@ -163,10 +163,12 @@ it('nesting over 64 levels and more than 50,000 tags are refused before parsing'
   expect(deep.message).toContain('nested more than 64 levels');
   expect(deep.message).toMatch(/line 1, column \d+/);
   expect(deep.line).toBe(1);
-  // 700,000 levels with no closing tag at all are refused the same way, without the reader ever seeing them.
-  const huge = refusal('<a>'.repeat(700_000));
+  // 600,000 levels with no closing tag at all are refused the same way, without the reader ever seeing them, at the 65th tag.
+  const huge = refusal('<a>'.repeat(600_000));
   expect(huge.message).toContain('nested more than 64 levels');
   expect(huge.column).toBe(MAX_DEPTH * 3 + 1);
+  // 700,000 of them are 2.1 million bytes, over the size limit, so the size is refused first; still before any parsing.
+  expect(refusal('<a>'.repeat(700_000)).message).toContain('2 MiB');
   // Tags: a root and 49,999 empty children are 50,000 tags and are read; one more is refused.
   const wide = (children: number): string => `<r>${'<i/>'.repeat(children)}</r>`;
   expect(decodeSaml(wide(MAX_TAGS - 1), { now: NOW }).formatted.lines).toBe(MAX_TAGS + 1);
@@ -175,7 +177,7 @@ it('nesting over 64 levels and more than 50,000 tags are refused before parsing'
   expect(many.message).toMatch(/line 1, column \d+/);
   expect(refusal(wide(60_000)).message).toContain('more than 50,000 tags');
   // Start tags count as well as empty tags, and closing tags, comments and text do not.
-  expect(prescan('<a><b/><c></c></a>')).toEqual({ tags: 4, depth: 2 });
+  expect(prescan('<a><b/><c></c></a>')).toEqual({ tags: 3, depth: 2 });
   expect(prescan('<a><!-- <b><b><b> --><![CDATA[<b><b>]]><?x <b> ?>text</a>')).toEqual({ tags: 1, depth: 1 });
   expect(prescan('<a x=">" y=\'>\'/>')).toEqual({ tags: 1, depth: 0 });
   // Attributes: 200 are read on one element, 201 are refused.

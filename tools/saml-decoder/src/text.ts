@@ -10,10 +10,10 @@ export interface DecodedText {
 }
 
 const NOT_TEXT_MESSAGE = 'The message is not valid UTF-8 or UTF-16 text, so it was not read.';
-const UTF32_MESSAGE = 'The message looks like UTF-32 text, which is not read. Save it as UTF-8 or UTF-16.';
+export const UTF32_MESSAGE = 'The message looks like UTF-32 text, which is not read. Save it as UTF-8 or UTF-16.';
 
 /** True when the first bytes are a UTF-32 byte order mark or an ASCII less-than sign padded to four bytes. */
-function looksLikeUtf32(bytes: Uint8Array): boolean {
+export function looksLikeUtf32(bytes: Uint8Array): boolean {
   if (bytes.length < 4) return false;
   const [a, b, c, d] = [bytes[0]!, bytes[1]!, bytes[2]!, bytes[3]!];
   if (a === 0x00 && b === 0x00 && c === 0xfe && d === 0xff) return true;
