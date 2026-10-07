@@ -213,6 +213,21 @@ function asciiLower(text: string): string {
   return text.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
 }
 
+/**
+ * The first characters of an address with ASCII white space and control characters left out, as a browser reads a
+ * scheme (java, a tab, script: is javascript:). Only the first 16 kept characters are needed, so a long value is not copied.
+ */
+function schemeText(address: string): string {
+  let out = '';
+  for (let i = 0; i < address.length && out.length < 16; i++) {
+    const code = address.charCodeAt(i);
+    if (code > 0x20 && (code < 0x7f || code > 0x9f)) out += address[i];
+  }
+  return out;
+}
+
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+
 function cutAddress(text: string): string {
   return text.length > MAX_ADDRESS_CHARACTERS ? text.slice(0, MAX_ADDRESS_CHARACTERS) : text;
 }
@@ -607,17 +622,26 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
       }
     }
 
-    const href = el.getAttribute('href') ?? el.getAttribute('xlink:href');
+    const hrefName = el.hasAttribute('href') ? 'href' : 'xlink:href';
+    const href = el.getAttribute(hrefName);
     if (href !== null && href.trim() !== '') {
       if (tag === 'link') record('link element', 'link href', href);
       else if (tag === 'base' || tag === 'x-base') record('base address', 'base href', href);
-      else if (tag === 'a') {
-        const lower = asciiLower(href.trim());
-        if (lower.startsWith('javascript:') || lower.startsWith('vbscript:') || lower.startsWith('data:')) {
+      else if (tag === 'a' && el.namespaceURI !== HTML_NAMESPACE) {
+        // A link inside an SVG drawing goes with the drawing, so it is never in the list of links: it is listed here.
+        record('link in an SVG drawing', `a ${hrefName}`, href);
+      } else if (tag === 'a') {
+        // The scheme is read as a browser reads it: white space and control characters anywhere in it do not count.
+        const scheme = asciiLower(schemeText(href));
+        if (scheme.startsWith('javascript:') || scheme.startsWith('vbscript:') || scheme.startsWith('data:')) {
           record('link with an unsafe address', 'a href', href);
         }
       } else if (!isLocalReference(href)) record('reference', `${tag} href`, href);
     }
+
+    // A frame's content written as text: the frame is removed, and what it held is listed as text.
+    const srcdoc = el.getAttribute('srcdoc');
+    if (srcdoc !== null && srcdoc.trim() !== '') record('frame content', `${tag} srcdoc`, srcdoc);
 
     if (tag === 'meta' && asciiLower(el.getAttribute('http-equiv') ?? '').trim() === 'refresh') {
       const content = el.getAttribute('content') ?? '';
@@ -631,6 +655,12 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
       const kept: string[] = [];
       let dropped = false;
       for (const declaration of splitDeclarations(style)) {
+        // A CSS escape can spell an address that no search for url( finds (u\72l), so such a declaration is dropped.
+        if (declaration.includes('\\')) {
+          dropped = true;
+          record('style written with an escape', `style attribute (${tag})`, declaration);
+          continue;
+        }
         const found = styleAddresses(declaration);
         if (found.length > 0) {
           dropped = true;
@@ -644,7 +674,10 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
     }
 
     if (tag === 'style') {
-      for (const item of styleAddresses(el.textContent ?? '')) record(item.kind, 'style element', item.address);
+      const text = el.textContent ?? '';
+      for (const item of styleAddresses(text)) record(item.kind, 'style element', item.address);
+      // The element is removed whole; one written with an escape is listed as text, since an address may hide in it.
+      if (text.includes('\\')) record('style written with an escape', 'style element', text);
     }
   }
   if (cidShown > 0)

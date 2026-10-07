@@ -462,3 +462,40 @@ it('the Where column names an element by at most 40 characters of its name, howe
   const split = previewHtml(`<${pair} src="https://t.example/f.png">t</${pair}>`, win, []);
   expect(split.blocked.map((b) => b.where)).toEqual([`${'z'.repeat(39)} src`]);
 });
+
+it('what the sanitiser removes is in the blocked list too: schemes with spaces inside, escaped styles, frame content, SVG links', () => {
+  const win = makeWindow();
+  const backslash = String.fromCharCode(92);
+  const result = previewHtml(
+    // A script scheme with a tab (as an entity), a line feed or a control character inside it or before it.
+    '<a href="jav&#x09;ascript:alert(1)">tab</a><a href="java\nscript:alert(2)">newline</a>' +
+      '<a href=" &#1;javascript:alert(3)">control</a><a href="https://t.example/ok">ordinary</a>' +
+      // A style address hidden behind a CSS escape, beside a declaration that loads nothing, and the same in a style block.
+      `<p style="color:red;background:u${backslash}72l(https://t.example/e.png)">styled</p>` +
+      `<style>p{background:u${backslash}72l(https://t.example/s.png)}</style>` +
+      // The content of a frame given as text, and links inside an SVG drawing (the drawing is removed with them).
+      '<iframe srcdoc="<img src=https://t.example/f.png>"></iframe>' +
+      '<svg><a xlink:href="https://t.example/g"><text>svg one</text></a><a href="https://t.example/h">svg two</a></svg>',
+    win,
+    [],
+  );
+  const html = shownHtml(result);
+  const listed = result.blocked.map((b) => `${b.kind} | ${b.where} | ${b.address}`);
+  expect(listed).toEqual([
+    'link with an unsafe address | a href | jav\tascript:alert(1)',
+    'link with an unsafe address | a href | java\nscript:alert(2)',
+    `link with an unsafe address | a href | ${String.fromCharCode(1)}javascript:alert(3)`,
+    `style written with an escape | style attribute (p) | background:u${backslash}72l(https://t.example/e.png)`,
+    `style written with an escape | style element | p{background:u${backslash}72l(https://t.example/s.png)}`,
+    'frame content | iframe srcdoc | <img src=https://t.example/f.png>',
+    'link in an SVG drawing | a xlink:href | https://t.example/g',
+    'link in an SVG drawing | a href | https://t.example/h',
+  ]);
+  // The rest of the style is kept, and nothing of the escaped address or the frame is in the markup.
+  expect(html).toContain('color:red');
+  expect(html).not.toContain(backslash);
+  expect(html).not.toContain('t.example/e.png');
+  expect(html).not.toContain('srcdoc');
+  // The ordinary link is still listed as a link, not as blocked.
+  expect(result.links.map((l) => l.target)).toContain('https://t.example/ok');
+});
