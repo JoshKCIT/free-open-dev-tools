@@ -4,6 +4,31 @@
       "rfc": "none (an invented message; its decoded values were also checked with Python email while planning)",
       "section": "not applicable",
       "text": "Received: from relay.example.net (relay.example.net [192.0.2.25])\r\n        by mx.example.org with ESMTPS id abc123\r\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:09 +0000\r\nReceived: from sender.example.com (sender.example.com [192.0.2.10])\r\n        by relay.example.net with ESMTP id r1\r\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:03 +0000\r\nAuthentication-Results: mx.example.org;\r\n        spf=pass smtp.mailfrom=example.com;\r\n        dkim=pass header.d=example.com header.s=sel1;\r\n        dmarc=pass header.from=example.com\r\nDKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=sel1;\r\n        t=1791280800; x=1791367200; h=from:to:subject:date:message-id;\r\n        bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;\r\n        b=c2lnbmF0dXJlLW5vdC1yZWFs\r\nFrom: =?UTF-8?B?Sm9zw6kgQmFrZXI=?= <jose@example.com>\r\nTo: Alice <alice@example.org>\r\nSubject: =?UTF-8?Q?Caf=C3=A9_menu?=\r\nDate: Tue, 06 Oct 2026 09:59:58 +0000\r\nMessage-ID: <msg-1@example.com>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"BOUNDARY-1\"\r\n\r\n--BOUNDARY-1\r\nContent-Type: multipart/alternative; boundary=\"ALT-1\"\r\n\r\n--ALT-1\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nHello Alice, the menu is attached.=20\r\n--ALT-1\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>Hello <b>Alice</b>, see <a href=\"https://tracker.example/click?u=1\">the menu</a>.</p>\r\n<img src=\"https://tracker.example/pixel.gif\" width=\"1\" height=\"1\">\r\n--ALT-1--\r\n--BOUNDARY-1\r\nContent-Type: text/plain; name=\"report.txt\"\r\nContent-Disposition: attachment; filename=\"report.txt\"\r\nContent-Transfer-Encoding: base64\r\n\r\nUXVhcnRlcmx5IGZpZ3VyZXM6IDQyIHVuaXRzIHNoaXBwZWQuCg==\r\n--BOUNDARY-1--\r\n"
+    },
+    "rfc2049-appendix-a": {
+      "rfc": "RFC 2049",
+      "section": "Appendix A",
+      "text": "MIME-Version: 1.0\r\nFrom: Nathaniel Borenstein <nsb@nsb.fv.com>\r\nTo: Ned Freed <ned@innosoft.com>\r\nDate: Fri, 07 Oct 1994 16:15:05 -0700 (PDT)\r\nSubject: A multipart example\r\nContent-Type: multipart/mixed;\r\n              boundary=unique-boundary-1\r\n\r\nThis is the preamble area of a multipart message.\r\nMail readers that understand multipart format\r\nshould ignore this preamble.\r\n\r\nIf you are reading this text, you might want to\r\nconsider changing to a mail reader that understands\r\nhow to properly display multipart messages.\r\n\r\n--unique-boundary-1\r\n\r\n  ... Some text appears here ...\r\n\r\n[Note that the blank between the boundary and the start\r\n of the text in this part means no header fields were\r\n given and this is text in the US-ASCII character set.\r\n It could have been done with explicit typing as in the\r\n next part.]\r\n\r\n--unique-boundary-1\r\nContent-type: text/plain; charset=US-ASCII\r\n\r\nThis could have been part of the previous part, but\r\nillustrates explicit versus implicit typing of body\r\nparts.\r\n\r\n--unique-boundary-1\r\nContent-Type: multipart/parallel; boundary=unique-boundary-2\r\n\r\n--unique-boundary-2\r\nContent-Type: audio/basic\r\nContent-Transfer-Encoding: base64\r\n\r\n  ... base64-encoded 8000 Hz single-channel\r\n      mu-law-format audio data goes here ...\r\n\r\n--unique-boundary-2\r\nContent-Type: image/jpeg\r\nContent-Transfer-Encoding: base64\r\n\r\n  ... base64-encoded image data goes here ...\r\n\r\n--unique-boundary-2--\r\n\r\n--unique-boundary-1\r\nContent-type: text/enriched\r\n\r\nThis is <bold><italic>enriched.</italic></bold>\r\n<smaller>as defined in RFC 1896</smaller>\r\n\r\nIsn't it\r\n<bigger><bigger>cool?</bigger></bigger>\r\n\r\n--unique-boundary-1\r\nContent-Type: message/rfc822\r\n\r\nFrom: (mailbox in US-ASCII)\r\nTo: (address in US-ASCII)\r\nSubject: (subject in US-ASCII)\r\nContent-Type: Text/plain; charset=ISO-8859-1\r\nContent-Transfer-Encoding: Quoted-printable\r\n\r\n  ... Additional text in ISO-8859-1 goes here ...\r\n\r\n--unique-boundary-1--\r\n"
+    },
+    "rfc2047-section-8-headers": {
+      "rfc": "RFC 2047",
+      "section": "8",
+      "text": "From: =?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>\r\nTo: =?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?= <keld@dkuug.dk>\r\nCC: =?ISO-8859-1?Q?Andr=E9?= Pirard <PIRARD@vm1.ulg.ac.be>\r\nSubject: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=\r\n =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=\r\n\r\nThe first header examples of section 8.\r\n"
+    },
+    "rfc2231-section-3-continuation": {
+      "rfc": "RFC 2231",
+      "section": "3",
+      "text": "Content-Type: message/external-body; access-type=URL;\r\n URL*0=\"ftp://\";\r\n URL*1=\"cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar\"\r\n\r\nbody\r\n"
+    },
+    "rfc2231-section-4-extended": {
+      "rfc": "RFC 2231",
+      "section": "4",
+      "text": "Content-Type: application/x-stuff;\r\n title*=us-ascii'en-us'This%20is%20%2A%2A%2Afun%2A%2A%2A\r\n\r\nbody\r\n"
+    },
+    "rfc2231-section-4.1-combined": {
+      "rfc": "RFC 2231",
+      "section": "4.1",
+      "text": "Content-Type: application/x-stuff\r\n title*0*=us-ascii'en'This%20is%20even%20more%20\r\n title*1*=%2A%2A%2Afun%2A%2A%2A%20\r\n title*2=\"isn't it!\"\r\n\r\nbody\r\n"
     }
   }
 }

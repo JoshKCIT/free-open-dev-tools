@@ -7,7 +7,7 @@
  */
 import { createHash } from 'node:crypto';
 import { it, expect } from 'vitest';
-import { analyzeMessage, decodeEncodedWords } from '../src/index';
+import { analyzeMessage, decodeEncodedWords, findParam, parseMime, parseParameters } from '../src/index';
 import { messageBytes, messageText } from './helpers';
 
 const decode = (text: string): string => decodeEncodedWords(text).text;
@@ -66,4 +66,60 @@ it('attachment digests are the SHA-256 of the decoded bytes and agree with Node 
   expect(attachment.size).toBe(expectedBytes.length);
   expect(Buffer.from(attachment.bytes).equals(expectedBytes)).toBe(true);
   expect(new TextDecoder().decode(attachment.bytes)).toBe('Quarterly figures: 42 units shipped.\n');
+});
+
+it('the RFC 2231 continuations and charset and language values decode, and a gap or a leading zero is shown raw', () => {
+  const typeOf = (name: string) => parseMime(messageBytes(name)).type;
+
+  // RFC 2231 section 3: two quoted sections join, and the other parameter is untouched.
+  const section3 = typeOf('rfc2231-section-3-continuation');
+  expect(section3.primary).toBe('message/external-body');
+  expect(findParam(section3, 'url')?.value).toBe('ftp://cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar');
+  expect(findParam(section3, 'url')?.continued).toBe(true);
+  expect(findParam(section3, 'access-type')?.value).toBe('URL');
+
+  // RFC 2231 section 4: a character set and a language, then percent-encoded text.
+  const section4 = findParam(typeOf('rfc2231-section-4-extended'), 'title');
+  expect(section4?.value).toBe('This is ***fun***');
+  expect(section4?.charset).toBe('us-ascii');
+  expect(section4?.language).toBe('en-us');
+  expect(section4?.extended).toBe(true);
+
+  // RFC 2231 section 4.1: continuations, encoded and not, with the charset only in the first section.
+  const section41 = findParam(typeOf('rfc2231-section-4.1-combined'), 'title');
+  expect(section41?.value).toBe("This is even more ***fun*** isn't it!");
+  expect(section41?.charset).toBe('us-ascii');
+  expect(section41?.language).toBe('en');
+  expect(section41?.continued).toBe(true);
+
+  // A multi-byte character in another set, split across two sections: the bytes are joined before they are read.
+  const split = parseParameters("attachment; filename*0*=utf-8''caf%C3; filename*1*=%A9.txt");
+  expect(findParam(split, 'filename')?.value).toBe(`caf${String.fromCodePoint(0xe9)}.txt`);
+
+  // The name precedence input: filename* and filename both present give two entries, extended first.
+  const both = parseParameters("attachment; filename=plain.txt; filename*=utf-8''ext%20name.txt");
+  expect(findParam(both, 'filename')?.value).toBe('ext name.txt');
+  expect(both.params.map((p) => p.extended)).toEqual([false, true]);
+
+  // A gap, a missing first section, a leading zero and a section number far past the limit are not joined: each piece raw.
+  for (const written of [
+    'title*0="a"; title*2="c"',
+    'title*1="b"',
+    'title*00="a"; title*1="b"',
+    'title*99999999="x"',
+  ]) {
+    const parsed = parseParameters(`application/x-stuff; ${written}`);
+    expect(findParam(parsed, 'title'), written).toBeUndefined();
+    expect(parsed.params.length, written).toBeGreaterThan(0);
+    for (const entry of parsed.params) {
+      expect(entry.raw, written).toBe(true);
+      expect(entry.rawName?.startsWith('title*'), written).toBe(true);
+    }
+    expect(parsed.notes.join(' '), written).toContain('shown as written');
+  }
+  // More than 100 sections are not joined either.
+  const many = Array.from({ length: 101 }, (_, i) => `t*${i}="x"`).join('; ');
+  expect(findParam(parseParameters(`a/b; ${many}`), 't')).toBeUndefined();
+  const hundred = Array.from({ length: 100 }, (_, i) => `t*${i}="x"`).join('; ');
+  expect(findParam(parseParameters(`a/b; ${hundred}`), 't')?.value).toBe('x'.repeat(100));
 });

@@ -52,3 +52,38 @@ export function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+export const CRLF = '\r\n';
+
+/** A message from header lines and a body, joined with CRLF. */
+export function build(headers: string[], body = ''): Uint8Array {
+  return bytesOf(headers.join(CRLF) + CRLF + CRLF + body);
+}
+
+/** A multipart body from parts (each its own header lines and body), closed or not. */
+export function multipart(boundary: string, parts: { headers?: string[]; body: string }[], close = true): string {
+  let text = '';
+  for (const part of parts) {
+    text += `--${boundary}${CRLF}`;
+    const head = part.headers !== undefined && part.headers.length > 0 ? part.headers.join(CRLF) + CRLF + CRLF : CRLF;
+    text += `${head}${part.body}${CRLF}`;
+  }
+  if (close) text += `--${boundary}--${CRLF}`;
+  return text;
+}
+
+interface HostileFixture {
+  description: string;
+  html: string;
+  cid: string;
+  pngBase64: string;
+}
+
+export function loadHostile(): HostileFixture {
+  return JSON.parse(readFileSync(new URL('./fixtures/hostile-html.json', import.meta.url), 'utf8')) as HostileFixture;
+}
+
+/** The one-pixel PNG the hostile message's cid names, decoded by Node. */
+export function pngBytes(): Uint8Array {
+  return new Uint8Array(Buffer.from(loadHostile().pngBase64, 'base64'));
+}
