@@ -61,7 +61,7 @@
       "category": "code",
       "phase": 19,
       "needs": ["workers"],
-      "outputKinds": ["table", "code", "note"],
+      "outputKinds": ["table", "code", "list", "note"],
       "sharedAdditions": ["runLimit", "working cue"]
     },
     {
