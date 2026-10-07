@@ -186,28 +186,36 @@ test('form-field-builder: every control the page builds gets its accessible name
     .evaluateAll((options) => options.map((o) => (o as HTMLOptionElement).value));
   expect(kinds, 'the page offers the 24 controls').toHaveLength(24);
 
-  const requests = await withRequestRecorder(page, async () => {
-    for (const kind of kinds) {
-      await chooseControl(page, kind);
-      if (kind === 'hidden') {
-        const output = await page.locator('section[aria-label="Output"]').innerText();
-        const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
-        expect(markup, 'a hidden input is not labelable, so it has no label').not.toContain('<label');
-        expect(output, 'a note says why').toContain('labelable');
-        continue;
-      }
-      const preview = page.frameLocator('iframe.preview-frame').first();
-      if (kind === 'radio') {
-        await expect(preview.getByLabel('Alpha', { exact: true }), kind).toHaveCount(1);
-        await expect(preview.getByRole('group', { name: 'Field label', exact: true }), kind).toHaveCount(1);
-        continue;
-      }
-      await expect(preview.getByLabel('Field label', { exact: true }), kind).toHaveCount(1);
-      const role = ROLE_OF[kind];
-      if (role)
-        await expect(preview.getByRole(role as 'textbox', { name: 'Field label', exact: true }), kind).toHaveCount(1);
-    }
-  });
+  // Each control is built on a freshly loaded page. In Firefox, a query into the preview frame made about 8 to 10
+  // seconds after the page loaded, while one page kept being rebuilt, could hang for good (no timeout fires); a fresh
+  // load keeps every query in the first seconds of its page. The loads are outside the request recorder.
+  const requests: string[] = [];
+  for (const kind of kinds) {
+    await page.goto(rel('/tools/form-field-builder'));
+    await page.getByRole('button', { name: 'Reset', exact: true }).waitFor();
+    requests.push(
+      ...(await withRequestRecorder(page, async () => {
+        await chooseControl(page, kind);
+        if (kind === 'hidden') {
+          const output = await page.locator('section[aria-label="Output"]').innerText();
+          const markup = await page.locator('section[aria-label="Output"] pre.output').first().innerText();
+          expect(markup, 'a hidden input is not labelable, so it has no label').not.toContain('<label');
+          expect(output, 'a note says why').toContain('labelable');
+          return;
+        }
+        const preview = page.frameLocator('iframe.preview-frame').first();
+        if (kind === 'radio') {
+          await expect(preview.getByLabel('Alpha', { exact: true }), kind).toHaveCount(1);
+          await expect(preview.getByRole('group', { name: 'Field label', exact: true }), kind).toHaveCount(1);
+          return;
+        }
+        await expect(preview.getByLabel('Field label', { exact: true }), kind).toHaveCount(1);
+        const role = ROLE_OF[kind];
+        if (role)
+          await expect(preview.getByRole(role as 'textbox', { name: 'Field label', exact: true }), kind).toHaveCount(1);
+      })),
+    );
+  }
   expect(requests, `no request may be made while building the controls: ${requests.join(', ')}`).toEqual([]);
 });
 
