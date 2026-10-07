@@ -1,6 +1,7 @@
 import { Cursor } from './cursor';
 import { FindingList, WasmInspectorError } from './errors';
 import { MAX_ROWS, withCommas } from './limits';
+import { SoftReader } from './soft';
 
 /** The section ids of the WebAssembly 3.0 core binary format. */
 export const SECTION_NAMES: readonly string[] = [
@@ -104,9 +105,38 @@ export function readHeader(bytes: Uint8Array): Header {
   return { kind: 'module' };
 }
 
+/** The custom sections this page decodes; past the first 2,000 sections the first of each of these names is still kept. */
+const DECODED_CUSTOM: ReadonlySet<string> = new Set([
+  'name',
+  'producers',
+  'target_features',
+  'sourceMappingURL',
+  'external_debug_info',
+]);
+
+/**
+ * The name of a custom section when it is one of the decoded names, else null; read without throwing, since it runs for
+ * every custom section past the first 2,000. The decoded names are short ASCII, so anything longer or not ASCII is null.
+ */
+function decodedCustomName(reader: SoftReader, start: number, end: number): string | null {
+  reader.reset(start, end);
+  const length = reader.u32();
+  if (reader.failed || length > 32 || length > end - reader.pos) return null;
+  let text = '';
+  for (let i = 0; i < length; i++) {
+    const byte = reader.bytes[reader.pos + i]!;
+    if (byte >= 0x80) return null;
+    text += String.fromCharCode(byte);
+  }
+  return DECODED_CUSTOM.has(text) ? text : null;
+}
+
 /** The sections found, in file order, and how many there were in all. */
 export interface SectionWalk {
-  /** At most `MAX_ROWS` sections, and always the first section of each kind, so every section the reader needs is here. */
+  /**
+   * At most `MAX_ROWS` sections, then the first section of each kind and the first custom section of each name this page
+   * decodes, so every section the reader needs is here.
+   */
   sections: SectionInfo[];
   /** How many sections the file holds, those not kept included. */
   total: number;
@@ -126,6 +156,8 @@ export function walkSections(bytes: Uint8Array, findings: FindingList): SectionW
   const seen = new Set<number>();
   let lastRank = 0;
   let pos = 8;
+  const keptCustom = new Set<string>();
+  const peek = new SoftReader(bytes);
   while (pos < bytes.length) {
     const start = pos;
     const id = bytes[pos]!;
@@ -154,17 +186,23 @@ export function walkSections(bytes: Uint8Array, findings: FindingList): SectionW
     }
     total++;
     if (id === 0) customTotal++;
-    // Past MAX_ROWS sections only the first section of each kind is kept, so a file of empty sections stays small.
-    const keep = sections.length < MAX_ROWS || (id !== 0 && !seen.has(id));
+    // Past MAX_ROWS sections only the first section of each kind, and the first custom section of each decoded name, is
+    // kept, so a file of empty sections stays small and a name section placed late is still read.
+    let keep = sections.length < MAX_ROWS || (id !== 0 && !seen.has(id));
     let customName = '';
     let payloadOffset = bodyOffset;
     if (id === 0) {
       payloadOffset = bodyOffset + size;
+      if (!keep) {
+        const late = decodedCustomName(peek, bodyOffset, bodyOffset + size);
+        keep = late !== null && !keptCustom.has(late);
+      }
       if (keep) {
         try {
           const reader = new Cursor(bytes, bodyOffset, bodyOffset + size);
           customName = reader.name(findings);
           payloadOffset = reader.pos;
+          keptCustom.add(customName);
         } catch (error) {
           if (!(error instanceof WasmInspectorError)) throw error;
           findings.add(error.offset ?? bodyOffset, error.message);

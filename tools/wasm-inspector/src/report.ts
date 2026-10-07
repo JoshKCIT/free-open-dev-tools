@@ -54,7 +54,10 @@ export interface Report {
   sentence: string | null;
   /** The size of the file in bytes. */
   size: number;
-  /** The sections, in file order (at most 2,000, always the first of each kind). */
+  /**
+   * The sections, in file order: the first 2,000, then the first of each kind and the first custom section of each name
+   * this page decodes.
+   */
   sections: SectionInfo[];
   /** How many sections the file holds in all. */
   sectionCount: number;
