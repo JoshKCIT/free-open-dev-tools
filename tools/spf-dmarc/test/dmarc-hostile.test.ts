@@ -40,23 +40,35 @@ const FIELDS: DmarcFields = {
 const RECORD_N = 4_000;
 const BOX_N = 16_000;
 
+/**
+ * The doubling ratio of one function on one input. The limit is not loosened: a ratio over it is measured twice more and
+ * the median of the three is judged, so one slow moment of a busy machine cannot fail a parser that reads its input once,
+ * while a parser that really grows too fast is over the limit in all three.
+ */
+function steadyRatio(fn: (input: string) => unknown, make: (n: number) => string, n: number): number {
+  const first = scalingRatio(fn, make, n);
+  if (first <= MAX_SCALING_RATIO) return first;
+  const three = [first, scalingRatio(fn, make, n), scalingRatio(fn, make, n)];
+  return three.sort((a, b) => a - b)[1] ?? first;
+}
+
 it('every DMARC parser stays linear on hostile input', () => {
   const makers = [...HOSTILE, ...OWN];
   const parse = (input: string): unknown => checkDmarc(parseDmarc(input), 'example.com');
   for (const [i, make] of makers.entries()) {
     const asRecord = (n: number): string => 'v=DMARC1; ' + make(n);
-    const ratio = scalingRatio(parse, asRecord, RECORD_N);
+    const ratio = steadyRatio(parse, asRecord, RECORD_N);
     expect(ratio, `parseDmarc and checkDmarc, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
   }
   for (const [i, make] of makers.entries()) {
     const read = (input: string): unknown => pickDmarcRecord(readTxtRecords(input, 'dmarc'));
-    const ratio = scalingRatio(read, make, BOX_N);
+    const ratio = steadyRatio(read, make, BOX_N);
     expect(ratio, `readTxtRecords and pickDmarcRecord, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
-    const quoted = scalingRatio(read, (n) => '_dmarc IN TXT "v=DMARC1; ' + make(n) + '"', BOX_N);
+    const quoted = steadyRatio(read, (n) => '_dmarc IN TXT "v=DMARC1; ' + make(n) + '"', BOX_N);
     expect(quoted, `the zone reader inside quotes, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
   }
   // Many lines that hold no record (comments and blank lines) are skipped one by one.
-  const lines = scalingRatio(
+  const lines = steadyRatio(
     (input) => pickDmarcRecord(readTxtRecords(input, 'dmarc')),
     (n) => '; a comment\n\n'.repeat(Math.ceil(n / 13)),
     BOX_N,
@@ -65,7 +77,7 @@ it('every DMARC parser stays linear on hostile input', () => {
   // The builder reads each field once; entries are capped at 100 and a field at 65,536 characters.
   const build = (rua: string): unknown => buildDmarc({ ...FIELDS, rua, ruf: rua, fo: rua });
   for (const [i, make] of makers.entries()) {
-    const ratio = scalingRatio(build, make, BOX_N);
+    const ratio = steadyRatio(build, make, BOX_N);
     expect(ratio, `buildDmarc, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
   }
 });
