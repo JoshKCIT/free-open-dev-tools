@@ -427,6 +427,19 @@ it('a C name that is a keyword stays as xxd -i leaves it and the limits say so',
   expect(nameLimit).not.toMatch(/^A variable name is cleaned to be legal,/);
 });
 
+it('the variable name limit counts characters, not UTF-16 units, so 200 emoji are accepted and 201 refused', () => {
+  const emoji = String.fromCodePoint(0x1f600);
+  expect(emoji.length).toBe(2);
+  // 200 emoji are 200 characters, 400 UTF-16 units and 800 UTF-8 bytes, each byte an underscore.
+  expect(cleanIdentifier('c', emoji.repeat(200))).toBe('_'.repeat(800));
+  expect(cleanIdentifier('javascript', 'a' + emoji.repeat(199))).toBe('a' + '_'.repeat(796));
+  const error = refusal(() => cleanIdentifier('c', emoji.repeat(201)));
+  expect(error.field).toBe('Variable name');
+  // A lone surrogate is one character too.
+  expect(cleanIdentifier('c', String.fromCharCode(0xd800).repeat(200))).toBe('_'.repeat(600));
+  expect(() => cleanIdentifier('c', String.fromCharCode(0xd800).repeat(201))).toThrow(HexViewerError);
+});
+
 it('a name over 200 characters is refused naming the field and never repeated', () => {
   const marker = 'SECRET-MARKER-ab12';
   const tooLong = marker + 'q'.repeat(300);
