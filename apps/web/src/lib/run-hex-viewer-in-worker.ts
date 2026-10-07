@@ -37,6 +37,10 @@ export const HEX_VIEWER_START_LIMIT_MS = 10000;
 export const HEX_VIEWER_START_LIMIT_MESSAGE =
   'The background task did not start within 10 seconds. Reload the page and try again.';
 
+/**
+ * Every message this runner and its worker produce is a fixed sentence written here, so the page may show it as is. The
+ * page turns any other kind of error (a browser's own read failure, for one) into its own fixed sentence.
+ */
 export class HexViewerRunError extends Error {
   constructor(message: string) {
     super(message);
@@ -95,13 +99,13 @@ export function hexViewerInWorker(message: HexViewerJobMessage, ctx: RunContext)
         // begins at the moment the job is posted.
         clearTimeout(startTimer);
         runTimer = setTimeout(() => {
-          settle({ ok: false, error: new Error(HEX_VIEWER_TIME_LIMIT_MESSAGE) });
+          settle({ ok: false, error: new HexViewerRunError(HEX_VIEWER_TIME_LIMIT_MESSAGE) });
         }, HEX_VIEWER_TIME_LIMIT_MS);
         try {
           worker.postMessage(message);
           posted = true;
         } catch {
-          settle({ ok: false, error: new Error('The background task could not start.') });
+          settle({ ok: false, error: new HexViewerRunError('The background task could not start.') });
         }
       } else if (data.type === 'hex-viewer-done') {
         settle({ ok: true, value: data.result });
@@ -111,15 +115,15 @@ export function hexViewerInWorker(message: HexViewerJobMessage, ctx: RunContext)
     };
 
     const onNativeError = () => {
-      settle({ ok: false, error: new Error(failedMessage()) });
+      settle({ ok: false, error: new HexViewerRunError(failedMessage()) });
     };
 
     const onMessageError = () => {
-      settle({ ok: false, error: new Error(failedMessage()) });
+      settle({ ok: false, error: new HexViewerRunError(failedMessage()) });
     };
 
     const onAbort = () => {
-      settle({ ok: false, error: new Error('The run was cancelled.') });
+      settle({ ok: false, error: new HexViewerRunError('The run was cancelled.') });
     };
 
     worker.addEventListener('message', onMessage);
@@ -128,7 +132,7 @@ export function hexViewerInWorker(message: HexViewerJobMessage, ctx: RunContext)
     ctx.signal.addEventListener('abort', onAbort, { once: true });
 
     const startTimer = setTimeout(() => {
-      settle({ ok: false, error: new Error(HEX_VIEWER_START_LIMIT_MESSAGE) });
+      settle({ ok: false, error: new HexViewerRunError(HEX_VIEWER_START_LIMIT_MESSAGE) });
     }, HEX_VIEWER_START_LIMIT_MS);
   });
 }
