@@ -15,3 +15,14 @@ export class FontInspectorError extends Error {
     if (offset !== undefined) this.offset = offset;
   }
 }
+
+/**
+ * Thrown by a guarded engine call (see `guardEngine`) when the browser refused the run-time code generation the WOFF2
+ * engine needs while it started. It never reaches a page: the unpacking and packing steps turn it into their own sentence.
+ */
+export class EngineRefusedError extends Error {
+  constructor() {
+    super('The browser refused the run-time code generation the WOFF2 engine needs while it started.');
+    this.name = 'EngineRefusedError';
+  }
+}

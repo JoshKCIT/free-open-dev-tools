@@ -15,16 +15,25 @@
  * listener exists: the page posts the job only when it has seen that message, so a job can never reach a worker that has
  * not finished starting (a module worker drops a message that arrives before its evaluation is over).
  *
+ * When the browser refuses run-time code generation, the engine's start never settles and the refusal arrives only as an
+ * unhandled rejection on this worker's global scope (watchEngineStart in the package explains how that was recorded). The
+ * listener for it is added before the module's first await, so it is there before the engine's start can fail. The ready
+ * message waits for the start for at most ENGINE_START_WAIT_MS, well inside the page's 10 second start limit, so a worker
+ * whose engine cannot start still says ready: WOFF2 work then fails at once with the plain sentence that the browser did
+ * not allow code generation, and WOFF and TrueType work, which needs no engine, goes on.
+ *
  * A converted file is read back and checked next to the engine (verifyConversion) before its bytes are posted. When the
  * check finds a problem the report is posted and the bytes are not, so the page has nothing it could offer.
  */
 import {
   FontInspectorError,
   convertSfnt,
+  guardEngine,
   readWoff1Header,
   unpackWoff2,
   unwrapWoff1,
   verifyConversion,
+  watchEngineStart,
   type ConversionReport,
   type ConvertTarget,
 } from '@fodt/font-inspector';
@@ -97,9 +106,26 @@ export type FontInspectorWorkerMessage =
 interface WorkerGlobal {
   postMessage(message: FontInspectorWorkerMessage, transfer?: Transferable[]): void;
   addEventListener(type: 'message', listener: (event: MessageEvent<FontInspectorJobMessage>) => void): void;
+  addEventListener(type: 'unhandledrejection', listener: (event: PromiseRejectionEvent) => void): void;
+  removeEventListener(type: 'unhandledrejection', listener: (event: PromiseRejectionEvent) => void): void;
 }
 
 const workerGlobal = self as unknown as WorkerGlobal;
+
+/** How long the ready message waits for the engine to start before it is posted anyway. */
+const ENGINE_START_WAIT_MS = 8000;
+
+// The engine started when it was imported. Watch that start from here, before any await: a call on an empty input settles
+// once the engine has started, and a refusal of code generation shows up only as an unhandled rejection on this scope.
+const engineStart = watchEngineStart(woff2Decompress(new Uint8Array(0)), (listener) => {
+  const onRejection = (event: PromiseRejectionEvent): void => {
+    if (listener(event.reason)) event.preventDefault();
+  };
+  workerGlobal.addEventListener('unhandledrejection', onRejection);
+  return () => workerGlobal.removeEventListener('unhandledrejection', onRejection);
+});
+// Every job uses the engine through this guard: it waits for the start, and fails at once after a refused start.
+const engine = guardEngine({ woff2Compress, woff2Decompress }, engineStart);
 
 const MEMORY_MESSAGE = 'The font needed more memory than this tab could give.';
 const UNKNOWN_MESSAGE = 'The background task failed for an unknown reason.';
@@ -122,7 +148,7 @@ async function handleJob(message: FontInspectorJobMessage): Promise<void> {
     if (container === 'sfnt') {
       sfnt = bytes;
     } else if (container === 'woff2') {
-      const unpacked = await unpackWoff2(bytes, woff2Decompress);
+      const unpacked = await unpackWoff2(bytes, engine.woff2Decompress);
       sfnt = unpacked.sfnt.slice();
       wrapper = {
         kind: 'woff2',
@@ -150,11 +176,8 @@ async function handleJob(message: FontInspectorJobMessage): Promise<void> {
     let refusal: string | null = null;
     if (convertTo !== 'none') {
       try {
-        const converted = await convertSfnt(
-          { sfnt, source: container, target: convertTo, fileName },
-          { woff2Compress, woff2Decompress },
-        );
-        const report = await verifyConversion(sfnt, converted.bytes, { woff2Decompress });
+        const converted = await convertSfnt({ sfnt, source: container, target: convertTo, fileName }, engine);
+        const report = await verifyConversion(sfnt, converted.bytes, engine);
         conversion = {
           target: convertTo,
           report,
@@ -179,13 +202,10 @@ workerGlobal.addEventListener('message', (event) => {
   void handleJob(event.data);
 });
 
-// Start the engine now, so its start-up is counted against the start limit. A failure here is ignored: the job itself
-// reports it in plain words if the engine really cannot run.
-try {
-  await woff2Decompress(new Uint8Array(0));
-} catch {
-  // Expected: an empty input is refused after the engine has started.
-}
+// Wait for the engine's start, so its start-up is counted against the start limit, but never past ENGINE_START_WAIT_MS: a
+// start the browser refused never settles, and the guard above answers WOFF2 work in plain words once the refusal is seen.
+await Promise.race([engineStart, new Promise<void>((resolve) => setTimeout(resolve, ENGINE_START_WAIT_MS))]);
 
-// Last statement of the module: the listener above exists and the engine has started, so a job posted now cannot be lost.
+// Last statement of the module: the listener above exists and the engine's start is settled or given up on, so a job posted
+// now cannot be lost.
 workerGlobal.postMessage({ type: 'font-inspector-ready' });

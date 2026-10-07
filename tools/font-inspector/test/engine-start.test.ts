@@ -51,7 +51,8 @@ function rejections(): {
 it('when the browser refuses code generation the engine never starts, WOFF2 work says so in plain words and WOFF work goes on', async () => {
   const global = rejections();
   let calls = 0;
-  const pending = (): Promise<Uint8Array> => {
+  const pending = (input: Uint8Array): Promise<Uint8Array> => {
+    void input;
     calls++;
     return new Promise<Uint8Array>(() => {});
   };

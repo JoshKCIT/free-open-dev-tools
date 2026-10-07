@@ -4,7 +4,8 @@ export { meta };
 
 // The WOFF2 engine (./engine) is never imported here: only the background worker reaches it, so the engine is not part
 // of this package's index or of the page's own code.
-export { FontInspectorError } from './errors';
+export { EngineRefusedError, FontInspectorError } from './errors';
+export { guardEngine, watchEngineStart, type EngineStartState } from './engine-start';
 export * from './limits';
 export { visible } from './visible';
 export { ByteReader } from './bytes';

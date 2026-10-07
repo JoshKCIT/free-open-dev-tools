@@ -12,7 +12,9 @@
  *
  * The handshake exists because every worker on the site is a module worker (apps/web/vite.config.ts), and a module
  * whose evaluation is still running drops a message posted to it. The worker says `font-inspector-ready` as the last
- * statement of its module, after the engine has started; the job is posted only then. Two limits follow from that. A
+ * statement of its module, after the engine has started (or after 8 seconds, when a browser that refuses run-time code
+ * generation keeps the engine from ever starting; WOFF2 work then fails at once with that reason in plain words); the job
+ * is posted only then. Two limits follow from that. A
  * worker that never says ready is stopped after 10 seconds with its own message, so a tab whose worker cannot start does
  * not wait forever. The 60 second limit starts when the job is posted, not when the worker is created, so a slow start is
  * never counted against the visitor's font.

@@ -1,5 +1,5 @@
 import { ByteReader } from './bytes';
-import { FontInspectorError } from './errors';
+import { EngineRefusedError, FontInspectorError } from './errors';
 import { MAX_COLLECTION_FONTS, MAX_EXPANSION_RATIO, MAX_SFNT_BYTES, MAX_TABLES } from './limits';
 import { checkFileSize, sfntDataEnd } from './sfnt';
 
@@ -411,6 +411,7 @@ const SIGNATURES = new Set([0x00010000, 0x74727565, 0x4f54544f, 0x74746366, 0x74
 
 /** Whether what the engine threw is the browser refusing to generate code at run time (never repeated, only recognised). */
 export function isCodeGenerationRefusal(err: unknown): boolean {
+  if (err instanceof EngineRefusedError) return true;
   const name = err instanceof Error ? err.name : '';
   const text = err instanceof Error ? err.message : '';
   return name === 'EvalError' || /unsafe-eval|content security policy|code generation|blocked by csp/i.test(text);
