@@ -13,12 +13,17 @@ export const PERSONNEL_HEX =
   'a21261101a044d6172791a01541a05536d697468a342311f61111a0552616c70681a01541a05536d697468a00a43083139353731313131' +
   '311f61111a05537573616e1a01421a054a6f6e6573a00a43083139353930373137';
 
-/** The strings of annex A.3 in the order they appear in the record. */
+/**
+ * The strings of annex A.3 in the order they appear in the record, as a reader that does not know the schema shows them.
+ * The employee number 51 is an IMPLICIT INTEGER under [APPLICATION 2] (42 01 33); without the schema the one content octet 33
+ * is the character 3, so it appears here between the title and the start date.
+ */
 export const PERSONNEL_STRINGS = [
   'John',
   'P',
   'Smith',
   'Director',
+  '3',
   '19710917',
   'Mary',
   'T',
