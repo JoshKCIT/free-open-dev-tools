@@ -70,8 +70,8 @@
       "category": "hashing",
       "phase": 19,
       "needs": [],
-      "needsNote": "Measured on the main thread: the reader stops at 100,000 elements and 40 levels, and 10 MiB of hostile input is read in under 30 ms, so the page has no helper and declares no need.",
-      "outputKinds": ["tree", "keyvalue", "note"],
+      "needsNote": "Measured on the main thread: the reader stops at 100,000 elements and 40 levels, 10 MiB of hostile input is read in under 30 ms and described, tree and copy text included, in under 150 ms, so the page has no helper and declares no need.",
+      "outputKinds": ["tree", "keyvalue", "table", "note"],
       "sharedAdditions": ["tree", "inline fixture files"]
     },
     {
