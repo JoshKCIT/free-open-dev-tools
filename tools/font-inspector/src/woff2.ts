@@ -1,7 +1,7 @@
 import { ByteReader } from './bytes';
 import { FontInspectorError } from './errors';
 import { MAX_COLLECTION_FONTS, MAX_EXPANSION_RATIO, MAX_SFNT_BYTES, MAX_TABLES } from './limits';
-import { checkFileSize } from './sfnt';
+import { checkFileSize, sfntDataEnd } from './sfnt';
 
 /**
  * The reader for the WOFF2 header and table directory, and the pre-checks that run before the engine is called.
@@ -180,8 +180,10 @@ function flavorName(value: number): Woff2Header['flavor'] {
 /**
  * Reads the header and table directory of a WOFF2 file and checks them. Throws a `FontInspectorError` with a fixed
  * sentence for anything the reference decoder would refuse, and for any size past the caps, so the engine is never
- * given a file whose header or directory lies about its size. A `totalSfntSize` that claims too much is refused, never
- * trusted; a non-zero `reserved` field is only a note, as the specification says a decoder must not reject it.
+ * given a file whose header or directory lies about its size. A `totalSfntSize` over 30 MiB is refused; below that it is
+ * advisory, as the specification says, and `unpackWoff2` cuts the font at the end of its last table, so a value that
+ * claims too much is never trusted. A non-zero `reserved` field is only a note, as the specification says a decoder must
+ * not reject it.
  *
  * A file that would expand more than 100 times is refused, unless `allowHighRatio` is given: the re-read check of a file
  * this page has just made reads it that way, so it can say the plain sentence of its own, and sees `expansionExceeded`.
@@ -429,10 +431,19 @@ function engineFailure(err: unknown): FontInspectorError {
   );
 }
 
+/** The note for a WOFF2 file whose header states a larger font than its tables make. */
+export const OVERSTATED_SIZE_NOTE =
+  'The WOFF2 header states a larger font than its tables make; the bytes after the last table were left out.';
+
 /**
  * Unpacks a WOFF2 file into an sfnt with the engine the caller gives. The header and directory are checked first, so a
  * file that lies about its size never reaches the engine; whatever the engine returns is checked again (a size within the
  * cap and a font signature) before it is handed back. Every failure is a `FontInspectorError`.
+ *
+ * The header's `totalSfntSize` is for reference only (the WOFF2 specification says so, because the rebuilt glyf and loca
+ * tables may differ in size from the original) and the engine sizes its output from it, so a header that
+ * states more than the tables make leaves bytes after the last table. The font is cut where its last padded table ends,
+ * and the header's notes say so: the font handed back is never larger than its tables.
  */
 export async function unpackWoff2(
   bytes: Uint8Array,
@@ -451,6 +462,12 @@ export async function unpackWoff2(
   const signature = new ByteReader(out).u32(0);
   if (!SIGNATURES.has(signature)) {
     throw new FontInspectorError('This WOFF2 file did not unpack into a font.', 'File');
+  }
+  const end = sfntDataEnd(out);
+  if (end !== null && end < out.length) {
+    // A copy, so the engine's larger buffer is not kept alive by a view of it.
+    out = out.slice(0, end);
+    header.notes.push(OVERSTATED_SIZE_NOTE);
   }
   return { sfnt: out, header };
 }

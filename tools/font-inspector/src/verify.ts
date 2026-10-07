@@ -131,16 +131,20 @@ export async function verifyConversion(
     const before = readSfntFont(inputSfnt, 0, false);
     const after = readSfntFont(decoded, 0, false);
     report.tablesTotal = before.order.length;
-    if (kind === 'woff2') {
+    if (kind === 'woff2' || kind === 'sfnt') {
       // The unpacked font is exactly its directory and its padded tables. A header that states a larger size makes the
-      // decoder hand back zeros after the last table; one that states a smaller size cannot be unpacked at all.
+      // decoder hand back zeros after the last table; one that states a smaller size cannot be unpacked at all. A TrueType
+      // or OpenType output is held to the same end, so no step before this one can leave bytes after the last table.
       let end = 12 + 16 * after.order.length;
       for (const tag of after.order) {
         const entry = after.tables.get(tag)!;
-        end = Math.max(end, entry.offset + ((entry.length + 3) & ~3));
+        end = Math.max(end, entry.offset + Math.ceil(entry.length / 4) * 4);
       }
-      if (decoded.length !== end) {
+      if (kind === 'woff2' && decoded.length !== end) {
         report.problems.push('The converted WOFF2 file unpacks to more bytes than its tables hold.');
+      }
+      if (kind === 'sfnt' && decoded.length > end) {
+        report.problems.push('The converted font file has more bytes than its tables hold.');
       }
     }
     const sortedBefore = [...before.order].sort();

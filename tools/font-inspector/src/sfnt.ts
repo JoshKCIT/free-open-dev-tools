@@ -267,6 +267,44 @@ export function withChecksumAdjustment(sfnt: Uint8Array): Uint8Array {
   return out;
 }
 
+/**
+ * Where the data of a plain sfnt or a collection ends: the furthest end of its headers, its table directories and its
+ * tables (each padded to four bytes), over every font of a collection. Null when a header or directory cannot be read.
+ * Nothing after that point belongs to any table, so a font can be cut there without changing a table or a checksum.
+ */
+export function sfntDataEnd(bytes: Uint8Array): number | null {
+  if (bytes.length < 12) return null;
+  const r = new ByteReader(bytes);
+  const pad = (n: number): number => Math.ceil(n / 4) * 4;
+  let fonts: number[] = [0];
+  let end = 12;
+  if (r.u32(0) === SIG_TTCF) {
+    const count = r.u32(8);
+    if (count === 0 || count > MAX_COLLECTION_FONTS || !r.has(12, 4 * count)) return null;
+    fonts = [];
+    for (let i = 0; i < count; i++) fonts.push(r.u32(12 + 4 * i));
+    end = 12 + 4 * count;
+    // A version 2 header adds the tag, length and offset of a digital signature.
+    if (r.u32(4) === 0x00020000 && r.has(end, 12)) {
+      const dsigLength = r.u32(end + 4);
+      const dsigOffset = r.u32(end + 8);
+      end += 12;
+      if (dsigOffset !== 0) end = Math.max(end, dsigOffset + pad(dsigLength));
+    }
+  }
+  for (const at of fonts) {
+    if (!r.has(at, 12)) return null;
+    const count = r.u16(at + 4);
+    if (count > MAX_TABLES || !r.has(at + 12, 16 * count)) return null;
+    end = Math.max(end, at + 12 + 16 * count);
+    for (let i = 0; i < count; i++) {
+      const e = at + 12 + 16 * i;
+      end = Math.max(end, r.u32(e + 8) + pad(r.u32(e + 12)));
+    }
+  }
+  return end;
+}
+
 /** The bytes of a table that lies inside the file, or undefined. */
 export function tableBytes(bytes: Uint8Array, entry: TableEntry | undefined): Uint8Array | undefined {
   if (!entry || !entry.inFile) return undefined;
