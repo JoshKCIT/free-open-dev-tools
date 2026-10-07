@@ -1,6 +1,6 @@
 import { ByteReader } from './bytes';
 import { FontInspectorError } from './errors';
-import { MAX_CHARSTRING_STEPS, MAX_SUBR_DEPTH } from './limits';
+import { MAX_CHARSTRING_STEPS, MAX_GLYPH_POINTS, MAX_SUBR_DEPTH } from './limits';
 import { emptyDrawing, type Contour, type GlyphDrawing, type Pt } from './outline';
 import { tableBytes, type SfntFont } from './sfnt';
 import { CFF_STANDARD_STRINGS } from './standard-names';
@@ -117,8 +117,8 @@ class Stop extends Error {}
 
 /**
  * Opens the CFF table (Compact Font Format 1) for drawing. Type 2 charstrings are run by an interpreter that draws lines and
- * cubic curves, follows local and global subroutines to depth 10, and stops a glyph after 200,000 operations; whatever it
- * drew is kept and the drawing is flagged. Variable CFF2 outlines are not read.
+ * cubic curves, follows local and global subroutines to depth 10, and stops a glyph after 200,000 operations or 5,000
+ * lines and curves; whatever it drew is kept and the drawing is flagged. Variable CFF2 outlines are not read.
  */
 export function openCff(bytes: Uint8Array, font: SfntFont, numGlyphs: number): CffSource | null {
   const data = tableBytes(bytes, font.tables.get('CFF '));
@@ -296,7 +296,16 @@ export function openCff(bytes: Uint8Array, font: SfntFont, numGlyphs: number): C
       start = [x, y];
       current = [];
     };
+    // Every line and curve counts against the point cap, as the points of a TrueType glyph do: a glyph that passes it is
+    // drawn as far as it got and flagged, so a short subroutine called many times cannot build a huge outline.
+    const room = (): void => {
+      if (state.segments >= MAX_GLYPH_POINTS) {
+        state.truncated = true;
+        throw new Stop();
+      }
+    };
     const lineTo = (dx: number, dy: number): void => {
+      room();
       const contour = ensure();
       const from: Pt = [x, y];
       x += dx;
@@ -305,6 +314,7 @@ export function openCff(bytes: Uint8Array, font: SfntFont, numGlyphs: number): C
       state.segments++;
     };
     const curveTo = (a: number, b: number, c: number, d: number, e: number, f: number): void => {
+      room();
       const contour = ensure();
       const p0: Pt = [x, y];
       const p1: Pt = [x + a, y + b];
