@@ -20,10 +20,29 @@ export {
   withCommas,
 } from './limits';
 export { Cursor } from './cursor';
+export { readConstExpr } from './const-expr';
 export { SECTION_NAMES, readHeader, walkSections } from './sections';
 export type { Header, SectionInfo, SectionWalk } from './sections';
-export { Capped, readModule } from './module';
-export type { ExportRow, ExternKind, ImportRow, ModuleData } from './module';
+export { Capped, exportedFunctionNames, readModule } from './module';
+export type {
+  DataRow,
+  ElementRow,
+  ExportRow,
+  ExternKind,
+  GlobalRow,
+  ImportRow,
+  MemoryRow,
+  ModuleData,
+  TableRow,
+  TagRow,
+} from './module';
+export { readNameSection } from './names';
+export type { NameSubsection, NamesReport } from './names';
+export { readCustomSections } from './custom';
+export type { CustomKind, CustomReport, CustomRow, ProducerField, TargetFeature } from './custom';
+export { findStrings } from './strings';
+export type { StringItem, StringsReport } from './strings';
+export { FEATURE_ORDER, usedFeatures } from './features';
 export type { Limits, TypeKind, TypeRow } from './types';
 export { checkModuleSize, inspect } from './report';
-export type { Report, ReportKind } from './report';
+export type { FunctionRow, FunctionsReport, Report, ReportKind } from './report';

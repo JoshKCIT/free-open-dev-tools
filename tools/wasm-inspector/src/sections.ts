@@ -52,6 +52,8 @@ export interface SectionInfo {
   size: number;
   /** For a custom section, its name; empty for the others. */
   customName: string;
+  /** The offset of the first byte after the name of a custom section (the payload); the content offset for the others. */
+  payloadOffset: number;
 }
 
 export type Header =
@@ -108,6 +110,8 @@ export interface SectionWalk {
   sections: SectionInfo[];
   /** How many sections the file holds, those not kept included. */
   total: number;
+  /** How many of them are custom sections. */
+  customTotal: number;
 }
 
 /**
@@ -118,6 +122,7 @@ export interface SectionWalk {
 export function walkSections(bytes: Uint8Array, findings: FindingList): SectionWalk {
   const sections: SectionInfo[] = [];
   let total = 0;
+  let customTotal = 0;
   const seen = new Set<number>();
   let lastRank = 0;
   let pos = 8;
@@ -148,13 +153,18 @@ export function walkSections(bytes: Uint8Array, findings: FindingList): SectionW
       break;
     }
     total++;
+    if (id === 0) customTotal++;
     // Past MAX_ROWS sections only the first section of each kind is kept, so a file of empty sections stays small.
     const keep = sections.length < MAX_ROWS || (id !== 0 && !seen.has(id));
     let customName = '';
+    let payloadOffset = bodyOffset;
     if (id === 0) {
+      payloadOffset = bodyOffset + size;
       if (keep) {
         try {
-          customName = new Cursor(bytes, bodyOffset, bodyOffset + size).name(findings);
+          const reader = new Cursor(bytes, bodyOffset, bodyOffset + size);
+          customName = reader.name(findings);
+          payloadOffset = reader.pos;
         } catch (error) {
           if (!(error instanceof WasmInspectorError)) throw error;
           findings.add(error.offset ?? bodyOffset, error.message);
@@ -167,8 +177,9 @@ export function walkSections(bytes: Uint8Array, findings: FindingList): SectionW
       if (rank < lastRank) findings.add(start, `The ${SECTION_NAMES[id]} section is out of order.`);
       if (rank > lastRank) lastRank = rank;
     }
-    if (keep) sections.push({ id, name: SECTION_NAMES[id]!, offset: start, bodyOffset, size, customName });
+    if (keep)
+      sections.push({ id, name: SECTION_NAMES[id]!, offset: start, bodyOffset, size, customName, payloadOffset });
     pos = bodyOffset + size;
   }
-  return { sections, total };
+  return { sections, total, customTotal };
 }

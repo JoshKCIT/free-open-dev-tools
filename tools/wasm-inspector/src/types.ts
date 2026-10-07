@@ -154,7 +154,8 @@ function readSubtype(c: Cursor, index: number, group: string): TypeRow {
       if (i < MAX_SIGNATURE_PARTS) fields.push(field);
     }
     if (n > MAX_SIGNATURE_PARTS) fields.push(`and ${n - MAX_SIGNATURE_PARTS} more`);
-    return { index, kind: 'struct', text: `struct { ${fields.join(', ')} }`, supers, final, group };
+    const text = fields.length === 0 ? 'struct {}' : `struct { ${fields.join(', ')} }`;
+    return { index, kind: 'struct', text, supers, final, group };
   }
   if (form === 0x5e) {
     return { index, kind: 'array', text: `array { ${readFieldType(c)} }`, supers, final, group };
