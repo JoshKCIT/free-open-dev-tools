@@ -110,19 +110,26 @@ function firstHeader(rows: readonly HeaderRow[], lowerName: string): HeaderRow |
   return undefined;
 }
 
-/** The names a part gives, best first: filename* or filename of the disposition, then name of the type. */
+/**
+ * The names a part gives, best first: filename* then filename of the disposition, then name* then name of the type. The
+ * first is used and the rest are listed beside it.
+ */
 function nameCandidates(node: PartNode): { raw: string; others: string[] } {
   const found: string[] = [];
-  const add = (parsed: ParsedValue | null, name: string): void => {
+  const add = (parsed: ParsedValue | null, name: string, extended: boolean): void => {
     if (parsed === null) return;
-    const entry = findParam(parsed, name);
-    if (entry === undefined || entry.value === '') return;
-    // RFC 2047 words in a plain name are not allowed by the standard but are common, so they are read as a courtesy.
-    const value = entry.extended ? entry.value : decodeEncodedWords(entry.value).text;
-    if (!found.includes(value)) found.push(value);
+    for (const entry of parsed.params) {
+      if (entry.raw || entry.name !== name || entry.extended !== extended || entry.value === '') continue;
+      // RFC 2047 words in a plain name are not allowed by the standard but are common, so they are read as a courtesy.
+      const value = extended ? entry.value : decodeEncodedWords(entry.value).text;
+      if (!found.includes(value)) found.push(value);
+      return;
+    }
   };
-  add(node.dispositionParams, 'filename');
-  add(node.type, 'name');
+  add(node.dispositionParams, 'filename', true);
+  add(node.dispositionParams, 'filename', false);
+  add(node.type, 'name', true);
+  add(node.type, 'name', false);
   const raw = found[0] ?? '';
   return { raw, others: found.slice(1) };
 }
@@ -276,7 +283,7 @@ export async function analyzeMessage(bytes: Uint8Array): Promise<EmlAnalysis> {
     }
 
     let attachmentName = '';
-    if (node.container === 'leaf') partCount++;
+    if (node.container === 'leaf' && !(bodyEmpty && node === root)) partCount++;
 
     if (decodedBytes !== null) {
       const isBodyType = isTextBodyType(node.contentType);
@@ -371,7 +378,7 @@ export async function analyzeMessage(bytes: Uint8Array): Promise<EmlAnalysis> {
     htmlBody,
     cidParts,
     attachments,
-    partCount: bodyEmpty ? 0 : partCount,
+    partCount,
     notes,
   };
 }

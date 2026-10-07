@@ -73,6 +73,19 @@ function skipSpace(text: string, at: number): number {
   return i;
 }
 
+/** True when the white space at `at` is followed by `name=`: the next parameter, written with no semicolon before it. */
+function startsParameter(text: string, at: number): boolean {
+  let i = skipSpace(text, at);
+  const start = i;
+  while (i < text.length) {
+    const code = text.charCodeAt(i);
+    if (code === EQUALS) return i > start;
+    if (code === SEMICOLON || code === QUOTE || isWsp(code)) return false;
+    i++;
+  }
+  return false;
+}
+
 function hexDigit(code: number): number {
   if (code >= 0x30 && code <= 0x39) return code - 0x30;
   if (code >= 0x41 && code <= 0x46) return code - 0x41 + 10;
@@ -162,13 +175,14 @@ export function parseParameters(value: string): ParsedValue {
   const notes: string[] = [];
   const length = value.length;
 
-  // The primary value: up to the first semicolon that is not in a quoted string or a comment.
-  let i = 0;
+  // The primary value: up to the first semicolon or white space, comments left out. A media type or a disposition never
+  // holds white space, and senders do leave out the semicolon before the first parameter (RFC 2231 section 4.1 prints it so).
+  let i = skipSpace(value, 0);
   let primary = '';
-  let segmentStart = 0;
+  let segmentStart = i;
   while (i < length) {
     const code = value.charCodeAt(i);
-    if (code === SEMICOLON) break;
+    if (code === SEMICOLON || isWsp(code)) break;
     if (code === OPEN) {
       primary += value.slice(segmentStart, i);
       i = skipComment(value, i);
@@ -182,12 +196,11 @@ export function parseParameters(value: string): ParsedValue {
   let count = 0;
 
   while (i < length) {
-    // At a semicolon (or the end): read the next name.
-    i = skipSpace(value, i + 1);
+    // At a semicolon, white space or the end: read the next name.
+    if (value.charCodeAt(i) === SEMICOLON) i++;
+    i = skipSpace(value, i);
     if (i >= length) break;
-    if (value.charCodeAt(i) === SEMICOLON) {
-      continue;
-    }
+    if (value.charCodeAt(i) === SEMICOLON) continue;
     const nameStart = i;
     while (i < length && value.charCodeAt(i) !== EQUALS && value.charCodeAt(i) !== SEMICOLON) i++;
     if (i >= length || value.charCodeAt(i) === SEMICOLON) {
@@ -202,7 +215,10 @@ export function parseParameters(value: string): ParsedValue {
       const parts: string[] = [];
       let start = i;
       while (i < length && value.charCodeAt(i) !== QUOTE) {
-        if (value.charCodeAt(i) === BACKSLASH && i + 1 < length) {
+        // Only a backslash before a quote or another backslash quotes it; any other backslash is kept, because senders
+        // that write a Windows path in a quoted name do not escape its backslashes.
+        const next = i + 1 < length ? value.charCodeAt(i + 1) : 0;
+        if (value.charCodeAt(i) === BACKSLASH && (next === QUOTE || next === BACKSLASH)) {
           parts.push(value.slice(start, i));
           start = i + 1;
           i += 2;
@@ -211,11 +227,14 @@ export function parseParameters(value: string): ParsedValue {
       parts.push(value.slice(start, Math.min(i, length)));
       text = parts.join('');
       if (i < length) i++;
-      // Anything between the closing quote and the next semicolon (such as a comment) is not part of the value.
-      while (i < length && value.charCodeAt(i) !== SEMICOLON) i++;
+      // After the closing quote comes a semicolon, or the next parameter when the semicolon was left out.
+      i = skipSpace(value, i);
     } else {
       const start = i;
-      while (i < length && value.charCodeAt(i) !== SEMICOLON) i++;
+      while (i < length && value.charCodeAt(i) !== SEMICOLON) {
+        if (isWsp(value.charCodeAt(i)) && startsParameter(value, i)) break;
+        i++;
+      }
       text = trimWsp(value.slice(start, i));
     }
     if (written === '') continue;

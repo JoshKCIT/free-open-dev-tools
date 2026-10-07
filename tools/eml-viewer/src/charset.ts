@@ -13,6 +13,34 @@ export interface DecodedText {
 
 const BACKSLASH = String.fromCharCode(92);
 
+/**
+ * What the WHATWG windows-1252 table puts at the bytes 0x80 to 0x9F, as code points, in byte order. Browsers give these
+ * from the decoder; some runtimes hand back the control character with the same number instead (the ISO 8859-1 reading),
+ * so the characters in that range are mapped here and the result is the same everywhere. The five bytes the table leaves
+ * undefined (0x81, 0x8D, 0x8F, 0x90, 0x9D) map to the control character with their own number, as the table says.
+ */
+const WINDOWS_1252_HIGH: readonly number[] = [
+  0x20ac, 0x0081, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008d,
+  0x017d, 0x008f, 0x0090, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a,
+  0x0153, 0x009d, 0x017e, 0x0178,
+];
+
+function mapWindows1252(text: string): string {
+  let out = '';
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code >= 0x80 && code <= 0x9f) {
+      const mapped = WINDOWS_1252_HIGH[code - 0x80] ?? code;
+      if (mapped !== code) {
+        out += text.slice(from, i) + String.fromCharCode(mapped);
+        from = i + 1;
+      }
+    }
+  }
+  return from === 0 ? text : out + text.slice(from);
+}
+
 /** The label as written, without quotes, spaces or an RFC 2231 language suffix. */
 export function cleanLabel(label: string): string {
   let text = label.trim();
@@ -57,7 +85,13 @@ export function decodeBytes(bytes: Uint8Array, label: string, escapeLimit: numbe
   try {
     const decoder = new TextDecoder(wanted, { fatal: false });
     if (decoder.encoding !== 'replacement') {
-      return { text: decoder.decode(bytes), label: cleaned, known: true, cut: false };
+      const text = decoder.decode(bytes);
+      return {
+        text: decoder.encoding === 'windows-1252' ? mapWindows1252(text) : text,
+        label: cleaned,
+        known: true,
+        cut: false,
+      };
     }
   } catch {
     // A RangeError for a label the decoder does not know: fall through to the escaped form.

@@ -120,10 +120,22 @@ function utf8Length(text: string): number {
  * by the next of their kind, and reads a self-closing slash as closing.
  */
 export function scanHtml(html: string): { ok: true } | { ok: false; reason: string } {
+  const result = scan(html);
+  return result.ok ? { ok: true } : result;
+}
+
+interface ScanPassed {
+  ok: true;
+  /** Where the < of each base start tag is. */
+  baseAt: number[];
+}
+
+function scan(html: string): ScanPassed | { ok: false; reason: string } {
   if (utf8Length(html) > MAX_HTML_PREVIEW_BYTES) {
     return { ok: false, reason: 'The HTML body is larger than 1 MiB, so it is shown as text and not rendered.' };
   }
   const open: string[] = [];
+  const baseAt: number[] = [];
   let tags = 0;
   let at = html.indexOf('<');
   while (at !== -1) {
@@ -150,6 +162,7 @@ export function scanHtml(html: string): { ok: true } | { ok: false; reason: stri
       let end = at + 1;
       while (end < html.length && isNameCode(html.charCodeAt(end))) end++;
       const name = html.slice(at + 1, end).toLowerCase();
+      if (name === 'base') baseAt.push(at);
       const closes = IMPLIED_CLOSE.get(name);
       if (closes !== undefined) {
         while (open.length > 0 && closes.includes(open[open.length - 1] ?? '')) open.pop();
@@ -169,7 +182,25 @@ export function scanHtml(html: string): { ok: true } | { ok: false; reason: stri
     }
     at = html.indexOf('<', at + 1);
   }
-  return { ok: true };
+  return { ok: true, baseAt };
+}
+
+/**
+ * The markup with every base start tag renamed (<base becomes <x-base). The page's own policy forbids a base address, and a
+ * parser made by the page reports the attempt as a policy violation even though nothing happens, so no parser may be given
+ * a base element. The renamed element is an unknown element: it does nothing, its address is still read as text, and the
+ * sanitiser drops it.
+ */
+function renameBase(html: string, at: readonly number[]): string {
+  if (at.length === 0) return html;
+  const parts: string[] = [];
+  let from = 0;
+  for (const position of at) {
+    parts.push(html.slice(from, position + 1), 'x-');
+    from = position + 1;
+  }
+  parts.push(html.slice(from));
+  return parts.join('');
 }
 
 // ---- Addresses ----------------------------------------------------------------------------------------------------
@@ -474,8 +505,9 @@ function textHost(text: string): string {
  * `win` is the caller's window: this file touches no DOM global of its own.
  */
 export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart[] = []): PreviewResult {
-  const scan = scanHtml(html);
-  if (!scan.ok) return { status: 'skipped', reason: scan.reason, blocked: [], links: [], notes: [], omitted: 0 };
+  const scanned = scan(html);
+  if (!scanned.ok) return { status: 'skipped', reason: scanned.reason, blocked: [], links: [], notes: [], omitted: 0 };
+  const markup = renameBase(html, scanned.baseAt);
 
   const references = new Map<string, BlockedReference>();
   let omitted = 0;
@@ -497,7 +529,7 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
 
   // Step 2: the inert parse. A document made by a parser never loads or runs anything.
   const parser = new (win as unknown as DomParserWindow).DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = parser.parseFromString(markup, 'text/html');
   const idMap = new Map<string, CidPart>();
   for (const part of cid) if (!idMap.has(part.id)) idMap.set(part.id, part);
   let cidTotal = 0;
@@ -540,7 +572,7 @@ export function previewHtml(html: string, win: WindowLike, cid: readonly CidPart
     const href = el.getAttribute('href') ?? el.getAttribute('xlink:href');
     if (href !== null && href.trim() !== '') {
       if (tag === 'link') record('link element', 'link href', href);
-      else if (tag === 'base') record('base address', 'base href', href);
+      else if (tag === 'base' || tag === 'x-base') record('base address', 'base href', href);
       else if (tag === 'a') {
         const lower = asciiLower(href.trim());
         if (lower.startsWith('javascript:') || lower.startsWith('vbscript:') || lower.startsWith('data:')) {
