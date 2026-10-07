@@ -202,8 +202,8 @@ it('Received, address, Authentication-Results, DKIM and ARC names such as __prot
   expect(arc.sets).toHaveLength(1);
   expect(arc.sets[0]?.seal).toMatchObject({ cv: '__proto__', domain: 'constructor', selector: 'toString' });
 
-  const dkim = parseDkimSignature('__proto__=1; constructor=2; toString=3; hasOwnProperty=4');
-  expect(dkim.tags.map((r) => r.tag)).toEqual(['__proto__', 'constructor', 'toString', 'hasOwnProperty']);
+  const dkim = parseDkimSignature('constructor=2; toString=3; hasOwnProperty=4; valueOf=5');
+  expect(dkim.tags.map((r) => r.tag)).toEqual(['constructor', 'toString', 'hasOwnProperty', 'valueOf']);
 
   const analysis = await analyzeMessage(
     build(

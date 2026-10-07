@@ -162,11 +162,12 @@ it('DKIM-Signature tags are read and checked against RFC 6376 rules', () => {
     if (found === undefined) throw new Error(`no row for ${tag}`);
     return found;
   };
-  // 1117574938 seconds after the epoch, worked out here by hand: 2005-05-31 21:48:58 UTC.
-  expect(Date.UTC(2005, 4, 31, 21, 48, 58) / 1000).toBe(1117574938);
+  // 1117574938 seconds after the epoch is 2005-05-31 21:28:58 UTC, and x is five days (432,000 seconds) after it.
+  expect(Date.UTC(2005, 4, 31, 21, 28, 58) / 1000).toBe(1117574938);
+  expect(Date.UTC(2005, 5, 5, 21, 28, 58) / 1000).toBe(1118006938);
   expect(row('t').value).toBe('1117574938');
-  expect(row('t').note).toContain('2005-05-31 21:48:58 UTC');
-  expect(row('x').note).toContain('2005-06-05 21:48:58 UTC');
+  expect(row('t').note).toContain('2005-05-31 21:28:58 UTC');
+  expect(row('x').note).toContain('2005-06-05 21:28:58 UTC');
   // z is dkim-quoted-printable with white space removed before decoding: the =20 sequences are spaces.
   expect(row('z').note).toContain('Subject:demo run');
   expect(row('z').note).toContain('Date:July 5, 2005 3:44:08 PM -0700');
@@ -269,16 +270,24 @@ it('DKIM-Signature tags are read and checked against RFC 6376 rules', () => {
   for (const text of everything) expect(text).not.toMatch(/verif|trust|safe|authentic|genuine/i);
 
   // Header and tag names that could be keys of a plain object are plain names.
-  const proto = parseDkimSignature(`${base}; __proto__=x; constructor=y; toString=z; __proto__=w`);
+  // A tag repeated under one of those names is found by the Map that counts them; the same names once are plain unknown tags.
+  const proto = parseDkimSignature(`${base}; constructor=x; toString=y; constructor=w`);
   expect(proto.wellFormed).toBe(false);
-  const protoOnce = parseDkimSignature(`${base}; __proto__=x; constructor=y; toString=z`);
+  expect(proto.issues.join(' ')).toContain('The tag constructor appears more than once');
+  const protoOnce = parseDkimSignature(`${base}; constructor=x; toString=y; hasOwnProperty=z; valueOf=w`);
   expect(protoOnce.wellFormed).toBe(true);
+  expect(protoOnce.issues).toEqual([]);
   expect(protoOnce.tags.map((r) => r.tag)).toEqual([
     ...'v a d s h bh b'.split(' '),
-    '__proto__',
     'constructor',
     'toString',
+    'hasOwnProperty',
+    'valueOf',
   ]);
+  // RFC 6376 section 3.2: a tag name starts with a letter, so __proto__ is not a tag name and the list is not well formed.
+  const dunder = parseDkimSignature(`${base}; __proto__=x`);
+  expect(dunder.wellFormed).toBe(false);
+  expect(dunder.tags.map((r) => r.tag)).not.toContain('__proto__');
   expect(({} as Record<string, unknown>)['x']).toBeUndefined();
   expect(Object.keys(Object.prototype)).toEqual([]);
 });

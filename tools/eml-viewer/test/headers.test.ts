@@ -288,3 +288,75 @@ it('a negative delay is shown as a clock note, not an error', async () => {
   expect(missing.hops.map((hop) => hop.delay)).toEqual(['', '']);
   expect(missing.hops[0]?.note).toContain('no date');
 });
+
+it('observations name what differs and never call a message safe or unsafe', async () => {
+  // A message with a different Return-Path domain, a Reply-To elsewhere, two Subject lines, no Message-ID, a DKIM signature
+  // that leaves From out of h, and a Date three days after the oldest Received line.
+  const analysis = await analyzeMessage(
+    build(
+      [
+        'Return-Path: <bounce@mailer.example.net>',
+        'Received: from a.example by b.example; Tue, 06 Oct 2026 10:00:00 +0000',
+        'DKIM-Signature: v=1; a=rsa-sha256; d=example.com; s=sel1; h=to:subject; bh=AA==; b=AA==',
+        'From: Jo <jo@example.com>',
+        'Reply-To: Jo Elsewhere <jo@elsewhere.example>',
+        'To: Alice <alice@example.org>',
+        'Subject: one',
+        'Subject: two',
+        'Date: Fri, 09 Oct 2026 10:00:00 +0000',
+      ],
+      'Hello.',
+    ),
+  );
+  const text = analysis.observations.join('\n');
+  expect(text).toContain(
+    'The From address is at example.com and the Return-Path address is at mailer.example.net: the domains differ.',
+  );
+  expect(text).toContain('Reply-To names jo@elsewhere.example, which is not the From address');
+  expect(text).toContain('The message has no Message-ID header.');
+  expect(text).toContain('The Subject header appears 2 times, and RFC 5322 section 3.6 allows it once.');
+  expect(text).toContain('does not list From in h=');
+  expect(text).toContain('state times about 72 hours apart, more than 24 hours');
+  expect(text).not.toContain('The message has no Date header.');
+  // Never a verdict, and never a word that says a claim was checked.
+  expect(text).not.toMatch(/\b(safe|unsafe|trusted|verified|forged|fake|spoof\w*|phish\w*|genuine|authentic)\b/i);
+
+  // A plain message gives nothing to look at, and the checks are about the headers, so a missing Date is one observation.
+  const plain = await analyzeMessage(
+    build(
+      [
+        'From: Jo <jo@example.com>',
+        'Return-Path: <jo@example.com>',
+        'Reply-To: Jo <JO@example.com>',
+        'Message-ID: <m@example.com>',
+        'Date: Tue, 06 Oct 2026 10:00:00 +0000',
+      ],
+      'Hello.',
+    ),
+  );
+  expect(plain.observations).toEqual([]);
+  const noDate = await analyzeMessage(build(['From: Jo <jo@example.com>', 'Message-ID: <m@example.com>'], 'Hello.'));
+  expect(noDate.observations).toEqual(['The message has no Date header.']);
+
+  // A Date within 24 hours of the oldest hop is not remarked on, and one 24 hours and a second away is.
+  const near = async (offsetSeconds: number): Promise<string[]> => {
+    const date = new Date(Date.UTC(2026, 9, 6, 10, 0, 0) + offsetSeconds * 1000);
+    const two = (n: number): string => String(n).padStart(2, '0');
+    const stated = `${date.getUTCDate()} Oct 2026 ${two(date.getUTCHours())}:${two(date.getUTCMinutes())}:${two(date.getUTCSeconds())} +0000`;
+    const result = await analyzeMessage(
+      build(
+        [
+          'Received: from a.example by b.example; 6 Oct 2026 10:00:00 +0000',
+          'From: Jo <jo@example.com>',
+          'Message-ID: <m@example.com>',
+          `Date: ${stated}`,
+        ],
+        'x',
+      ),
+    );
+    return result.observations;
+  };
+  expect(await near(86_400)).toEqual([]);
+  expect((await near(86_401)).join(' ')).toContain('more than 24 hours');
+  expect((await near(-86_401)).join(' ')).toContain('more than 24 hours');
+});

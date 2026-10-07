@@ -62,7 +62,51 @@ interface KnownDifference {
   why: string;
 }
 
-const KNOWN_DIFFERENCES: KnownDifference[] = [];
+/**
+ * Every difference between the tool and Python on the corpus. All five are in the text of an address header: Python builds
+ * that text again from the addresses it parsed (comments dropped, a space after each comma and after a group colon, a
+ * display name with a dot quoted again), while the tool shows the header as it was written, with its folds taken out and its
+ * encoded words decoded. In every one of these messages the mailbox lists of the two sides are equal (they are compared
+ * above and no difference is reported), so the same addresses and names are read; only the text around them differs. Parts,
+ * file names, character sets, sizes, SHA-256 digests and the first text body agree on all 20 messages.
+ */
+const KNOWN_DIFFERENCES: KnownDifference[] = [
+  {
+    message: 'rfc5322-a1-3-groups',
+    field: 'to',
+    tool: 'A Group:Ed Jones <c@a.test>,joe@where.test,John <jdoe@one.test>;',
+    python: 'A Group: Ed Jones <c@a.test>, joe@where.test, John <jdoe@one.test>;',
+    why: 'Python writes the group again with a space after the colon and after each comma; the tool shows the header as written (RFC 5322 Appendix A.1.3), and both read the same three mailboxes.',
+  },
+  {
+    message: 'rfc5322-a5-oddities',
+    field: 'from',
+    tool: 'Pete(A nice \\) chap) <pete(his account)@silly.test(his host)>',
+    python: 'Pete <pete@silly.test>',
+    why: 'The header holds three comments (RFC 5322 Appendix A.5). Python drops comments when it renders an address header; the tool keeps the text as written, and both read the mailbox Pete at pete@silly.test.',
+  },
+  {
+    message: 'rfc5322-a5-oddities',
+    field: 'to',
+    tool: "A Group(Some people)     :Chris Jones <c@(Chris's host.)public.example>,         joe@example.org,  John <jdoe@one.test> (my dear friend); (the end of the group)",
+    python: 'A Group: Chris Jones <c@public.example>, joe@example.org, John <jdoe@one.test>;',
+    why: 'The header holds comments and folding white space inside a group (RFC 5322 Appendix A.5). Python renders the group without them; the tool keeps the text as written, and both read the same three mailboxes.',
+  },
+  {
+    message: 'rfc5322-a6-1-obsolete-addresses',
+    field: 'from',
+    tool: 'Joe Q. Public <john.q.public@example.com>',
+    python: '"Joe Q. Public" <john.q.public@example.com>',
+    why: 'RFC 5322 Appendix A.6.1 writes the display name without quotes, which is the obsolete form. Python quotes it again because it holds a dot; the tool shows the text as written, and both read the same name and address.',
+  },
+  {
+    message: 'rfc5322-a6-1-obsolete-addresses',
+    field: 'to',
+    tool: 'Mary Smith <@node.test:mary@example.net>, , jdoe@test  . example',
+    python: 'Mary Smith <mary@example.net>, jdoe@test.example',
+    why: 'The header uses an obsolete route, an empty element and spaces around a dot (RFC 5322 Appendix A.6.1). Python renders the cleaned addresses; the tool shows the text as written, and both read the same two mailboxes.',
+  },
+];
 
 /** Collects the parts of a message the way record.py numbers them. */
 function toolParts(bytes: Uint8Array, rawNames: Map<string, string>): PythonPart[] {
