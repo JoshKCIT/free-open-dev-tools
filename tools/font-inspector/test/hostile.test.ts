@@ -11,6 +11,7 @@ import {
   readCmap,
   readContainer,
   readNameTable,
+  readSfntFont,
   unwrapWoff1,
   visible,
 } from '../src/index';
@@ -444,6 +445,100 @@ it('every reader stays linear on hostile input', () => {
     60,
   );
 });
+
+/** A TrueType file of `size` bytes whose directory lists `count` tables that each cover everything after the directory. */
+function overlappingFont(size: number, count: number, sameTag = false): Uint8Array {
+  const bytes = new Uint8Array(size);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x00010000);
+  view.setUint16(4, count);
+  const start = 12 + 16 * count;
+  for (let i = 0; i < count; i++) {
+    const e = 12 + 16 * i;
+    bytes.set(ascii(sameTag ? 'zzzz' : `x${String(i).padStart(3, '0')}`), e);
+    view.setUint32(e + 8, start);
+    view.setUint32(e + 12, size - start);
+  }
+  for (let i = start; i < size; i++) bytes[i] = (i * 7) & 0xff;
+  return bytes;
+}
+
+/** The median time of five calls, after one warm-up call. */
+function medianTime(fn: () => unknown): number {
+  fn();
+  const times: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const started = performance.now();
+    fn();
+    times.push(performance.now() - started);
+  }
+  return times.sort((a, b) => a - b)[2]!;
+}
+
+/** How many times longer `slow` takes than `fast`; over the limit it is measured twice more and the median of three is judged. */
+function timesLonger(slow: () => unknown, fast: () => unknown, limit: number): number {
+  const once = (): number => medianTime(slow) / Math.max(medianTime(fast), 0.0005);
+  const first = once();
+  if (first <= limit) return first;
+  return [first, once(), once()].sort((a, b) => a - b)[1]!;
+}
+
+it('table checksums cost about one pass of the file however many directory entries overlap', () => {
+  // 512 entries that all cover the whole file after the directory, against the same file with one such entry. Reading the
+  // directory sums at most twice the file in all, so the many entries cost about what the one does.
+  const size = 1 << 20;
+  const many = overlappingFont(size, 512);
+  const repeated = overlappingFont(size, 512, true);
+  const one = overlappingFont(size, 1);
+  expect(
+    timesLonger(
+      () => readSfntFont(many, 0, false),
+      () => readSfntFont(one, 0, false),
+      4,
+    ),
+  ).toBeLessThanOrEqual(4);
+  expect(
+    timesLonger(
+      () => readSfntFont(repeated, 0, false),
+      () => readSfntFont(one, 0, false),
+      4,
+    ),
+  ).toBeLessThanOrEqual(4);
+  expect(
+    timesLonger(
+      () => inspectFont(many, {}),
+      () => inspectFont(one, {}),
+      4,
+    ),
+  ).toBeLessThanOrEqual(4);
+
+  // The tables past the budget are listed with their checksum not checked, and a note says how many.
+  const font = readSfntFont(many, 0, false);
+  const rows = font.order.map((tag) => font.tables.get(tag)!);
+  expect(rows).toHaveLength(512);
+  expect(rows.filter((t) => t.checksumOk !== null)).toHaveLength(2);
+  expect(rows.filter((t) => t.checksumOk === null)).toHaveLength(510);
+  expect(font.notes.join(' ')).toContain('the checksums of 510 tables were not checked');
+  // A repeated tag is skipped before anything is summed: one table read, one note.
+  const once = readSfntFont(repeated, 0, false);
+  expect(once.order).toEqual(['zzzz']);
+  expect(once.notes.join(' ')).toContain('511 repeated table tags');
+  // The one-entry twin is checked in full.
+  expect(readSfntFont(one, 0, false).tables.get('x000')!.checksumOk).not.toBeNull();
+
+  // As the file and its entry count grow together, the work grows with the file, not with their product.
+  const built = new Map<string, Uint8Array>();
+  linear(
+    'overlapping tables',
+    (key) => readSfntFont(built.get(key)!, 0, false),
+    (n) => {
+      const key = String(n);
+      if (!built.has(key)) built.set(key, overlappingFont(n * 32_768, n));
+      return key;
+    },
+    16,
+  );
+}, 120_000);
 
 it('a cmap that claims more groups than the cap or than its bytes allow is refused before any array is sized', () => {
   expect(MAX_CMAP_GROUPS).toBe(200_000);
