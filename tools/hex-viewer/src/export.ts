@@ -3,25 +3,31 @@
  * repository, blob 9b1ca6ea5555df413546e48126d75ab91e1c8393, lines 971 and 1079 to 1135): 12 bytes a line, two spaces
  * before the first byte of a line, a comma and a space inside a line, a comma at the end of every line but the last, a
  * length variable after the array, and a variable name in which every UTF-8 byte that is not an ASCII letter or digit
- * is an underscore. Everything here is pure: bytes in, text out, one pass, nothing read or written elsewhere.
+ * is an underscore. The Rust, Go, Python and JavaScript forms are conventional ones, not the output of any program.
+ * Everything here is pure: bytes in, text out, one pass, nothing read or written elsewhere.
  */
 
 // index.ts re-exports this file and this file throws index.ts's error class. The class is only used when a function
 // runs, long after both modules have been evaluated, so the cycle is harmless.
 import { HexViewerError } from './index';
 
+export type ExportLanguage = 'c' | 'rust' | 'go' | 'python' | 'javascript';
+
 /** One language the export can write, with the label the page shows and the extension of the saved file. */
 export interface ExportLanguageInfo {
-  readonly id: 'c';
+  readonly id: ExportLanguage;
   readonly label: string;
+  /** The extension of the saved file, without the dot. */
   readonly extension: string;
 }
 
 export const EXPORT_LANGUAGES: readonly ExportLanguageInfo[] = [
   { id: 'c', label: 'C or C++ (xxd -i form)', extension: 'h' },
+  { id: 'rust', label: 'Rust', extension: 'rs' },
+  { id: 'go', label: 'Go', extension: 'go' },
+  { id: 'python', label: 'Python', extension: 'py' },
+  { id: 'javascript', label: 'JavaScript', extension: 'js' },
 ];
-
-export type ExportLanguage = ExportLanguageInfo['id'];
 
 /** Most bytes one export writes: 4 MiB, which is about 25 MB of C text. */
 export const MAX_EXPORT_BYTES = 4_194_304;
@@ -64,6 +70,28 @@ export interface ExportResult {
 const HEX = Array.from({ length: 256 }, (_, value) => value.toString(16).padStart(2, '0'));
 const HEX_UPPER = HEX.map((digits) => digits.toUpperCase());
 
+// Reserved words, read on 2026-10-07. A cleaned name equal to one of them gets a trailing underscore.
+// Go: the 25 keywords of go.dev/ref/spec ("The following keywords are reserved"), and init, which Go refuses as anything
+// but a function at package level.
+const GO_RESERVED = new Set(
+  'break default func interface select case defer go map struct chan else goto package switch const fallthrough if range type continue for import return var init'.split(
+    ' ',
+  ),
+);
+// Python 3.14.3: keyword.kwlist (35 words). The soft keywords _, case, match and type are legal names and stay.
+const PYTHON_RESERVED = new Set(
+  'False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(
+    ' ',
+  ),
+);
+// JavaScript: ReservedWord (ECMA-262 section 12.7.2: await is reserved in modules and yield in generators and strict
+// code), the strict mode words of section 13.1.1, and arguments and eval, which a strict binding refuses.
+const JAVASCRIPT_RESERVED = new Set(
+  'await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield implements interface let package private protected public static arguments eval'.split(
+    ' ',
+  ),
+);
+
 const isLetterOrDigit = (byte: number): boolean =>
   (byte >= 48 && byte <= 57) || (byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122);
 
@@ -84,11 +112,36 @@ function underscored(rawName: string): { text: string; startsWithDigit: boolean 
   return { text, startsWithDigit: bytes.length > 0 && bytes[0]! >= 48 && bytes[0]! <= 57 };
 }
 
-/** The legal variable name for a language: the C rule is xxd's, and an empty result becomes data. */
+/**
+ * The legal variable name for a language. C is the xxd rule (two underscores before a leading digit). Go, Python and
+ * JavaScript put one underscore before a leading digit and add one after a reserved word. Rust makes a constant, which
+ * is upper case. An empty name, and for Go and Rust a name that is only the blank underscore, becomes data.
+ */
 export function cleanIdentifier(language: ExportLanguage, rawName: string): string {
   const { text, startsWithDigit } = underscored(rawName);
-  if (language === 'c') return text === '' ? 'data' : (startsWithDigit ? '__' : '') + text;
-  return text === '' ? 'data' : text;
+  switch (language) {
+    case 'c':
+      return text === '' ? 'data' : (startsWithDigit ? '__' : '') + text;
+    case 'rust': {
+      const name = (startsWithDigit ? '_' : '') + text.toUpperCase();
+      return name === '' || name === '_' ? 'DATA' : name;
+    }
+    case 'go': {
+      const name = (startsWithDigit ? '_' : '') + text;
+      if (name === '' || name === '_') return 'data';
+      return GO_RESERVED.has(name) ? `${name}_` : name;
+    }
+    case 'python': {
+      const name = (startsWithDigit ? '_' : '') + text;
+      if (name === '') return 'data';
+      return PYTHON_RESERVED.has(name) ? `${name}_` : name;
+    }
+    case 'javascript': {
+      const name = (startsWithDigit ? '_' : '') + text;
+      if (name === '') return 'data';
+      return JAVASCRIPT_RESERVED.has(name) ? `${name}_` : name;
+    }
+  }
 }
 
 /**
@@ -99,9 +152,7 @@ export function exportRange(size: number, from: number, length?: number): { star
   if (!Number.isInteger(from) || from < 0 || from > MAX_POSITION) {
     throw new HexViewerError(
       `Export from byte must be a whole number from 0 to ${MAX_POSITION.toLocaleString('en-US')}.`,
-      {
-        field: 'Export from byte',
-      },
+      { field: 'Export from byte' },
     );
   }
   if (length !== undefined && (!Number.isInteger(length) || length < 0 || length > MAX_POSITION)) {
@@ -131,14 +182,25 @@ function checkOptions(bytes: Uint8Array, perLine: number): void {
   }
 }
 
-/** The rows of bytes: `prefix` before each byte, `indent` before each row, a comma ends every row but the last. */
-function rowsOf(bytes: Uint8Array, perLine: number, indent: string, prefix: string, digits: string[]): string[] {
+/**
+ * The rows of bytes: `prefix` before each byte, `indent` before each row. A comma follows every row but the last, and
+ * also the last when `closing` is set (a trailing comma is allowed and customary in Rust, Go, Python and JavaScript, and
+ * a C initialiser written by xxd -i has none).
+ */
+function rowsOf(
+  bytes: Uint8Array,
+  perLine: number,
+  indent: string,
+  prefix: string,
+  digits: string[],
+  closing: boolean,
+): string[] {
   const rows: string[] = [];
   for (let from = 0; from < bytes.length; from += perLine) {
     const to = Math.min(from + perLine, bytes.length);
     let row = indent;
     for (let at = from; at < to; at++) row += (at > from ? ', ' : '') + prefix + digits[bytes[at]!]!;
-    rows.push(to < bytes.length ? row + ',' : row);
+    rows.push(to < bytes.length || closing ? row + ',' : row);
   }
   return rows;
 }
@@ -146,16 +208,46 @@ function rowsOf(bytes: Uint8Array, perLine: number, indent: string, prefix: stri
 /** The bytes as an array in one of the languages, with the cleaned name, in one pass over the bytes. */
 export function exportCodeArray(bytes: Uint8Array, options: ExportOptions): ExportResult {
   checkOptions(bytes, options.perLine);
-  const language = EXPORT_LANGUAGES.find((info) => info.id === options.language);
-  if (language === undefined) throw new HexViewerError('Export: that language is not offered.', { field: 'Export' });
+  const info = EXPORT_LANGUAGES.find((item) => item.id === options.language);
+  if (info === undefined) throw new HexViewerError('Export: that language is not offered.', { field: 'Export' });
 
-  const base = cleanIdentifier(language.id, options.name);
-  const identifier = options.capital === true ? base.toUpperCase() : base;
-  const rows = rowsOf(bytes, options.perLine, '  ', options.upper ? '0X' : '0x', options.upper ? HEX_UPPER : HEX);
-  const lengthName = `${identifier}_${options.capital === true ? 'LEN' : 'len'}`;
-  const text =
-    `unsigned char ${identifier}[] = {\n` +
-    (rows.length > 0 ? `${rows.join('\n')}\n` : '') +
-    `};\nunsigned int ${lengthName} = ${bytes.length};\n`;
-  return { text, identifier, extension: language.extension, bytes: bytes.length, lines: rows.length };
+  const language = info.id;
+  const base = cleanIdentifier(language, options.name);
+  const capital = language === 'c' && options.capital === true;
+  const identifier = capital ? base.toUpperCase() : base;
+  const digits = options.upper ? HEX_UPPER : HEX;
+  const count = bytes.length;
+  const make = (indent: string, prefix: string, closing: boolean): string[] =>
+    rowsOf(bytes, options.perLine, indent, prefix, digits, closing);
+
+  let rows: string[];
+  let text: string;
+  if (language === 'c') {
+    // The xxd -i form: the prefix turns 0X with -u, the array has no closing comma, and the length follows it.
+    rows = make('  ', options.upper ? '0X' : '0x', false);
+    const lengthName = `${identifier}_${capital ? 'LEN' : 'len'}`;
+    text =
+      `unsigned char ${identifier}[] = {\n` +
+      (count > 0 ? `${rows.join('\n')}\n` : '') +
+      `};\nunsigned int ${lengthName} = ${count};\n`;
+  } else if (language === 'rust') {
+    rows = make('    ', '0x', true);
+    text =
+      count === 0
+        ? `pub const ${identifier}: [u8; 0] = [];\n`
+        : `pub const ${identifier}: [u8; ${count}] = [\n${rows.join('\n')}\n];\n`;
+  } else if (language === 'go') {
+    rows = make('\t', '0x', true);
+    text = count === 0 ? `var ${identifier} = []byte{}\n` : `var ${identifier} = []byte{\n${rows.join('\n')}\n}\n`;
+  } else if (language === 'python') {
+    rows = make('    ', '0x', true);
+    text = count === 0 ? `${identifier} = bytes([])\n` : `${identifier} = bytes([\n${rows.join('\n')}\n])\n`;
+  } else {
+    rows = make('  ', '0x', true);
+    text =
+      count === 0
+        ? `const ${identifier} = new Uint8Array([]);\n`
+        : `const ${identifier} = new Uint8Array([\n${rows.join('\n')}\n]);\n`;
+  }
+  return { text, identifier, extension: info.extension, bytes: count, lines: rows.length };
 }

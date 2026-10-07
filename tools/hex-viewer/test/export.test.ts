@@ -354,6 +354,8 @@ it('Rust, Go, Python and JavaScript names are cleaned, a reserved word gets a tr
     expect(cleanIdentifier('python', word)).toBe(word);
   }
   expect(cleanIdentifier('javascript', 'async')).toBe('async');
+  // Go also refuses init as anything but a function at package level, so it gets the underscore too.
+  expect(cleanIdentifier('go', 'init')).toBe('init_');
   expect(cleanIdentifier('go', 'string')).toBe('string');
   expect(cleanIdentifier('go', 'Func')).toBe('Func');
 

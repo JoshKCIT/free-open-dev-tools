@@ -1,0 +1,66 @@
+{
+  "recordedAt": "2026-10-07",
+  "python": "3.14.3",
+  "cases": [
+    {
+      "size": 0,
+      "textSha256": "639e2d58b2fab9b0559e7182cbcbf92dbd6d5dd22ca7c58ace869f4998684551",
+      "length": 0,
+      "bytesSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "size": 1,
+      "textSha256": "cd7ef7394af0f19f234279a45431a0ff8e7492a91bd92a1a3786fbaf843d6cfb",
+      "length": 1,
+      "bytesSha256": "9e8e8c37a53bac77a653d590b783b2508e8ed2fed040a278bf4f4703bbd5d82d"
+    },
+    {
+      "size": 2,
+      "textSha256": "0256e964e7dd2a1ab19231f72f1a131aed4ef72932178984f3bd6a59e202490d",
+      "length": 2,
+      "bytesSha256": "cb8d5c44f9ef5bfeb98c24d466cd6e172cc06e530a120b977668d061087a808b"
+    },
+    {
+      "size": 11,
+      "textSha256": "4e772088aa6444e663a1c0847dab6418d0aa1baa0d097160d3e0b2a432569a92",
+      "length": 11,
+      "bytesSha256": "ea20f5a9646b14c5ba2080d858ed2842b26547a916e40bf5c15e69fa90c62a7a"
+    },
+    {
+      "size": 12,
+      "textSha256": "05bfd7bca5bc054301720425da902780b2a3c1ca45c9e8166a38ec22298cd64c",
+      "length": 12,
+      "bytesSha256": "daa7540375644a2a11341268cac8ec6f3efa5df9e63100904f0b29d70dacb575"
+    },
+    {
+      "size": 13,
+      "textSha256": "c787ebac8f439b1ea7d89855f762ea01163e2d2197887261ac5753b5da07a4e4",
+      "length": 13,
+      "bytesSha256": "80027e7fd30755e6378141bd3bdebfaeacc9cd2fcc507c5521b7d17082eacd90"
+    },
+    {
+      "size": 24,
+      "textSha256": "918f91f69fb3305caa47560f0bf0adbc2b36b9035129c4832d4554453b293934",
+      "length": 24,
+      "bytesSha256": "1147fda1585126a5d30f0e64117c6c0d4cb0884b32ef3f73f233fedcdc2a85fd"
+    },
+    {
+      "size": 25,
+      "textSha256": "229b008027a37261ac240c50f2de421ab71b9b977e63bd9287a58147ac58e6bb",
+      "length": 25,
+      "bytesSha256": "c7e4994aa44398228abfedd75a960566cab31018bf718a2037da58eee7152c5e"
+    },
+    {
+      "size": 1000,
+      "textSha256": "24db2c19bdbf53da9fb724e392831e4e3d3b43d96b1977d6f21c7d31b9ced119",
+      "length": 1000,
+      "bytesSha256": "9e632476f85a1788b105f225aea35a672dd66494aa57b62f6026d23ae3459824"
+    },
+    {
+      "size": 4096,
+      "textSha256": "f7b33411be7b8a0c82960030bc0b996b842aff90a40310fbd12d93e386af7b78",
+      "length": 4096,
+      "bytesSha256": "36d460cdc4b1823e00c7bb3daa9875e73d8d28f4cc88bb8d71b1e5b78e8df652"
+    }
+  ]
+}
