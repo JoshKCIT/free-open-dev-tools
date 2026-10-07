@@ -2,6 +2,7 @@ import { decodedFrameText, formatDecodedTrace, type DecodedLine } from './format
 import { SourceMapError, type Finding } from './errors';
 import {
   MAX_CONTEXT_LINES,
+  MAX_DECODED_PATH,
   MAX_EXCERPT_CHARS,
   MAX_EXCERPT_FRAMES,
   MAX_FINDINGS,
@@ -406,7 +407,9 @@ export function decodeStackTrace(input: DecodeInput): DecodeReport {
     const mapped = s?.result && s.result.kind === 'mapped' ? s.result : null;
     let decodedText = line.text;
     if (row && mapped && row.original !== '') {
-      decodedText = decodedFrameText(line.frame, row.original, row.functionName);
+      // The table cell is cut at 200 characters; the decoded trace keeps the path whole (hidden characters still escaped).
+      const place = `${visible(mapped.source ?? '(no file name)', MAX_DECODED_PATH)}:${mapped.line + 1}:${mapped.column + 1}`;
+      decodedText = decodedFrameText(line.frame, place, row.functionName);
     }
     const hidden = Boolean(input.hideIgnored && row && row.ignored);
     if (hidden) hiddenIgnored++;

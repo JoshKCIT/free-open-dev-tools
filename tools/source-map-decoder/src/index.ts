@@ -5,6 +5,7 @@ export { SourceMapError, addFinding, hasError, MAX_FINDINGS_PER_MAP } from './er
 export type { Finding } from './errors';
 export {
   MAX_CONTEXT_LINES,
+  MAX_DECODED_PATH,
   MAX_EXCERPT_CHARS,
   MAX_EXCERPT_FRAMES,
   MAX_FINDINGS,

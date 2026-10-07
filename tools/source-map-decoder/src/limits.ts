@@ -24,6 +24,11 @@ export const MAX_FRAME_ROWS = 5_000;
 export const MAX_EXCERPT_FRAMES = 10;
 /** The most findings a report lists in all. */
 export const MAX_FINDINGS = 200;
+/**
+ * The most characters of a source path the decoded trace keeps (the length of the longest path Linux accepts). The decoded
+ * trace is the text a visitor copies into an editor, so a real path is never cut; the Frames table cuts at 200.
+ */
+export const MAX_DECODED_PATH = 4_096;
 /** The most characters of one source line an excerpt shows. */
 export const MAX_EXCERPT_CHARS = 200;
 /** The most lines of context either side of a frame. */
