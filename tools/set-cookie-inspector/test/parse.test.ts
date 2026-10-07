@@ -317,3 +317,45 @@ it('the things worth a look are listed by line and never repeat a value', () => 
   expect(report.worthALook.length).toBeGreaterThan(3);
   for (const remark of report.worthALook) expect(remark.text).not.toContain(secret);
 });
+
+it('a cookie joined after a comma never shows its value in a setting while values are masked', () => {
+  // A combined Set-Cookie header copied from a library or a log joins cookies with commas, so the next cookie lands inside
+  // the Path, Domain, Expires, Max-Age or SameSite value of the one before. The settings are shown as written only up to
+  // that comma; the joined cookie is masked like any other value.
+  const secret = 'S3cr3tS3ssionTokenValue0123456789';
+  const lines = [
+    `sid=abc123; Path=/, token=${secret}; Path=/`,
+    `sid=abc123; Path=/, token=${secret}`,
+    `sid=abc123; Expires=Wed, 21 Oct 2026 07:28:00 GMT, token=${secret}`,
+    `sid=abc123; Domain=a.example, token=${secret}`,
+    `sid=abc123; Domain=site, token=${secret}`,
+    `sid=abc123; Max-Age=100, token=${secret}`,
+    `sid=abc123; SameSite=Lax, token=${secret}`,
+  ].join('\n');
+  const hidden = inspect(lines, { reveal: false });
+  expect(hidden.cookies).toHaveLength(7);
+  for (const row of hidden.cookies) expect(row.looksJoined).toBe(true);
+  // The value as parsed (value) and the scope a browser would store (scope) are the raw data by design; every other
+  // field is text the page shows.
+  const shown = JSON.stringify(hidden, (key, value: unknown) =>
+    key === 'value' || key === 'scope' ? undefined : value,
+  );
+  expect(shown).not.toContain(secret);
+  expect(shown.toLowerCase()).not.toContain(secret.toLowerCase());
+  expect(shown).not.toContain('S3cr3t');
+  // What is shown: the setting up to the comma, then the joined cookie masked.
+  expect(hidden.cookies[0]?.attributes[0]?.valueShown).toBe('/, toke… (39 characters)');
+  expect(hidden.cookies[1]?.pathShown).toBe('/, toke… (39 characters)');
+  expect(hidden.cookies[1]?.decision.outcome).toBe('stored');
+  expect(hidden.cookies[1]?.sentTo).toContain('/, toke… (39 characters)');
+  expect(hidden.cookies[2]?.attributes[0]?.valueShown).toBe('Wed, 21 Oct 2026 07:28:00 GMT, toke… (39 characters)');
+  expect(hidden.cookies[3]?.decision.failedStep?.step).toBe(10);
+  // A setting with no joined cookie is still shown exactly as written, and Reveal shows everything.
+  expect(one('sid=abcdefgh; Path=/private/area', { reveal: false }).attributes[0]?.valueShown).toBe('/private/area');
+  expect(one('a=b; Expires=Fri, 01 Jan 2038 00:00:00 GMT').attributes[0]?.valueShown).toBe(
+    'Fri, 01 Jan 2038 00:00:00 GMT',
+  );
+  const revealed = inspect(lines, { reveal: true });
+  expect(revealed.cookies[0]?.attributes[0]?.valueShown).toBe(`/, token=${secret}`);
+  expect(revealed.cookies[1]?.pathShown).toBe(`/, token=${secret}`);
+});

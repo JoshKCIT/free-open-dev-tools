@@ -2,7 +2,7 @@ import meta from './meta.json';
 import { SetCookieInspectorError } from './errors';
 import { splitLines } from './lines';
 import { checkInput } from './limits';
-import { maskValue } from './mask';
+import { maskJoined, maskValue } from './mask';
 import { parseSetCookie, type Attribute, type ParsedCookie } from './parse';
 import { collectRemarks, type Remark } from './remarks';
 import { readRequest, type RequestContext, type RequestInfo } from './request';
@@ -27,9 +27,9 @@ export {
   octetLength,
   withCommas,
 } from './limits';
-export { splitLines } from './lines';
+export { joinedCookieStart, splitLines } from './lines';
 export type { PastedLine } from './lines';
-export { maskValue } from './mask';
+export { maskJoined, maskValue } from './mask';
 export { parseSetCookie, readMaxAge, trimWsp } from './parse';
 export type { Attribute, AttributeKind, IgnoredLine, MaxAge, ParsedCookie, SameSiteValue } from './parse';
 export { looksLikeToken } from './remarks';
@@ -59,7 +59,10 @@ export interface InspectInput {
 
 /** An attribute as written, with its value as it may be shown. */
 export interface AttributeRow extends Attribute {
-  /** The value as it may be shown: the settings (Path, Domain, lifetimes, SameSite) as they are, any other value masked unless `reveal` was true. */
+  /**
+   * The value as it may be shown: the settings (Path, Domain, lifetimes, SameSite) as they are up to a comma that starts
+   * another cookie (the rest masked), any other value masked, unless `reveal` was true.
+   */
   valueShown: string;
 }
 
@@ -85,6 +88,8 @@ export interface CookieRow {
   domainHandling: string;
   /** How the path was decided, in plain words. Empty when the cookie is not stored. */
   pathHandling: string;
+  /** The path of the cookie as it may be shown (masked past a comma-joined cookie unless `reveal` was true). Empty when there is no scope. */
+  pathShown: string;
   /** What SameSite means for this cookie, in plain words. Empty when the line was ignored while it was read. */
   sameSiteText: string;
   /** What the prefix rules say, in plain words. */
@@ -125,8 +130,17 @@ const SETTINGS: ReadonlySet<string> = new Set([
 function attributeRows(attributes: readonly Attribute[], reveal: boolean): AttributeRow[] {
   return attributes.map((attribute) => ({
     ...attribute,
-    valueShown: reveal || SETTINGS.has(attribute.kind) ? attribute.value : maskValue(attribute.value),
+    valueShown: reveal
+      ? attribute.value
+      : SETTINGS.has(attribute.kind)
+        ? maskJoined(attribute.value)
+        : maskValue(attribute.value),
   }));
+}
+
+/** The scope with its domain and path as they may be shown. */
+function shownScope(scope: CookieScope, reveal: boolean): CookieScope {
+  return reveal ? scope : { ...scope, domain: maskJoined(scope.domain), path: maskJoined(scope.path) };
 }
 
 function domainHandling(cookie: ParsedCookie, scope: CookieScope): string {
@@ -177,13 +191,14 @@ export function inspectCookies(input: InspectInput): CookieReport {
         sentTo: '',
         domainHandling: '',
         pathHandling: '',
+        pathShown: '',
         sameSiteText: '',
         prefixRule: 'The line was ignored before any rule about a prefix was reached.',
       };
     }
     parsedCookies.push(parsed);
     const decision = decide(parsed, request, input.nowMs);
-    const scope = decision.scope;
+    const scope = decision.scope === null ? null : shownScope(decision.scope, input.reveal);
     return {
       line: line.number,
       name: parsed.name,
@@ -196,6 +211,7 @@ export function inspectCookies(input: InspectInput): CookieReport {
       sentTo: scope !== null && decision.outcome === 'stored' ? describeScope(scope, parsed.sameSiteWritten) : '',
       domainHandling: scope === null ? '' : domainHandling(parsed, scope),
       pathHandling: scope === null ? '' : pathHandling(parsed, scope),
+      pathShown: scope === null ? '' : scope.path,
       sameSiteText: describeSameSite(parsed.sameSite, parsed.sameSiteWritten),
       prefixRule: describePrefix(parsed, decision),
     };

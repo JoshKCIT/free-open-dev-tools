@@ -179,7 +179,7 @@ function blocksOf(report: CookieReport): OutputBlock[] {
       ordered: true,
       items: report.sendOrder.slice(0, MAX_LISTED).map((line) => {
         const row = byLine.get(line);
-        const path = row?.decision.scope?.path ?? '/';
+        const path = row === undefined || row.pathShown === '' ? '/' : row.pathShown;
         return `Line ${line}: ${row === undefined ? '' : nameCell(row)} (path ${visible(path, 60)})`;
       }),
     });

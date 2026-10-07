@@ -95,11 +95,11 @@ function isNameStopper(code: number): boolean {
 }
 
 /**
- * True when a comma is followed by something that looks like the start of another cookie (a name, then an equals sign).
- * A date such as `Fri, 01 Jan 2038` has a space before any equals sign, so it does not count. The look-ahead from each
- * comma stops at the next comma, so every character is read at most twice.
+ * The index of the first comma that is followed by something that looks like the start of another cookie (a name, then
+ * an equals sign), or -1. A date such as `Fri, 01 Jan 2038` has a space before any equals sign, so it does not count.
+ * The look-ahead from each comma stops at the next comma, so every character is read at most twice.
  */
-function commaJoinedCookies(text: string): boolean {
+export function joinedCookieStart(text: string): number {
   const length = text.length;
   let comma = text.indexOf(',');
   while (comma >= 0) {
@@ -107,10 +107,15 @@ function commaJoinedCookies(text: string): boolean {
     while (i < length && (text.charCodeAt(i) === SPACE || text.charCodeAt(i) === TAB)) i += 1;
     const nameStart = i;
     while (i < length && !isNameStopper(text.charCodeAt(i))) i += 1;
-    if (i > nameStart && i < length && text.charCodeAt(i) === 61) return true;
+    if (i > nameStart && i < length && text.charCodeAt(i) === 61) return comma;
     comma = text.indexOf(',', comma + 1);
   }
-  return false;
+  return -1;
+}
+
+/** True when a comma is followed by something that looks like the start of another cookie. */
+function commaJoinedCookies(text: string): boolean {
+  return joinedCookieStart(text) >= 0;
 }
 
 /**

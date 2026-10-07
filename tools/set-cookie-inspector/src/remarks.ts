@@ -1,3 +1,4 @@
+import { maskJoined } from './mask';
 import type { ParsedCookie } from './parse';
 import type { RequestInfo } from './request';
 import type { Decision } from './store';
@@ -86,7 +87,7 @@ export function collectRemarks(rows: readonly RemarkInput[], request: RequestInf
     const domain = cookie.domain ?? '';
     if (domain !== '' && !domain.includes('.') && domain !== request.host) {
       add(
-        `${label} has Domain=${visible(domain, 40)}, a single label. The public suffix list is not consulted here, so a browser may refuse a Domain like this where this page does not.`,
+        `${label} has Domain=${visible(maskJoined(domain), 40)}, a single label. The public suffix list is not consulted here, so a browser may refuse a Domain like this where this page does not.`,
       );
     }
     if (cookie.secure && !request.secure) {

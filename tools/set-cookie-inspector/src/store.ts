@@ -1,4 +1,5 @@
 import { MAX_AGE_LIMIT_SECONDS, MAX_ATTRIBUTE_VALUE_OCTETS, MAX_NAME_VALUE_OCTETS, withCommas } from './limits';
+import { maskJoined } from './mask';
 import type { IgnoredLine, ParsedCookie } from './parse';
 import type { RequestInfo } from './request';
 import { defaultPath, domainMatches, type CookieScope } from './scope';
@@ -239,7 +240,7 @@ export function decide(cookie: ParsedCookie, request: RequestInfo, nowMs: number
       'not-stored',
       10,
       'A Domain must domain-match the host of the response address.',
-      `The Domain attribute (${visible(domainAttribute, 40)}) does not domain-match the host of the response address, so the cookie is refused (step 10). A Domain must be the host itself or a parent of it${request.isIp ? '; an IP address matches only itself' : ''}.`,
+      `The Domain attribute (${visible(maskJoined(domainAttribute), 40)}) does not domain-match the host of the response address, so the cookie is refused (step 10). A Domain must be the host itself or a parent of it${request.isIp ? '; an IP address matches only itself' : ''}.`,
     );
   }
   pass(10, 'A Domain must domain-match the host of the response address.');
