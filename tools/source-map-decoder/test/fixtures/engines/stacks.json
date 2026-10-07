@@ -1,0 +1,50 @@
+{
+ "recordedAt": "2026-10-07T14:18:39.046Z",
+ "node": {
+  "recordedAt": "2026-10-07T14:18:36.602Z",
+  "version": "v22.14.0",
+  "plain": [
+   "    at e (<dir>/out/min.js:1:35)",
+   "    at n.add (<dir>/out/min.js:1:128)",
+   "    at u (<dir>/out/min.js:1:178)",
+   "    at i (<dir>/out/min.js:1:220)",
+   "    at <dir>/out/min.js:1:234",
+   "    at Object.<anonymous> (<dir>/out/min.js:1:240)",
+   "    at Module._compile (node:internal/modules/cjs/loader:1554:14)",
+   "    at Object..js (node:internal/modules/cjs/loader:1706:10)",
+   "    at Module.load (node:internal/modules/cjs/loader:1289:32)",
+   "    at Function._load (node:internal/modules/cjs/loader:1108:12)"
+  ],
+  "mapped": [
+   "    at checkPositive (<dir>/src/math.ts:3:11)",
+   "    at n.add (<dir>/src/math.ts:11:19)",
+   "    at sumAll (<dir>/src/main.ts:6:9)",
+   "    at run (<dir>/src/main.ts:12:10)",
+   "    at run (<dir>/src/main.ts:15:1)",
+   "    at Object.<anonymous> (<dir>/src/main.ts:15:5)",
+   "    at Module._compile (node:internal/modules/cjs/loader:1554:14)",
+   "    at Object..js (node:internal/modules/cjs/loader:1706:10)",
+   "    at Module.load (node:internal/modules/cjs/loader:1289:32)",
+   "    at Function._load (node:internal/modules/cjs/loader:1108:12)"
+  ]
+ },
+ "browsers": {
+  "recordedAt": "2026-10-07T14:18:39.046Z",
+  "playwright": "1.63.0",
+  "port": 58189,
+  "engines": {
+   "chromium": {
+    "version": "153.0.8010.12",
+    "stack": "RangeError: value must be positive: -2\n    at e (http://127.0.0.1:58189/min.js:1:35)\n    at n.add (http://127.0.0.1:58189/min.js:1:128)\n    at u (http://127.0.0.1:58189/min.js:1:178)\n    at i (http://127.0.0.1:58189/min.js:1:220)\n    at http://127.0.0.1:58189/min.js:1:234\n    at http://127.0.0.1:58189/min.js:1:240"
+   },
+   "firefox": {
+    "version": "155.0",
+    "stack": "e@http://127.0.0.1:58189/min.js:1:35\nadd@http://127.0.0.1:58189/min.js:1:128\nu@http://127.0.0.1:58189/min.js:1:178\ni@http://127.0.0.1:58189/min.js:1:220\n@http://127.0.0.1:58189/min.js:1:234\n@http://127.0.0.1:58189/min.js:1:240\n"
+   },
+   "webkit": {
+    "version": "26.6",
+    "stack": "e@http://127.0.0.1:58189/min.js:1:49\nadd@http://127.0.0.1:58189/min.js:1:129\nu@http://127.0.0.1:58189/min.js:1:181\ni@http://127.0.0.1:58189/min.js:1:221\n@http://127.0.0.1:58189/min.js:1:235\nglobal code@http://127.0.0.1:58189/min.js:1:240"
+   }
+  }
+ }
+}

@@ -47,5 +47,8 @@
   "usage": "import { decodeStackTrace } from '@fodt/source-map-decoder';\n\nconst report = decodeStackTrace({\n  trace: 'Error: boom\\n    at e (https://example.test/min.js:1:35)',\n  maps: mapJsonText,\n});\n\nreport.rows[0]; // { number: 1, status: 'mapped', original: 'src/math.ts:3:11', name: 'value', ... }\nreport.decoded; // the trace again, with each mapped frame written with its original place",
   "apiNotes": "`decodeStackTrace(input)` checks the sizes first (`checkInput`), reads the trace line by line (`parseTrace`), splits the pasted text into maps (`splitMaps`), reads each map (`parseMap`, with `parseSections` for an index map), gives each frame a map (`matchMaps`), reads each map once keeping only the generated lines the trace names (`decodeNeededLines`) and looks every frame up (`lookup`). A fault in a map is a finding, not an error; sizes and text that is not a map are refused with a `SourceMapError` that names the part, the map number or the character position and never repeats the input. The function holds no state between calls.",
   "testNotes": "The first test decodes the five V8 frames of a trace through an esbuild 0.25.12 map and compares each position with Node's own module.SourceMap on the same map.",
+  "devDependencies": {
+    "@jridgewell/trace-mapping": "0.3.31"
+  },
   "needs": ["workers"]
 }
