@@ -83,12 +83,18 @@ function wordsOf(text: string): string[] {
 /** A value in quotes loses them and its quoted pairs; anything else is returned as it is. */
 function unquote(value: string): string {
   if (value.length < 2 || !value.startsWith('"') || !value.endsWith('"')) return value;
+  // Copied in pieces between the backslashes, never one character at a time.
   let out = '';
-  for (let i = 1; i < value.length - 1; i++) {
-    if (value.charCodeAt(i) === 92 && i + 1 < value.length - 1) i++;
-    out += value[i] ?? '';
+  const end = value.length - 1;
+  let from = 1;
+  for (let i = 1; i < end; i++) {
+    if (value.charCodeAt(i) === 92 && i + 1 < end) {
+      out += value.slice(from, i);
+      i++;
+      from = i;
+    }
   }
-  return out;
+  return out + value.slice(from, end);
 }
 
 interface Assignment {

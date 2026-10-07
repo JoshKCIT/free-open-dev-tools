@@ -20,9 +20,14 @@ export interface AddressList {
 
 const BACKSLASH = 92;
 const QUOTE = 34;
+const COMMA = 44;
+const COLON = 58;
+const SEMICOLON = 59;
+const LESS = 60;
+const GREATER = 62;
 
-function isWhite(ch: string): boolean {
-  return ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n';
+function isWhiteCode(code: number): boolean {
+  return code === 32 || code === 9 || code === 13 || code === 10;
 }
 
 /** An obsolete route (`@a.example,@b.example:`) in front of an address is dropped; the first colon outside brackets ends it. */
@@ -38,27 +43,37 @@ function withoutRoute(angle: string): string {
   return angle;
 }
 
-/** White space around a dot or an at sign in a bare address is closed up (RFC 5322 section 4.4, obsolete syntax). */
+/**
+ * White space around a dot or an at sign in a bare address is closed up (RFC 5322 section 4.4, obsolete syntax); any other
+ * run of spaces is one space. The text is copied in pieces between the spaces, never one character at a time.
+ */
 function closeUp(text: string): string {
-  let out = '';
+  const parts: string[] = [];
   const n = text.length;
+  let from = 0;
+  let last = '';
   let i = 0;
   while (i < n) {
-    const ch = text[i] ?? '';
-    if (ch === ' ') {
-      // A run of spaces is one decision: dropped next to a dot or an at sign, otherwise one space.
-      let j = i;
-      while (j < n && text[j] === ' ') j++;
-      const before = out[out.length - 1];
-      const after = text[j];
-      if (!(before === '.' || before === '@' || after === '.' || after === '@')) out += ' ';
-      i = j;
+    if (text.charCodeAt(i) !== 32) {
+      i++;
       continue;
     }
-    out += ch;
-    i++;
+    if (i > from) {
+      parts.push(text.slice(from, i));
+      last = text[i - 1] ?? '';
+    }
+    let j = i;
+    while (j < n && text.charCodeAt(j) === 32) j++;
+    const after = text[j];
+    if (!(last === '.' || last === '@' || after === '.' || after === '@')) {
+      parts.push(' ');
+      last = ' ';
+    }
+    from = j;
+    i = j;
   }
-  return out;
+  if (from < n) parts.push(text.slice(from));
+  return parts.join('');
 }
 
 /**
@@ -66,7 +81,8 @@ function closeUp(text: string): string {
  * address in angle brackets, groups (`Name: a@x.example, b@y.example;`, empty ones too), comments anywhere white space may
  * go, and the obsolete forms of Appendix A.6.1 (a route in an address, an empty element, spaces around the dot). One pass
  * with no recursion: a comment nested deeper than 50 levels stops the reading of the header with a note, and at most 500
- * mailboxes are read.
+ * mailboxes are read. Text is gathered in runs with `slice`, never one character at a time, so a header of one long run
+ * costs one copy.
  */
 export function parseAddressList(value: string): AddressList {
   const stripped = stripComments(value);
@@ -78,6 +94,9 @@ export function parseAddressList(value: string): AddressList {
   const mailboxes: Mailbox[] = [];
   const groups: string[] = [];
   let phrase = '';
+  // Whether `phrase` ends with a space, kept here so the string itself is never read while it is being built (reading the end
+  // of a string made of many appended pieces copies the whole of it each time, which made a long header cost quadratic time).
+  let phraseEndsSpace = false;
   let angle: string | null = null;
   let angleClosed = false;
   let group = '';
@@ -96,6 +115,7 @@ export function parseAddressList(value: string): AddressList {
       }
     }
     phrase = '';
+    phraseEndsSpace = false;
     angle = null;
     angleClosed = false;
   };
@@ -105,48 +125,98 @@ export function parseAddressList(value: string): AddressList {
   while (i < n && !overflow) {
     const code = text.charCodeAt(i);
     if (code === QUOTE) {
+      // A quoted string: the characters between the quotes, a quoted pair giving the character after its backslash.
       let content = '';
       i++;
+      let from = i;
       while (i < n && text.charCodeAt(i) !== QUOTE) {
-        if (text.charCodeAt(i) === BACKSLASH && i + 1 < n) i++;
-        content += text[i] ?? '';
+        if (text.charCodeAt(i) === BACKSLASH && i + 1 < n) {
+          content += text.slice(from, i);
+          i++;
+          from = i;
+        }
         i++;
       }
+      content += text.slice(from, i);
       i++;
       if (angleClosed) continue;
       if (angle !== null) angle += `"${content}"`;
-      else phrase += content;
+      else if (content !== '') {
+        phrase += content;
+        phraseEndsSpace = content.charCodeAt(content.length - 1) === 32;
+      }
       continue;
     }
-    const ch = text[i] ?? '';
+
     if (angle !== null && !angleClosed) {
-      if (ch === '>') angleClosed = true;
-      else if (!isWhite(ch)) angle += ch;
-      i++;
+      // Inside the angle brackets: white space is dropped and everything else up to the closing bracket is the address.
+      if (code === GREATER) {
+        angleClosed = true;
+        i++;
+      } else if (isWhiteCode(code)) {
+        i++;
+      } else {
+        let j = i + 1;
+        while (j < n) {
+          const c = text.charCodeAt(j);
+          if (c === GREATER || c === QUOTE || isWhiteCode(c)) break;
+          j++;
+        }
+        angle += text.slice(i, j);
+        i = j;
+      }
       continue;
     }
-    if (ch === ',') {
+
+    if (code === COMMA) {
       flush();
-    } else if (ch === ';' && inGroup) {
+      i++;
+    } else if (code === SEMICOLON && inGroup) {
       flush();
       inGroup = false;
       group = '';
-    } else if (ch === ':' && !inGroup && angle === null) {
+      i++;
+    } else if (code === COLON && !inGroup && angle === null) {
       if (groups.length >= MAX_ADDRESSES) overflow = true;
       group = phrase.trim();
       groups.push(group);
       phrase = '';
+      phraseEndsSpace = false;
       inGroup = true;
-    } else if (ch === '<' && angle === null) {
+      i++;
+    } else if (code === LESS && angle === null) {
       angle = '';
-    } else if (angleClosed) {
-      // Anything between the closing bracket and the next separator is not part of the mailbox.
-    } else if (isWhite(ch)) {
-      if (!phrase.endsWith(' ')) phrase += ' ';
+      i++;
+    } else if (isWhiteCode(code)) {
+      if (!angleClosed && !phraseEndsSpace) {
+        phrase += ' ';
+        phraseEndsSpace = true;
+      }
+      i++;
     } else {
-      phrase += ch;
+      // An ordinary run: up to the next quote, comma, bracket, white space or the separator that applies in this state.
+      let j = i + 1;
+      while (j < n) {
+        const c = text.charCodeAt(j);
+        if (
+          c === QUOTE ||
+          c === COMMA ||
+          c === LESS ||
+          isWhiteCode(c) ||
+          (c === SEMICOLON && inGroup) ||
+          (c === COLON && !inGroup && angle === null)
+        ) {
+          break;
+        }
+        j++;
+      }
+      // Anything between the closing bracket and the next separator is not part of the mailbox.
+      if (!angleClosed) {
+        phrase += text.slice(i, j);
+        phraseEndsSpace = false;
+      }
+      i = j;
     }
-    i++;
   }
   if (!overflow) flush();
   if (overflow) notes.push(`The header lists more than ${MAX_ADDRESSES} addresses, so the rest were not read.`);
