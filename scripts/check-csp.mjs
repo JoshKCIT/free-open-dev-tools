@@ -64,10 +64,11 @@ export const RESERVED_IDS = Object.freeze(['font-inspector', 'wasm-inspector']);
  * - wasm: the compiling calls, a computed member of `WebAssembly`, and `WebAssembly` copied into a variable or
  *   destructured as minified code writes it, with no space (`W=WebAssembly;`, `{instantiate:i}=WebAssembly`), so the
  *   word in a sentence such as "a worker, WebAssembly, or" on a site page is not taken for code;
- * - eval: `new Function(`, a bare `Function(` call, the bare `Function` constructor used as a value (passed as an
- *   argument or assigned, written directly after `(`, `,`, `[`, `:` or an assignment `=` and directly before `,`, `)`,
- *   `;`, `}` or `]`, which is how compiled engines reach it), direct and indirect eval (`eval(`, `(0,eval)(`,
- *   `globalThis.eval(`), a timer given a string, and `.constructor("...")`;
+ * - eval: `new Function(`, a bare `Function(` call, the bare `Function` constructor used as a value (the first argument
+ *   of a call or the right side of an assignment, written directly after `(` or an assignment `=` and directly before
+ *   `,`, `)`, `;`, `}` or `]`, which is how compiled engines reach it; the name inside an array, as a later argument or
+ *   as an object value is not matched, because libraries list it for type checks), direct and indirect eval (`eval(`,
+ *   `(0,eval)(`, `globalThis.eval(`), a timer given a string, and `.constructor("...")`;
  * - fetch, the network class: `fetch(`, any mention of `XMLHttpRequest` (minified code often reaches it as a member
  *   such as `new g.XMLHttpRequest`), `new WebSocket(`, `new EventSource(` and `sendBeacon(`.
  */
@@ -79,7 +80,7 @@ export const TOKENS = Object.freeze([
   ],
   [
     'eval',
-    /new Function\(|(?:^|[^A-Za-z0-9_.$])Function\(|(?:[(,[:]|(?<![=!<>])=)Function(?=[,);}\]])|(?:^|[^A-Za-z0-9_$])eval\s*\)\s*\(|(?:^|[^A-Za-z0-9_.$])eval\(|(?:globalThis|window|self)\.eval\(|set(?:Timeout|Interval)\(\s*["'`]|\.constructor\(\s*["'`]/,
+    /new Function\(|(?:^|[^A-Za-z0-9_.$])Function\(|(?:\(|(?<![=!<>])=)Function(?=[,);}\]])|(?:^|[^A-Za-z0-9_$])eval\s*\)\s*\(|(?:^|[^A-Za-z0-9_.$])eval\(|(?:globalThis|window|self)\.eval\(|set(?:Timeout|Interval)\(\s*["'`]|\.constructor\(\s*["'`]/,
   ],
   ['fetch', /(?:^|[^A-Za-z0-9_.$])fetch\(|XMLHttpRequest|new WebSocket\(|new EventSource\(|sendBeacon\(/],
   ['sandboxed-html', /kind\s*:\s*["'`]sandboxed-html["'`]/],
