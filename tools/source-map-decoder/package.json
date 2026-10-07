@@ -1,0 +1,48 @@
+{
+  "name": "@fodt/source-map-decoder",
+  "version": "1.0.0",
+  "description": "Paste a minified stack trace and its source maps to see each frame's original file, line, column and name, with no address ever fetched.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta.json": "./src/meta.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "source map",
+    "stack trace",
+    "sourcemap",
+    "minified",
+    "decode",
+    "ECMA-426",
+    "VLQ",
+    "mappings",
+    "index map"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshKCIT/free-open-dev-tools.git",
+    "directory": "tools/source-map-decoder"
+  }
+}

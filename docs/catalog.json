@@ -1517,5 +1517,12 @@
     "category": "network",
     "tier": 3,
     "summary": "Open a saved email to read its headers, delivery hops, MIME parts, attachments and a closed preview of its HTML, with nothing loaded or sent."
+  },
+  {
+    "id": "source-map-decoder",
+    "name": "Source Map Stack Trace Decoder",
+    "category": "code",
+    "tier": 3,
+    "summary": "Paste a minified stack trace and its source maps to see each frame's original file, line, column and name, with no address ever fetched."
   }
 ]
