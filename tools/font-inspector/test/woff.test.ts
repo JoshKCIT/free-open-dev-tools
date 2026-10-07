@@ -4,6 +4,7 @@ import {
   FontInspectorError,
   MAX_EXPANSION_RATIO,
   MAX_SFNT_BYTES,
+  convertFont,
   inspectFont,
   planWoff2,
   readContainer,
@@ -11,6 +12,7 @@ import {
   tableBytes,
   unpackWoff2,
   unwrapWoff1,
+  verifyConversion,
   type Woff2Decompress,
 } from '../src/index';
 import { woff2Compress, woff2Decompress } from '../src/engine';
@@ -375,4 +377,33 @@ it('every WOFF2 fault built by editing a good file gives one plain sentence and 
   // Tables of the unpacked font are readable (the engine's output is a font, not just bytes with a signature).
   const font = readSfntFont(ok.sfnt, 0, false);
   expect(tableBytes(ok.sfnt, font.tables.get('name'))!.length).toBeGreaterThan(0);
+});
+
+it('a WOFF2 header that states a larger total size unpacks to the font its tables make, and converts to a TrueType file of that size', async () => {
+  // The specification calls totalSfntSize advisory and the engine sizes its output from it, keeping zeros after the last
+  // table. The font ends where its last padded table ends, so the zeros are cut and the page says so.
+  const good = fontBytes('plain.woff2');
+  const real = (await unpackWoff2(good, woff2Decompress)).sfnt;
+  expect((await unpackWoff2(good, woff2Decompress)).header.notes).toEqual([]);
+  const engine = { woff2Compress, woff2Decompress };
+  for (const stated of [real.length + 4, real.length + 1000, MAX_SFNT_BYTES]) {
+    const lie = good.slice();
+    new DataView(lie.buffer, lie.byteOffset, lie.byteLength).setUint32(16, stated);
+    const unpacked = await unpackWoff2(lie, woff2Decompress);
+    expect(unpacked.sfnt.length, `stated ${stated}`).toBe(real.length);
+    expect(Buffer.from(unpacked.sfnt).equals(Buffer.from(real))).toBe(true);
+    expect(unpacked.header.notes.join(' ')).toContain('states a larger font than its tables make');
+    // Converted to TrueType, the file is the real size and passes the re-read check.
+    const converted = await convertFont({ bytes: lie, target: 'sfnt', fileName: 'lie.woff2' }, engine);
+    expect(converted.bytes.length).toBe(real.length);
+    const report = await verifyConversion(converted.sfnt, converted.bytes, engine);
+    expect(report.problems).toEqual([]);
+    expect(report.ok).toBe(true);
+  }
+
+  // Whatever made it, a TrueType output with bytes after its last table is not offered.
+  const padded = concat(real, new Uint8Array(1024));
+  const refused = await verifyConversion(real, padded, engine);
+  expect(refused.ok).toBe(false);
+  expect(refused.problems.join(' ')).toContain('more bytes than its tables hold');
 });
