@@ -1,7 +1,7 @@
 {
   "name": "@fodt/hex-viewer",
   "version": "1.0.0",
-  "description": "View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature.",
+  "description": "View any file as offset, hex and text columns, search it for bytes or text, name its type from its signature and export the bytes as a code array.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -29,7 +29,9 @@
     "file signature",
     "magic number",
     "file type",
-    "offset"
+    "offset",
+    "code array",
+    "xxd"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

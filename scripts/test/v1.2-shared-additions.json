@@ -129,7 +129,7 @@
       "category": "media",
       "phase": 19,
       "needs": ["workers"],
-      "outputKinds": ["code", "files", "note"],
+      "outputKinds": ["code", "files", "keyvalue", "note", "table"],
       "sharedAdditions": []
     },
     {

@@ -14,5 +14,20 @@
   {
     "attachesFile": true,
     "inlineFiles": [{ "name": "inline-marker.txt", "mimeType": "text/plain", "text": "marker {{MARKER}} end" }]
+  },
+  {
+    "mode": { "field": "source", "value": "hex" },
+    "values": { "pasted": "48656c6c6f", "exportAs": "c", "exportName": "greeting.bin" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "source", "value": "text" },
+    "values": { "pasted": "Hello", "exportAs": "rust", "exportPerLine": "8" },
+    "attachesFile": false
+  },
+  {
+    "attachesFile": true,
+    "values": { "exportAs": "go" },
+    "inlineFiles": [{ "name": "inline-marker.txt", "mimeType": "text/plain", "text": "marker {{MARKER}} end" }]
   }
 ]

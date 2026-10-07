@@ -1271,7 +1271,7 @@
     "name": "Hex Viewer & File Identifier",
     "category": "media",
     "tier": 2,
-    "summary": "View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature."
+    "summary": "View any file as offset, hex and text columns, search it for bytes or text, name its type from its signature and export the bytes as a code array."
   },
   {
     "id": "msgpack-cbor",

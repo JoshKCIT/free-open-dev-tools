@@ -1,13 +1,13 @@
 # Hex Viewer & File Identifier
 
-View any file as offset, hex and text columns, search it for bytes or text, and name its type from its signature.
+View any file as offset, hex and text columns, search it for bytes or text, name its type from its signature and export the bytes as a code array.
 
 Part of [Free & Open Dev Tools](https://github.com/JoshKCIT/free-open-dev-tools). This folder is self-contained: it has its own
 package file, tests, licence and documentation, and does not import anything from the rest of the repository.
 
 ## What it does
 
-Opens any file in your browser and shows its bytes as offset, hex and text columns, one page at a time, so a file of any size opens without reading all of it. Jump to any byte, search the file for text or hex bytes in a background worker, and see the file's type named from its first bytes, with the evidence and the specification behind the signature. The file is read where it is: never uploaded, never changed and never stored.
+Opens any file in your browser and shows its bytes as offset, hex and text columns, one page at a time, so a file of any size opens without reading all of it. Jump to any byte, search the file for text or hex bytes in a background worker, and see the file's type named from its first bytes, with the evidence and the specification behind the signature. The file is read where it is: never uploaded, never changed and never stored. It can also write any selected part of the bytes, up to 4 MiB, as an array for C or C++, Rust, Go, Python or JavaScript, ready to paste into source code; the C and C++ form is the output of xxd -i.
 
 ## Supported
 
@@ -17,6 +17,7 @@ Opens any file in your browser and shows its bytes as offset, hex and text colum
 - Search by text (encoded as UTF-8) or by hex bytes, in files up to 1 GiB: every match is counted and the first 1,000 offsets are listed
 - The file type named from its signature bytes, with the evidence and the specification address: common image, audio, video container, archive, compression, executable, document, database and network capture formats, each signature checked against the specification it cites
 - ZIP-based files named by the family their first entry suggests (Office Open XML, Java archive, EPUB or OpenDocument), and a tar file by its ustar marker at offset 257
+- Export of up to 4 MiB of the bytes, from any start byte, as an array for C or C++ (the xxd -i form with its length variable), Rust, Go, Python or JavaScript, with 1 to 256 bytes per line, lower or upper case hex digits and a cleaned variable name, shown as a preview and saved as a file
 
 ## Limits
 
@@ -26,6 +27,11 @@ Opens any file in your browser and shows its bytes as offset, hex and text colum
 - Match case off folds the letters A to Z only.
 - Pasted hex or text is limited to 5 MiB, and the bytes searched for to 1 MiB.
 - Formats whose specification could not be checked are not in the table, so a file of such a format shows as unknown.
+- The C and C++ form follows xxd -i as of its current source: 12 bytes per line unless you choose another number, lower case hex, the unsigned int length variable, and the same variable name rule (every byte that is not a letter or digit becomes an underscore).
+- The Rust, Go, Python and JavaScript forms are conventional forms, not the output of one program. The Go, Python and JavaScript forms were checked by running or formatting the text; the Rust form could not be compiled while writing it and follows the grammar only.
+- Export covers up to 4 MiB of selected bytes. The page shows only the first 64 KiB of the text, and the saved file holds all of it.
+- A variable name is cleaned to be legal, can differ from what you typed, and is also the name of the saved file.
+- An empty selection (an empty file, a Length of 0, or a start at or past the end) writes an empty array, which is not standard C.
 
 ## Ambiguous cases, and what this does about them
 
@@ -37,6 +43,9 @@ Opens any file in your browser and shows its bytes as offset, hex and text colum
 - A ZIP archive can be an XLSX, DOCX, JAR, EPUB, APK or OpenDocument file; the page names the archive and the family its first entry suggests, and a file written by another program may name its first entry differently
 - Matroska and WebM share the same first bytes, so the page names the container family and not which of the two it is
 - A signature of two bytes (a BMP file, a zlib header) matches many other files and is marked as a weak hint
+- A variable name is cleaned over the UTF-8 bytes of the name, not its characters: an accented letter becomes two underscores and a Chinese character three, as xxd -i does, and a leading digit gets underscores first (two in C, one elsewhere)
+- Export from byte and Length count bytes from the start of the file and are separate from Go to byte, which only moves the rows on screen
+- A name that is a reserved word in Go, Python or JavaScript gets a trailing underscore, and Rust names are upper case
 
 ## Defined by
 
@@ -50,6 +59,7 @@ Opens any file in your browser and shows its bytes as offset, hex and text colum
 - [Java Virtual Machine Specification SE 21: the class file format](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html)
 - [POSIX pax: the ustar header block](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/pax.html)
 - [System V gABI: the ELF header](https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html)
+- [xxd: the source of the -i (C include) output, xxd.c in the Vim repository at blob 9b1ca6ea5555df413546e48126d75ab91e1c8393](https://github.com/vim/vim/blob/03e7afb02d952fc117579b141ef8baf503f0ff63/src/xxd/xxd.c)
 
 ## Use it on its own
 
@@ -72,7 +82,7 @@ repository directly. The whole point is that you can vendor it: it is small enou
 ## API
 
 ```ts
-import { formatHexRows, identifyFile, searchChunks } from '@fodt/hex-viewer';
+import { exportCodeArray, formatHexRows, identifyFile, searchChunks } from '@fodt/hex-viewer';
 
 const bytes = new TextEncoder().encode('Hello');
 console.log(formatHexRows(bytes, 0, 16));
@@ -88,9 +98,16 @@ async function* chunks() {
 }
 console.log(await searchChunks(chunks(), new TextEncoder().encode('abcd'), { matchCase: true }));
 // { offsets: [ 2 ], total: 1 }
+
+// Write bytes as a C array, exactly as xxd -i does:
+console.log(exportCodeArray(bytes, { language: 'c', name: 'greeting.bin', perLine: 12, upper: false }).text);
+// unsigned char greeting_bin[] = {
+//   0x48, 0x65, 0x6c, 0x6c, 0x6f
+// };
+// unsigned int greeting_bin_len = 5;
 ```
 
-`formatHexRows(bytes, startOffset, bytesPerRow)` returns the rows of the canonical hexdump layout (8 digit hex offset, two spaces, the bytes in groups of eight, two spaces, `|text|`) with the rows joined by line breaks and no closing offset line. `parseHexInput(text, field)` reads pairs of hex digits with spaces or line breaks between bytes and refuses an odd digit count or a character that is not a digit, naming its position and the field. `encodeNeedle(text, as)` gives the bytes to search for, as UTF-8 or hex. `searchChunks(chunks, needle, { matchCase })` takes any async iterable of byte chunks (a file's stream read in a loop), keeps `needle.length - 1` bytes between chunks so a match across two chunks is found once, counts every match and lists the first `MAX_LISTED_MATCHES` offsets. `viewWindow(size, position, rows, bytesPerRow)` is the page arithmetic: the start and end of the bytes to read, refusing a position outside the file. `checkViewSize` and `checkSearchSize` refuse a file over `MAX_VIEW_BYTES` or `MAX_SEARCH_BYTES`. `identifyFile(head, tail, size)` takes the first 512 bytes, the last 22 bytes and the byte size of a file and returns every name its signature bytes fit, each with its evidence and the address of the specification; `SIGNATURES` is the table. Every expected failure is a `HexViewerError` with a plain message.
+`formatHexRows(bytes, startOffset, bytesPerRow)` returns the rows of the canonical hexdump layout (8 digit hex offset, two spaces, the bytes in groups of eight, two spaces, `|text|`) with the rows joined by line breaks and no closing offset line. `parseHexInput(text, field)` reads pairs of hex digits with spaces or line breaks between bytes and refuses an odd digit count or a character that is not a digit, naming its position and the field. `encodeNeedle(text, as)` gives the bytes to search for, as UTF-8 or hex. `searchChunks(chunks, needle, { matchCase })` takes any async iterable of byte chunks (a file's stream read in a loop), keeps `needle.length - 1` bytes between chunks so a match across two chunks is found once, counts every match and lists the first `MAX_LISTED_MATCHES` offsets. `viewWindow(size, position, rows, bytesPerRow)` is the page arithmetic: the start and end of the bytes to read, refusing a position outside the file. `checkViewSize` and `checkSearchSize` refuse a file over `MAX_VIEW_BYTES` or `MAX_SEARCH_BYTES`. `identifyFile(head, tail, size)` takes the first 512 bytes, the last 22 bytes and the byte size of a file and returns every name its signature bytes fit, each with its evidence and the address of the specification; `SIGNATURES` is the table. Every expected failure is a `HexViewerError` with a plain message. `exportCodeArray(bytes, { language, name, perLine, upper })` writes the bytes as an array for `c`, `rust`, `go`, `python` or `javascript` and returns `{ text, identifier, extension, bytes, lines }`; `cleanIdentifier(language, name)` gives the legal variable name, cleaned over the UTF-8 bytes of the name; `exportRange(size, from, length)` gives the window to export and refuses one over `MAX_EXPORT_BYTES` (4 MiB). The refusals are `HexViewerError`s that name the field (`Export from byte`, `Length`, `Bytes per line`, `Variable name` or `Export`) and never repeat the name.
 
 ## Dependencies
 
@@ -102,7 +119,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-The row layout is checked against hexdump from util-linux 2.39.3 (Ubuntu 24.04.2 under WSL 2) run with -vC on the same bytes, its output quoted as literals, and on 14 inputs of 1 to 1,000 bytes in a scratch comparison. Each signature in the table is typed in a test as a literal from the specification it cites, with a comment quoting the line that states the bytes; Python 3.14.3 (zlib, gzip, bz2, lzma, zipfile, tarfile) and javac 17.0.6 wrote real files whose first bytes are quoted as second opinions. Search offsets are the ones Python's re module finds with a lookahead pattern, including overlapping matches and ASCII-only case folding. The Java class rule follows the first major version in JVMS Table 4.1-A (45), not 44.
+The row layout is checked against hexdump from util-linux 2.39.3 (Ubuntu 24.04.2 under WSL 2) run with -vC on the same bytes, its output quoted as literals, and on 14 inputs of 1 to 1,000 bytes in a scratch comparison. Each signature in the table is typed in a test as a literal from the specification it cites, with a comment quoting the line that states the bytes; Python 3.14.3 (zlib, gzip, bz2, lzma, zipfile, tarfile) and javac 17.0.6 wrote real files whose first bytes are quoted as second opinions. Search offsets are the ones Python's re module finds with a lookahead pattern, including overlapping matches and ASCII-only case folding. The Java class rule follows the first major version in JVMS Table 4.1-A (45), not 44. The export's C form is compared byte for byte with 121 recorded outputs of xxd -i (11 inputs by 11 option sets, plus a table of recorded variable names) that Git for Windows xxd 2025-11-26 and Ubuntu 24.04 xxd 2023-10-25 print identically; the recorder script and both versions are kept beside them. The JavaScript form is evaluated with Node's vm module, the Python form is compared with a recorded run of Python 3.14.3 (the text's SHA-256, the length and the SHA-256 of the bytes), and the Go form is parsed and left unchanged by the gofmt engine @wasm-fmt/gofmt 0.7.3. The Rust form is checked against its grammar only.
 
 ## Licence
 

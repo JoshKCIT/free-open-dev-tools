@@ -1,6 +1,8 @@
 import {
+  DEFAULT_EXPORT_PER_LINE,
   EXPORT_LANGUAGES,
   HexViewerError,
+  MAX_EXPORT_PER_LINE,
   MAX_EXPORT_PREVIEW_CHARS,
   MAX_PASTED_BYTES,
   checkSearchSize,
@@ -159,6 +161,10 @@ function describe(opened: Opened, rowsPerPage: number, bytesPerRow: BytesPerRow)
 /** The label of the preview block for each export language. */
 const EXPORT_BLOCK_LABELS: Record<string, string> = {
   c: 'C or C++ array',
+  rust: 'Rust array',
+  go: 'Go slice',
+  python: 'Python bytes',
+  javascript: 'JavaScript Uint8Array',
 };
 
 /** Length as a number, or undefined when the field is empty (to the end of the file). Anything else goes to the range check. */
@@ -187,7 +193,7 @@ async function exportBlocks(
   const result = exportCodeArray(window, {
     language: info.id,
     name: str(values, 'exportName').trim() === '' ? fallback : str(values, 'exportName'),
-    perLine: num(values, 'exportPerLine', 12),
+    perLine: num(values, 'exportPerLine', DEFAULT_EXPORT_PER_LINE),
     upper: bool(values, 'exportUpper', false),
   });
 
@@ -337,7 +343,7 @@ export default defineTool({
       default: 'none',
       options: [
         { value: 'none', label: 'No export' },
-        { value: 'c', label: 'C or C++ (xxd -i form)' },
+        ...EXPORT_LANGUAGES.map((item) => ({ value: item.id, label: item.label })),
       ],
       help: 'Writes the bytes as an array you can paste into source code. Nothing is uploaded.',
     },
@@ -347,6 +353,46 @@ export default defineTool({
       type: 'text',
       mono: true,
       help: 'Cleaned to a legal name. Empty uses the file name, or data for pasted bytes.',
+      visible: (v) => str(v, 'exportAs', 'none') !== 'none',
+    },
+    {
+      name: 'exportFrom',
+      label: 'Export from byte',
+      type: 'number',
+      default: 0,
+      min: 0,
+      max: POSITION_MAX,
+      step: 1,
+      help: 'The byte number the array starts at, counting from 0.',
+      visible: (v) => str(v, 'exportAs', 'none') !== 'none',
+    },
+    {
+      name: 'exportLength',
+      label: 'Length',
+      type: 'number',
+      min: 0,
+      max: POSITION_MAX,
+      step: 1,
+      help: 'How many bytes to export, up to 4 MiB. Empty means to the end; 0 gives an empty array.',
+      visible: (v) => str(v, 'exportAs', 'none') !== 'none',
+    },
+    {
+      name: 'exportPerLine',
+      label: 'Bytes per line',
+      type: 'number',
+      default: DEFAULT_EXPORT_PER_LINE,
+      min: 1,
+      max: MAX_EXPORT_PER_LINE,
+      step: 1,
+      help: 'From 1 to 256. The xxd -i form uses 12.',
+      visible: (v) => str(v, 'exportAs', 'none') !== 'none',
+    },
+    {
+      name: 'exportUpper',
+      label: 'Upper-case hex digits',
+      type: 'checkbox',
+      default: false,
+      help: 'The C or C++ form then also writes the prefix as 0X, as xxd -u does.',
       visible: (v) => str(v, 'exportAs', 'none') !== 'none',
     },
   ],

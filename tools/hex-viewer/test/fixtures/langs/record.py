@@ -48,7 +48,8 @@ def main() -> None:
         'python': platform.python_version(),
         'cases': cases,
     }
-    (HERE / 'python.json').write_text(json.dumps(document, indent=2) + '\n', encoding='utf-8')
+    with open(HERE / 'python.json', 'w', encoding='utf-8', newline='\n') as handle:
+        handle.write(json.dumps(document, indent=2) + '\n')
     print(f'wrote {len(cases)} cases with Python {platform.python_version()}')
 
 
