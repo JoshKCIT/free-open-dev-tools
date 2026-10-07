@@ -112,6 +112,19 @@ function isDigit(code: number): boolean {
   return code >= 48 && code <= 57;
 }
 
+/**
+ * Lower-cases the ASCII letters only. The draft's lower case is ASCII: JavaScript's toLowerCase also maps some non-ASCII
+ * letters onto ASCII ones (KELVIN SIGN U+212A becomes k), which would hide them from the CHAR rule of section 5.7 step 8.
+ */
+function asciiLower(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    out += code >= 65 && code <= 90 ? String.fromCharCode(code + 32) : text.charAt(i);
+  }
+  return out;
+}
+
 /** Splits a name-value pair at its first equals sign. Without one the name is empty and the whole text is the value. */
 function splitPair(text: string): { name: string; value: string } {
   const equals = text.indexOf('=');
@@ -153,7 +166,7 @@ export function readMaxAge(value: string): { max: MaxAge } | { problem: string }
 }
 
 function sameSiteOf(value: string): SameSiteValue {
-  const lower = value.toLowerCase();
+  const lower = asciiLower(value);
   if (lower === 'none') return 'None';
   if (lower === 'strict') return 'Strict';
   if (lower === 'lax') return 'Lax';
@@ -176,7 +189,7 @@ interface Read {
 }
 
 function readAttribute(name: string, value: string): Read {
-  const kindName = name.toLowerCase();
+  const kindName = asciiLower(name);
   const make = (kind: AttributeKind, use: 'used' | 'ignored', reason: string, payload: Payload): Read => ({
     attribute: { name, value, kind, use, reason },
     payload,
@@ -226,7 +239,7 @@ function readAttribute(name: string, value: string): Read {
         'Sets the cookie for this host and its subdomains if the host matches (section 5.6.3).',
         {
           kind: 'domain',
-          domain: trimmed.toLowerCase(),
+          domain: asciiLower(trimmed),
         },
       );
     }

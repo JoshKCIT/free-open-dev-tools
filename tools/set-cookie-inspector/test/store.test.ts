@@ -208,6 +208,18 @@ it('a Domain must match the response host, a domain cookie matches subdomains an
   expect(first('a=1; Secure', 'http://site.example/').decision.outcome).toBe('not-stored');
 });
 
+it('a Domain is put in lower case for ASCII letters only, so a non-ASCII letter still reaches step 8', () => {
+  // Section 5.6.3 converts the Domain to lower case and section 5.7 step 8 then ignores a Domain with a character outside
+  // CHAR. KELVIN SIGN (U+212A) lower-cases to the ASCII k in JavaScript, which would hide it from step 8.
+  const kelvin = String.fromCodePoint(0x212a);
+  const row = first(`a=1; Domain=ban${kelvin}.example`, 'https://www.bank.example/');
+  expect(row.decision.outcome).toBe('not-stored');
+  expect(row.decision.failedStep?.step).toBe(8);
+  // A leading dot and ASCII capitals are still folded as before.
+  expect(first('a=1; Domain=.BANK.Example', 'https://www.bank.example/').decision.outcome).toBe('stored');
+  expect(first('a=1; Domain=.BANK.Example', 'https://www.bank.example/').decision.scope?.domain).toBe('bank.example');
+});
+
 it('a cookie whose SameSite is not None is ignored on a cross-site request that is not a top-level navigation', () => {
   // Section 5.7 step 18: a SameSite that is not None (so Default, Lax or Strict) on a cross-site request is ignored
   // unless the request navigates a top-level traversable (a top-level navigation, step 18.3).
