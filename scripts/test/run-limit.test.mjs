@@ -130,13 +130,13 @@ const rows = scanTree();
 const declaring = rows.filter((r) => r.declared);
 
 describe('every page with an enforced run limit declares it from its helper', () => {
-  it('finds the helper pages the plan counted: 50 import a run helper and 45 of them export a limit', () => {
-    expect(rows.length).toBe(50);
-    expect(rows.filter((r) => r.expected).length).toBe(45);
+  it('finds the helper pages the plan counted: 51 import a run helper and 46 of them export a limit', () => {
+    expect(rows.length).toBe(51);
+    expect(rows.filter((r) => r.expected).length).toBe(46);
   });
 
-  it('has exactly 45 pages that declare a runLimit, and none of the other 5', () => {
-    expect(declaring.length).toBe(45);
+  it('has exactly 46 pages that declare a runLimit, and none of the other 5', () => {
+    expect(declaring.length).toBe(46);
     const noLimit = rows.filter((r) => !r.expected).map((r) => r.id);
     expect(noLimit.sort()).toEqual(['bcrypt', 'chart-maker', 'hash-file', 'image-splitter', 'sprite-sheet']);
     for (const id of noLimit) expect(rows.find((r) => r.id === id)?.declared).toBeNull();
