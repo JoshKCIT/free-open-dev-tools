@@ -29,6 +29,7 @@ import {
   cs,
   glyphFont,
   headTable,
+  hheaTable,
   layoutTable,
   maxpTable,
   nameTable,
@@ -538,6 +539,51 @@ it('table checksums cost about one pass of the file however many directory entri
     },
     16,
   );
+}, 120_000);
+
+it('a CFF glyph stops at 5,000 lines and curves, so a sheet of such glyphs costs about what glyphs under the cap cost', () => {
+  expect(MAX_GLYPH_POINTS).toBe(5000);
+  // A global subroutine that pushes 512 numbers and draws 256 lines with them, then returns (index 0 is the operand -107).
+  const lines = [...Array.from({ length: 512 }, (_, i) => cs(i % 2 === 1 ? 3 : -3)).flat(), 5, 11];
+  const calling = (calls: number): number[] => [
+    ...cs(0),
+    ...cs(0),
+    21,
+    ...Array.from({ length: calls }, () => [...cs(-107), 29]).flat(),
+    14,
+  ];
+  const cffFont = (calls: number, count: number): Uint8Array =>
+    buildSfnt(0x4f54544f, [
+      [
+        'CFF ',
+        cffTable(
+          Array.from({ length: count }, () => calling(calls)),
+          { gsubrs: [lines] },
+        ),
+      ],
+      ['head', headTable()],
+      ['maxp', maxpTable(count)],
+      ['hhea', hheaTable(1)],
+    ]);
+  // 400 calls would draw about 100,000 lines; 19 calls draw 4,864, under the cap.
+  const hostile = cffFont(400, 64);
+  const under = cffFont(19, 64);
+  const drawAll = (bytes: Uint8Array) => (): void => {
+    const source = openGlyphs(bytes);
+    for (let gid = 0; gid < 64; gid++) source.draw(gid);
+  };
+  expect(timesLonger(drawAll(hostile), drawAll(under), 3)).toBeLessThanOrEqual(3);
+
+  const cut = openGlyphs(hostile).draw(0);
+  expect(cut.truncated).toBe(true);
+  expect(cut.points).toBe(MAX_GLYPH_POINTS);
+  const whole = openGlyphs(under).draw(0);
+  expect(whole.truncated).toBe(false);
+  expect(whole.points).toBe(19 * 256);
+  // The report flags every such glyph, and says some are drawn only in part.
+  const report = inspectFont(hostile, { glyphCount: 64 });
+  expect(report.grid.rows.every((row) => row.truncated && row.points === MAX_GLYPH_POINTS)).toBe(true);
+  expect(report.notes.map((n) => n.text).join(' ')).toContain('drawn only in part');
 }, 120_000);
 
 it('a cmap that claims more groups than the cap or than its bytes allow is refused before any array is sized', () => {
