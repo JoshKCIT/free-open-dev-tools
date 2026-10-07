@@ -35,3 +35,33 @@ it('the decoded trace keeps a source path over 200 characters whole, and the tab
   });
   expect(bounded.decoded.split('\n')[1]).toBe(`    at f (${huge.slice(0, 4096)}${ELLIPSIS}:5:3)`);
 });
+
+it('a name from the map is shown with its hidden characters escaped and at most 200 characters, in the table and the decoded trace', () => {
+  // U+202E turns the text after it around; 300 more characters would make a very wide cell.
+  const flip = String.fromCodePoint(0x202e);
+  const evil = `${flip}evil${'N'.repeat(300)}`;
+  const mappings = buildMappings([
+    [
+      { col: 0, source: 0, line: 0, ocol: 0, name: 0 },
+      { col: 1, source: 0, line: 1, ocol: 0, name: 0 },
+    ],
+  ]);
+  const report = decodeStackTrace({
+    trace: TRACE,
+    maps: JSON.stringify({ version: 3, sources: ['a.js'], names: [evil], mappings }),
+  });
+  const escaped = `${String.fromCodePoint(92)}u{202E}evil`;
+  const row = report.rows[0]!;
+  expect(row.status).toBe('mapped');
+  for (const shown of [row.name, row.functionName]) {
+    expect(shown).not.toBeNull();
+    expect(shown!.startsWith(escaped)).toBe(true);
+    expect(shown!.includes(flip)).toBe(false);
+    expect(Array.from(shown!).length).toBeLessThanOrEqual(201);
+    expect(shown!.endsWith(ELLIPSIS)).toBe(true);
+  }
+  expect(report.rows[1]!.name).toBe(row.name);
+  // The decoded trace names the first frame from the second frame's call site, escaped and cut the same way.
+  expect(report.decoded.includes(flip)).toBe(false);
+  expect(report.decoded.split('\n')[1]).toBe(`    at ${row.functionName!} (a.js:1:1)`);
+});
