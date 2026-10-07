@@ -1510,5 +1510,12 @@
     "category": "hashing",
     "tier": 3,
     "summary": "Decode a SAML request or response from a redirect link, form post or raw XML into formatted XML and a summary, without verifying anything."
+  },
+  {
+    "id": "eml-viewer",
+    "name": "Email Message Viewer & Header Analyzer",
+    "category": "network",
+    "tier": 3,
+    "summary": "Open a saved email to read its headers, delivery hops, MIME parts, attachments and a closed preview of its HTML, with nothing loaded or sent."
   }
 ]
