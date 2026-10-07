@@ -1,5 +1,5 @@
 [
-  { "attachesFile": true, "file": "text" },
+  { "attachesFile": true, "file": "text", "values": { "position": "0" } },
   {
     "mode": { "field": "source", "value": "hex" },
     "values": { "pasted": "48656c6c6f", "search": "6c6c", "position": "0" },
@@ -7,27 +7,29 @@
   },
   {
     "attachesFile": true,
+    "values": { "position": "0" },
     "inlineFiles": [
       { "name": "inline-bytes.bin", "mimeType": "application/octet-stream", "base64": "SGVsbG8gd29ybGQ=" }
     ]
   },
   {
     "attachesFile": true,
+    "values": { "position": "0" },
     "inlineFiles": [{ "name": "inline-marker.txt", "mimeType": "text/plain", "text": "marker {{MARKER}} end" }]
   },
   {
     "mode": { "field": "source", "value": "hex" },
-    "values": { "pasted": "48656c6c6f", "exportAs": "c", "exportName": "greeting.bin" },
+    "values": { "pasted": "48656c6c6f", "position": "0", "exportAs": "c", "exportName": "greeting.bin" },
     "attachesFile": false
   },
   {
     "mode": { "field": "source", "value": "text" },
-    "values": { "pasted": "Hello", "exportAs": "rust", "exportPerLine": "8" },
+    "values": { "pasted": "Hello", "position": "0", "exportAs": "rust", "exportPerLine": "8" },
     "attachesFile": false
   },
   {
     "attachesFile": true,
-    "values": { "exportAs": "go" },
+    "values": { "position": "0", "exportAs": "go" },
     "inlineFiles": [{ "name": "inline-marker.txt", "mimeType": "text/plain", "text": "marker {{MARKER}} end" }]
   }
 ]
