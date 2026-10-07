@@ -29,7 +29,11 @@
     "sfnt",
     "OpenType",
     "name table",
-    "glyphs"
+    "glyphs",
+    "licence",
+    "OpenType features",
+    "variable font",
+    "Unicode blocks"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
