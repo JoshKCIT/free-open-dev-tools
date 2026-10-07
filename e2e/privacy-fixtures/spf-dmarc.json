@@ -15,5 +15,14 @@
       "spfIncludes": "spf.protection.example"
     },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "build-dmarc" },
+    "values": {
+      "dmarcRua": "dmarc-feedback@example.com",
+      "dmarcRuf": "mailto:auth-reports@example.com",
+      "dmarcFo": "1:d"
+    },
+    "attachesFile": false
   }
 ]
