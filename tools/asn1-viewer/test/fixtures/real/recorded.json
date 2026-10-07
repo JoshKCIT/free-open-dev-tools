@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-10-07T15:21:07Z",
+  "python": "3.14.3",
+  "pyasn1": "0.6.4",
+  "encoded": [
+    {"value": 0.0, "hex": "0900", "pyasn1": 0.0},
+    {"value": 1.0, "hex": "09050331452b30", "pyasn1": 1.0},
+    {"value": -1.0, "hex": "0906032d31452b30", "pyasn1": -1.0},
+    {"value": 0.5, "hex": "09050335452d31", "pyasn1": 0.5},
+    {"value": 0.15625, "hex": "0909033135363235452d35", "pyasn1": 0.15625},
+    {"value": 3.14159, "hex": "090a03333134313539452d35", "pyasn1": 3.1415900000000003},
+    {"value": 100.0, "hex": "090403314532", "pyasn1": 100.0},
+    {"value": 10000000000.0, "hex": "09050331453130", "pyasn1": 10000000000.0},
+    {"value": -2.5e-07, "hex": "0907032d3235452d38", "pyasn1": -2.5e-07},
+    {"value": "inf", "hex": "090140", "pyasn1": "inf"},
+    {"value": "-inf", "hex": "090141", "pyasn1": "-inf"}
+  ],
+  "decoded": [
+    {"label": "plus zero", "clause": "X.690 8.5.2", "hex": "0900", "derived": 0.0, "derivation": "no contents octets", "pyasn1": 0.0},
+    {"label": "binary base 2: 5 x 2^-5", "clause": "X.690 8.5.7", "hex": "090380fb05", "derived": 0.15625, "derivation": "80 = binary, +, base 2, F 0, one exponent octet; exponent fb = -5; N = 5", "pyasn1": 0.15625},
+    {"label": "binary base 2: 1", "clause": "X.690 8.5.7", "hex": "0903800001", "derived": 1.0, "derivation": "exponent 0, N = 1", "pyasn1": 1.0},
+    {"label": "binary base 2, negative: -3 x 2^-1", "clause": "X.690 8.5.7.1", "hex": "0903c0ff03", "derived": -1.5, "derivation": "c0 = binary, S = -1; exponent ff = -1; N = 3", "pyasn1": -1.5},
+    {"label": "binary base 8: 3 x 8^1", "clause": "X.690 8.5.7.2", "hex": "0903900103", "derived": 24.0, "derivation": "90 = binary, +, base 8; exponent 1; N = 3", "pyasn1": 24.0},
+    {"label": "binary base 16: 1 x 16^2", "clause": "X.690 8.5.7.2", "hex": "0903a00201", "derived": 256.0, "derivation": "a0 = binary, +, base 16; exponent 2; N = 1", "pyasn1": 256.0},
+    {"label": "binary scaling factor F 2: 3 x 2^2", "clause": "X.690 8.5.7.3", "hex": "0903880003", "derived": 12.0, "derivation": "88 = binary, +, base 2, F 2; exponent 0; N = 3", "pyasn1": 12.0},
+    {"label": "two exponent octets: 2^256", "clause": "X.690 8.5.7.4", "hex": "090481010001", "derived": 1.157920892373162e+77, "derivation": "81 = two exponent octets 0100 = 256; N = 1", "pyasn1": 1.157920892373162e+77},
+    {"label": "exponent length octet: 2^256", "clause": "X.690 8.5.7.4", "hex": "09058302010001", "derived": 1.157920892373162e+77, "derivation": "83: next octet 02 = number of exponent octets; 0100 = 256; N = 1", "pyasn1": 1.157920892373162e+77},
+    {"label": "PLUS-INFINITY", "clause": "X.690 8.5.9", "hex": "090140", "derived": "inf", "derivation": "40", "pyasn1": "inf"},
+    {"label": "MINUS-INFINITY", "clause": "X.690 8.5.9", "hex": "090141", "derived": "-inf", "derivation": "41", "pyasn1": "-inf"},
+    {"label": "NOT-A-NUMBER", "clause": "X.690 8.5.9", "hex": "090142", "derived": "nan", "derivation": "42", "pyasn1": "inf", "pyasn1Differs": true},
+    {"label": "minus zero", "clause": "X.690 8.5.9", "hex": "090143", "derived": -0.0, "derivation": "43", "pyasn1": "-inf", "pyasn1Differs": true},
+    {"label": "decimal NR1", "clause": "X.690 8.5.8", "hex": "090401313530", "derived": 150.0, "derivation": "01 = NR1; the characters 150", "pyasn1": 150.0},
+    {"label": "decimal NR2", "clause": "X.690 8.5.8", "hex": "090402312e35", "derived": 1.5, "derivation": "02 = NR2; the characters 1.5", "pyasn1": 1.5},
+    {"label": "decimal NR3", "clause": "X.690 8.5.8", "hex": "090603312e354532", "derived": 150.0, "derivation": "03 = NR3; the characters 1.5E2", "pyasn1": 150.0},
+    {"label": "decimal NR3 with a comma", "clause": "X.690 8.5.8", "hex": "090603312c354532", "derived": 150.0, "derivation": "ISO 6093 allows a comma as the decimal mark: 1,5E2", "pyasn1": null, "pyasn1Error": "SubstrateUnderrunError", "pyasn1Differs": true}
+  ]
+}

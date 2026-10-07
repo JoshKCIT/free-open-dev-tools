@@ -1,0 +1,9 @@
+ecdsa-p256-sha256.json in this folder is derived from a file of Project Wycheproof
+(https://github.com/C2SP/wycheproof), which is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The original file is testvectors_v1/ecdsa_secp256r1_sha256_test.json at commit
+12fd3aaf33eb5fa1f52e026912ee00c054f9d984. It was changed: it was reduced to the fields tcId, comment, flags and sig of
+each of its 484 tests. The key, the message, the result and the group structure of the original were removed, and the
+tests were put in the order of their tcId. Nothing else was changed, and no signature was edited.
+
+The upstream project carries no NOTICE file of its own at that commit. This is the notice of the change.
