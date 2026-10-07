@@ -3,7 +3,14 @@
 // the DEFLATE layer. Nothing here is taken from running the package.
 import { deflateRawSync, deflateSync, gzipSync, inflateRawSync } from 'node:zlib';
 import { expect, it, vi } from 'vitest';
-import { DOCTYPE_REFUSAL_MESSAGE, MAX_XML_BYTES, SamlDecoderError, decodeSaml, inflateCapped } from '../src/index';
+import {
+  DOCTYPE_REFUSAL_MESSAGE,
+  MAX_XML_BYTES,
+  SamlDecoderError,
+  decodeSaml,
+  inflateCapped,
+  refusalPlace,
+} from '../src/index';
 import { ENTITY_REFUSAL_MESSAGE } from '../src/xml-entity';
 import { NOW_LOGOUT as NOW, base64Of, fixture, mulberry32, normalise, pairsOf, postForm, refusal } from './helpers';
 
@@ -335,6 +342,40 @@ it('wrapped, padded and doubly encoded values are read, each with its own warnin
   const compressedPost = decode(`<input name="SAMLResponse" value="${deflated}">`);
   expect(compressedPost.xml).toBe(seeded);
   expect(compressedPost.warnings.join(' ')).toContain('does not compress');
+});
+
+it('a refusal position is given once, beside a sentence that names none, and only for XML pasted as it is', () => {
+  const placeOf = (text: string) => {
+    const refused = refusal(text);
+    return { refused, place: refusalPlace(text, refused) };
+  };
+  // The DOCTYPE and entity sentences name no place, so for pasted XML the place is given, counted in the text as pasted:
+  // white space trimmed from the start still counts.
+  expect(placeOf('<a/>\n  <!DOCTYPE x>').place).toEqual({ line: 2, column: 3 });
+  expect(placeOf('<a/>\n<!ENTITY x "y">').place).toEqual({ line: 2, column: 1 });
+  expect(placeOf('\n\n  <!DOCTYPE a><a/>').place).toEqual({ line: 3, column: 3 });
+  expect(placeOf('   <a/><!ENTITY x "y">').place).toEqual({ line: 1, column: 8 });
+  // Sentences that name their own place get none beside them.
+  for (const text of ['<a>'.repeat(65), '<a><b></a>', '<a><!-- x']) {
+    const { refused, place } = placeOf(text);
+    expect(refused.line, text).toBeGreaterThanOrEqual(1);
+    expect(refused.message, text).toMatch(/line 1, column \d+/);
+    expect(place, text).toBeNull();
+  }
+  // A message decoded from Base64, a form or an address: the place is in XML the visitor never sees.
+  const evil = '<!DOCTYPE a [<!ENTITY x "y">]><a>&x;</a>';
+  for (const text of [
+    base64Of(evil),
+    postForm(base64Of(evil)),
+    `https://sp.example.test/acs?SAMLRequest=${encodeURIComponent(base64Of(evil))}`,
+  ]) {
+    const { refused, place } = placeOf(text);
+    expect(refused.message).toBe(DOCTYPE_REFUSAL_MESSAGE);
+    expect(refused.line).toBe(1);
+    expect(place, text.slice(0, 30)).toBeNull();
+  }
+  // A refusal with no place has none.
+  expect(placeOf('QUJDR').place).toBeNull();
 });
 
 it('raw XML that holds an input tag in a comment, a CDATA section or as an element is read as the XML pasted', () => {

@@ -4,6 +4,7 @@ import {
   decodeSaml,
   meta,
   parseDateTime,
+  refusalPlace,
   visible,
   type SamlReport,
 } from '@fodt/saml-decoder';
@@ -214,7 +215,12 @@ export default defineTool({
       return { outputs: blocksFor(decodeSaml(message, { now })) };
     } catch (err) {
       if (err instanceof SamlDecoderError) {
-        return { outputs: [], errors: [{ message: err.message, line: err.line, column: err.column }] };
+        // A place is shown beside the sentence only when the sentence names none and it is in the text as pasted.
+        const place = refusalPlace(message, err);
+        return {
+          outputs: [],
+          errors: [place ? { message: err.message, line: place.line, column: place.column } : { message: err.message }],
+        };
       }
       return { outputs: [], errors: [{ message: 'This message could not be read here.' }] };
     }

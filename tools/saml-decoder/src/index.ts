@@ -138,6 +138,53 @@ function transportOf(reading: InputReading): TransportDetails | undefined {
   return transport;
 }
 
+/** Where in the pasted text a refusal points: a 1-based line, and a 1-based column when one is known. */
+export interface RefusalPlace {
+  line: number;
+  column?: number;
+}
+
+/**
+ * The place a page should show beside a refusal, or `null`. The sentences of the tag, depth and XML reader refusals already
+ * name their line and column, so only the DOCTYPE and entity refusals, whose sentences name none, get one. And only when
+ * the pasted text was XML as it is: for a message decoded from Base64, a form or an address, the place is in XML the
+ * visitor never sees. Reading the XML starts at its first character that is not white space, so the white space trimmed
+ * from the start of the paste is counted back in.
+ */
+export function refusalPlace(pasted: string, error: SamlDecoderError): RefusalPlace | null {
+  if (error.line === undefined) return null;
+  if (error.message !== DOCTYPE_REFUSAL_MESSAGE && error.message !== ENTITY_REFUSAL_MESSAGE) return null;
+  try {
+    if (readInput(pasted).kind !== 'xml') return null;
+  } catch {
+    return null;
+  }
+  // The characters readInput trims from the start: white space and a byte order mark. Line breaks are line feeds, as
+  // the finders count them.
+  let start = 0;
+  let lines = 0;
+  let lineStart = 0;
+  for (; start < pasted.length; start++) {
+    const code = pasted.charCodeAt(start);
+    if (code === 0x0a) {
+      lines++;
+      lineStart = start + 1;
+    } else if (!(
+      code === 0x20 ||
+      code === 0x09 ||
+      code === 0x0d ||
+      code === 0x0c ||
+      code === 0x0b ||
+      code === 0xfeff
+    )) {
+      break;
+    }
+  }
+  const line = error.line + lines;
+  if (error.column === undefined) return { line };
+  return { line, column: error.line === 1 ? error.column + (start - lineStart) : error.column };
+}
+
 /** How many of the elements the Signatures cover a note names before it says "and more". */
 const SIGNED_NAMED = 3;
 
