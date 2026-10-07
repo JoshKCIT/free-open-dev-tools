@@ -136,14 +136,17 @@ export function readInput(data: string | Uint8Array, format: InputFormat = 'auto
   }
   checkFileSize(data.length);
   if (data.length === 0) throw new Asn1Error('This file is empty.', 'file');
+  // A UTF-8 byte order mark at the start does not make a text file binary (textOfBytes drops it).
+  const mark = data.length >= 3 && data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf ? 3 : 0;
   let text = true;
-  for (let i = 0; i < data.length; i++) {
+  for (let i = mark; i < data.length; i++) {
     if (!isTextByte(data[i]!)) {
       text = false;
       break;
     }
   }
-  if (format !== 'auto' || text) {
+  // The chosen form applies to a text file only: any other file is the bytes of the structure, whatever is chosen.
+  if (text) {
     const result = readText(textOfBytes(data), format, 'file');
     if (result.bytes.length === 0) throw new Asn1Error('There is nothing to read: the file holds no bytes.', 'file');
     return result;
