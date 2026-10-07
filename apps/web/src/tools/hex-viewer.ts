@@ -352,7 +352,7 @@ export default defineTool({
       label: 'Variable name',
       type: 'text',
       mono: true,
-      help: 'Cleaned to a legal name. Empty uses the file name, or data for pasted bytes.',
+      help: 'Cleaned to a legal name, except that in C a keyword (a file named default) stays as xxd -i leaves it. Empty uses the file name, or data for pasted bytes.',
       visible: (v) => str(v, 'exportAs', 'none') !== 'none',
     },
     {

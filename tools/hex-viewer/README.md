@@ -30,7 +30,7 @@ Opens any file in your browser and shows its bytes as offset, hex and text colum
 - The C and C++ form follows xxd -i as of its current source: 12 bytes per line unless you choose another number, lower case hex, the unsigned int length variable, and the same variable name rule (every byte that is not a letter or digit becomes an underscore).
 - The Rust, Go, Python and JavaScript forms are conventional forms, not the output of one program. The Go, Python and JavaScript forms were checked by running or formatting the text; the Rust form could not be compiled while writing it and follows the grammar only.
 - Export covers up to 4 MiB of selected bytes. The page shows only the first 64 KiB of the text, and the saved file holds all of it.
-- A variable name is cleaned to be legal, can differ from what you typed, and is also the name of the saved file.
+- A variable name is cleaned and can differ from what you typed; it is also the name of the saved file. For Rust, Go, Python and JavaScript the cleaned name is a legal one. For C it is cleaned the way xxd -i does, so a name that is a C keyword (a file named default, for example) stays as it is and does not compile.
 - An empty selection (an empty file, a Length of 0, or a start at or past the end) writes an empty array, which is not standard C.
 
 ## Ambiguous cases, and what this does about them
@@ -45,7 +45,7 @@ Opens any file in your browser and shows its bytes as offset, hex and text colum
 - A signature of two bytes (a BMP file, a zlib header) matches many other files and is marked as a weak hint
 - A variable name is cleaned over the UTF-8 bytes of the name, not its characters: an accented letter becomes two underscores and a Chinese character three, as xxd -i does, and a leading digit gets underscores first (two in C, one elsewhere)
 - Export from byte and Length count bytes from the start of the file and are separate from Go to byte, which only moves the rows on screen
-- A name that is a reserved word in Go, Python or JavaScript gets a trailing underscore, and Rust names are upper case
+- A name that is a reserved word in Go, Python or JavaScript gets a trailing underscore (in JavaScript also NaN, Infinity and undefined, and in Python the built-in constant named debug with two underscores before and after), a C keyword stays as xxd -i leaves it, and Rust names are upper case
 
 ## Defined by
 

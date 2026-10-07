@@ -78,16 +78,18 @@ const GO_RESERVED = new Set(
     ' ',
   ),
 );
-// Python 3.14.3: keyword.kwlist (35 words). The soft keywords _, case, match and type are legal names and stay.
+// Python 3.14.3: keyword.kwlist (35 words), and __debug__, which Python refuses to assign ("cannot assign to
+// __debug__"). The soft keywords _, case, match and type are legal names and stay.
 const PYTHON_RESERVED = new Set(
-  'False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(
+  'False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield __debug__'.split(
     ' ',
   ),
 );
 // JavaScript: ReservedWord (ECMA-262 section 12.7.2: await is reserved in modules and yield in generators and strict
-// code), the strict mode words of section 13.1.1, and arguments and eval, which a strict binding refuses.
+// code), the strict mode words of section 13.1.1, arguments and eval, which a strict binding refuses, and NaN, Infinity
+// and undefined, global properties that cannot be redefined, so a classic script refuses a const of that name.
 const JAVASCRIPT_RESERVED = new Set(
-  'await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield implements interface let package private protected public static arguments eval'.split(
+  'await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield implements interface let package private protected public static arguments eval NaN Infinity undefined'.split(
     ' ',
   ),
 );
@@ -113,9 +115,10 @@ function underscored(rawName: string): { text: string; startsWithDigit: boolean 
 }
 
 /**
- * The legal variable name for a language. C is the xxd rule (two underscores before a leading digit). Go, Python and
- * JavaScript put one underscore before a leading digit and add one after a reserved word. Rust makes a constant, which
- * is upper case. An empty name, and for Go and Rust a name that is only the blank underscore, becomes data.
+ * The variable name for a language. C is the xxd rule (two underscores before a leading digit), so a C keyword stays as
+ * it is and the C name is the only one that can be illegal. Go, Python and JavaScript put one underscore before a
+ * leading digit and add one after a reserved word. Rust makes a constant, which is upper case. An empty name, and for
+ * Go and Rust a name that is only the blank underscore, becomes data.
  */
 export function cleanIdentifier(language: ExportLanguage, rawName: string): string {
   const { text, startsWithDigit } = underscored(rawName);
