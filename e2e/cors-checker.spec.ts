@@ -256,14 +256,22 @@ async function runRow(page: Page, servers: Servers, row: Row, index: number): Pr
   };
 }
 
-async function observeAll(page: Page): Promise<{ servers: Servers; observed: Observed[] }> {
+/**
+ * Runs every row against the two local servers and closes them before it returns or throws, so a failing navigation, a
+ * failing row or the test timeout never leaves a listening socket open in the worker.
+ */
+async function observeAll(page: Page): Promise<Observed[]> {
   const servers = await startServers();
-  await page.goto(`${servers.originA}/`);
-  const observed: Observed[] = [];
-  for (let index = 0; index < rows.length; index++) {
-    observed.push(await runRow(page, servers, rows[index] as Row, index));
+  try {
+    await page.goto(`${servers.originA}/`);
+    const observed: Observed[] = [];
+    for (let index = 0; index < rows.length; index++) {
+      observed.push(await runRow(page, servers, rows[index] as Row, index));
+    }
+    return observed;
+  } finally {
+    await servers.close();
   }
-  return { servers, observed };
 }
 
 /** The exception for a row, an engine and a check, when there is one. */
@@ -333,24 +341,16 @@ test('cors-checker: real browsers agree with the re-expressed Fetch rows on whet
 }, testInfo) => {
   test.setTimeout(180_000);
   expect(rows.length).toBeGreaterThanOrEqual(40);
-  const { servers, observed } = await observeAll(page);
-  try {
-    const disagreements = compare(testInfo.project.name, 'readable', observed, readableProblem);
-    expect(disagreements, `${testInfo.project.name}: ${rows.length} rows run`).toEqual([]);
-  } finally {
-    await servers.close();
-  }
+  const observed = await observeAll(page);
+  const disagreements = compare(testInfo.project.name, 'readable', observed, readableProblem);
+  expect(disagreements, `${testInfo.project.name}: ${rows.length} rows run`).toEqual([]);
 });
 
 test('cors-checker: the server sees a preflight exactly when the rows say one is sent, with the same Access-Control-Request-Headers line', async ({
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
-  const { servers, observed } = await observeAll(page);
-  try {
-    const disagreements = compare(testInfo.project.name, 'preflight', observed, preflightProblem);
-    expect(disagreements, `${testInfo.project.name}: ${rows.length} rows run`).toEqual([]);
-  } finally {
-    await servers.close();
-  }
+  const observed = await observeAll(page);
+  const disagreements = compare(testInfo.project.name, 'preflight', observed, preflightProblem);
+  expect(disagreements, `${testInfo.project.name}: ${rows.length} rows run`).toEqual([]);
 });
