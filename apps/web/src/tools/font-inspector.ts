@@ -453,6 +453,8 @@ export default defineTool({
       default: 'none',
       options: [
         { value: 'none', label: 'Inspect only' },
+        { value: 'sfnt', label: 'TrueType or OpenType file' },
+        { value: 'woff', label: 'WOFF' },
         { value: 'woff2', label: 'WOFF2' },
       ],
       help: 'Only the container and its compression change. The converted file is read back and checked before it is offered.',
