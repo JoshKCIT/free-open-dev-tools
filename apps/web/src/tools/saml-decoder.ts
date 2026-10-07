@@ -40,7 +40,7 @@ const EXAMPLE_FORM = [
   'Om5hbWVzOnRjOlNBTUw6Mi4wOnN0YXR1czpTdWNjZXNzIi8+DQogICAgPC9zYW1s',
   'cDpTdGF0dXM+DQo8L3NhbWxwOkxvZ291dFJlc3BvbnNlPg=="/>',
   '</form>',
-].join('\n'); // gitleaks:allow
+].join('\n');
 
 // The Response of the SAML V2.0 Technical Overview, Committee Draft 02, section 5.1.2 (document lines 875 to 927), with the
 // signature left as the document's own placeholder.
