@@ -1,0 +1,17 @@
+{
+  "id": "asn1-viewer",
+  "label": "ITU-T X.690 (02/2021) annex A.3: the personnel record encodes as 133 content octets under 60 81 85 and reads back as strings Director, 19710917 and Smith",
+  "steps": [
+    {
+      "action": "radio",
+      "field": "source",
+      "value": "paste"
+    },
+    {
+      "action": "fill",
+      "field": "input",
+      "value": "60818561101a044a6f686e1a01501a05536d697468a00a1a084469726563746f72420133a10a43083139373130393137a21261101a044d6172791a01541a05536d697468a342311f61111a0552616c70681a01541a05536d697468a00a43083139353731313131311f61111a05537573616e1a01421a054a6f6e6573a00a43083139353930373137"
+    }
+  ],
+  "expect": ["Director", "19710917", "Smith", "John"]
+}

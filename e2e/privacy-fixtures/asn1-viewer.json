@@ -1,0 +1,36 @@
+[
+  {
+    "values": {
+      "input": "MDYCAQEwMTANBglghkgBZQMEAgEFAAQgQSfHxCHS9gex5URTmbdlfzZruVLc8d4biaywCoSjV2w="
+    },
+    "attachesFile": false
+  },
+  {
+    "mode": {
+      "field": "source",
+      "value": "file"
+    },
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "request.tsq",
+        "mimeType": "application/timestamp-query",
+        "base64": "MDYCAQEwMTANBglghkgBZQMEAgEFAAQgQSfHxCHS9gex5URTmbdlfzZruVLc8d4biaywCoSjV2w="
+      }
+    ]
+  },
+  {
+    "mode": {
+      "field": "source",
+      "value": "file"
+    },
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "request.pem",
+        "mimeType": "text/plain",
+        "text": "Marker: {{MARKER}}\n-----BEGIN TIMESTAMP REQ-----\nMDYCAQEwMTANBglghkgBZQMEAgEFAAQgQSfHxCHS9gex5URTmbdlfzZruVLc8d4biaywCoSjV2w=\n-----END TIMESTAMP REQ-----\n"
+      }
+    ]
+  }
+]
