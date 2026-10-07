@@ -365,8 +365,10 @@ export function parseDkimSignature(
       alignment =
         'The signing domain and the From domain are related by a subdomain, which relaxed alignment would accept. This is approximate: no public suffix list is consulted.';
     } else {
+      // Relaxed alignment compares organizational domains, which RFC 9989 section 4.10 finds with DNS lookups, so only
+      // the strict answer is known here: sibling names such as news.example.com and mail.example.com usually align.
       alignment =
-        'The signing domain and the From domain differ, so neither strict nor relaxed alignment would be met.';
+        'The signing domain and the From domain differ and neither is under the other, so strict alignment is not met. Whether relaxed alignment is met depends on their organizational domains, which this page does not work out (that needs DNS lookups, and no public suffix list is consulted).';
     }
   }
 

@@ -292,6 +292,32 @@ it('DKIM-Signature tags are read and checked against RFC 6376 rules', () => {
   expect(Object.keys(Object.prototype)).toEqual([]);
 });
 
+it('the DKIM alignment words never say relaxed alignment fails when only the organisational domain could tell', () => {
+  // RFC 9989 section 4.4: relaxed alignment compares organizational domains, which RFC 9989 section 4.10 finds with DNS
+  // lookups. Two sibling names such as news.example.com and mail.example.com usually share the organizational domain
+  // example.com, so the page cannot say relaxed alignment fails; it can only say strict alignment does.
+  const signature = (d: string): string => `v=1; a=rsa-sha256; d=${d}; s=s1; h=from; bh=AAAA; b=AAAA`;
+  const sibling = parseDkimSignature(signature('mail.example.com'), 'news.example.com').alignment;
+  expect(sibling).toContain('differ');
+  expect(sibling).toContain('strict alignment is not met');
+  expect(sibling).toContain('no public suffix list is consulted');
+  expect(sibling).not.toMatch(/neither strict nor relaxed/);
+  expect(sibling).not.toMatch(/relaxed alignment (would not|is not|cannot) be met/);
+  // The same words whatever the two names share, and in any letter case: without the organizational domains the page
+  // never says whether relaxed alignment is met.
+  for (const [d, from] of [
+    ['a.b.example.co.uk', 'c.example.co.uk'],
+    ['MAIL.example.com', 'news.EXAMPLE.com'],
+    ['example.com', 'example.org'],
+    ['mail.example.com', 'news.other.com'],
+  ] as const) {
+    expect(parseDkimSignature(signature(d), from).alignment, `${d} and ${from}`).toBe(sibling);
+  }
+  // The other two answers are as before.
+  expect(parseDkimSignature(signature('example.com'), 'example.com').alignment).toContain('same');
+  expect(parseDkimSignature(signature('example.com'), 'mail.example.com').alignment).toContain('subdomain');
+});
+
 it('ARC headers are grouped by instance number', async () => {
   // RFC 8617 Appendix B: three ARC sets in a message, newest (instance 3) at the top, as a mail system writes them.
   const arcHeaders = [
