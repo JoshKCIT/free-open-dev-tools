@@ -1,6 +1,6 @@
 {
   "id": "font-inspector",
-  "label": "a 1,672 byte TrueType font built with fontTools 4.64.0 shows its family Det Sans, its licence text from name ID 13 and the layout features liga and kern that fontTools recorded",
+  "label": "a 1,672 byte TrueType font built with fontTools 4.64.0 shows its family Det Sans, its licence text from name ID 13 and the layout features liga and kern that fontTools recorded, and converted to WOFF2 it is offered as DetSans-Regular.woff2, the PostScript name in name ID 6 with the target's extension",
   "steps": [
     {
       "action": "attach",
@@ -14,8 +14,19 @@
       ]
     },
     {
+      "action": "select",
+      "field": "convertTo",
+      "value": "woff2"
+    },
+    {
       "action": "run"
     }
   ],
-  "expect": ["Det Sans", "Test font built for this project, released as CC0-1.0.", "liga", "kern"]
+  "expect": [
+    "Det Sans",
+    "Test font built for this project, released as CC0-1.0.",
+    "liga",
+    "kern",
+    "DetSans-Regular.woff2"
+  ]
 }

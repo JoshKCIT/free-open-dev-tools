@@ -9,23 +9,28 @@ import {
   MAX_SAMPLE_CHARS,
   checkFileSize,
   checkGridOptions,
+  conversionRefusal,
   inspectFont,
   meta,
   readContainer,
+  restrictsEmbedding,
   visible,
+  type ConversionReport,
+  type ConvertTarget,
   type FontReport,
 } from '@fodt/font-inspector';
 import {
   FONT_INSPECTOR_TIME_LIMIT_MS,
   FontInspectorRunError,
   fontInspectorInWorker,
+  type FontInspectorConversion,
   type FontInspectorWrapper,
 } from '../lib/run-font-inspector-in-worker';
 import { defineTool, files, num, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** What the page says first: where the font is read and what the page never does with it. */
 const FIRST_NOTE =
-  'The font is read on this device and nothing is uploaded. No address inside the font (a licence or vendor address) is ever requested; such an address is shown as text only.';
+  'The font is read and converted on this device and nothing is uploaded. No address inside the font (a licence or vendor address) is ever requested; such an address is shown as text only.';
 
 const MAX_NAME_ROWS_SHOWN = 500;
 const MAX_FEATURE_ROWS_SHOWN = 500;
@@ -314,10 +319,100 @@ function gridBlocks(report: FontReport): OutputBlock[] {
   return out;
 }
 
-function outputsOf(report: FontReport, wrapper: FontInspectorWrapper | null): OutputBlock[] {
+/** What the visitor asked for in the conversion field and what became of it. */
+interface ConversionOutcome {
+  target: ConvertTarget | 'none';
+  /** The reason the conversion was refused before it ran, in plain words. */
+  refusal: string | null;
+  conversion: FontInspectorConversion | null;
+}
+
+const TARGET_NAMES: Record<ConvertTarget, string> = {
+  sfnt: 'a TrueType or OpenType file',
+  woff: 'a WOFF file',
+  woff2: 'a WOFF2 file',
+};
+
+/** The select's value as a target; anything else means no conversion. */
+function targetOf(value: string): ConvertTarget | 'none' {
+  return value === 'sfnt' || value === 'woff' || value === 'woff2' ? value : 'none';
+}
+
+function checkPairs(report: ConversionReport, target: ConvertTarget): [string, string][] {
+  const pairs: [string, string][] = [
+    [
+      'Result',
+      report.ok
+        ? 'Read back and checked: no difference found beyond what the format changes'
+        : 'Not offered: the check found a problem',
+    ],
+    ['Converted to', TARGET_NAMES[target]],
+    ['Tables byte for byte identical', `${count(report.tablesIdentical)} of ${count(report.tablesTotal)}`],
+    ['Glyphs compared', count(report.glyphsCompared)],
+  ];
+  for (const text of report.byDesign) {
+    const colon = text.indexOf(': ');
+    pairs.push(
+      colon > 0 ? [`Differs by design: ${text.slice(0, colon)}`, text.slice(colon + 2)] : ['Differs by design', text],
+    );
+  }
+  if (report.byDesign.length === 0 && report.ok) pairs.push(['Differs by design', 'Nothing']);
+  return pairs;
+}
+
+/** The conversion's blocks: the warning about the font's own flags, the check, the file, or the reason there is none. */
+function conversionBlocks(report: FontReport, outcome: ConversionOutcome): OutputBlock[] {
+  if (outcome.target === 'none') return [];
+  const out: OutputBlock[] = [];
+  const e = report.embedding;
+  if (e && restrictsEmbedding(e)) {
+    out.push({
+      kind: 'note',
+      tone: 'warn',
+      value: `This font's own flags say: ${e.permission}. They are the font maker's statement and this page cannot tell you what you may do with a converted file; read the licence before you publish it.`,
+    });
+  }
+  if (outcome.refusal !== null) {
+    out.push({ kind: 'note', tone: 'warn', value: `Not converted. ${outcome.refusal}` });
+    return out;
+  }
+  const done = outcome.conversion;
+  if (!done) return out;
+  out.push({ kind: 'keyvalue', label: 'Conversion check', pairs: checkPairs(done.report, done.target) });
+  if (done.report.ok && done.bytes !== null && done.name !== null) {
+    out.push({
+      kind: 'note',
+      tone: 'success',
+      value:
+        'Only the container and its compression changed. The outlines, hinting, features, names and metrics are carried over unchanged, and the file was read back and checked before it was offered.',
+    });
+    out.push({
+      kind: 'files',
+      label: 'Converted font',
+      files: [{ name: done.name, mime: 'application/octet-stream', content: done.bytes }],
+    });
+  } else {
+    out.push({
+      kind: 'note',
+      tone: 'warn',
+      value: 'The converted file was not offered, because reading it back found a problem.',
+    });
+    out.push({ kind: 'list', label: 'What the check found', items: done.report.problems });
+  }
+  return out;
+}
+
+function outputsOf(
+  report: FontReport,
+  wrapper: FontInspectorWrapper | null,
+  outcome: ConversionOutcome,
+): OutputBlock[] {
   const outputs: OutputBlock[] = [{ kind: 'note', tone: 'info', value: FIRST_NOTE }];
   for (const note of report.notes) outputs.push({ kind: 'note', tone: note.tone, value: note.text });
   if (wrapper) for (const text of wrapper.notes) outputs.push({ kind: 'note', tone: 'info', value: text });
+  // The conversion comes straight after the notes, so a visitor who asked for one sees its result without scrolling past
+  // the whole report.
+  outputs.push(...conversionBlocks(report, outcome));
   outputs.push(fontBlock(report, wrapper));
   outputs.push(...namesBlocks(report));
   outputs.push(...metricsBlocks(report));
@@ -350,6 +445,17 @@ export default defineTool({
       type: 'file',
       accept: '.ttf,.otf,.woff,.woff2,.ttc,.otc',
       help: `Up to ${MAX_FILE_BYTES / 1_048_576} MiB. The font is read here and nothing is uploaded.`,
+    },
+    {
+      name: 'convertTo',
+      label: 'Convert to',
+      type: 'select',
+      default: 'none',
+      options: [
+        { value: 'none', label: 'Inspect only' },
+        { value: 'woff2', label: 'WOFF2' },
+      ],
+      help: 'Only the container and its compression change. The converted file is read back and checked before it is offered.',
     },
     {
       name: 'member',
@@ -411,19 +517,34 @@ export default defineTool({
       // An edit made while the file was being read has started a newer run; this one leaves nothing behind.
       if (ctx.signal.aborted) return { outputs: [] };
       const container = readContainer(bytes);
+      // A conversion that cannot run (a collection, a file already in the target's container) is said so in plain words and
+      // the font is still read; one that can run goes to the background worker with the font.
+      const target = targetOf(str(values, 'convertTo', 'none'));
+      const early = target === 'none' ? null : conversionRefusal(container, target);
+      const outcome: ConversionOutcome = { target, refusal: early, conversion: null };
+      const converting = target !== 'none' && early === null;
       let sfnt: Uint8Array = bytes;
       let wrapper: FontInspectorWrapper | null = null;
-      if (container.kind === 'woff' || container.kind === 'woff2') {
-        // WOFF and WOFF2 are unpacked in a background worker that can be cancelled and is stopped at 60 seconds.
+      if (container.kind === 'woff' || container.kind === 'woff2' || converting) {
+        // WOFF and WOFF2 are unpacked, and a conversion is made and checked, in a background worker that can be cancelled
+        // and is stopped at 60 seconds.
         const result = await fontInspectorInWorker(
-          { type: 'font-inspector-job', bytes, container: container.kind },
+          {
+            type: 'font-inspector-job',
+            bytes,
+            container: container.kind === 'woff' || container.kind === 'woff2' ? container.kind : 'sfnt',
+            convertTo: converting ? target : 'none',
+            fileName: file.name,
+          },
           ctx,
         );
         sfnt = result.sfnt;
         wrapper = result.wrapper;
+        outcome.conversion = result.conversion;
+        if (result.refusal !== null) outcome.refusal = result.refusal;
       }
       const report = inspectFont(sfnt, { member, glyphStart, glyphCount, sample: str(values, 'sample') });
-      return { outputs: outputsOf(report, wrapper) };
+      return { outputs: outputsOf(report, wrapper, outcome) };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       return failure(err);

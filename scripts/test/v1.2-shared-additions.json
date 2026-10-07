@@ -91,7 +91,7 @@
       "phase": 19,
       "needs": ["eval", "wasm", "workers"],
       "needsNote": "The one new page that may generate code at run time; its id is reserved in the policy gate.",
-      "outputKinds": ["keyvalue", "table", "list", "image", "code", "note"],
+      "outputKinds": ["keyvalue", "table", "list", "image", "code", "files", "note"],
       "sharedAdditions": ["runLimit", "working cue", "inline fixture files"]
     },
     {

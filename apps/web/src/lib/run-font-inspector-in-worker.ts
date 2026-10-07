@@ -17,10 +17,10 @@
  * not wait forever. The 60 second limit starts when the job is posted, not when the worker is created, so a slow start is
  * never counted against the visitor's font.
  *
- * The limit is 60 seconds: unpacking a font takes a fraction of a second, so the limit is there for the compression that
- * the converter will add, which runs at about a second per MiB on a fast machine and is several times slower on a phone.
- * The page owns the limit because the worker is inside the engine when it matters, and terminate() is the only real way
- * to stop it.
+ * The limit is 60 seconds: unpacking a font takes a fraction of a second, so the limit is there for the conversion, whose
+ * WOFF2 compression runs at about a second per MiB on a fast machine and is several times slower on a phone, and for the
+ * re-read check that follows it. The page owns the limit because the worker is inside the engine when it matters, and
+ * terminate() is the only real way to stop it.
  */
 import FontInspectorWorker from './workers/font-inspector.worker.ts?worker&inline';
 import type {
@@ -30,12 +30,16 @@ import type {
 } from './workers/font-inspector.worker';
 import type { RunContext } from './tool-ui';
 
-export type { FontInspectorWorkerResult, FontInspectorWrapper } from './workers/font-inspector.worker';
+export type {
+  FontInspectorConversion,
+  FontInspectorWorkerResult,
+  FontInspectorWrapper,
+} from './workers/font-inspector.worker';
 
 export const FONT_INSPECTOR_TIME_LIMIT_MS = 60000;
 
 export const FONT_INSPECTOR_TIME_LIMIT_MESSAGE =
-  'Stopped after 60 seconds: the font took too long to unpack. Try a smaller file.';
+  'Stopped after 60 seconds: the font took too long to unpack or convert. No file was offered. Try a smaller file.';
 
 export const FONT_INSPECTOR_START_LIMIT_MS = 10000;
 
