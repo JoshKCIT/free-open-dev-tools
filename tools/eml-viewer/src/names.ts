@@ -42,11 +42,21 @@ function isHidden(point: number): boolean {
 /** The characters a Windows file name may not hold (the two slashes are handled before this). */
 const RESERVED = ':*?"<>|';
 
+/** The superscript digits one, two and three, which Windows also reads after COM and LPT. */
+const SUPERSCRIPTS = [0xb9, 0xb2, 0xb3].map((point) => String.fromCharCode(point));
+
+/** Windows reserved device names, in lower case: Microsoft's list, with the console names CONIN$ and CONOUT$. */
 const DEVICE_NAMES = new Set([
   'con',
   'prn',
   'aux',
   'nul',
+  'conin$',
+  'conout$',
+  ...SUPERSCRIPTS.map((digit) => `com${digit}`),
+  ...SUPERSCRIPTS.map((digit) => `lpt${digit}`),
+  'com0',
+  'lpt0',
   'com1',
   'com2',
   'com3',
@@ -83,9 +93,21 @@ function cutUnits(text: string, limit: number): string {
   return out;
 }
 
+/** The text without the dots and spaces at its end (Windows drops them from a file name). */
+function trimEndDotsAndSpaces(text: string): string {
+  let end = text.length;
+  while (end > 0 && (text.charCodeAt(end - 1) === 0x2e || text.charCodeAt(end - 1) === 0x20)) end--;
+  return text.slice(0, end);
+}
+
+/**
+ * The base cut to the room left by the extension and the number, then trimmed again: a cut can land on a space or a
+ * dot, which Windows would drop or a browser would replace. A base with nothing left is one underscore.
+ */
 function joinName(base: string, extension: string, suffix: string): string {
   const room = MAX_FILENAME_CHARACTERS - extension.length - suffix.length;
-  return cutUnits(base, Math.max(1, room)) + suffix + extension;
+  const cut = trimEndDotsAndSpaces(cutUnits(base, Math.max(1, room)));
+  return (cut === '' ? '_' : cut) + suffix + extension;
 }
 
 /** The result of cleaning one attachment name. */
@@ -100,9 +122,10 @@ export interface CleanName {
  * Makes a name from a message safe to use as a file name. The part after the last slash or backslash is kept;
  * control, direction and zero-width characters and the characters : * ? " < > | become underscores; trailing dots and
  * spaces go and a leading run of dots becomes one underscore; a Windows device name gets a leading underscore; a name
- * over 120 UTF-16 units is cut by code point with its extension kept; an empty name becomes attachment-<n> (n is the
- * 1-based number of the attachment). A name already in `taken` (compared without regard to letter case) gets a number
- * before its extension: report.txt, report (2).txt. The cleaned name is added to `taken`.
+ * over 120 UTF-16 units is cut by code point with its extension kept, and trailing dots and spaces go again after the
+ * cut; an empty name becomes attachment-<n> (n is the 1-based number of the attachment). A name already in `taken`
+ * (compared without regard to letter case) gets a number before its extension: report.txt, report (2).txt. The cleaned
+ * name is added to `taken`.
  */
 export function safeAttachmentName(raw: string, index: number, taken: Set<string>): CleanName {
   let name = raw;
@@ -115,9 +138,7 @@ export function safeAttachmentName(raw: string, index: number, taken: Set<string
     cleaned += isHidden(point) || RESERVED.includes(ch) ? '_' : ch;
   }
 
-  let end = cleaned.length;
-  while (end > 0 && (cleaned.charCodeAt(end - 1) === 0x2e || cleaned.charCodeAt(end - 1) === 0x20)) end--;
-  cleaned = cleaned.slice(0, end);
+  cleaned = trimEndDotsAndSpaces(cleaned);
 
   if (cleaned.startsWith('.')) {
     let dots = 0;
