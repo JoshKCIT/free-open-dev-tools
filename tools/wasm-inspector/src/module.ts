@@ -1,7 +1,14 @@
 import { MARK_GC, MARK_SIMD, readConstExpr } from './const-expr';
 import { Cursor } from './cursor';
 import { FindingList, WasmInspectorError } from './errors';
-import { MAX_PREVIEW_BYTES, MAX_ROWS, MAX_STRING_SCAN_BYTES, MIN_STRING_LENGTH, withCommas } from './limits';
+import {
+  MAX_LARGEST_FUNCTIONS,
+  MAX_PREVIEW_BYTES,
+  MAX_ROWS,
+  MAX_STRING_SCAN_BYTES,
+  MIN_STRING_LENGTH,
+  withCommas,
+} from './limits';
 import type { SectionInfo } from './sections';
 import { SoftReader } from './soft';
 import {
@@ -118,6 +125,13 @@ export interface DataRow {
   previewText: string;
 }
 
+/** One of the largest function bodies: its place among the defined functions, its size and where it begins in the file. */
+export interface BodyRow {
+  index: number;
+  size: number;
+  offset: number;
+}
+
 /** What the sections of a module hold, kept in caps. */
 export interface ModuleData {
   types: Capped<TypeRow>;
@@ -138,9 +152,11 @@ export interface ModuleData {
   data: Capped<DataRow>;
   /** The number the data count section gives, or null when there is none. */
   dataCount: number | null;
-  /** Function bodies: where each begins in the file and how long it is, as typed arrays. */
-  bodyOffsets: Uint32Array;
-  bodySizes: Uint32Array;
+  /**
+   * The largest function bodies, largest first (equal sizes: the lower index first), at most 50, picked while the bodies
+   * are walked. Nothing is kept for the other bodies, so a file of millions of tiny bodies holds 50 records, not millions.
+   */
+  largest: BodyRow[];
   /** How many bodies were measured (fewer than the code section announces when its reading stopped early). */
   bodyCount: number;
   /** The total size of the bodies measured. */
@@ -169,8 +185,7 @@ function newModuleData(): ModuleData {
     elements: new Capped(),
     data: new Capped(),
     dataCount: null,
-    bodyOffsets: new Uint32Array(0),
-    bodySizes: new Uint32Array(0),
+    largest: [],
     bodyCount: 0,
     bodyBytes: 0,
     dataSpans: [],
@@ -441,12 +456,17 @@ function checkLocals(r: SoftReader): void {
   }
 }
 
+/** Puts a body among the largest when it is larger than the smallest kept; equal sizes keep the order they came in. */
+function keepLargest(best: BodyRow[], index: number, size: number, offset: number): void {
+  if (best.length === MAX_LARGEST_FUNCTIONS && size <= best[best.length - 1]!.size) return;
+  let at = best.length;
+  while (at > 0 && best[at - 1]!.size < size) at--;
+  best.splice(at, 0, { index, size, offset });
+  if (best.length > MAX_LARGEST_FUNCTIONS) best.pop();
+}
+
 function readCode(c: Cursor, data: ModuleData, findings: FindingList): void {
   const n = c.count(3);
-  const offsets = new Uint32Array(n);
-  const sizes = new Uint32Array(n);
-  data.bodyOffsets = offsets;
-  data.bodySizes = sizes;
   const locals = new SoftReader(c.bytes);
   for (let i = 0; i < n; i++) {
     const at = c.pos;
@@ -457,8 +477,7 @@ function readCode(c: Cursor, data: ModuleData, findings: FindingList): void {
         at,
       );
     }
-    offsets[i] = c.pos;
-    sizes[i] = size;
+    keepLargest(data.largest, i, size, c.pos);
     data.bodyCount = i + 1;
     data.bodyBytes += size;
     const start = c.pos;

@@ -73,7 +73,7 @@ report.sections; // id, name, offset and size of every section
 report.findings; // what could not be read, each with an offset
 ```
 
-`inspect(bytes)` walks the sections (`walkSections`), reads each one (`readModule`), the name section (`readNameSection`) and the custom sections (`readCustomSections`), lists printable text in data segments (`findStrings`) and works out the features used (`usedFeatures`). Faults in the structure are findings with an offset, never thrown; only a file over 64 MiB is refused, with a `WasmInspectorError`. Counts read from the file are compared with the bytes that remain before any array is sized, function bodies are kept as two typed arrays of offset and size, and the functions hold no state between calls. Nothing in the package touches the WebAssembly object, generates code or imports at run time, and a test reads every source file to prove it.
+`inspect(bytes)` walks the sections (`walkSections`), reads each one (`readModule`), the name section (`readNameSection`) and the custom sections (`readCustomSections`), lists printable text in data segments (`findStrings`) and works out the features used (`usedFeatures`). Faults in the structure are findings with an offset, never thrown; only a file over 64 MiB is refused, with a `WasmInspectorError`. Counts read from the file are compared with the bytes that remain before any array is sized, only the 50 largest function bodies are kept (picked while the bodies are walked, so no record is kept per function), and the functions hold no state between calls. Nothing in the package touches the WebAssembly object, generates code or imports at run time, and a test reads every source file to prove it.
 
 ## Dependencies
 

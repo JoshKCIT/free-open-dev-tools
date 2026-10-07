@@ -1,7 +1,7 @@
 import { readCustomSections, type CustomRow, type ProducerField, type TargetFeature } from './custom';
 import { FindingList, WasmInspectorError, type Finding } from './errors';
 import { usedFeatures } from './features';
-import { MAX_LARGEST_FUNCTIONS, MAX_MODULE_BYTES, withCommas } from './limits';
+import { MAX_MODULE_BYTES, withCommas } from './limits';
 import {
   Capped,
   exportedFunctionNames,
@@ -12,7 +12,6 @@ import {
   type GlobalRow,
   type ImportRow,
   type MemoryRow,
-  type ModuleData,
   type TableRow,
   type TagRow,
 } from './module';
@@ -132,22 +131,6 @@ function emptyReport(kind: ReportKind, sentence: string | null, size: number): R
   };
 }
 
-/** The largest bodies, largest first and the lower index first among equals, found in one pass over the measured sizes. */
-function largestBodies(data: ModuleData): { index: number; size: number }[] {
-  const best: { index: number; size: number }[] = [];
-  const sizes = data.bodySizes;
-  for (let i = 0; i < data.bodyCount; i++) {
-    const size = sizes[i]!;
-    if (best.length === MAX_LARGEST_FUNCTIONS && size <= best[best.length - 1]!.size) continue;
-    // Equal sizes keep the order they were found in, which is the order of their indices.
-    let at = best.length;
-    while (at > 0 && best[at - 1]!.size < size) at--;
-    best.splice(at, 0, { index: i, size });
-    if (best.length > MAX_LARGEST_FUNCTIONS) best.pop();
-  }
-  return best;
-}
-
 /**
  * Reads the bytes of a file as a WebAssembly module, section by section. The module is never compiled, validated,
  * instantiated or run: this reads bytes and nothing else. Faults in the structure are findings, never thrown; only a file
@@ -164,7 +147,7 @@ export function inspect(bytes: Uint8Array): Report {
 
   // The names of the largest functions come from the name section first and from an export of the function second.
   const importedFunctions = data.importCounts.func;
-  const largest = largestBodies(data);
+  const largest = data.largest;
   const wanted = new Set(largest.map((body) => importedFunctions + body.index));
   const custom = readCustomSections(bytes, walk.sections, walk.customTotal, wanted, findings);
   const exported = exportedFunctionNames(bytes, data.exportSection, wanted);
@@ -177,7 +160,7 @@ export function inspect(bytes: Uint8Array): Report {
         index,
         name: custom.names.functionNames.get(index) ?? exported.get(index) ?? '',
         size: body.size,
-        offset: data.bodyOffsets[body.index]!,
+        offset: body.offset,
       };
     }),
     largestLeftOut: data.bodyCount - largest.length,

@@ -26,6 +26,7 @@ export { SECTION_NAMES, readHeader, walkSections } from './sections';
 export type { Header, SectionInfo, SectionWalk } from './sections';
 export { Capped, exportedFunctionNames, readModule } from './module';
 export type {
+  BodyRow,
   DataRow,
   ElementRow,
   ExportRow,
