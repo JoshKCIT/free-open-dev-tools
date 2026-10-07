@@ -267,20 +267,25 @@ it('every header parser stays linear on hostile input', () => {
   ];
   const slow: string[] = [];
   let measured = 0;
+  // Two sizes: 20,000 characters, and 160,000 where a parser that reads the end of a string while it is still being built
+  // (which copies the whole string each time) is quadratic or worse and shows it. Both are judged by the same limit.
+  const sizes = [20_000, 160_000];
   for (const [parserName, parser] of parsers) {
     for (const [inputName, make] of inputs) {
-      let ratio = scalingRatio(parser, make, 20_000);
-      // The limit is not loosened. A ratio over it is measured twice more and the median of the three is judged.
-      if (ratio > 6) {
-        const again = [ratio, scalingRatio(parser, make, 20_000), scalingRatio(parser, make, 20_000)].sort(
-          (a, b) => a - b,
-        );
-        ratio = again[1] ?? ratio;
+      for (const size of sizes) {
+        let ratio = scalingRatio(parser, make, size);
+        // The limit is not loosened. A ratio over it is measured twice more and the median of the three is judged.
+        if (ratio > 6) {
+          const again = [ratio, scalingRatio(parser, make, size), scalingRatio(parser, make, size)].sort(
+            (a, b) => a - b,
+          );
+          ratio = again[1] ?? ratio;
+        }
+        measured++;
+        if (ratio > 6) slow.push(`${parserName} on ${inputName} at ${size}: ${ratio.toFixed(1)}`);
       }
-      measured++;
-      if (ratio > 6) slow.push(`${parserName} on ${inputName}: ${ratio.toFixed(1)}`);
     }
   }
-  expect(measured).toBe(parsers.length * inputs.length);
+  expect(measured).toBe(parsers.length * inputs.length * sizes.length);
   expect(slow).toEqual([]);
-}, 240_000);
+}, 420_000);
