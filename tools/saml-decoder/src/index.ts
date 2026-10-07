@@ -28,6 +28,7 @@ export { inflateCapped } from './inflate';
 export { prescan } from './prescan';
 export { readInput } from './input';
 export { decodeBase64 } from './base64';
+export { describeTime, formatUtc, parseDateTime } from './times';
 export { visible } from './visible';
 export type { SamlSummary } from './summary';
 
