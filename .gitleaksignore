@@ -59,3 +59,5 @@ e19cf6a2e3f7d7f27093f29e45dee9f684be2fcf:tools/key-converter/test/fixtures/keys.
 e19cf6a2e3f7d7f27093f29e45dee9f684be2fcf:tools/key-converter/test/convert.test.ts:generic-api-key:747
 # Reviewed phase 17 test text: the key download test checks that the saved private file starts with the OpenSSH header line (the marker text only, no key material), commit ddfeb6b.
 ddfeb6bb43950c408fa2dd0e11c6a1db010981a2:e2e/key-download.spec.ts:private-key:154
+# Reviewed phase 18 test data: a made-up 21 character string in the cookie inspector's own test that checks a repeated value is never shown in the list of remarks (commit ab62a6e). It is not a credential.
+ab62a6e0ae2d2d873ccef9a613e5c511941d95a3:tools/set-cookie-inspector/test/parse.test.ts:generic-api-key:312
