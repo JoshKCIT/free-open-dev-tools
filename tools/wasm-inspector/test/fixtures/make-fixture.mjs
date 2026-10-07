@@ -28,7 +28,7 @@ export const FIXTURE_BYTES = ${bytes.length};
 export const FIXTURE_SHA256 = '${sha256}';
 
 /** The bytes of the fixture module. */
-export function fixtureBytes(): Uint8Array {
+export function fixtureBytes(): Uint8Array<ArrayBuffer> {
   return new Uint8Array(Buffer.from(FIXTURE_BASE64, 'base64'));
 }
 `;
