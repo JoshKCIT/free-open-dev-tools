@@ -27,5 +27,16 @@ export type { BuildField, BuildProblem, BuiltSpf, SpfEnding, SpfFields } from '.
 export { TABLE_2_ORDER, parseDmarc, parseUriList } from './dmarc-parse';
 export type { DmarcRecord, DmarcStatus, DmarcTag, DmarcUri } from './dmarc-parse';
 export { checkDmarc, pickDmarcRecord } from './dmarc-check';
-export type { DmarcAddress, DmarcPick, DmarcPolicies, DmarcReport } from './dmarc-check';
+export type {
+  DmarcAddress,
+  DmarcAuthorisation,
+  DmarcNote,
+  DmarcNoteTone,
+  DmarcPick,
+  DmarcPolicies,
+  DmarcReport,
+} from './dmarc-check';
+export { buildDmarc } from './dmarc-build';
+export type { BuiltDmarc, DmarcBuildField, DmarcBuildProblem, DmarcFields, DmarcPolicyChoice } from './dmarc-build';
+export { toZoneForm } from './zone';
 export { MAX_SHOWN_PATH, MAX_SHOWN_PATTERN, visible } from './visible';

@@ -560,6 +560,7 @@ it('tag values are checked against RFC 9989 and a wrong value is ignored with it
     ['adkim', 'adkim'],
     ['p=none' + String.fromCharCode(1), 'p'],
     ['p=' + String.fromCodePoint(0xe9), 'p'],
+    ['rua=mailto:' + String.fromCodePoint(0xe9) + '@example.com', 'rua'],
   ];
   for (const [text, name] of wrong) {
     const record = parseDmarc(`v=DMARC1; ${text}`);

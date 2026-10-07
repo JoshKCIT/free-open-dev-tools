@@ -115,11 +115,16 @@ it('a built DMARC record writes v first, never writes a retired tag and checks c
   ]);
   for (const problem of left.problems) expect(problem.message).not.toContain(MARK);
   // Entries that would break the tag (a comma or a semicolon inside) and the obsolete size suffix are left out as well.
-  const broken = buildDmarc({ ...BASE, ruf: 'a@example.com;p=none\nb@example.com!10m\nc@example.com' });
+  // The fourth line would end the tag and add a tag of its own if its semicolon were kept.
+  const broken = buildDmarc({
+    ...BASE,
+    ruf: 'a@example.com;p=none\nb@example.com!10m\nc@example.com\nevil;p=reject@example.com',
+  });
   expect(broken.record).toBe('v=DMARC1; p=none; ruf=mailto:c@example.com');
   expect(broken.problems.map((p) => [p.field, p.line])).toEqual([
     ['ruf', 1],
     ['ruf', 2],
+    ['ruf', 4],
   ]);
   // An address in another scheme is kept as written and said in the advice.
   const https = buildDmarc({ ...BASE, rua: 'https://reports.example.net/dmarc' });

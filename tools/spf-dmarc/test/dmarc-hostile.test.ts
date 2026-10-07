@@ -73,22 +73,31 @@ it('every DMARC parser stays linear on hostile input', () => {
 it('tag names __proto__, constructor and toString are plain names', () => {
   const spies = (['log', 'warn', 'error'] as const).map((name) => vi.spyOn(console, name).mockImplementation(() => {}));
   try {
-    for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+    // RFC 9989 section 4.8: dmarc-tag = 1*ALPHA, so __proto__ (underscores) is not a tag name at all and reads as an invalid
+    // element; the others are letters only and read as unknown tags. None of them is special.
+    const named: Array<[string, 'unknown' | 'invalid']> = [
+      ['__proto__', 'invalid'],
+      ['constructor', 'unknown'],
+      ['toString', 'unknown'],
+      ['hasOwnProperty', 'unknown'],
+      ['valueOf', 'unknown'],
+    ];
+    for (const [name, status] of named) {
       const record = parseDmarc(`v=DMARC1; ${name}=1; p=reject; ${name}=2`);
-      // An unknown tag, named like a property of every object, is just an unknown tag: it changes nothing and breaks nothing.
+      // A tag named like a property of every object is just a tag: it changes nothing and breaks nothing.
       expect(
         record.tags.slice(0, 4).map((t) => [t.name, t.value, t.status]),
         name,
       ).toEqual([
         ['v', 'DMARC1', 'ok'],
-        [name, '1', 'unknown'],
+        [name, '1', status],
         ['p', 'reject', 'ok'],
-        [name, '2', 'unknown'],
+        [name, '2', status],
       ]);
       expect(record.byName.get(name)?.value, name).toBe('1');
       expect(record.byName.has(name), name).toBe(true);
       expect(checkDmarc(record).policy.domain, name).toBe('reject');
-      expect(checkDmarc(record).valid, name).toBe(true);
+      expect(checkDmarc(record).valid, name).toBe(status === 'unknown');
     }
     // A record that holds none of them does not find them either.
     const plain = parseDmarc('v=DMARC1; p=reject');
