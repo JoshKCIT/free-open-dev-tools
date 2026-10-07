@@ -1,0 +1,8 @@
+<samlp:LogoutResponse xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="b0730d21b628110d8b7e004005b13a2b" InResponseTo="d2b7c388cec36fa7c39c28fd298644a8"
+    IssueInstant="2004-01-21T19:00:49Z" Version="2.0">
+    <Issuer>https://ServiceProvider.com/SAML</Issuer>
+    <samlp:Status>
+        <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+    </samlp:Status>
+</samlp:LogoutResponse>
