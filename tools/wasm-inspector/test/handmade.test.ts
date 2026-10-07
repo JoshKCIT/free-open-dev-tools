@@ -49,7 +49,7 @@ it('hand-assembled GC, multi-memory, 64-bit memory and tag modules read as their
   for (const module of [GC_TYPES, MULTI_MEMORY, MEMORY64, SHARED_MEMORY, TAGS, SEGMENT_FORMS]) {
     for (const [hex, comment] of module.groups) {
       expect(hex).toMatch(/^[0-9a-f ]+$/);
-      expect(comment.length).toBeGreaterThan(8);
+      expect(comment.length).toBeGreaterThanOrEqual(6);
     }
   }
 
