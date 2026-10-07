@@ -1,7 +1,7 @@
 import meta from './meta.json';
 import { SetCookieInspectorError } from './errors';
 import { splitLines } from './lines';
-import { checkInput } from './limits';
+import { MAX_AGE_LIMIT_SECONDS, checkInput } from './limits';
 import { maskJoined, maskValue } from './mask';
 import { parseSetCookie, type Attribute, type ParsedCookie } from './parse';
 import { collectRemarks, type Remark } from './remarks';
@@ -110,9 +110,22 @@ export interface CookieReport {
   worthALook: Remark[];
 }
 
+/** The last moment a JavaScript date can hold, in milliseconds after 1970 (and its negative, the first). */
+const LAST_MOMENT_MS = 8_640_000_000_000_000;
+
+/**
+ * The time must be a moment that can be written as a date, and leave room for the longest lifetime (400 days) after it,
+ * because every lifetime is written as the date it ends.
+ */
 function checkTime(nowMs: number): void {
-  if (!Number.isFinite(nowMs) || Math.abs(nowMs) > 8_640_000_000_000_000) {
+  if (!Number.isFinite(nowMs) || Math.abs(nowMs) > LAST_MOMENT_MS) {
     throw new SetCookieInspectorError('The time is not a moment that can be written as a date.', 'time');
+  }
+  if (nowMs + MAX_AGE_LIMIT_SECONDS * 1000 > LAST_MOMENT_MS) {
+    throw new SetCookieInspectorError(
+      'The time is too close to the last date that can be written: a lifetime of up to 400 days after it would end past that date.',
+      'time',
+    );
   }
 }
 

@@ -1,5 +1,11 @@
 import { expect, it, vi } from 'vitest';
-import { inspectCookies, SetCookieInspectorError, type CookieRow, type RequestContext } from '../src/index';
+import {
+  inspectCookies,
+  MAX_AGE_LIMIT_SECONDS,
+  SetCookieInspectorError,
+  type CookieRow,
+  type RequestContext,
+} from '../src/index';
 import rowsFile from './fixtures/wpt/rows.json';
 
 // Every literal below is retyped from draft-ietf-httpbis-rfc6265bis-22 (1 December 2025): the section is named beside it.
@@ -206,6 +212,31 @@ it('a Domain must match the response host, a domain cookie matches subdomains an
     expect(first('a=1; Secure', url).decision.outcome, url).toBe('stored');
   }
   expect(first('a=1; Secure', 'http://site.example/').decision.outcome).toBe('not-stored');
+});
+
+it('a time too near the end of the date range is refused as a time, never thrown as a date error', () => {
+  // The last moment JavaScript can write is 8,640,000,000,000,000 ms after 1970. A lifetime of up to 400 days is counted
+  // from the time of the response, so the time must leave room for it.
+  const at = (nowMs: number, lines = 'a=1; Max-Age=100') =>
+    inspectCookies({ lines, requestUrl: SECURE_PAGE, context: 'same-site', nowMs, reveal: false });
+  const last = 8_640_000_000_000_000;
+  const room = MAX_AGE_LIMIT_SECONDS * 1000;
+  for (const nowMs of [last, last - room + 1, -last - 1, Number.POSITIVE_INFINITY]) {
+    let caught: unknown = null;
+    try {
+      at(nowMs);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught, String(nowMs)).toBeInstanceOf(SetCookieInspectorError);
+    expect((caught as SetCookieInspectorError).part).toBe('time');
+  }
+  // The last time that leaves room is read, with the longest lifetime and an Expires far in the future.
+  const edge = at(last - room, 'a=1; Max-Age=999999999\nb=2; Expires=Fri, 31 Dec 9999 23:59:59 GMT');
+  expect(edge.cookies[0]?.decision.lifetime?.clamped).toBe(true);
+  expect(edge.cookies[0]?.decision.lifetime?.until).toBe('+275760-09-13 00:00:00 UTC');
+  expect(edge.cookies[1]?.decision.outcome).toBe('stored-then-deleted');
+  expect(at(-last).cookies[0]?.decision.outcome).toBe('stored');
 });
 
 it('a Domain is put in lower case for ASCII letters only, so a non-ASCII letter still reaches step 8', () => {

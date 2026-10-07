@@ -117,10 +117,11 @@ export function describeDuration(seconds: number): string {
   return parts.join(' ');
 }
 
-/** A moment as `2026-10-06 13:00:00 UTC`. */
+/** A moment as `2026-10-06 13:00:00 UTC`; a year past 9999 is written with its sign, as `+275760-09-13 00:00:00 UTC`. */
 function describeMoment(ms: number): string {
   const iso = new Date(ms).toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC`;
+  const t = iso.indexOf('T');
+  return `${iso.slice(0, t)} ${iso.slice(t + 1, t + 9)} UTC`;
 }
 
 /**
