@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -114,4 +115,38 @@ test('hex-viewer: an export over 4 MiB is refused beside the rows and the rows s
   await expect(output).toContainText('Exported 16 bytes from byte 0 as C or C++ (xxd -i form).', { timeout: 30_000 });
   await expect(output.locator('.issue-list')).toHaveCount(0);
   await expect(output.getByRole('button', { name: 'Download', exact: true })).toBeVisible();
+});
+
+test('hex-viewer: a picked file that is gone from disk gives the fixed sentence, never the browser error text', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openHexViewer(page);
+
+  // A real file on disk, picked by its path, so the page holds a reference to the file and not a copy of its bytes.
+  const path = testInfo.outputPath('vanishing.bin');
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, Buffer.from('Hello, this file will vanish'));
+  await page.locator('#f-file').setInputFiles(path);
+  const output = outputArea(page);
+  await expect(output.locator('pre.output')).toContainText('00000000  48 65 6c 6c 6f', { timeout: 30_000 });
+
+  // The file is deleted, then Export makes the page read it again: the read fails inside the browser.
+  rmSync(path);
+  await page.locator('#f-exportAs').selectOption('c');
+  await expect(output.locator('.issue-list')).toContainText(
+    'Could not read that file. If it changed or moved after you picked it, pick it again.',
+    { timeout: 30_000 },
+  );
+  const shown = await output.innerText();
+  for (const raw of [
+    'DOMException',
+    'NotFoundError',
+    'NotReadableError',
+    'could not be found',
+    'can not be found',
+    'was aborted',
+  ]) {
+    expect(shown, `the page must not show the browser text ${raw}`).not.toContain(raw);
+  }
 });
