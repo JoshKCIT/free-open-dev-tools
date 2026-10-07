@@ -6,7 +6,7 @@ import { tryInside } from './inside';
 import { readInput, type InputFormat } from './input';
 import { INSIDE_BUDGET_BYTES, MAX_NODES } from './limits';
 import { toTree, type TreeNode } from './tree';
-import { describeConstructedString, describeValue, isConstructedString } from './values';
+import { describeInOrder } from './values';
 
 export { meta };
 export { Asn1Error } from './errors';
@@ -33,8 +33,10 @@ export type { Asn1Class, Asn1Node, BerOptions, BerResult, CutRecord, Finding } f
 export { checkFileSize, checkPasteSize, readInput } from './input';
 export type { InputFormat, ReadInputResult } from './input';
 export {
+  INNER_STRING_VALUE,
   UNIVERSAL_NAMES,
   describeConstructedString,
+  describeInOrder,
   describeValue,
   hexOf,
   integerOf,
@@ -103,14 +105,11 @@ export function describeBytes(bytes: Uint8Array, options: DescribeOptions = {}):
 
   let deepest = 0;
   let elements = result.nodes.length;
-  for (let index = 0; index < result.nodes.length; index++) {
-    const node = result.nodes[index]!;
-    node.value = isConstructedString(node)
-      ? describeConstructedString(bytes, result.nodes, index)
-      : describeValue(bytes, node);
-    for (const problem of node.value.problems) list.add(node.offset, `At offset ${node.offset}: ${problem}`, 'problem');
+  describeInOrder(bytes, result.nodes, (node) => {
+    for (const problem of node.value!.problems)
+      list.add(node.offset, `At offset ${node.offset}: ${problem}`, 'problem');
     if (node.depth + 1 > deepest) deepest = node.depth + 1;
-  }
+  });
 
   if (options.tryInside ?? true) {
     // Each string is tried once, in reading order, from one budget of bytes; what reads completely is described like the rest.
@@ -123,13 +122,9 @@ export function describeBytes(bytes: Uint8Array, options: DescribeOptions = {}):
         if (room <= 0) break;
         const inside = tryInside(bytes, node, budget, { maxNodes: room });
         if (inside === null) continue;
-        for (let index = 0; index < inside.length; index++) {
-          const child = inside[index]!;
-          child.value = isConstructedString(child)
-            ? describeConstructedString(bytes, inside, index)
-            : describeValue(bytes, child);
+        describeInOrder(bytes, inside, (child) => {
           if (child.depth + 1 > deepest) deepest = child.depth + 1;
-        }
+        });
         node.inside = inside;
         elements += inside.length;
         work.push(inside);

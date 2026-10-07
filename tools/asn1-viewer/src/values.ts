@@ -611,6 +611,31 @@ export function describeConstructedString(bytes: Uint8Array, nodes: readonly Asn
   return { text: label, string: shown, problems };
 }
 
+/** The value of a constructed string inside another one: the outermost string shows every segment put end to end. */
+export const INNER_STRING_VALUE = 'part of the constructed string that holds it, whose value is shown there';
+
+/**
+ * Describes the elements of one reading-order list, in order, and hands each to `each`. A constructed string inside
+ * another constructed string gets a short value that points to the outermost one, which already puts every segment below
+ * it end to end and finds every wrong segment: the bytes are joined once however deep the strings are nested (joining each
+ * level's own segments again cost 38 times the work for 38 levels).
+ */
+export function describeInOrder(bytes: Uint8Array, nodes: readonly Asn1Node[], each: (node: Asn1Node) => void): void {
+  // The depth of the outermost constructed string still open, or -1 when none is.
+  let openString = -1;
+  for (let index = 0; index < nodes.length; index++) {
+    const node = nodes[index]!;
+    if (openString >= 0 && node.depth <= openString) openString = -1;
+    if (!isConstructedString(node)) node.value = describeValue(bytes, node);
+    else if (openString >= 0) node.value = { text: INNER_STRING_VALUE, problems: [] };
+    else {
+      node.value = describeConstructedString(bytes, nodes, index);
+      openString = node.depth;
+    }
+    each(node);
+  }
+}
+
 /** Universal types whose encoding is always primitive, with the clause that says so. */
 const PRIMITIVE_ONLY: ReadonlyMap<number, [string, string]> = new Map([
   [1, ['BOOLEAN', '8.2.1']],
