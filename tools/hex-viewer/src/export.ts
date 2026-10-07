@@ -98,12 +98,28 @@ const isLetterOrDigit = (byte: number): boolean =>
   (byte >= 48 && byte <= 57) || (byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122);
 
 /**
+ * Whether the text has more than `limit` characters (code points; a lone surrogate counts as one). Text longer than
+ * twice the limit in UTF-16 units always has, so a huge name is judged without walking it; otherwise the walk stops at
+ * the first character past the limit.
+ */
+function characterCountOver(text: string, limit: number): boolean {
+  if (text.length <= limit) return false;
+  if (text.length > limit * 2) return true;
+  let count = 0;
+  for (const _character of text) {
+    count += 1;
+    if (count > limit) return true;
+  }
+  return false;
+}
+
+/**
  * The name cleaned over the UTF-8 bytes of the name, not its characters: every byte that is not an ASCII letter or
  * digit becomes an underscore (so an accented letter is two underscores and a CJK character three), as xxd does.
  * A name that is too long is refused naming the field and is never repeated.
  */
 function underscored(rawName: string): { text: string; startsWithDigit: boolean } {
-  if (rawName.length > MAX_EXPORT_NAME_CHARS) {
+  if (characterCountOver(rawName, MAX_EXPORT_NAME_CHARS)) {
     throw new HexViewerError(`Variable name must be at most ${MAX_EXPORT_NAME_CHARS} characters.`, {
       field: 'Variable name',
     });
