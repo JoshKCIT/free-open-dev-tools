@@ -23,7 +23,7 @@ Paste a stack trace from minified JavaScript and the source map it was built wit
 - A function name in a decoded frame is a best reading from the next frame's call site (a map names the token at a position, not the function around it); both readings are shown, and the last frame has none.
 - Engines print different columns for the same throw (JavaScriptCore points at the call parenthesis), so a column a few characters off is expected; the lookup takes the closest mapping at or before the position on the same line.
 - Positions are counted in UTF-16 code units as the format defines them. Maps that use the scopes or range mappings proposals are read for positions only; reading several maps one after another (a map of a map) is not done.
-- Up to 20 maps of 50 MiB each (80 MiB in all), traces of 5,000 lines and 1 MiB, and index maps with 20,000 sections; larger input is refused with the number named. A run that takes longer than 20 seconds is stopped.
+- Up to 20 maps of 50 MiB each (80 MiB in all), traces of 5,000 lines and 1 MiB, and index maps with 20,000 sections; larger input is refused with the number named. The one generated line a frame names may hold at most 4,000,000 mappings. A run that takes longer than 20 seconds is stopped.
 
 ## Ambiguous cases, and what this does about them
 
