@@ -1,0 +1,1672 @@
+{
+ "fontTools": "4.64.0",
+ "recordedAt": "2026-10-07T17:50:45Z",
+ "macRoman128": "ÄÅÇÉÑÖÜáàâäãåçéèêëíìîïñóòôöõúùûü†°¢£§•¶ß®©™´¨≠ÆØ∞±≤≥¥µ∂∑∏π∫ªºΩæø¿¡¬√ƒ≈∆«»… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ‡·‚„‰ÂÊÁËÈÍÎÏÌÓÔÒÚÛÙıˆ˜¯˘˙˚¸˝˛ˇ",
+ "codePages": [
+  {
+   "encoding": 3,
+   "codec": "gbk",
+   "bytesHex": "d6d0cec4d7d6cce5b2e2cad4",
+   "text": "中文字体测试"
+  },
+  {
+   "encoding": 4,
+   "codec": "big5",
+   "bytesHex": "a4a4a4e5a672c5e9b4fab8d5",
+   "text": "中文字體測試"
+  },
+  {
+   "encoding": 5,
+   "codec": "euc_kr",
+   "bytesHex": "c7d1b1db20b1dbb2c320bdc3c7e8",
+   "text": "한글 글꼴 시험"
+  }
+ ],
+ "checks": [
+  {
+   "font": "plain.ttf",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 0,
+     "encoding": 3,
+     "language": 0,
+     "id": 1,
+     "text": "Scratch Sans"
+    },
+    {
+     "platform": 0,
+     "encoding": 3,
+     "language": 0,
+     "id": 4,
+     "text": "Scratch Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Scratch Sans"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Scratch Sans-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Scratch Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "ScratchSans-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    {
+     "platform": 3,
+     "encoding": 10,
+     "language": 1033,
+     "id": 4,
+     "text": "Scratch Sans UCS-4"
+    }
+   ]
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "cmap",
+   "value": {
+    "32": 1,
+    "65": 2,
+    "66": 3,
+    "67": 4,
+    "102": 8,
+    "105": 9,
+    "193": 11,
+    "233": 5,
+    "20013": 7,
+    "64257": 10,
+    "128512": 6
+   }
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "gsub",
+   "value": [
+    "liga",
+    "smcp",
+    "ss01"
+   ]
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "gpos",
+   "value": [
+    "kern"
+   ]
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 12,
+    "unitsPerEm": 1000,
+    "fontRevision": 1.00390625,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 90,
+    "typoAscender": 780,
+    "typoDescender": -220,
+    "typoLineGap": 100,
+    "winAscent": 900,
+    "winDescent": 250,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "TEST",
+    "xHeight": 500,
+    "capHeight": 700
+   }
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "embedding",
+   "value": {
+    "fsType": 0
+   }
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "outlines",
+   "value": {
+    "0": [
+     "[\"L\",[450,0],[50,0]]",
+     "[\"L\",[450,700],[450,0]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[450,700]]"
+    ],
+    "1": [],
+    "2": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,700],[500,0]]"
+    ],
+    "3": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[300,700]]",
+     "[\"L\",[300,0],[100,0]]",
+     "[\"L\",[300,700],[300,0]]",
+     "[\"L\",[350,0],[350,400]]",
+     "[\"L\",[350,400],[550,400]]",
+     "[\"L\",[550,0],[350,0]]",
+     "[\"L\",[550,400],[550,0]]"
+    ],
+    "4": [
+     "[\"Q\",[0,350],[0,650],[300,650]]",
+     "[\"Q\",[300,50],[0,50],[0,350]]",
+     "[\"Q\",[300,650],[600,650],[600,350]]",
+     "[\"Q\",[600,350],[600,50],[300,50]]"
+    ],
+    "5": [
+     "[\"L\",[100,0],[100,500]]",
+     "[\"L\",[100,500],[400,500]]",
+     "[\"L\",[200,520],[200,600]]",
+     "[\"L\",[200,600],[300,600]]",
+     "[\"L\",[300,520],[200,520]]",
+     "[\"L\",[300,600],[300,520]]",
+     "[\"L\",[400,0],[100,0]]",
+     "[\"L\",[400,500],[400,0]]"
+    ],
+    "6": [
+     "[\"Q\",[400,0],[50,0],[50,350]]",
+     "[\"Q\",[400,700],[750,700],[750,350]]",
+     "[\"Q\",[50,350],[50,700],[400,700]]",
+     "[\"Q\",[750,350],[750,0],[400,0]]"
+    ],
+    "7": [
+     "[\"L\",[100,100],[100,200]]",
+     "[\"L\",[100,200],[900,200]]",
+     "[\"L\",[450,0],[450,800]]",
+     "[\"L\",[450,800],[550,800]]",
+     "[\"L\",[550,0],[450,0]]",
+     "[\"L\",[550,800],[550,0]]",
+     "[\"L\",[900,100],[100,100]]",
+     "[\"L\",[900,200],[900,100]]"
+    ],
+    "8": [
+     "[\"L\",[150,0],[150,700]]",
+     "[\"L\",[150,700],[250,700]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,700],[250,0]]"
+    ],
+    "9": [
+     "[\"L\",[150,0],[150,500]]",
+     "[\"L\",[150,500],[250,500]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,500],[250,0]]"
+    ],
+    "10": [
+     "[\"L\",[150,0],[150,700]]",
+     "[\"L\",[150,700],[250,700]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,700],[250,0]]",
+     "[\"L\",[350,0],[350,500]]",
+     "[\"L\",[350,500],[450,500]]",
+     "[\"L\",[450,0],[350,0]]",
+     "[\"L\",[450,500],[450,0]]"
+    ],
+    "11": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[400,1100],[700,1100]]",
+     "[\"L\",[400,600],[400,1100]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,1120],[500,1200]]",
+     "[\"L\",[500,1200],[600,1200]]",
+     "[\"L\",[500,700],[500,0]]",
+     "[\"L\",[600,1120],[500,1120]]",
+     "[\"L\",[600,1200],[600,1120]]",
+     "[\"L\",[700,1100],[700,600]]",
+     "[\"L\",[700,600],[400,600]]"
+    ]
+   }
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "variationSelectors",
+   "value": [
+    {
+     "selector": 65039,
+     "defaults": [
+      65
+     ],
+     "nonDefaults": [
+      [
+       233,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "gsubScriptsLanguages",
+   "value": {
+    "liga": [
+     "DFLT/dflt",
+     "latn/TRK ",
+     "latn/dflt"
+    ],
+    "smcp": [
+     "DFLT/dflt",
+     "latn/TRK ",
+     "latn/dflt"
+    ],
+    "ss01": [
+     "DFLT/dflt",
+     "latn/TRK ",
+     "latn/dflt"
+    ]
+   }
+  },
+  {
+   "font": "plain.ttf",
+   "kind": "gposScriptsLanguages",
+   "value": {
+    "kern": [
+     "DFLT/dflt",
+     "latn/TRK ",
+     "latn/dflt"
+    ]
+   }
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 0,
+     "encoding": 3,
+     "language": 0,
+     "id": 1,
+     "text": "Café Sans"
+    },
+    {
+     "platform": 0,
+     "encoding": 3,
+     "language": 0,
+     "id": 4,
+     "text": "Café Sans Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 1,
+     "text": "Café Sans"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 3,
+     "text": "Café Sans-Regular-test"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 4,
+     "text": "Café Sans Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 6,
+     "text": "CaféSans-Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Café Sans"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Café Sans-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Café Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "CaféSans-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    {
+     "platform": 3,
+     "encoding": 10,
+     "language": 1033,
+     "id": 4,
+     "text": "Café Sans UCS-4"
+    }
+   ]
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "cmap",
+   "value": {
+    "32": 1,
+    "65": 2,
+    "66": 3,
+    "67": 4,
+    "102": 8,
+    "105": 9,
+    "193": 11,
+    "233": 5,
+    "20013": 7,
+    "64257": 10,
+    "128512": 6
+   }
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "gsub",
+   "value": [
+    "liga",
+    "smcp",
+    "ss01"
+   ]
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "gpos",
+   "value": [
+    "kern"
+   ]
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 12,
+    "unitsPerEm": 1000,
+    "fontRevision": 1,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 90,
+    "typoAscender": 780,
+    "typoDescender": -220,
+    "typoLineGap": 100,
+    "winAscent": 900,
+    "winDescent": 250,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "TEST",
+    "xHeight": 500,
+    "capHeight": 700
+   }
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "embedding",
+   "value": {
+    "fsType": 2
+   }
+  },
+  {
+   "font": "mac-names.ttf",
+   "kind": "outlines",
+   "value": {
+    "0": [
+     "[\"L\",[450,0],[50,0]]",
+     "[\"L\",[450,700],[450,0]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[450,700]]"
+    ],
+    "1": [],
+    "2": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,700],[500,0]]"
+    ],
+    "3": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[300,700]]",
+     "[\"L\",[300,0],[100,0]]",
+     "[\"L\",[300,700],[300,0]]",
+     "[\"L\",[350,0],[350,400]]",
+     "[\"L\",[350,400],[550,400]]",
+     "[\"L\",[550,0],[350,0]]",
+     "[\"L\",[550,400],[550,0]]"
+    ],
+    "4": [
+     "[\"Q\",[0,350],[0,650],[300,650]]",
+     "[\"Q\",[300,50],[0,50],[0,350]]",
+     "[\"Q\",[300,650],[600,650],[600,350]]",
+     "[\"Q\",[600,350],[600,50],[300,50]]"
+    ],
+    "5": [
+     "[\"L\",[100,0],[100,500]]",
+     "[\"L\",[100,500],[400,500]]",
+     "[\"L\",[200,520],[200,600]]",
+     "[\"L\",[200,600],[300,600]]",
+     "[\"L\",[300,520],[200,520]]",
+     "[\"L\",[300,600],[300,520]]",
+     "[\"L\",[400,0],[100,0]]",
+     "[\"L\",[400,500],[400,0]]"
+    ],
+    "6": [
+     "[\"Q\",[400,0],[50,0],[50,350]]",
+     "[\"Q\",[400,700],[750,700],[750,350]]",
+     "[\"Q\",[50,350],[50,700],[400,700]]",
+     "[\"Q\",[750,350],[750,0],[400,0]]"
+    ],
+    "7": [
+     "[\"L\",[100,100],[100,200]]",
+     "[\"L\",[100,200],[900,200]]",
+     "[\"L\",[450,0],[450,800]]",
+     "[\"L\",[450,800],[550,800]]",
+     "[\"L\",[550,0],[450,0]]",
+     "[\"L\",[550,800],[550,0]]",
+     "[\"L\",[900,100],[100,100]]",
+     "[\"L\",[900,200],[900,100]]"
+    ],
+    "8": [
+     "[\"L\",[150,0],[150,700]]",
+     "[\"L\",[150,700],[250,700]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,700],[250,0]]"
+    ],
+    "9": [
+     "[\"L\",[150,0],[150,500]]",
+     "[\"L\",[150,500],[250,500]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,500],[250,0]]"
+    ],
+    "10": [
+     "[\"L\",[150,0],[150,700]]",
+     "[\"L\",[150,700],[250,700]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,700],[250,0]]",
+     "[\"L\",[350,0],[350,500]]",
+     "[\"L\",[350,500],[450,500]]",
+     "[\"L\",[450,0],[350,0]]",
+     "[\"L\",[450,500],[450,0]]"
+    ],
+    "11": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[400,1100],[700,1100]]",
+     "[\"L\",[400,600],[400,1100]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,1120],[500,1200]]",
+     "[\"L\",[500,1200],[600,1200]]",
+     "[\"L\",[500,700],[500,0]]",
+     "[\"L\",[600,1120],[500,1120]]",
+     "[\"L\",[600,1200],[600,1120]]",
+     "[\"L\",[700,1100],[700,600]]",
+     "[\"L\",[700,600],[400,600]]"
+    ]
+   }
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Preview Sans"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Preview Sans-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Preview Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "PreviewSans-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    }
+   ]
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "cmap",
+   "value": {
+    "32": 1,
+    "65": 2,
+    "66": 3,
+    "67": 4,
+    "102": 8,
+    "105": 9,
+    "193": 11,
+    "233": 5,
+    "20013": 7,
+    "64257": 10,
+    "128512": 6
+   }
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "gsub",
+   "value": null
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "gpos",
+   "value": null
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 12,
+    "unitsPerEm": 1000,
+    "fontRevision": 1,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 90,
+    "typoAscender": 780,
+    "typoDescender": -220,
+    "typoLineGap": 100,
+    "winAscent": 900,
+    "winDescent": 250,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "TEST",
+    "xHeight": 500,
+    "capHeight": 700
+   }
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "embedding",
+   "value": {
+    "fsType": 4
+   }
+  },
+  {
+   "font": "preview.ttf",
+   "kind": "outlines",
+   "value": {
+    "0": [
+     "[\"L\",[450,0],[50,0]]",
+     "[\"L\",[450,700],[450,0]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[450,700]]"
+    ],
+    "1": [],
+    "2": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,700],[500,0]]"
+    ],
+    "3": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[300,700]]",
+     "[\"L\",[300,0],[100,0]]",
+     "[\"L\",[300,700],[300,0]]",
+     "[\"L\",[350,0],[350,400]]",
+     "[\"L\",[350,400],[550,400]]",
+     "[\"L\",[550,0],[350,0]]",
+     "[\"L\",[550,400],[550,0]]"
+    ],
+    "4": [
+     "[\"Q\",[0,350],[0,650],[300,650]]",
+     "[\"Q\",[300,50],[0,50],[0,350]]",
+     "[\"Q\",[300,650],[600,650],[600,350]]",
+     "[\"Q\",[600,350],[600,50],[300,50]]"
+    ],
+    "5": [
+     "[\"L\",[100,0],[100,500]]",
+     "[\"L\",[100,500],[400,500]]",
+     "[\"L\",[200,520],[200,600]]",
+     "[\"L\",[200,600],[300,600]]",
+     "[\"L\",[300,520],[200,520]]",
+     "[\"L\",[300,600],[300,520]]",
+     "[\"L\",[400,0],[100,0]]",
+     "[\"L\",[400,500],[400,0]]"
+    ],
+    "6": [
+     "[\"Q\",[400,0],[50,0],[50,350]]",
+     "[\"Q\",[400,700],[750,700],[750,350]]",
+     "[\"Q\",[50,350],[50,700],[400,700]]",
+     "[\"Q\",[750,350],[750,0],[400,0]]"
+    ],
+    "7": [
+     "[\"L\",[100,100],[100,200]]",
+     "[\"L\",[100,200],[900,200]]",
+     "[\"L\",[450,0],[450,800]]",
+     "[\"L\",[450,800],[550,800]]",
+     "[\"L\",[550,0],[450,0]]",
+     "[\"L\",[550,800],[550,0]]",
+     "[\"L\",[900,100],[100,100]]",
+     "[\"L\",[900,200],[900,100]]"
+    ],
+    "8": [
+     "[\"L\",[150,0],[150,700]]",
+     "[\"L\",[150,700],[250,700]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,700],[250,0]]"
+    ],
+    "9": [
+     "[\"L\",[150,0],[150,500]]",
+     "[\"L\",[150,500],[250,500]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,500],[250,0]]"
+    ],
+    "10": [
+     "[\"L\",[150,0],[150,700]]",
+     "[\"L\",[150,700],[250,700]]",
+     "[\"L\",[250,0],[150,0]]",
+     "[\"L\",[250,700],[250,0]]",
+     "[\"L\",[350,0],[350,500]]",
+     "[\"L\",[350,500],[450,500]]",
+     "[\"L\",[450,0],[350,0]]",
+     "[\"L\",[450,500],[450,0]]"
+    ],
+    "11": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[400,1100],[700,1100]]",
+     "[\"L\",[400,600],[400,1100]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,1120],[500,1200]]",
+     "[\"L\",[500,1200],[600,1200]]",
+     "[\"L\",[500,700],[500,0]]",
+     "[\"L\",[600,1120],[500,1120]]",
+     "[\"L\",[600,1200],[600,1120]]",
+     "[\"L\",[700,1100],[700,600]]",
+     "[\"L\",[700,600],[400,600]]"
+    ]
+   }
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Var Sans"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Var Sans-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Var Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "VarSans-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 256,
+     "text": "Weight"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 257,
+     "text": "Bold"
+    }
+   ]
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "cmap",
+   "value": {
+    "32": 1,
+    "65": 2,
+    "66": 3,
+    "67": 4,
+    "102": 8,
+    "105": 9,
+    "193": 11,
+    "233": 5,
+    "20013": 7,
+    "64257": 10,
+    "128512": 6
+   }
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "gsub",
+   "value": null
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "gpos",
+   "value": null
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 12,
+    "unitsPerEm": 1000,
+    "fontRevision": 1,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 90,
+    "typoAscender": 780,
+    "typoDescender": -220,
+    "typoLineGap": 100,
+    "winAscent": 900,
+    "winDescent": 250,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "TEST",
+    "xHeight": 500,
+    "capHeight": 700
+   }
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "embedding",
+   "value": {
+    "fsType": 0
+   }
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "outlines",
+   "value": {
+    "0": [
+     "[\"L\",[0,0],[0,700]]",
+     "[\"L\",[0,700],[400,700]]",
+     "[\"L\",[400,0],[0,0]]",
+     "[\"L\",[400,700],[400,0]]"
+    ],
+    "1": [],
+    "2": [
+     "[\"L\",[450,0],[50,0]]",
+     "[\"L\",[450,700],[450,0]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[450,700]]"
+    ],
+    "3": [
+     "[\"L\",[250,0],[50,0]]",
+     "[\"L\",[250,700],[250,0]]",
+     "[\"L\",[300,0],[300,400]]",
+     "[\"L\",[300,400],[500,400]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[250,700]]",
+     "[\"L\",[500,0],[300,0]]",
+     "[\"L\",[500,400],[500,0]]"
+    ],
+    "4": [
+     "[\"Q\",[-50,350],[-50,650],[250,650]]",
+     "[\"Q\",[250,50],[-50,50],[-50,350]]",
+     "[\"Q\",[250,650],[550,650],[550,350]]",
+     "[\"Q\",[550,350],[550,50],[250,50]]"
+    ],
+    "5": [
+     "[\"L\",[150,520],[150,600]]",
+     "[\"L\",[150,600],[250,600]]",
+     "[\"L\",[250,520],[150,520]]",
+     "[\"L\",[250,600],[250,520]]",
+     "[\"L\",[350,0],[50,0]]",
+     "[\"L\",[350,500],[350,0]]",
+     "[\"L\",[50,0],[50,500]]",
+     "[\"L\",[50,500],[350,500]]"
+    ],
+    "6": [
+     "[\"Q\",[0,350],[0,700],[350,700]]",
+     "[\"Q\",[350,0],[0,0],[0,350]]",
+     "[\"Q\",[350,700],[700,700],[700,350]]",
+     "[\"Q\",[700,350],[700,0],[350,0]]"
+    ],
+    "7": [
+     "[\"L\",[400,0],[400,800]]",
+     "[\"L\",[400,800],[500,800]]",
+     "[\"L\",[50,100],[50,200]]",
+     "[\"L\",[50,200],[850,200]]",
+     "[\"L\",[500,0],[400,0]]",
+     "[\"L\",[500,800],[500,0]]",
+     "[\"L\",[850,100],[50,100]]",
+     "[\"L\",[850,200],[850,100]]"
+    ],
+    "8": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[200,700]]",
+     "[\"L\",[200,0],[100,0]]",
+     "[\"L\",[200,700],[200,0]]"
+    ],
+    "9": [
+     "[\"L\",[100,0],[100,500]]",
+     "[\"L\",[100,500],[200,500]]",
+     "[\"L\",[200,0],[100,0]]",
+     "[\"L\",[200,500],[200,0]]"
+    ],
+    "10": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[200,700]]",
+     "[\"L\",[200,0],[100,0]]",
+     "[\"L\",[200,700],[200,0]]",
+     "[\"L\",[300,0],[300,500]]",
+     "[\"L\",[300,500],[400,500]]",
+     "[\"L\",[400,0],[300,0]]",
+     "[\"L\",[400,500],[400,0]]"
+    ],
+    "11": [
+     "[\"L\",[450,0],[50,0]]",
+     "[\"L\",[450,700],[450,0]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[450,700]]"
+    ]
+   }
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "fvarAxes",
+   "value": [
+    {
+     "tag": "wght",
+     "min": 100,
+     "default": 400,
+     "max": 900,
+     "nameId": 256
+    }
+   ]
+  },
+  {
+   "font": "variable.ttf",
+   "kind": "fvarInstances",
+   "value": [
+    {
+     "subfamilyNameId": 257,
+     "coordinates": {
+      "wght": 700
+     }
+    }
+   ]
+  },
+  {
+   "font": "cff.otf",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 1,
+     "text": "Scratch CFF"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 3,
+     "text": "Scratch CFF-Regular-test"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 4,
+     "text": "Scratch CFF Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 6,
+     "text": "ScratchCFF-Regular"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 1,
+     "encoding": 0,
+     "language": 0,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Scratch CFF"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Scratch CFF-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Scratch CFF Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "ScratchCFF-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    }
+   ]
+  },
+  {
+   "font": "cff.otf",
+   "kind": "cmap",
+   "value": {
+    "32": 1,
+    "65": 2,
+    "66": 3,
+    "67": 4
+   }
+  },
+  {
+   "font": "cff.otf",
+   "kind": "gsub",
+   "value": null
+  },
+  {
+   "font": "cff.otf",
+   "kind": "gpos",
+   "value": null
+  },
+  {
+   "font": "cff.otf",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 5,
+    "unitsPerEm": 1000,
+    "fontRevision": 1,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 0,
+    "typoAscender": 800,
+    "typoDescender": -200,
+    "typoLineGap": 0,
+    "winAscent": 800,
+    "winDescent": 200,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "????",
+    "xHeight": 0,
+    "capHeight": 0
+   }
+  },
+  {
+   "font": "cff.otf",
+   "kind": "embedding",
+   "value": {
+    "fsType": 4
+   }
+  },
+  {
+   "font": "cff.otf",
+   "kind": "outlines",
+   "value": {
+    "0": [
+     "[\"L\",[450,0],[50,0]]",
+     "[\"L\",[450,700],[450,0]]",
+     "[\"L\",[50,0],[50,700]]",
+     "[\"L\",[50,700],[450,700]]"
+    ],
+    "1": [],
+    "2": [
+     "[\"L\",[100,0],[100,700]]",
+     "[\"L\",[100,700],[500,700]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,700],[500,0]]"
+    ],
+    "3": [
+     "[\"C\",[100,0],[100,200],[300,400],[300,600]]",
+     "[\"L\",[300,600],[500,600]]",
+     "[\"L\",[500,0],[100,0]]",
+     "[\"L\",[500,600],[500,0]]"
+    ],
+    "4": [
+     "[\"L\",[100,0],[300,700]]",
+     "[\"L\",[300,700],[500,0]]",
+     "[\"L\",[500,0],[100,0]]"
+    ]
+   }
+  },
+  {
+   "font": "collection.ttc",
+   "kind": "memberCount",
+   "value": 2
+  },
+  {
+   "font": "collection.ttc#1",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 0,
+     "encoding": 3,
+     "language": 0,
+     "id": 1,
+     "text": "Scratch Sans"
+    },
+    {
+     "platform": 0,
+     "encoding": 3,
+     "language": 0,
+     "id": 4,
+     "text": "Scratch Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Scratch Sans"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Scratch Sans-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Scratch Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "ScratchSans-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    {
+     "platform": 3,
+     "encoding": 10,
+     "language": 1033,
+     "id": 4,
+     "text": "Scratch Sans UCS-4"
+    }
+   ]
+  },
+  {
+   "font": "collection.ttc#1",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 12,
+    "unitsPerEm": 1000,
+    "fontRevision": 1.00390625,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 90,
+    "typoAscender": 780,
+    "typoDescender": -220,
+    "typoLineGap": 100,
+    "winAscent": 900,
+    "winDescent": 250,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "TEST",
+    "xHeight": 500,
+    "capHeight": 700
+   }
+  },
+  {
+   "font": "collection.ttc#2",
+   "kind": "names",
+   "value": [
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 0,
+     "text": "No rights reserved."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 1,
+     "text": "Preview Sans"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 2,
+     "text": "Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 3,
+     "text": "Preview Sans-Regular-test"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 4,
+     "text": "Preview Sans Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 5,
+     "text": "Version 1.000"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 6,
+     "text": "PreviewSans-Regular"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 9,
+     "text": "Test builder"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 10,
+     "text": "A tiny font for tests"
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 13,
+     "text": "Test font built for this project, released as CC0-1.0."
+    },
+    {
+     "platform": 3,
+     "encoding": 1,
+     "language": 1033,
+     "id": 14,
+     "text": "https://creativecommons.org/publicdomain/zero/1.0/"
+    }
+   ]
+  },
+  {
+   "font": "collection.ttc#2",
+   "kind": "metrics",
+   "value": {
+    "numGlyphs": 12,
+    "unitsPerEm": 1000,
+    "fontRevision": 1,
+    "created": "2026-01-01 00:00:00 UTC",
+    "modified": "2026-01-01 00:00:00 UTC",
+    "ascent": 800,
+    "descent": -200,
+    "lineGap": 90,
+    "typoAscender": 780,
+    "typoDescender": -220,
+    "typoLineGap": 100,
+    "winAscent": 900,
+    "winDescent": 250,
+    "weightClass": 400,
+    "widthClass": 5,
+    "vendor": "TEST",
+    "xHeight": 500,
+    "capHeight": 700
+   }
+  }
+ ]
+}
