@@ -1,0 +1,35 @@
+{
+  "id": "font-inspector",
+  "name": "Font Inspector & Web Font Converter",
+  "summary": "Read a font's names, licence text, metrics, glyphs, coverage and features, and convert it between TTF/OTF, WOFF and WOFF2 on your device.",
+  "about": "Open a TrueType, OpenType, WOFF or WOFF2 font and read what is inside it: the names and the licence text the font carries, its embedding flags and metrics, the glyph count, the tables, the OpenType feature tags and variable axes, and which characters it covers by Unicode block. A WOFF2 file is unpacked in a background worker that can be cancelled. The font is read on this device and nothing is uploaded.",
+  "supports": [
+    "TrueType and OpenType files (sfnt with TrueType or CFF outlines), TrueType and OpenType collections one font at a time, WOFF 1.0 files and WOFF2 files",
+    "Name records of every platform the format defines, decoded as the platform and encoding say: UTF-16BE, Mac Roman and the 936, 950 and 949 code pages"
+  ],
+  "limits": [
+    "The font is read on this device. Nothing is uploaded and no address inside the font (a licence or vendor address) is ever requested; such an address is shown as text only.",
+    "The page shows what the licence fields and embedding flags say. It cannot tell you whether you may use, convert or embed the font; read the licence first.",
+    "Files over 20 MiB are refused before they are read. A WOFF2 file whose tables add up to more than 30 MiB, or that would expand more than 100 times, is refused before the engine runs.",
+    "The WOFF2 engine builds part of its own code when it starts, so this page, and only a few others, allows run-time code generation. That code is the engine's own and is never used on anything you open here."
+  ],
+  "ambiguities": [
+    "A font with no name table or no character map still shows every other part, with a note that the table is missing."
+  ],
+  "standards": [
+    { "label": "WOFF File Format 1.0 (W3C Recommendation)", "url": "https://www.w3.org/TR/WOFF/" },
+    { "label": "WOFF File Format 2.0 (W3C Recommendation)", "url": "https://www.w3.org/TR/WOFF2/" },
+    {
+      "label": "OpenType specification: name table",
+      "url": "https://learn.microsoft.com/en-us/typography/opentype/spec/name"
+    }
+  ],
+  "keywords": ["font", "TTF", "OTF", "WOFF", "WOFF2", "sfnt", "OpenType", "name table", "glyphs"],
+  "primaryExport": "inspectFont",
+  "usage": "import { readContainer, inspectFont } from '@fodt/font-inspector';\n\nconst container = readContainer(bytes); // bytes: a Uint8Array holding a .ttf or .otf file\nconst report = inspectFont(bytes, {});\n\nreport.font.family; // 'Det Sans'\nreport.names; // every name record, decoded\nreport.metrics.unitsPerEm; // 1000",
+  "apiNotes": "`readContainer(bytes)` checks the size first, then reads the table directory of a TrueType, OpenType or collection file with every table range compared against the file. `unwrapWoff1(bytes)` inflates the tables of a WOFF 1.0 file through a streaming reader that stops at each table's stated size. `planWoff2(bytes)` pre-checks a WOFF2 header and table directory before the engine is called; the engine itself is in `src/engine.ts` and is never imported by the package index. `inspectFont(sfnt, options)` reads one font of an sfnt into plain data. Every failure is a `FontInspectorError` whose message names the field or offset and never repeats the font's bytes.",
+  "testNotes": "Fonts are built by fontTools 4.64.0 in test/fixtures/build-fonts.py, and fontTools' own reading of them is recorded in test/fixtures/recorded.json. The WOFF2 engine is compared with wawoff2 2.0.1, a second build of the same Google code.",
+  "dependencies": { "woff2-encoder": "2.0.0", "fflate": "0.8.3" },
+  "devDependencies": { "wawoff2": "2.0.1" },
+  "needs": ["eval", "wasm", "workers"]
+}

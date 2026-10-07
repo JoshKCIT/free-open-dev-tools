@@ -1538,5 +1538,12 @@
     "category": "code",
     "tier": 3,
     "summary": "Open a .wasm file to read its sections, types, imports, exports, memories, data and names without compiling or running it."
+  },
+  {
+    "id": "font-inspector",
+    "name": "Font Inspector & Web Font Converter",
+    "category": "media",
+    "tier": 3,
+    "summary": "Read a font's names, licence text, metrics, glyphs, coverage and features, and convert it between TTF/OTF, WOFF and WOFF2 on your device."
   }
 ]
