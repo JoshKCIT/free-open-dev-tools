@@ -296,6 +296,9 @@ it('every parser stays linear on hostile input', () => {
     (n) => '\n'.repeat(n) + '<!DOCTYPE',
     (n) => '<!DOCTYPE'.repeat(Math.floor(n / 9)),
     (n) => '<!ENTITY'.repeat(Math.floor(n / 8)),
+    // Closed comments and processing instructions before the first tag are each skipped once, before a form is read.
+    (n) => '<!-- -->'.repeat(Math.floor(n / 8)) + '<input name="SAMLResponse" value="',
+    (n) => '<?x?>'.repeat(Math.floor(n / 5)) + '<form><!-- <input -->'.repeat(Math.floor(n / 20)),
     // Every element writes the same value as ID, Id and id, and one Signature points at it: the ID index stays linear.
     (n) =>
       `<r>${'<a ID="x" Id="x" id="x"/>'.repeat(Math.floor(n / 25))}<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:Reference URI="#x"/></ds:SignedInfo></ds:Signature></r>`,

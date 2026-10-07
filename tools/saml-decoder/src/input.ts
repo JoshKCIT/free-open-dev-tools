@@ -323,13 +323,19 @@ function readTagAttributes(html: string, from: number): { attributes: Map<string
   }
 }
 
-/** Finds every input tag of an HTML text, in one forward pass, with its name and value. */
+/** Finds every input tag of an HTML text, in one forward pass, with its name and value. A tag inside a comment is skipped. */
 function readInputTags(html: string): HtmlInput[] {
   const found: HtmlInput[] = [];
   let i = 0;
   for (;;) {
     i = html.indexOf('<', i);
     if (i === -1) break;
+    if (html.startsWith('<!--', i)) {
+      const end = html.indexOf('-->', i + 4);
+      if (end === -1) break;
+      i = end + 3;
+      continue;
+    }
     if (html.slice(i + 1, i + 6).toLowerCase() === 'input') {
       const after = html.charCodeAt(i + 6);
       if (Number.isNaN(after) || isWhite(after) || after === 47 || after === 62) {
@@ -343,6 +349,73 @@ function readInputTags(html: string): HtmlInput[] {
     i++;
   }
   return found;
+}
+
+/**
+ * The first tags an HTTP-POST page or a copied part of one starts with. Pasted text is read as a form only when its first
+ * tag is one of these, so an XML message that holds an input tag (in a comment, a CDATA section, or as an element named
+ * input) is read as the XML it is and never as a decoy form inside it.
+ */
+const FORM_START_TAGS: ReadonlySet<string> = new Set([
+  '!doctype html',
+  'html',
+  'head',
+  'body',
+  'meta',
+  'noscript',
+  'form',
+  'div',
+  'input',
+]);
+
+/**
+ * The lower-case name of the first tag, after an XML declaration, processing instructions and comments: `form`, or
+ * `!doctype html` for an HTML document type, or `!doctype` for any other. Returns '' when there is none. Forward scan only.
+ */
+function firstTagName(text: string): string {
+  let i = 0;
+  for (;;) {
+    i = text.indexOf('<', i);
+    if (i === -1) return '';
+    if (text.startsWith('<?', i)) {
+      const end = text.indexOf('?>', i + 2);
+      if (end === -1) return '';
+      i = end + 2;
+      continue;
+    }
+    if (text.startsWith('<!--', i)) {
+      const end = text.indexOf('-->', i + 4);
+      if (end === -1) return '';
+      i = end + 3;
+      continue;
+    }
+    let j = i + 1;
+    while (j < text.length) {
+      const c = text.charCodeAt(j);
+      if (isWhite(c) || c === 62 || c === 47) break;
+      j++;
+    }
+    const name = text.slice(i + 1, j).toLowerCase();
+    if (name !== '!doctype') return name;
+    // An HTML page names html as its document type; any other DOCTYPE belongs to an XML message.
+    while (j < text.length && isWhite(text.charCodeAt(j))) j++;
+    return text.slice(j, j + 4).toLowerCase() === 'html' && !isNameCharacter(text.charCodeAt(j + 4))
+      ? '!doctype html'
+      : '!doctype';
+  }
+}
+
+/** True for a letter, digit, hyphen, underscore, dot or colon: a character that continues a name. */
+function isNameCharacter(code: number): boolean {
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122) ||
+    code === 45 ||
+    code === 95 ||
+    code === 46 ||
+    code === 58
+  );
 }
 
 function readHtmlForm(text: string): InputReading | null {
@@ -372,15 +445,15 @@ function readHtmlForm(text: string): InputReading | null {
 }
 
 /**
- * Works out what the pasted text is and undoes the wrapper around the message: raw XML as it is; an HTML form by reading its
- * hidden input; a redirect address, query string or form body by finding its parameters and undoing the URL encoding; or a
+ * Works out what the pasted text is and undoes the wrapper around the message: raw XML as it is; an HTML form (text whose
+ * first tag is an HTML one, such as form, html or input) by reading its hidden input; a redirect address, query string or form body by finding its parameters and undoing the URL encoding; or a
  * bare Base64 value. Everything it does is listed in `steps`, and anything unusual in `warnings`.
  */
 export function readInput(text: string): InputReading {
   const trimmed = trimBoth(text);
   if (trimmed === '') throw new SamlDecoderError('There is no message to read.', 'message');
   if (trimmed.charCodeAt(0) === 0x3c) {
-    const form = readHtmlForm(trimmed);
+    const form = FORM_START_TAGS.has(firstTagName(trimmed)) ? readHtmlForm(trimmed) : null;
     if (form !== null) return form;
     return {
       kind: 'xml',

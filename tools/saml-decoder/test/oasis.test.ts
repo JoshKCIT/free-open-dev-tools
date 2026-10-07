@@ -5,7 +5,7 @@ import { deflateRawSync, deflateSync, gzipSync, inflateRawSync } from 'node:zlib
 import { expect, it, vi } from 'vitest';
 import { DOCTYPE_REFUSAL_MESSAGE, MAX_XML_BYTES, SamlDecoderError, decodeSaml, inflateCapped } from '../src/index';
 import { ENTITY_REFUSAL_MESSAGE } from '../src/xml-entity';
-import { NOW_LOGOUT as NOW, fixture, mulberry32, normalise, pairsOf, refusal } from './helpers';
+import { NOW_LOGOUT as NOW, base64Of, fixture, mulberry32, normalise, pairsOf, postForm, refusal } from './helpers';
 
 it('the OASIS Bindings 2.0 logout request redirect address inflates to the specification message', () => {
   // OASIS Bindings 2.0 section 3.4.8: the address of document lines 723 to 733 carries the message of lines 694 to 702.
@@ -335,4 +335,65 @@ it('wrapped, padded and doubly encoded values are read, each with its own warnin
   const compressedPost = decode(`<input name="SAMLResponse" value="${deflated}">`);
   expect(compressedPost.xml).toBe(seeded);
   expect(compressedPost.warnings.join(' ')).toContain('does not compress');
+});
+
+it('raw XML that holds an input tag in a comment, a CDATA section or as an element is read as the XML pasted', () => {
+  const message = (id: string, issuer: string, inside = '') =>
+    `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="${id}" Version="2.0" IssueInstant="2004-12-05T09:22:05Z"><saml:Issuer>${issuer}</saml:Issuer>${inside}</samlp:Response>`;
+  const decoy = base64Of(message('other', 'https://attacker.example'));
+  const input = `<input name="SAMLResponse" value="${decoy}">`;
+  const pasted = [
+    ['a comment', message('real', 'https://idp.example.org', `<!-- ${input} -->`)],
+    ['a comment before the root', `<!-- ${input} -->${message('real', 'https://idp.example.org')}`],
+    [
+      'an XML declaration and a comment',
+      `<?xml version="1.0"?>\n<!-- ${input} -->\n${message('real', 'https://idp.example.org')}`,
+    ],
+    [
+      'a CDATA section',
+      message('real', 'https://idp.example.org', `<samlp:Extensions><![CDATA[${input}]]></samlp:Extensions>`),
+    ],
+    [
+      'an element named input',
+      message(
+        'real',
+        'https://idp.example.org',
+        `<samlp:Extensions><input name="SAMLResponse" value="${decoy}"/></samlp:Extensions>`,
+      ),
+    ],
+  ] as const;
+  for (const [where, text] of pasted) {
+    const report = decodeSaml(text, { now: NOW });
+    expect(report.kind, where).toBe('xml');
+    expect(report.binding, where).toBe('Raw XML (no binding)');
+    expect(pairsOf(report).get('ID'), where).toBe('real');
+    expect(pairsOf(report).get('Issuer'), where).toBe('https://idp.example.org');
+  }
+  // A message that starts with an XML DOCTYPE is not a form either, even with an input element in it, so it is refused
+  // as a DOCTYPE; only a DOCTYPE that names html starts a page.
+  for (const doctype of [
+    '<!DOCTYPE samlp:Response>',
+    '<!doctype htmlx>',
+    `<!DOCTYPE samlp:Response [<!-- ${input} -->]>`,
+  ]) {
+    const text = `${doctype}${message('real', 'x', `<samlp:Extensions><input name="SAMLResponse" value="${decoy}"/></samlp:Extensions>`)}`;
+    expect(refusal(text).message, doctype).toBe(DOCTYPE_REFUSAL_MESSAGE);
+  }
+  // Forms are still read: a whole page, a form, a div, a bare input, upper case, a comment first, and a decoy in a
+  // comment of the form is skipped for the real input after it.
+  const real = base64Of(message('form', 'https://idp.example.org'));
+  for (const text of [
+    postForm(real),
+    `<!DOCTYPE html>\n<html><body onload="document.forms[0].submit()">${postForm(real)}</body></html>`,
+    `<html><head><title>t</title></head><body>${postForm(real)}</body></html>`,
+    `<div>${postForm(real)}</div>`,
+    `<input type="hidden" name="SAMLResponse" value="${real}"/>`,
+    `<FORM METHOD="POST"><INPUT TYPE="hidden" NAME="SAMLResponse" VALUE="${real}"></FORM>`,
+    `<!-- the identity provider's page -->\n${postForm(real)}`,
+    `<form><!-- ${input} --><input name="SAMLResponse" value="${real}"/></form>`,
+  ]) {
+    const report = decodeSaml(text, { now: NOW });
+    expect(report.kind, text.slice(0, 40)).toBe('post');
+    expect(pairsOf(report).get('ID'), text.slice(0, 40)).toBe('form');
+  }
 });
