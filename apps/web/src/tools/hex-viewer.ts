@@ -1,9 +1,13 @@
 import {
+  EXPORT_LANGUAGES,
   HexViewerError,
+  MAX_EXPORT_PREVIEW_CHARS,
   MAX_PASTED_BYTES,
   checkSearchSize,
   checkViewSize,
   encodeNeedle,
+  exportCodeArray,
+  exportRange,
   formatHexRows,
   formatSize,
   identifyFile,
@@ -152,6 +156,71 @@ function describe(opened: Opened, rowsPerPage: number, bytesPerRow: BytesPerRow)
   return outputs;
 }
 
+/** The label of the preview block for each export language. */
+const EXPORT_BLOCK_LABELS: Record<string, string> = {
+  c: 'C or C++ array',
+};
+
+/** Length as a number, or undefined when the field is empty (to the end of the file). Anything else goes to the range check. */
+function exportLengthOf(values: Values): number | undefined {
+  const raw = values['exportLength'];
+  if (raw === undefined || raw === null || (typeof raw === 'string' && raw.trim() === '')) return undefined;
+  return num(values, 'exportLength', Number.NaN);
+}
+
+/**
+ * The export blocks, added after every other block: a note, the first part of the text and the whole text as a file.
+ * The window is checked against the 4 MiB limit before any byte of a file is read.
+ */
+async function exportBlocks(
+  values: Values,
+  searchable: { kind: 'file'; file: File } | { kind: 'bytes'; bytes: Uint8Array },
+  language: string,
+): Promise<OutputBlock[]> {
+  const info = EXPORT_LANGUAGES.find((item) => item.id === language);
+  if (info === undefined) return [];
+  const size = searchable.kind === 'file' ? searchable.file.size : searchable.bytes.length;
+  const { start, end } = exportRange(size, num(values, 'exportFrom', 0), exportLengthOf(values));
+  const window =
+    searchable.kind === 'file' ? await readSlice(searchable.file, start, end) : searchable.bytes.subarray(start, end);
+  const fallback = searchable.kind === 'file' ? searchable.file.name : 'data';
+  const result = exportCodeArray(window, {
+    language: info.id,
+    name: str(values, 'exportName').trim() === '' ? fallback : str(values, 'exportName'),
+    perLine: num(values, 'exportPerLine', 12),
+    upper: bool(values, 'exportUpper', false),
+  });
+
+  // The preview ends at a whole line, so a cut never splits a byte.
+  let preview = result.text;
+  if (preview.length > MAX_EXPORT_PREVIEW_CHARS) {
+    preview = preview.slice(0, preview.lastIndexOf('\n', MAX_EXPORT_PREVIEW_CHARS) + 1);
+  }
+  const cut = preview.length < result.text.length;
+  const counted = `${result.bytes.toLocaleString('en-US')} ${result.bytes === 1 ? 'byte' : 'bytes'}`;
+  let note = `Exported ${counted} from byte ${start.toLocaleString('en-US')} as ${info.label}.`;
+  if (result.bytes === 0 && info.id === 'c') {
+    note += ' The array is empty, and an empty initialiser is not standard C.';
+  } else if (result.bytes === 0) {
+    note += ' The array is empty.';
+  }
+  if (cut) {
+    note += ` The preview shows the first ${preview.length.toLocaleString('en-US')} of ${result.text.length.toLocaleString('en-US')} characters; the saved file holds all of it.`;
+  }
+  note += ' Nothing is uploaded.';
+  return [
+    { kind: 'note', tone: 'info', value: note },
+    { kind: 'code', label: EXPORT_BLOCK_LABELS[info.id] ?? info.label, language: 'text', value: preview },
+    {
+      kind: 'files',
+      label: 'Saved file',
+      files: [
+        { name: `${result.identifier}.${result.extension}`, mime: 'application/octet-stream', content: result.text },
+      ],
+    },
+  ];
+}
+
 /** The search result as page blocks: how many matches there are, and a table of the first ones. */
 function matchBlocks(result: SearchResult): OutputBlock[] {
   const found = result.total.toLocaleString('en-US');
@@ -261,6 +330,25 @@ export default defineTool({
       help: 'Off: the letters A to Z match either case. Text search only.',
       visible: (v) => str(v, 'searchAs', 'text') === 'text',
     },
+    {
+      name: 'exportAs',
+      label: 'Export as',
+      type: 'select',
+      default: 'none',
+      options: [
+        { value: 'none', label: 'No export' },
+        { value: 'c', label: 'C or C++ (xxd -i form)' },
+      ],
+      help: 'Writes the bytes as an array you can paste into source code. Nothing is uploaded.',
+    },
+    {
+      name: 'exportName',
+      label: 'Variable name',
+      type: 'text',
+      mono: true,
+      help: 'Cleaned to a legal name. Empty uses the file name, or data for pasted bytes.',
+      visible: (v) => str(v, 'exportAs', 'none') !== 'none',
+    },
   ],
   examples: [
     {
@@ -341,6 +429,18 @@ export default defineTool({
           ctx,
         );
         outputs.push(...matchBlocks(result));
+      }
+
+      // Only when an export is chosen is anything read for it. A refusal (a window over 4 MiB, a bad number) is shown
+      // beside the rows, which stay.
+      const exportAs = str(values, 'exportAs', 'none');
+      if (exportAs !== 'none') {
+        try {
+          outputs.push(...(await exportBlocks(values, searchable, exportAs)));
+        } catch (err) {
+          if (!(err instanceof HexViewerError)) throw err;
+          errors.push({ message: err.message });
+        }
       }
       return { outputs, ...(errors.length > 0 ? { errors } : {}) };
     } catch (err) {
