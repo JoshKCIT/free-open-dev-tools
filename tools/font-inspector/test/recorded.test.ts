@@ -16,7 +16,7 @@ import {
   type SfntFont,
 } from '../src/index';
 import { fontBytes } from './fixtures/fonts';
-import { compositeGlyph, glyphFont, nameTable, rectangle, simpleGlyph, utf16be } from './tables';
+import { compositeGlyph, concat, glyphFont, nameTable, rectangle, simpleGlyph, u16, u32, utf16be } from './tables';
 
 /*
  * Grounding (D-233): what fontTools 4.64.0 read from fonts this project builds itself (test/fixtures/build-fonts.py), recorded
@@ -241,7 +241,8 @@ it('name records decode as UTF-16BE, Mac Roman and the 936, 950 and 949 code pag
 it('cmap formats 4, 12 and 14 give the recorded code point to glyph map', () => {
   const { bytes, font } = open('plain.ttf');
   const cmap = cmapOf(bytes, font);
-  const formats = cmap.subtables.map((s) => s.format).sort((a, b) => a - b);
+  // fontTools writes the format 4 subtable twice (Unicode platform and Windows platform), then 12 and 14.
+  const formats = [...new Set(cmap.subtables.map((s) => s.format))].sort((a, b) => a - b);
   expect(formats).toEqual([4, 12, 14]);
   const expected = recorded.checks.find((c) => c.font === 'plain.ttf' && c.kind === 'cmap')!.value as Record<
     string,
@@ -255,34 +256,36 @@ it('cmap formats 4, 12 and 14 give the recorded code point to glyph map', () => 
   ]);
 
   // Formats 0 and 6 are read too (hand-made subtables, expected values from the format description).
-  const f0 = Uint8Array.from([
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    3,
-    0,
-    1,
-    0,
-    0,
-    0,
-    12,
-    0,
-    0,
-    0,
-    262 >> 8,
-    262 & 255,
-    0,
-    0,
-    ...Array.from({ length: 256 }, (_, i) => (i === 0x41 ? 5 : 0)),
+  const f0 = concat(
+    u16(0),
+    u16(1),
+    u16(3),
+    u16(1),
+    u32(12),
+    u16(0),
+    u16(262),
+    u16(0),
+    Array.from({ length: 256 }, (_, i) => (i === 0x41 ? 5 : 0)),
+  );
+  expect([...readCmap(f0, 0, f0.length).map]).toEqual([[0x41, 5]]);
+  const f6 = concat(
+    u16(0),
+    u16(1),
+    u16(3),
+    u16(1),
+    u32(12),
+    u16(6),
+    u16(14),
+    u16(0),
+    u16(0x2000),
+    u16(2),
+    u16(7),
+    u16(8),
+  );
+  expect([...readCmap(f6, 0, f6.length).map]).toEqual([
+    [0x2000, 7],
+    [0x2001, 8],
   ]);
-  const read0 = readCmap(f0, 0, f0.length);
-  expect([...read0.map]).toEqual([[0x41, 5]]);
-  const f6 = Uint8Array.from([0, 0, 0, 1, 0, 3, 0, 1, 0, 0, 0, 12, 0, 6, 0, 16, 0, 0, 0x20, 0, 0, 2, 0, 7, 0, 0]);
-  expect([...readCmap(f6, 0, f6.length).map]).toEqual([[0x2000, 7]]);
 });
 
 it('GSUB and GPOS feature tags with their scripts and languages equal the recording', () => {

@@ -1,12 +1,14 @@
 import { expect, it, vi } from 'vitest';
 import {
   FontInspectorError,
+  MAX_CMAP_GROUPS,
   MAX_CHARSTRING_STEPS,
   MAX_COMPONENTS,
   MAX_COMPONENT_DEPTH,
   MAX_GLYPH_POINTS,
   inspectFont,
   openGlyphs,
+  readCmap,
   readContainer,
   readNameTable,
   unwrapWoff1,
@@ -19,6 +21,7 @@ import {
   ascii,
   cffTable,
   cmap12,
+  cmap12Lying,
   cmap4,
   compositeGlyph,
   concat,
@@ -204,6 +207,7 @@ it('names and refusals never show more than 40 characters of a name and never re
   ]);
   check(tagged);
   for (let cut = 0; cut < marked.length; cut += 11) check(marked.slice(0, cut));
+  for (let cut = 0; cut < tagged.length; cut += 7) check(tagged.slice(0, cut));
   for (let at = 0; at < marked.length; at += 13) {
     const damaged = marked.slice();
     damaged[at] = damaged[at]! ^ 0xff;
@@ -212,6 +216,8 @@ it('names and refusals never show more than 40 characters of a name and never re
   expect(seen.length).toBeGreaterThan(50);
   for (const text of seen) {
     expect(text).not.toContain(marker);
+    // Not even the start of it: table tags are bytes of the font too, and no sentence names one.
+    expect(text).not.toContain(marker.slice(0, 4));
     expect(text.length).toBeLessThan(400);
   }
   // A name table whose records point outside it is a plain phrase, not the bytes.
@@ -286,7 +292,8 @@ it('tags and names __proto__, constructor and toString are plain names', () => {
   expect(report.features.map((f) => f.tag).sort()).toEqual(['cons', 'toSt']);
   expect(report.features.find((f) => f.tag === 'cons')!.uses).toEqual(['__pr/toSt']);
   expect(report.features.find((f) => f.tag === 'toSt')!.uses).toEqual(['cons/dflt']);
-  expect(report.coverage.total).toBe(5);
+  // The code point mapped to glyph 0 (U+0041 here) is not counted: glyph 0 is the missing glyph.
+  expect(report.coverage.total).toBe(4);
   // Nothing was added to the shared prototype, and no plain object picked up a field.
   expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(before);
   expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
@@ -372,12 +379,12 @@ it('every reader stays linear on hostile input', () => {
           tag: 'liga',
           uses: Array.from(
             { length: n },
-            (_, i) => ['latn', `L${String(i % 1000).padStart(3, '0')}`] as [string, string],
+            (_, i) => ['latn', `L${i.toString(36).padStart(3, '0')}`] as [string, string],
           ),
         },
       ]),
     ),
-    400,
+    1000,
   );
   // Many tables in the directory.
   linear(
@@ -436,4 +443,28 @@ it('every reader stays linear on hostile input', () => {
     },
     60,
   );
+});
+
+it('a cmap that claims more groups than the cap or than its bytes allow is refused before any array is sized', () => {
+  expect(MAX_CMAP_GROUPS).toBe(200_000);
+  const started = performance.now();
+  for (const claimed of [0xffffffff, 4_000_000_000, 200_001]) {
+    const table = cmap12Lying(claimed);
+    const result = readCmap(table, 0, table.length);
+    expect(result.map.size).toBe(0);
+    expect(result.notes.join(' ')).toContain('more than the 200,000 this page reads');
+  }
+  // Within the cap but past the bytes of the subtable: refused as not having room.
+  const lying = cmap12Lying(200_000);
+  expect(readCmap(lying, 0, lying.length).notes.join(' ')).toContain('more groups than it has room for');
+  // Exactly 200,000 groups that are really there are read, one code point each.
+  const real = cmap12(
+    Array.from({ length: 200_000 }, (_, i) => [i + 1, i + 1, (i % 60_000) + 1] as [number, number, number]),
+  );
+  expect(readCmap(real, 0, real.length).map.size).toBe(200_000);
+  // A range of the whole code space many times over is stopped by the step budget, not walked to the end.
+  const heavy = cmap12(Array.from({ length: 50 }, () => [0, 0x10ffff, 1] as [number, number, number]));
+  const heavyRead = readCmap(heavy, 0, heavy.length);
+  expect(heavyRead.notes.join(' ')).toContain('overlapping ranges');
+  expect(performance.now() - started).toBeLessThan(10_000);
 });

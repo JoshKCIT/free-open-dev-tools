@@ -198,7 +198,8 @@ export function glyfAndLoca(glyphs: Bytes[]): { glyf: Uint8Array; loca: Uint8Arr
 
 /** A cmap table with one format 12 subtable (platform 3, encoding 10) of [start, end, first glyph] groups. */
 export function cmap12(groups: [number, number, number][]): Uint8Array {
-  const body = concat(...groups.map(([s, e, g]) => concat(u32(s), u32(e), u32(g))));
+  const body: number[] = [];
+  for (const [s, e, g] of groups) body.push(...u32(s), ...u32(e), ...u32(g));
   const subtable = concat(u16(12), u16(0), u32(16 + body.length), u32(0), u32(groups.length), body);
   return concat(u16(0), u16(1), u16(3), u16(10), u32(12), subtable);
 }

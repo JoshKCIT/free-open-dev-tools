@@ -52,8 +52,26 @@ export {
   type Os2Info,
   type PostInfo,
 } from './metrics';
+export { readCmap, type CmapResult, type CmapSubtable, type VariationSelector } from './cmap';
+export { BLOCKS, UNICODE_VERSION } from './blocks';
+export { blockCoverage, checkSample, type BlockCoverage, type Coverage, type SampleResult } from './coverage';
+export { describeFeature, isRegisteredFeature } from './feature-tags';
+export { readFeatures, type FeatureTable } from './features';
+export { readVariations, type Axis, type Instance, type VariationResult } from './variations';
+export { contoursToPath, quadraticContour, type Contour, type GlyphDrawing, type Segment } from './outline';
+export {
+  buildGrid,
+  checkGridOptions,
+  openGlyphs,
+  type Grid,
+  type GridContext,
+  type GridOptions,
+  type GlyphRow,
+  type NamedGlyphSource,
+} from './grid';
 export {
   inspectFont,
+  type FeatureRow,
   type FontReport,
   type InspectOptions,
   type LicenceText,
