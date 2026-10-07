@@ -96,6 +96,23 @@ function headerRows(analysis: EmlAnalysis, all: boolean): (string | number)[][] 
   ]);
 }
 
+function hopRows(analysis: EmlAnalysis): (string | number)[][] {
+  return analysis.hops.map((hop) => {
+    const from = hop.fromComment === '' ? hop.from : `${hop.from} (${hop.fromComment})`;
+    const withText = hop.via === '' ? hop.with : hop.with === '' ? `via ${hop.via}` : `${hop.with} via ${hop.via}`;
+    return [
+      hop.index,
+      visible(from, 200),
+      visible(hop.by, 200),
+      visible(withText, 100),
+      visible(hop.id, 100),
+      hop.time,
+      hop.delay,
+      visible(hop.note, 300),
+    ];
+  });
+}
+
 function asReceived(a: EmlAnalysis['attachments'][number]): string {
   const own = a.rawName === '' ? '(no name given)' : a.nameChanged ? visible(a.rawName, 200) : '';
   if (a.otherNames.length === 0) return own;
@@ -196,6 +213,18 @@ function resultOutputs(analysis: EmlAnalysis, allHeaders: boolean): OutputBlock[
 
   if (analysis.notes.length > 0) {
     outputs.push({ kind: 'note', label: 'Notes', tone: 'info', value: analysis.notes.join('\n') });
+  }
+
+  if (analysis.hops.length > 0) {
+    outputs.push({
+      kind: 'table',
+      label: 'Delivery hops, oldest first',
+      table: {
+        headers: ['#', 'From', 'By', 'With', 'Id', 'Time (UTC)', 'Delay', 'Note'],
+        rows: hopRows(analysis),
+        mono: [1, 2, 3, 4, 5],
+      },
+    });
   }
 
   if (analysis.tree !== null) {
