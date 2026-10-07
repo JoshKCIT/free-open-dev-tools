@@ -18,8 +18,8 @@ const NOTE_FIRST =
 const SHOWN_CELL = 200;
 
 // The redirect address of OASIS SAML 2.0 Bindings section 3.4.8 (document lines 723 to 733), joined into one line. Its
-// Signature value is the document's own placeholder, not a signature. The marker on the string line keeps the secret
-// scan from reading the Base64 as a key.
+// Signature value is the document's own placeholder, not a signature. The marker on the string line tells the
+// repository text scan that this Base64 is example data.
 const EXAMPLE_REDIRECT =
   'https://ServiceProvider.com/SAML/SLO/Browser?SAMLRequest=fVFdS8MwFH0f7D%2BUvGdNsq62oSsIQyhMESc%2B%2BJYlmRbWpObeyvz3puv2IMjyFM7HPedyK1DdsZdb%2F%2BEHfLFfgwVMTt3RgTwzazIEJ72CFqRTnQWJWu7uH7dSLJjsg0ev%2FZFMlttiBWADtt6R%2BSyJr9msiRH7O70sCm31Mj%2Bo%2BC%2B1KA5GlEWeZaogSQMw2MYBKodrIhjLKONU8FdeSsZkVr6T5M0GiHMjvWCknqZXZ2OoPxF7kGnaGOuwxZ%2Fn4L9bY8NC%2By4du1XpRXnxPcXizSZ58KFTeHujEWkNPZylsh9bAMYYUjO2Uiy3jCpTCMo5M1StVjmN9SO150sl9lU6RV2Dp0vsLIy7NM7YU82r9B90PrvCf85W%2FwL8zSVQzAEAAA%3D%3D&RelayState=0043bfc1bc45110dae17004005b13a2b&SigAlg=http%3A%2F%2Fwww.w3.org%2F200%2F09%2Fxmldsig%23rsa-sha1&Signature=NOTAREALSIGNATUREBUTTHEREALONEWOULDGOHERE'; // gitleaks:allow
 
