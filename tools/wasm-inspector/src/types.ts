@@ -43,9 +43,17 @@ export interface TypeRow {
   group: string;
 }
 
-function isAbstractHeap(byte: number): boolean {
+export function isAbstractHeap(byte: number): boolean {
   return ABSTRACT_HEAP[byte] !== undefined;
 }
+
+/** True for the bytes of the number types and v128. */
+export function isNumberType(byte: number): boolean {
+  return NUMBER_TYPES[byte] !== undefined;
+}
+
+export const MALFORMED_REF = 'A reference type is malformed (malformed reference type).';
+export const MALFORMED_VALUE = 'A value type is malformed (malformed value type).';
 
 /** A heap type: an abstract one by name, or a concrete one as a type index. */
 export function readHeapType(c: Cursor): string {
@@ -56,7 +64,7 @@ export function readHeapType(c: Cursor): string {
   }
   const at = c.pos;
   const index = c.s33();
-  if (index < 0n) throw new WasmInspectorError('A reference type is malformed (malformed reference type).', at);
+  if (index < 0n) throw new WasmInspectorError(MALFORMED_REF, at);
   return String(index);
 }
 
@@ -67,7 +75,7 @@ export function readRefType(c: Cursor): string {
   if (byte === 0x63) return `(ref null ${readHeapType(c)})`;
   if (byte === 0x64) return `(ref ${readHeapType(c)})`;
   if (isAbstractHeap(byte)) return `${ABSTRACT_HEAP[byte]}ref`;
-  throw new WasmInspectorError('A reference type is malformed (malformed reference type).', at);
+  throw new WasmInspectorError(MALFORMED_REF, at);
 }
 
 /** A value type: a number type, v128 or a reference type. */
@@ -85,7 +93,7 @@ export function readValType(c: Cursor): string {
     return readRefType(c);
   } catch (error) {
     if (error instanceof WasmInspectorError && error.offset === at && first >= 0 && first !== 0x63 && first !== 0x64) {
-      throw new WasmInspectorError('A value type is malformed (malformed value type).', at);
+      throw new WasmInspectorError(MALFORMED_VALUE, at);
     }
     throw error;
   }

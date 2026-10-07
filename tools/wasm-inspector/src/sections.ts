@@ -171,10 +171,10 @@ export function walkSections(bytes: Uint8Array, findings: FindingList): SectionW
         }
       }
     } else {
-      if (seen.has(id)) findings.add(start, `The ${SECTION_NAMES[id]} section appears more than once.`);
+      if (seen.has(id)) findings.add(start, () => `The ${SECTION_NAMES[id]} section appears more than once.`);
       seen.add(id);
       const rank = RANK[id]!;
-      if (rank < lastRank) findings.add(start, `The ${SECTION_NAMES[id]} section is out of order.`);
+      if (rank < lastRank) findings.add(start, () => `The ${SECTION_NAMES[id]} section is out of order.`);
       if (rank > lastRank) lastRank = rank;
     }
     if (keep)

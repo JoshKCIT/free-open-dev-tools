@@ -1,10 +1,57 @@
 import { FindingList, WasmInspectorError } from './errors';
 import { MAX_NAME_BYTES, withCommas } from './limits';
 
-// A name is UTF-8 by its byte length. The strict decoder says whether it is valid; the other one shows it anyway. The byte
-// order mark is kept (ignoreBOM), so a name that starts with one is shown with it and not silently shortened.
-const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+// A name is UTF-8 by its byte length. `isUtf8` says whether it is valid, with no error thrown and caught per name; the
+// decoder shows it either way. The byte order mark is kept (ignoreBOM), so a name that starts with one is shown with it and
+// not silently shortened.
 const LOSSY_UTF8 = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
+
+/** The sentences of the number and count faults, shared with the checks that record a fault instead of throwing. */
+export const UNEXPECTED_END = 'The data ends in the middle of a value (unexpected end).';
+export const TOO_LONG = 'A number uses more bytes than its width allows (integer representation too long).';
+export const TOO_LARGE = 'A number does not fit its width (integer too large).';
+
+export function countTooLarge(announced: number, left: number): string {
+  return `A length or count is larger than the bytes that remain (length out of bounds): ${withCommas(announced)} announced, ${withCommas(left)} bytes remain.`;
+}
+
+/**
+ * True when `bytes` are well-formed UTF-8 as the Encoding Standard's strict decoder reads them: no stray continuation byte,
+ * no overlong form, no surrogate, nothing past U+10FFFF and no sequence cut short. One pass, nothing thrown.
+ */
+export function isUtf8(bytes: Uint8Array): boolean {
+  const n = bytes.length;
+  let i = 0;
+  while (i < n) {
+    const lead = bytes[i]!;
+    if (lead < 0x80) {
+      i++;
+      continue;
+    }
+    let need: number;
+    let low = 0x80;
+    let high = 0xbf;
+    if (lead >= 0xc2 && lead <= 0xdf) need = 1;
+    else if (lead >= 0xe0 && lead <= 0xef) {
+      need = 2;
+      if (lead === 0xe0) low = 0xa0;
+      else if (lead === 0xed) high = 0x9f;
+    } else if (lead >= 0xf0 && lead <= 0xf4) {
+      need = 3;
+      if (lead === 0xf0) low = 0x90;
+      else if (lead === 0xf4) high = 0x8f;
+    } else return false;
+    if (i + need >= n) return false;
+    const second = bytes[i + 1]!;
+    if (second < low || second > high) return false;
+    for (let k = 2; k <= need; k++) {
+      const next = bytes[i + k]!;
+      if (next < 0x80 || next > 0xbf) return false;
+    }
+    i += need + 1;
+  }
+  return true;
+}
 
 /**
  * A reading position in the bytes of a module, with the reading rules of the binary format: little-endian LEB128 numbers
@@ -37,8 +84,7 @@ export class Cursor {
   }
 
   u8(): number {
-    if (this.pos >= this.end)
-      throw new WasmInspectorError('The data ends in the middle of a value (unexpected end).', this.pos);
+    if (this.pos >= this.end) throw new WasmInspectorError(UNEXPECTED_END, this.pos);
     return this.bytes[this.pos++]!;
   }
 
@@ -50,13 +96,9 @@ export class Cursor {
       const byte = this.u8();
       if (i === 4) {
         if ((byte & 0x80) !== 0) {
-          throw new WasmInspectorError(
-            'A number uses more bytes than its width allows (integer representation too long).',
-            this.pos - 1,
-          );
+          throw new WasmInspectorError(TOO_LONG, this.pos - 1);
         }
-        if (byte > 0x0f)
-          throw new WasmInspectorError('A number does not fit its width (integer too large).', this.pos - 1);
+        if (byte > 0x0f) throw new WasmInspectorError(TOO_LARGE, this.pos - 1);
       }
       result += (byte & 0x7f) * scale;
       if ((byte & 0x80) === 0) return result;
@@ -74,13 +116,10 @@ export class Cursor {
       const byte = this.u8();
       if (i === maxBytes) {
         if ((byte & 0x80) !== 0) {
-          throw new WasmInspectorError(
-            'A number uses more bytes than its width allows (integer representation too long).',
-            this.pos - 1,
-          );
+          throw new WasmInspectorError(TOO_LONG, this.pos - 1);
         }
         if (byte >> (bits - 7 * (maxBytes - 1)) !== 0) {
-          throw new WasmInspectorError('A number does not fit its width (integer too large).', this.pos - 1);
+          throw new WasmInspectorError(TOO_LARGE, this.pos - 1);
         }
       }
       result |= BigInt(byte & 0x7f) << shift;
@@ -98,18 +137,14 @@ export class Cursor {
       const byte = this.u8();
       if (i === maxBytes) {
         if ((byte & 0x80) !== 0) {
-          throw new WasmInspectorError(
-            'A number uses more bytes than its width allows (integer representation too long).',
-            this.pos - 1,
-          );
+          throw new WasmInspectorError(TOO_LONG, this.pos - 1);
         }
         const used = bits - 7 * (maxBytes - 1);
         const payload = byte & 0x7f;
         const sign = (payload >> (used - 1)) & 1;
         const high = payload >> used;
         const allowed = sign === 0 ? 0 : 0x7f >> used;
-        if (high !== allowed)
-          throw new WasmInspectorError('A number does not fit its width (integer too large).', this.pos - 1);
+        if (high !== allowed) throw new WasmInspectorError(TOO_LARGE, this.pos - 1);
       }
       result |= BigInt(byte & 0x7f) << shift;
       shift += 7n;
@@ -139,7 +174,7 @@ export class Cursor {
   /** Moves past `length` bytes and returns them (a view, not a copy). */
   bytesOf(length: number): Uint8Array {
     if (length > this.left()) {
-      throw new WasmInspectorError('The data ends in the middle of a value (unexpected end).', this.pos);
+      throw new WasmInspectorError(UNEXPECTED_END, this.pos);
     }
     const out = this.bytes.subarray(this.pos, this.pos + length);
     this.pos += length;
@@ -154,10 +189,7 @@ export class Cursor {
     const at = this.pos;
     const n = this.u32();
     if (n * minItemBytes > this.left()) {
-      throw new WasmInspectorError(
-        `A length or count is larger than the bytes that remain (length out of bounds): ${withCommas(n)} announced, ${withCommas(this.left())} bytes remain.`,
-        at,
-      );
+      throw new WasmInspectorError(countTooLarge(n, this.left()), at);
     }
     return n;
   }
@@ -176,11 +208,7 @@ export class Cursor {
       );
     }
     const raw = this.bytesOf(length);
-    try {
-      return STRICT_UTF8.decode(raw);
-    } catch {
-      findings?.add(at, 'A name is not valid UTF-8 (malformed UTF-8 encoding).');
-      return LOSSY_UTF8.decode(raw);
-    }
+    if (!isUtf8(raw)) findings?.add(at, 'A name is not valid UTF-8 (malformed UTF-8 encoding).');
+    return LOSSY_UTF8.decode(raw);
   }
 }

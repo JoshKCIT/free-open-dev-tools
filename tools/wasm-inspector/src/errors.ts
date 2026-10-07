@@ -24,17 +24,20 @@ export interface Finding {
   message: string;
 }
 
-/** The findings kept, at most `MAX_NOTES`, and how many more there were. */
+/**
+ * The findings kept, at most `MAX_NOTES`, and how many more there were. A sentence may be given as a function, so a
+ * finding that is only counted builds no sentence: a module whose every item is slightly wrong costs a count per item.
+ */
 export class FindingList {
   readonly items: Finding[] = [];
   leftOut = 0;
 
-  add(offset: number, text: string): void {
+  add(offset: number, text: string | (() => string)): void {
     if (this.items.length >= MAX_NOTES) {
       this.leftOut++;
       return;
     }
-    this.items.push({ offset, message: `At offset ${offset}: ${text}` });
+    this.items.push({ offset, message: `At offset ${offset}: ${typeof text === 'string' ? text : text()}` });
   }
 
   /** True when nothing was found at all. */

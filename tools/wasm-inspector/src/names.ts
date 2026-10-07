@@ -112,8 +112,10 @@ function readSubsection(
 
 /**
  * Reads the name section: its subsections one by one, each inside its own bounds, so one that cannot be read is a finding
- * and the next is still read. Subsections must come once each in increasing order of id; one that does not is a finding and
- * is still read. Only the function names asked for in `wanted` are kept, so a huge name section costs time and not memory.
+ * and the next is still read. Subsections must come once each in increasing order of id; one out of order is a finding and
+ * is still read, and one that appears again is a finding and is not read twice (as a repeated section of the module is
+ * not), so a name section of a million copies of one broken subsection costs one reading and a count per copy. Only the
+ * function names asked for in `wanted` are kept, so a huge name section costs time and not memory.
  */
 export function readNameSection(
   bytes: Uint8Array,
@@ -126,7 +128,8 @@ export function readNameSection(
   const c = new Cursor(bytes, section.payloadOffset, end);
   const seen = new Set<number>();
   let last = -1;
-  const note = (offset: number, text: string): void => findings.add(offset, `${text} This is in the name section.`);
+  const note = (offset: number, text: string | (() => string)): void =>
+    findings.add(offset, () => `${typeof text === 'string' ? text : text()} This is in the name section.`);
   while (!c.atEnd()) {
     const start = c.pos;
     let id: number;
@@ -152,8 +155,12 @@ export function readNameSection(
       c.pos = subEnd;
       continue;
     }
-    if (seen.has(id)) note(start, `The ${known.label} subsection appears more than once.`);
-    else if (id < last) note(start, `The ${known.label} subsection is out of order.`);
+    if (seen.has(id)) {
+      note(start, () => `The ${known.label} subsection appears more than once, and is read only the first time.`);
+      c.pos = subEnd;
+      continue;
+    }
+    if (id < last) note(start, `The ${known.label} subsection is out of order.`);
     seen.add(id);
     if (id > last) last = id;
     const sub = new Cursor(bytes, c.pos, subEnd);

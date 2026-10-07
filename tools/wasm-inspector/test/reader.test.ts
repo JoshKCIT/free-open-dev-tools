@@ -459,7 +459,8 @@ it('the name section reads core and proposal subsections in increasing order and
   // The function name is used for the largest functions list.
   expect(full.functions.largest[0]?.name).toBe('main_function');
 
-  // Out of order and repeated subsections are findings, and every subsection is still read.
+  // Out of order and repeated subsections are findings. One out of order is still read; one that appears again is read
+  // only the first time, as a repeated section of the module is.
   const unordered = inspect(
     moduleOf(
       TYPE_SECTION,
@@ -468,8 +469,11 @@ it('the name section reads core and proposal subsections in increasing order and
     ),
   );
   expect(unordered.findings.filter((f) => /subsection/.test(f.message))).toHaveLength(2);
-  expect(unordered.names.moduleName).toBe('again');
-  expect(unordered.names.subsections.map((s) => s.id)).toEqual([1, 0, 0]);
+  expect(
+    unordered.findings.some((f) => /appears more than once, and is read only the first time/.test(f.message)),
+  ).toBe(true);
+  expect(unordered.names.moduleName).toBe('m');
+  expect(unordered.names.subsections.map((s) => s.id)).toEqual([1, 0]);
 
   // A name map whose indices do not increase is a finding, and the names are still read.
   const unsorted = inspect(

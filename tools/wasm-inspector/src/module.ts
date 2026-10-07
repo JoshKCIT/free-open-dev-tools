@@ -3,6 +3,7 @@ import { Cursor } from './cursor';
 import { FindingList, WasmInspectorError } from './errors';
 import { MAX_PREVIEW_BYTES, MAX_ROWS, MAX_STRING_SCAN_BYTES, MIN_STRING_LENGTH, withCommas } from './limits';
 import type { SectionInfo } from './sections';
+import { SoftReader } from './soft';
 import {
   readGlobalType,
   readMemType,
@@ -10,7 +11,6 @@ import {
   readRecType,
   readTableType,
   readTagType,
-  readValType,
   type TypeRow,
 } from './types';
 
@@ -426,17 +426,18 @@ function readDataSegments(c: Cursor, data: ModuleData): void {
 
 /**
  * The locals declaration at the start of a function body: a vector of a count and a value type. It is the only part of a
- * body this reader looks at. The counts must not add up to more than 4,294,967,295.
+ * body this reader looks at. The counts must not add up to more than 4,294,967,295. It runs once per body, so a fault is
+ * recorded in the reader, never thrown.
  */
-function checkLocals(c: Cursor): void {
-  const groups = c.count(2);
+function checkLocals(r: SoftReader): void {
+  const groups = r.count(2);
   let total = 0;
-  for (let i = 0; i < groups; i++) {
-    const at = c.pos;
-    total += c.u32();
-    readValType(c);
-    if (total > 0xffffffff)
-      throw new WasmInspectorError('A function declares more than 4,294,967,295 locals (too many locals).', at);
+  for (let i = 0; i < groups && !r.failed; i++) {
+    const at = r.pos;
+    total += r.u32();
+    if (!r.failed) r.valType();
+    if (!r.failed && total > 0xffffffff)
+      r.fail(at, 'A function declares more than 4,294,967,295 locals (too many locals).');
   }
 }
 
@@ -446,7 +447,7 @@ function readCode(c: Cursor, data: ModuleData, findings: FindingList): void {
   const sizes = new Uint32Array(n);
   data.bodyOffsets = offsets;
   data.bodySizes = sizes;
-  const locals = new Cursor(c.bytes, 0, 0);
+  const locals = new SoftReader(c.bytes);
   for (let i = 0; i < n; i++) {
     const at = c.pos;
     const size = c.u32();
@@ -460,15 +461,15 @@ function readCode(c: Cursor, data: ModuleData, findings: FindingList): void {
     sizes[i] = size;
     data.bodyCount = i + 1;
     data.bodyBytes += size;
-    locals.pos = c.pos;
-    locals.end = c.pos + size;
-    try {
-      checkLocals(locals);
-    } catch (error) {
-      if (!(error instanceof WasmInspectorError)) throw error;
+    const start = c.pos;
+    locals.reset(start, start + size);
+    checkLocals(locals);
+    if (locals.failed) {
+      const fault = locals.fault;
       findings.add(
-        error.offset ?? c.pos,
-        `${error.message} This is in the code section, in the body that starts at offset ${c.pos}.`,
+        locals.faultAt,
+        () =>
+          `${typeof fault === 'string' ? fault : fault()} This is in the code section, in the body that starts at offset ${start}.`,
       );
     }
     c.pos += size;
