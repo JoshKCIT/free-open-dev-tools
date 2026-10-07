@@ -1524,5 +1524,12 @@
     "category": "code",
     "tier": 3,
     "summary": "Paste a minified stack trace and its source maps to see each frame's original file, line, column and name, with no address ever fetched."
+  },
+  {
+    "id": "asn1-viewer",
+    "name": "ASN.1 Viewer (DER/BER)",
+    "category": "hashing",
+    "tier": 3,
+    "summary": "Paste PEM, Base64 or hex, or open a file, and read any DER or BER structure as a tree with offsets, tags, lengths, values and named object identifiers."
   }
 ]
