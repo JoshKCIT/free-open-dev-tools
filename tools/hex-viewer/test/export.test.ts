@@ -392,6 +392,41 @@ it('Rust, Go, Python and JavaScript names are cleaned, a reserved word gets a tr
   expect(EXPORT_LANGUAGES[0]!.label).toBe('C or C++ (xxd -i form)');
 });
 
+it('a JavaScript name a classic script refuses and the Python name __debug__ get a trailing underscore', () => {
+  // NaN, Infinity and undefined are properties of the global object that cannot be redefined, so a const of that name
+  // at the top of a classic script (what a script tag and a browser console run) throws "has already been declared".
+  // Python 3.14 refuses any assignment to __debug__ ("SyntaxError: cannot assign to __debug__").
+  for (const word of ['NaN', 'Infinity', 'undefined']) {
+    expect(cleanIdentifier('javascript', word), word).toBe(`${word}_`);
+    const { text, identifier } = exportCodeArray(Uint8Array.of(7, 8), {
+      language: 'javascript',
+      name: word,
+      perLine: 12,
+      upper: false,
+    });
+    const value = vm.runInNewContext(`${text}\n${identifier};`) as Uint8Array;
+    expect(Array.from(value), word).toEqual([7, 8]);
+  }
+  expect(cleanIdentifier('python', '__debug__')).toBe('__debug___');
+  // Names that only look like them stay as typed.
+  expect(cleanIdentifier('javascript', 'nan')).toBe('nan');
+  expect(cleanIdentifier('javascript', 'undefined_bin')).toBe('undefined_bin');
+  expect(cleanIdentifier('python', '__debug')).toBe('__debug');
+  expect(cleanIdentifier('go', 'undefined')).toBe('undefined');
+});
+
+it('a C name that is a keyword stays as xxd -i leaves it and the limits say so', () => {
+  // The C form keeps the xxd rule exactly (the 121 recorded cases depend on it), so a file named default exports
+  // unsigned char default[], which does not compile. The page must not promise a legal name for C.
+  for (const word of ['default', 'int', 'char', 'return']) expect(cleanIdentifier('c', word), word).toBe(word);
+  const meta = JSON.parse(readFileSync(new URL('../src/meta.json', import.meta.url), 'utf8')) as { limits: string[] };
+  const nameLimit = meta.limits.find((line) => line.startsWith('A variable name'));
+  expect(nameLimit).toBeDefined();
+  expect(nameLimit).toContain('keyword');
+  expect(nameLimit).toContain('xxd -i');
+  expect(nameLimit).not.toMatch(/^A variable name is cleaned to be legal,/);
+});
+
 it('a name over 200 characters is refused naming the field and never repeated', () => {
   const marker = 'SECRET-MARKER-ab12';
   const tooLong = marker + 'q'.repeat(300);
