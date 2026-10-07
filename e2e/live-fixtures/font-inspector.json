@@ -1,6 +1,6 @@
 {
   "id": "font-inspector",
-  "label": "a 1,672 byte TrueType font built with fontTools 4.64.0 shows its family Det Sans and its licence text from name ID 13",
+  "label": "a 1,672 byte TrueType font built with fontTools 4.64.0 shows its family Det Sans, its licence text from name ID 13 and the layout features liga and kern that fontTools recorded",
   "steps": [
     {
       "action": "attach",
@@ -17,5 +17,5 @@
       "action": "run"
     }
   ],
-  "expect": ["Det Sans", "Test font built for this project, released as CC0-1.0."]
+  "expect": ["Det Sans", "Test font built for this project, released as CC0-1.0.", "liga", "kern"]
 }

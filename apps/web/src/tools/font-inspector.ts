@@ -1,8 +1,14 @@
 import {
+  DEFAULT_GLYPHS_PER_GRID,
   FontInspectorError,
   MAX_FILE_BYTES,
+  MAX_GLYPHS_PER_GRID,
+  MAX_GLYPH_START,
+  MAX_LICENCE_CHARS,
   MAX_NAME_CELL_CHARS,
+  MAX_SAMPLE_CHARS,
   checkFileSize,
+  checkGridOptions,
   inspectFont,
   meta,
   readContainer,
@@ -15,19 +21,24 @@ import {
   fontInspectorInWorker,
   type FontInspectorWrapper,
 } from '../lib/run-font-inspector-in-worker';
-import { defineTool, files, num, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import { defineTool, files, num, str, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /** What the page says first: where the font is read and what the page never does with it. */
 const FIRST_NOTE =
   'The font is read on this device and nothing is uploaded. No address inside the font (a licence or vendor address) is ever requested; such an address is shown as text only.';
 
 const MAX_NAME_ROWS_SHOWN = 500;
+const MAX_FEATURE_ROWS_SHOWN = 500;
+const MAX_USES_SHOWN = 6;
 const MAX_MEMBER = 100;
 
 const PLATFORMS: readonly string[] = ['Unicode', 'Macintosh', 'ISO', 'Windows'];
 
 const count = (value: number): string => value.toLocaleString('en-US');
 
+const hex = (value: number): string => `U+${value.toString(16).toUpperCase().padStart(4, '0')}`;
+
+/** A name or other text from the font, safe to show in a table cell: hidden and direction-changing characters are written out. */
 const shown = (text: string): string => visible(text, MAX_NAME_CELL_CHARS);
 
 function platformLabel(platform: number, encoding: number): string {
@@ -82,6 +93,224 @@ function namesBlocks(report: FontReport): OutputBlock[] {
       value: `The table shows the first ${count(MAX_NAME_ROWS_SHOWN)} of ${count(report.names.length)} name records.`,
     });
   }
+  // The licence description and the licence address in full, one block each, as text and never as a link.
+  for (const licence of report.licence) {
+    const where = `${PLATFORMS[licence.platform] ?? `Platform ${licence.platform}`}, ${licence.languageLabel}`;
+    out.push({ kind: 'code', label: `${licence.label} (${where})`, value: visible(licence.text, MAX_LICENCE_CHARS) });
+  }
+  return out;
+}
+
+function metricsBlocks(report: FontReport): OutputBlock[] {
+  const pairs: [string, string][] = [];
+  const e = report.embedding;
+  if (e) {
+    pairs.push(['Embedding flags (fsType)', `${e.fsType} (0x${e.fsType.toString(16).toUpperCase().padStart(4, '0')})`]);
+    pairs.push(['What the flags say', e.permission]);
+    pairs.push(['Subsetting', e.noSubsetting ? 'The flags ask that the font is not subset' : 'No restriction stated']);
+    pairs.push(['Bitmap embedding', e.bitmapOnly ? 'The flags allow bitmap embedding only' : 'No restriction stated']);
+  }
+  const { head, hhea, os2, post } = report.metrics;
+  if (head) {
+    pairs.push(['Units per em', count(head.unitsPerEm)]);
+    pairs.push(['Font revision', String(head.fontRevision)]);
+    if (head.created) pairs.push(['Created', head.created]);
+    if (head.modified) pairs.push(['Modified', head.modified]);
+    pairs.push(['Bounding box', `${head.xMin}, ${head.yMin} to ${head.xMax}, ${head.yMax}`]);
+  }
+  if (hhea) {
+    pairs.push(['Ascent (hhea)', String(hhea.ascent)]);
+    pairs.push(['Descent (hhea)', String(hhea.descent)]);
+    pairs.push(['Line gap (hhea)', String(hhea.lineGap)]);
+  }
+  if (os2) {
+    pairs.push([
+      'Typographic ascender, descender and gap',
+      `${os2.typoAscender}, ${os2.typoDescender}, ${os2.typoLineGap}`,
+    ]);
+    pairs.push(['Windows ascent and descent', `${os2.winAscent}, ${os2.winDescent}`]);
+    if (os2.xHeight !== null) pairs.push(['x-height', String(os2.xHeight)]);
+    if (os2.capHeight !== null) pairs.push(['Cap height', String(os2.capHeight)]);
+    pairs.push(['Weight class', String(os2.weightClass)]);
+    pairs.push(['Width class', String(os2.widthClass)]);
+    pairs.push(['Vendor ID', shown(os2.vendor)]);
+  }
+  if (post) {
+    pairs.push(['Italic angle', String(post.italicAngle)]);
+    pairs.push(['Fixed pitch', post.isFixedPitch ? 'Yes' : 'No']);
+  }
+  if (pairs.length === 0) return [];
+  const out: OutputBlock[] = [{ kind: 'keyvalue', label: 'Embedding and metrics', pairs }];
+  if (report.verticalMetricsNote) out.push({ kind: 'note', tone: 'info', value: report.verticalMetricsNote });
+  return out;
+}
+
+function tablesBlock(report: FontReport): OutputBlock {
+  const rows = report.tables.map((t) => [
+    shown(t.tag),
+    t.inFile ? count(t.offset) : 'outside the file',
+    count(t.length),
+    t.checksumOk === null ? 'not checked' : t.checksumOk ? 'matches' : 'does not match',
+    t.description,
+  ]);
+  return {
+    kind: 'table',
+    label: 'Tables',
+    table: { headers: ['Tag', 'Offset', 'Length', 'Checksum', 'What it holds'], rows, mono: [0, 1, 2] },
+  };
+}
+
+function featureBlocks(report: FontReport): OutputBlock[] {
+  if (report.features.length === 0) return [];
+  const rows = report.features.slice(0, MAX_FEATURE_ROWS_SHOWN).map((f) => {
+    const uses = f.uses.slice(0, MAX_USES_SHOWN).map((u) => shown(u));
+    const more = f.uses.length > MAX_USES_SHOWN ? ` and ${count(f.uses.length - MAX_USES_SHOWN)} more` : '';
+    return [
+      shown(f.tag),
+      f.tables.join(', '),
+      f.description === '' ? 'Not in the registry' : f.description,
+      uses.join(', ') + more,
+    ];
+  });
+  const out: OutputBlock[] = [
+    {
+      kind: 'table',
+      label: 'OpenType features',
+      table: { headers: ['Tag', 'Table', 'What it does', 'Used by (script/language)'], rows, mono: [0] },
+    },
+  ];
+  if (report.features.length > MAX_FEATURE_ROWS_SHOWN) {
+    out.push({
+      kind: 'note',
+      tone: 'info',
+      value: `The table shows the first ${count(MAX_FEATURE_ROWS_SHOWN)} of ${count(report.features.length)} features.`,
+    });
+  }
+  return out;
+}
+
+function variationBlocks(report: FontReport): OutputBlock[] {
+  if (report.axes.length === 0) return [];
+  const out: OutputBlock[] = [
+    {
+      kind: 'table',
+      label: 'Variable axes',
+      table: {
+        headers: ['Tag', 'Name', 'Minimum', 'Default', 'Maximum'],
+        rows: report.axes.map((a) => [shown(a.tag), a.name === '' ? '' : shown(a.name), a.min, a.default, a.max]),
+        mono: [0],
+      },
+    },
+  ];
+  if (report.instances.length > 0) {
+    out.push({
+      kind: 'table',
+      label: 'Named instances',
+      table: {
+        headers: ['Name', 'Coordinates'],
+        rows: report.instances.map((i) => [
+          i.name === '' ? `name ID ${i.nameId}` : shown(i.name),
+          i.coordinates.map((c) => `${shown(c.tag)} ${c.value}`).join(', '),
+        ]),
+      },
+    });
+  }
+  if (report.instanceCount > report.instances.length) {
+    out.push({
+      kind: 'note',
+      tone: 'info',
+      value: `The table shows ${count(report.instances.length)} of ${count(report.instanceCount)} named instances.`,
+    });
+  }
+  return out;
+}
+
+function coverageBlocks(report: FontReport): OutputBlock[] {
+  const c = report.coverage;
+  if (c.total === 0) return [];
+  const rows = c.blocks.map((b) => [
+    b.name,
+    `${hex(b.first)} to ${hex(b.last)}`,
+    count(b.covered),
+    count(b.size),
+    `${((b.covered / b.size) * 100).toFixed(1)}%`,
+  ]);
+  const out: OutputBlock[] = [
+    {
+      kind: 'table',
+      label: `Coverage by Unicode block (Unicode ${c.unicodeVersion})`,
+      table: { headers: ['Block', 'Range', 'Characters covered', 'Block size', 'Share'], rows, mono: [1] },
+    },
+  ];
+  const total = `${count(c.total)} characters are mapped to a glyph in all.`;
+  out.push({
+    kind: 'note',
+    tone: 'info',
+    value:
+      c.outsideBlocks > 0 ? `${total} ${count(c.outsideBlocks)} of them lie outside every block of the list.` : total,
+  });
+  return out;
+}
+
+function sampleBlocks(report: FontReport): OutputBlock[] {
+  const s = report.sample;
+  if (!s) return [];
+  const out: OutputBlock[] = [
+    {
+      kind: 'keyvalue',
+      label: 'Sample text',
+      pairs: [
+        ['Characters', count(s.characters)],
+        ['Different characters', count(s.distinct)],
+        ['In this font', count(s.coveredDistinct)],
+        ['Not in this font', count(s.missingCount)],
+      ],
+    },
+  ];
+  if (s.missingCount > 0) {
+    out.push({
+      kind: 'list',
+      label: 'Not in this font',
+      items: s.missing.map((m) => `${hex(m.codePoint)} ${visible(m.text, 8)}`),
+    });
+    if (s.missingCount > s.missing.length) {
+      out.push({
+        kind: 'note',
+        tone: 'info',
+        value: `The list shows the first ${count(s.missing.length)} of ${count(s.missingCount)} missing characters.`,
+      });
+    }
+  } else if (s.distinct > 0) {
+    out.push({
+      kind: 'note',
+      tone: 'success',
+      value: 'Every character of the sample is mapped to a glyph in this font.',
+    });
+  }
+  return out;
+}
+
+function gridBlocks(report: FontReport): OutputBlock[] {
+  const g = report.grid;
+  const out: OutputBlock[] = [];
+  if (g.shown > 0) {
+    out.push({ kind: 'image', label: 'Glyph grid', src: g.dataAddress, alt: g.alt, width: g.width, height: g.height });
+  }
+  if (g.note) out.push({ kind: 'note', tone: 'info', value: g.note });
+  if (g.rows.length > 0) {
+    const rows = g.rows.map((r) => [
+      r.id,
+      r.name === '' ? '' : shown(r.name),
+      r.codePoints,
+      r.points,
+      r.unreadable ? 'could not be read' : r.truncated ? 'drawn in part' : r.empty ? 'no outline' : '',
+    ]);
+    out.push({
+      kind: 'table',
+      label: `Glyphs shown (${count(g.start)} to ${count(g.start + g.shown - 1)})`,
+      table: { headers: ['Glyph', 'Name', 'Code points', 'Points', 'Note'], rows, mono: [1, 2] },
+    });
+  }
   return out;
 }
 
@@ -91,6 +320,13 @@ function outputsOf(report: FontReport, wrapper: FontInspectorWrapper | null): Ou
   if (wrapper) for (const text of wrapper.notes) outputs.push({ kind: 'note', tone: 'info', value: text });
   outputs.push(fontBlock(report, wrapper));
   outputs.push(...namesBlocks(report));
+  outputs.push(...metricsBlocks(report));
+  outputs.push(tablesBlock(report));
+  outputs.push(...featureBlocks(report));
+  outputs.push(...variationBlocks(report));
+  outputs.push(...coverageBlocks(report));
+  outputs.push(...sampleBlocks(report));
+  outputs.push(...gridBlocks(report));
   return outputs;
 }
 
@@ -125,6 +361,33 @@ export default defineTool({
       step: 1,
       help: 'Only used when the file is a collection of fonts.',
     },
+    {
+      name: 'glyphStart',
+      label: 'First glyph',
+      type: 'number',
+      default: 0,
+      min: 0,
+      max: MAX_GLYPH_START,
+      step: 1,
+      help: 'The glyph number the grid starts at.',
+    },
+    {
+      name: 'glyphCount',
+      label: 'Glyphs to draw',
+      type: 'number',
+      default: DEFAULT_GLYPHS_PER_GRID,
+      min: 1,
+      max: MAX_GLYPHS_PER_GRID,
+      step: 1,
+      help: `How many glyphs the grid draws, up to ${MAX_GLYPHS_PER_GRID}.`,
+    },
+    {
+      name: 'sample',
+      label: 'Check these characters',
+      type: 'text',
+      placeholder: 'Characters to look for in the font',
+      help: `Up to ${count(MAX_SAMPLE_CHARS)} characters. Shows which of them the font has and which it lacks.`,
+    },
   ],
   async run(values, ctx): Promise<ToolResult> {
     try {
@@ -135,6 +398,10 @@ export default defineTool({
           errors: [{ message: `Font number in a collection must be a whole number from 1 to ${MAX_MEMBER}.` }],
         };
       }
+      const glyphStart = num(values, 'glyphStart', 0);
+      const glyphCount = num(values, 'glyphCount', DEFAULT_GLYPHS_PER_GRID);
+      // The two grid fields are checked before anything is read, and the refusal names the field that is wrong.
+      checkGridOptions({ start: glyphStart, count: glyphCount });
       const picked = files(values, 'file');
       if (picked.length === 0) return { outputs: [] };
       const file = picked[0]!;
@@ -155,7 +422,8 @@ export default defineTool({
         sfnt = result.sfnt;
         wrapper = result.wrapper;
       }
-      return { outputs: outputsOf(inspectFont(sfnt, { member }), wrapper) };
+      const report = inspectFont(sfnt, { member, glyphStart, glyphCount, sample: str(values, 'sample') });
+      return { outputs: outputsOf(report, wrapper) };
     } catch (err) {
       if (ctx.signal.aborted) throw err;
       return failure(err);

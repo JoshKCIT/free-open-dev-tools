@@ -27,7 +27,7 @@ import { compositeGlyph, concat, glyphFont, nameTable, rectangle, simpleGlyph, u
 interface Check {
   font: string;
   kind: string;
-  value: any;
+  value: unknown;
 }
 const recorded = JSON.parse(readFileSync(new URL('./fixtures/recorded.json', import.meta.url), 'utf8')) as {
   fontTools: string;
@@ -49,8 +49,6 @@ const tableAt = (font: SfntFont, tag: string) => {
   if (!entry) throw new Error(`no ${tag} table`);
   return entry;
 };
-
-const sortedJson = (values: unknown[]): string[] => values.map((v) => JSON.stringify(v)).sort();
 
 function namesOf(bytes: Uint8Array, font: SfntFont) {
   const entry = tableAt(font, 'name');
@@ -142,7 +140,9 @@ it('the recorded fontTools readings of the built fonts are equal on all 45 check
         expect(metricsOf(bytes, font), label).toEqual(check.value);
         break;
       case 'embedding':
-        expect(describeEmbedding(readMetrics(bytes, font).os2!.fsType).fsType, label).toBe(check.value.fsType);
+        expect(describeEmbedding(readMetrics(bytes, font).os2!.fsType).fsType, label).toBe(
+          (check.value as { fsType: number }).fsType,
+        );
         break;
       case 'outlines':
         expect(outlinesOf(bytes), label).toEqual(check.value);
@@ -290,8 +290,10 @@ it('cmap formats 4, 12 and 14 give the recorded code point to glyph map', () => 
 
 it('GSUB and GPOS feature tags with their scripts and languages equal the recording', () => {
   const { bytes, font } = open('plain.ttf');
-  const gsub = recorded.checks.find((c) => c.font === 'plain.ttf' && c.kind === 'gsubScriptsLanguages')!.value;
-  const gpos = recorded.checks.find((c) => c.font === 'plain.ttf' && c.kind === 'gposScriptsLanguages')!.value;
+  const gsub = recorded.checks.find((c) => c.font === 'plain.ttf' && c.kind === 'gsubScriptsLanguages')!
+    .value as Record<string, string[]>;
+  const gpos = recorded.checks.find((c) => c.font === 'plain.ttf' && c.kind === 'gposScriptsLanguages')!
+    .value as Record<string, string[]>;
   expect(usesOf(bytes, font, 'GSUB')).toEqual(gsub);
   expect(usesOf(bytes, font, 'GPOS')).toEqual(gpos);
   expect(tagsOf(bytes, font, 'GSUB')).toEqual(['liga', 'smcp', 'ss01']);
@@ -306,7 +308,8 @@ it('GSUB and GPOS feature tags with their scripts and languages equal the record
 it('TrueType outlines are shifted by lsb minus xMin and CFF charstrings give the recorded segments', () => {
   // The variable font has left side bearings 50 below each glyph's xMin, so every simple glyph is drawn 50 to the left.
   const { bytes, font } = open('variable.ttf');
-  const recordedOutlines = recorded.checks.find((c) => c.font === 'variable.ttf' && c.kind === 'outlines')!.value;
+  const recordedOutlines = recorded.checks.find((c) => c.font === 'variable.ttf' && c.kind === 'outlines')!
+    .value as Record<string, string[]>;
   const mine = outlinesOf(bytes);
   expect(mine).toEqual(recordedOutlines);
   const glyf = tableBytes(bytes, font.tables.get('glyf'))!;
@@ -332,9 +335,12 @@ it('TrueType outlines are shifted by lsb minus xMin and CFF charstrings give the
 
   // CFF: the recorded segments of the five glyphs of the OpenType font, including a curve.
   const cff = open('cff.otf');
-  const cffRecorded = recorded.checks.find((c) => c.font === 'cff.otf' && c.kind === 'outlines')!.value;
+  const cffRecorded = recorded.checks.find((c) => c.font === 'cff.otf' && c.kind === 'outlines')!.value as Record<
+    string,
+    string[]
+  >;
   expect(outlinesOf(cff.bytes)).toEqual(cffRecorded);
-  expect(cffRecorded['3'].some((s: string) => s.startsWith('["C"'))).toBe(true);
+  expect(cffRecorded['3']!.some((s) => s.startsWith('["C"'))).toBe(true);
 });
 
 it('Fixed and F2Dot14 values decode exactly and units per em, ascent and descent are whole numbers as recorded', () => {
