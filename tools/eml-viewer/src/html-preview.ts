@@ -10,7 +10,7 @@ import {
   MAX_LISTED_REFERENCES,
   withCommas,
 } from './limits';
-import { describeRemoved, sanitiseToFragment } from './sanitise';
+import { describeRemoved, sanitiseToFragment, serialiseFragment } from './sanitise';
 
 /** One remote reference found in the HTML body, with where it was and what it points at. It was removed, never loaded. */
 export interface BlockedReference {
@@ -539,14 +539,15 @@ function textHost(text: string): string {
 }
 
 /**
- * The markup of a sanitised fragment, written out inside the document the fragment already belongs to (the sanitiser's
- * own inert document, which has no window and loads nothing). An empty fragment is an empty string and touches nothing.
+ * The markup of a sanitised fragment, written out by the sanitiser's own serialiser inside the document the fragment
+ * already belongs to (the sanitiser's inert document, which has no window and loads nothing), never the caller's: the
+ * serialiser builds its holder in the document of the window it is given. An empty fragment is an empty string and
+ * touches nothing.
  */
 function serialiseInert(fragment: DocumentFragment): string {
   if (!fragment.hasChildNodes()) return '';
-  const holder = fragment.ownerDocument.createElement('div');
-  holder.appendChild(fragment);
-  return holder.innerHTML;
+  const inert = { document: fragment.ownerDocument } as unknown as WindowLike;
+  return serialiseFragment(fragment, inert, 'html');
 }
 
 /**
