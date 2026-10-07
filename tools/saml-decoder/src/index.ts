@@ -81,12 +81,28 @@ export interface SamlReport {
   notes: string[];
 }
 
-/** True when the first bytes are the start of XML text in UTF-8 or UTF-16, so the data was not compressed. */
+/** True for the four white space characters XML allows before the root element: space, tab, line feed, carriage return. */
+function isXmlSpace(byte: number | undefined): boolean {
+  return byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0d;
+}
+
+/**
+ * True when the first bytes are the start of XML text in UTF-8 or UTF-16, so the data was not compressed. UTF-16 with no
+ * byte order mark is told by its zero bytes (a character then a zero is little endian, a zero then a character big
+ * endian, as `decodeXml` reads it), and its white space is skipped in pairs of bytes.
+ */
 function startsLikeXml(bytes: Uint8Array): boolean {
   let i = 0;
   if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) i = 3;
   else if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) return true;
-  while (i < bytes.length && (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)) i++;
+  else if (bytes[0] !== 0 && bytes[1] === 0) {
+    while (isXmlSpace(bytes[i]) && bytes[i + 1] === 0) i += 2;
+    return bytes[i] === 0x3c && bytes[i + 1] === 0;
+  } else if (bytes[0] === 0 && bytes[1] !== 0 && bytes[1] !== undefined) {
+    while (bytes[i] === 0 && isXmlSpace(bytes[i + 1])) i += 2;
+    return bytes[i] === 0 && bytes[i + 1] === 0x3c;
+  }
+  while (isXmlSpace(bytes[i])) i++;
   if (bytes[i] === 0x3c) return true;
   return bytes[i] === 0 && bytes[i + 1] === 0x3c;
 }

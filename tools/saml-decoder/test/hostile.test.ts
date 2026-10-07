@@ -112,6 +112,39 @@ it('a DOCTYPE or an entity declaration is refused before parsing, in UTF-8 and i
   expect(findEntityDeclaration('<a/>')).toBeNull();
 });
 
+it('UTF-16 XML with no byte order mark and white space before the first tag is read as XML, not inflated', () => {
+  // XML 1.0 section 2.3: white space (space, tab, carriage return, line feed) may come before the root element. Each
+  // character takes two bytes in UTF-16, so the white space before the first less-than sign is read in pairs.
+  const text = ' \r\n\t <a ID="u1"/>';
+  for (const [name, bytes] of [
+    ['UTF-16LE', utf16le(text, false)],
+    ['UTF-16BE', utf16be(text, false)],
+  ] as const) {
+    const report = decodeSaml(bytes.toString('base64'), { now: NOW });
+    expect(report.xml, name).toBe(text);
+    expect(report.steps.join(' '), name).toContain(name);
+    expect(report.steps.join(' '), name).toContain('not inflated');
+    expect(report.binding, name).toBe('HTTP-POST encoding (value only)');
+    // The same bytes in a redirect address are read too, with the warning that they were not compressed.
+    const address = decodeSaml(
+      `https://sp.example.test/acs?SAMLRequest=${encodeURIComponent(bytes.toString('base64'))}`,
+      {
+        now: NOW,
+      },
+    );
+    expect(address.xml, name).toBe(text);
+    expect(address.warnings.join(' '), name).toContain('not compressed');
+  }
+  // A DOCTYPE after the white space is refused as a DOCTYPE, not as data that is not DEFLATE.
+  for (const bytes of [utf16le(`\n  ${'<!DOCTYPE a><a/>'}`, false), utf16be(`\n  ${'<!DOCTYPE a><a/>'}`, false)]) {
+    expect(refusal(bytes.toString('base64')).message).toBe(DOCTYPE_REFUSAL_MESSAGE);
+  }
+  // White space followed by something other than a less-than sign is still not XML, and is sent to the inflater.
+  for (const bytes of [utf16le('  a', false), utf16be('  a', false)]) {
+    expect(refusal(bytes.toString('base64')).message).toContain('not valid DEFLATE');
+  }
+});
+
 it('a deflate bomb is refused at 2 MiB', () => {
   const MiB = 1024 * 1024;
   const message = (bytes: number): string => `<a>${'a'.repeat(bytes - 7)}</a>`;
