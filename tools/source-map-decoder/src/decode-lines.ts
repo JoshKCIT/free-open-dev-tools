@@ -4,12 +4,17 @@ import { DIGIT_OF, VlqError, decodeVlq, type VlqRead } from './vlq';
 
 /** Values kept for each segment, in this order: generated column, source, original line, original column, name. */
 const STRIDE = 5;
+/**
+ * The largest position kept. Segments are stored as 32-bit integers (20 bytes each, half of what eight byte numbers take
+ * at the 4,000,000 segment cap), so a segment whose position passes this is a finding and is not kept, never wrapped.
+ */
+const MAX_KEPT_POSITION = 2_147_483_647;
 
 /** The segments of one generated line, sorted by generated column (equal columns stay in the order they were written). */
 export interface LineSegments {
   count: number;
   /** `STRIDE` numbers per segment. Source and name are -1 when the segment has none. */
-  data: Float64Array;
+  data: Int32Array;
   sorted: boolean;
 }
 
@@ -47,7 +52,7 @@ function sortLine(line: LineSegments): void {
   const order = new Uint32Array(count);
   for (let i = 0; i < count; i++) order[i] = i;
   order.sort((a, b) => (data[a * STRIDE] ?? 0) - (data[b * STRIDE] ?? 0) || a - b);
-  const next = new Float64Array(data.length);
+  const next = new Int32Array(data.length);
   for (let i = 0; i < count; i++) {
     const from = (order[i] ?? 0) * STRIDE;
     for (let k = 0; k < STRIDE; k++) next[i * STRIDE + k] = data[from + k] ?? 0;
@@ -117,7 +122,7 @@ export function decodeNeededLines(mappings: string, wanted: readonly number[], s
   const enter = (): void => {
     current = null;
     if (line === nextWanted) {
-      current = { count: 0, data: new Float64Array(STRIDE * 8), sorted: true };
+      current = { count: 0, data: new Int32Array(STRIDE * 8), sorted: true };
       lines.set(line, current);
       wantedAt++;
       nextWanted = sortedWanted[wantedAt] ?? Infinity;
@@ -204,6 +209,14 @@ export function decodeNeededLines(mappings: string, wanted: readonly number[], s
           }
         }
       }
+      if (column > MAX_KEPT_POSITION || lineOf > MAX_KEPT_POSITION || columnOf > MAX_KEPT_POSITION) {
+        addFinding(
+          findings,
+          'warn',
+          `Generated line ${line + 1} has a segment whose position is past 2,147,483,647, the largest this page keeps.`,
+        );
+        continue;
+      }
       const into: LineSegments | null = current;
       if (into !== null) {
         kept++;
@@ -215,7 +228,7 @@ export function decodeNeededLines(mappings: string, wanted: readonly number[], s
         }
         const used = into.count * STRIDE;
         if (used + STRIDE > into.data.length) {
-          const bigger = new Float64Array(into.data.length * 2);
+          const bigger = new Int32Array(into.data.length * 2);
           bigger.set(into.data);
           into.data = bigger;
         }
