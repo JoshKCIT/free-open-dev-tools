@@ -233,7 +233,9 @@ it('a paste over 3 MiB, invalid text and unusual encodings are refused before th
   expect(refusal(`https://sp.example.test/acs?SAMLRequest=${encodeURIComponent(cut)}`).message).toContain(
     'not valid DEFLATE',
   );
-});
+  // It builds and decodes a 3 MiB paste and a 2 MiB message, so it has its own limit like the other heavy tests here: a
+  // loaded machine running every folder at once took 5.3 seconds over it.
+}, 60_000);
 
 it('names such as __proto__, constructor and toString are plain names', () => {
   // Parameter names, element names, attribute names, attribute values and IDs that are also object keys are data.
