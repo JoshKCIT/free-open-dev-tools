@@ -1,8 +1,13 @@
+import { addressDomain, parseAddressList } from './addresses';
+import { groupArc, type ArcSet } from './arc';
+import { parseAuthenticationResults } from './auth-results';
 import { decodeBytes } from './charset';
-import { formatDelay, formatUtc } from './dates';
+import { formatDelay, formatUtc, parseMailDate } from './dates';
+import { parseDkimSignature, type DkimSignature } from './dkim';
 import { decodeEncodedWords } from './encoded-words';
 import { EmlViewerError } from './errors';
 import {
+  MAX_AUTH_HEADERS,
   MAX_CID_IMAGE_BYTES,
   MAX_HOPS,
   MAX_HTML_PREVIEW_BYTES,
@@ -90,6 +95,27 @@ export interface Hop {
   note: string;
 }
 
+/** One result of an Authentication-Results header, as the server that wrote it said it. Nothing in it is checked. */
+export interface AuthRow {
+  /** The 1-based position of the header in the message. */
+  position: number;
+  /** The server name the header starts with. */
+  server: string;
+  /** The method, with its version after a slash when it has one. */
+  method: string;
+  result: string;
+  /** The properties as `ptype.property=value`, separated by commas. */
+  properties: string;
+  reason: string;
+}
+
+/** One DKIM-Signature header read as claims. */
+export interface DkimOut {
+  /** The 1-based position of the header in the message. */
+  header: number;
+  signature: DkimSignature;
+}
+
 /** A part a cid address may name: its Content-ID without the angle brackets, and its decoded bytes. */
 export interface CidPart {
   id: string;
@@ -103,6 +129,14 @@ export interface EmlAnalysis {
   headers: HeaderRow[];
   /** The Received lines as delivery hops, oldest first (the line at the bottom of the headers is the first hop). */
   hops: Hop[];
+  /** Every result of every Authentication-Results header, as written by the servers that added them. */
+  authResults: AuthRow[];
+  /** Every DKIM-Signature header, read as claims. */
+  dkim: DkimOut[];
+  /** The ARC sets, grouped by instance number, oldest first. */
+  arc: ArcSet[];
+  /** Things worth a look, worded as observations and never as safe or unsafe. */
+  observations: string[];
   /** The MIME structure, or null when the message has headers and no body. */
   tree: TreeOut | null;
   textBody: TextBody | null;
@@ -176,8 +210,9 @@ function buildHops(headers: readonly HeaderRow[], addNote: (note: string) => voi
   for (const row of headers) if (row.name.toLowerCase() === 'received') lines.push(row);
   lines.reverse();
   if (lines.length > MAX_HOPS) {
+    const left = lines.length - MAX_HOPS;
     addNote(
-      `The message has ${withCommas(lines.length)} Received lines. Only the oldest ${MAX_HOPS} are listed as hops; the other ${withCommas(lines.length - MAX_HOPS)} were not read.`,
+      `The message has ${withCommas(lines.length)} Received lines. Only the oldest ${MAX_HOPS} are listed as hops; ${withCommas(left)} newer ${left === 1 ? 'line was' : 'lines were'} not read.`,
     );
     lines.length = MAX_HOPS;
   }
@@ -210,6 +245,171 @@ function buildHops(headers: readonly HeaderRow[], addNote: (note: string) => voi
     previousMs = timeMs;
   }
   return hops;
+}
+
+/** The headers RFC 5322 section 3.6 allows once, by lower case name. */
+const SINGLETON_HEADERS: ReadonlyMap<string, string> = new Map([
+  ['date', 'Date'],
+  ['from', 'From'],
+  ['sender', 'Sender'],
+  ['reply-to', 'Reply-To'],
+  ['to', 'To'],
+  ['cc', 'Cc'],
+  ['bcc', 'Bcc'],
+  ['message-id', 'Message-ID'],
+  ['in-reply-to', 'In-Reply-To'],
+  ['references', 'References'],
+  ['subject', 'Subject'],
+]);
+
+/** A Date more than this many seconds from the oldest hop's stated time is worth a look. */
+const FAR_DATE_SECONDS = 86_400;
+const MAX_OBSERVATIONS = 50;
+
+interface HeaderReading {
+  authResults: AuthRow[];
+  dkim: DkimOut[];
+  arc: ArcSet[];
+  observations: string[];
+}
+
+/**
+ * Reads the Authentication-Results, DKIM-Signature and ARC headers as claims and collects the observations. Every line is
+ * what a server or a sender wrote; nothing is checked, and no observation says a message is safe or unsafe. Each kind of
+ * header is read up to 50 times.
+ */
+function readAuthHeaders(
+  headers: readonly HeaderRow[],
+  hops: readonly Hop[],
+  addNote: (note: string) => void,
+): HeaderReading {
+  const authResults: AuthRow[] = [];
+  const dkim: DkimOut[] = [];
+  const observations: string[] = [];
+  const observe = (text: string): void => {
+    if (observations.length < MAX_OBSERVATIONS) observations.push(text);
+  };
+
+  const fromRow = firstHeader(headers, 'from');
+  const fromList = fromRow === undefined ? null : parseAddressList(fromRow.raw);
+  if (fromList !== null) for (const note of fromList.notes) addNote(`From: ${note}`);
+  const fromAddress = fromList?.mailboxes[0]?.address ?? '';
+  const fromDomain = addressDomain(fromAddress);
+  const dateRow = firstHeader(headers, 'date');
+  const dateMs = dateRow === undefined ? null : parseMailDate(dateRow.raw);
+
+  let authSeen = 0;
+  let dkimSeen = 0;
+  for (const row of headers) {
+    const lower = row.name.toLowerCase();
+    if (lower === 'authentication-results') {
+      if (authSeen >= MAX_AUTH_HEADERS) {
+        addNote(
+          `The message has more than ${MAX_AUTH_HEADERS} Authentication-Results headers, so the rest were not read.`,
+        );
+        continue;
+      }
+      authSeen++;
+      const parsed = parseAuthenticationResults(row.raw);
+      for (const note of parsed.notes) addNote(`Authentication-Results at header ${row.index}: ${note}`);
+      if (parsed.noResult) {
+        authResults.push({
+          position: row.index,
+          server: parsed.serverId,
+          method: 'none',
+          result: '',
+          properties: '',
+          reason: 'This server says it did no authentication.',
+        });
+      }
+      for (const r of parsed.results) {
+        authResults.push({
+          position: row.index,
+          server: parsed.serverId,
+          method: r.methodVersion === '' ? r.method : `${r.method}/${r.methodVersion}`,
+          result: r.result,
+          properties: r.properties.map((p) => `${p.ptype}.${p.property}=${p.value}`).join(', '),
+          reason: r.reason,
+        });
+      }
+    } else if (lower === 'dkim-signature') {
+      if (dkimSeen >= MAX_AUTH_HEADERS) {
+        addNote(`The message has more than ${MAX_AUTH_HEADERS} DKIM-Signature headers, so the rest were not read.`);
+        continue;
+      }
+      dkimSeen++;
+      const signature = parseDkimSignature(row.raw, fromDomain, dateMs);
+      dkim.push({ header: row.index, signature });
+      if (signature.fromSigned === false) {
+        observe(
+          `The DKIM-Signature at header ${row.index}${signature.domain === '' ? '' : ` for d=${visible(signature.domain, 80)}`} does not list From in h=, so it does not cover the From header.`,
+        );
+      }
+    }
+  }
+
+  const arc = groupArc(headers.map((h) => ({ index: h.index, name: h.name, value: h.raw })));
+  for (const note of arc.notes) addNote(note);
+
+  // The From and Return-Path domains.
+  const returnRow = firstHeader(headers, 'return-path');
+  const returnAddress = returnRow === undefined ? '' : (parseAddressList(returnRow.raw).mailboxes[0]?.address ?? '');
+  const returnDomain = addressDomain(returnAddress);
+  if (fromDomain !== '' && returnDomain !== '' && fromDomain !== returnDomain) {
+    observe(
+      `The From address is at ${visible(fromDomain, 80)} and the Return-Path address is at ${visible(returnDomain, 80)}: the domains differ.`,
+    );
+  }
+
+  // Reply-To.
+  const replyRow = firstHeader(headers, 'reply-to');
+  if (replyRow !== undefined && fromList !== null) {
+    const known = new Set(fromList.mailboxes.map((m) => m.address.toLowerCase()));
+    const other = parseAddressList(replyRow.raw).mailboxes.find((m) => !known.has(m.address.toLowerCase()));
+    if (other !== undefined) {
+      observe(
+        `Reply-To names ${visible(other.address, 120)}, which is not the From address, so a reply would go somewhere else.`,
+      );
+    }
+  }
+
+  // A missing Message-ID or Date, and a singleton header that is repeated.
+  if (firstHeader(headers, 'message-id') === undefined) observe('The message has no Message-ID header.');
+  if (dateRow === undefined) observe('The message has no Date header.');
+  const counts = new Map<string, number>();
+  for (const row of headers) {
+    const lower = row.name.toLowerCase();
+    if (SINGLETON_HEADERS.has(lower)) counts.set(lower, (counts.get(lower) ?? 0) + 1);
+  }
+  for (const [lower, count] of counts) {
+    if (count > 1) {
+      observe(
+        `The ${SINGLETON_HEADERS.get(lower) ?? lower} header appears ${count} times, and RFC 5322 section 3.6 allows it once.`,
+      );
+    }
+  }
+
+  // A hop whose stated time is before the hop that came before it.
+  for (const hop of hops) {
+    if (hop.delaySeconds !== null && hop.delaySeconds < 0) {
+      observe(
+        `Received line ${hop.index}${hop.by === '' ? '' : ` (by ${visible(hop.by, 80)})`} states a time ${formatDelay(-hop.delaySeconds)} earlier than the line before it.`,
+      );
+    }
+  }
+
+  // A Date far from the oldest stated hop time.
+  const oldest = hops.find((hop) => hop.timeMs !== null);
+  if (dateMs !== null && oldest?.timeMs !== null && oldest?.timeMs !== undefined) {
+    const apart = Math.abs(dateMs - oldest.timeMs) / 1000;
+    if (apart > FAR_DATE_SECONDS) {
+      observe(
+        `The Date header and the oldest Received line state times about ${Math.round(apart / 3600)} hours apart, more than 24 hours.`,
+      );
+    }
+  }
+
+  return { authResults, dkim, arc: arc.sets, observations };
 }
 
 function isTextBodyType(contentType: string): boolean {
@@ -292,6 +492,7 @@ export async function analyzeMessage(bytes: Uint8Array): Promise<EmlAnalysis> {
   }
 
   const hops = buildHops(headers, addNote);
+  const reading = readAuthHeaders(headers, hops, addNote);
 
   const summary: [string, string][] = [];
   const pick = (label: string, lowerName: string): void => {
@@ -454,6 +655,10 @@ export async function analyzeMessage(bytes: Uint8Array): Promise<EmlAnalysis> {
     summary,
     headers,
     hops,
+    authResults: reading.authResults,
+    dkim: reading.dkim,
+    arc: reading.arc,
+    observations: reading.observations,
     tree: bodyEmpty ? null : rootOut,
     textBody,
     htmlBody,

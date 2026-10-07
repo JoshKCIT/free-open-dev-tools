@@ -32,7 +32,28 @@ export {
   withCommas,
 } from './limits';
 export { analyzeMessage } from './analyze';
-export type { AttachmentInfo, CidPart, EmlAnalysis, HeaderRow, Hop, TextBody, TreeOut } from './analyze';
+export type {
+  AttachmentInfo,
+  AuthRow,
+  CidPart,
+  DkimOut,
+  EmlAnalysis,
+  HeaderRow,
+  Hop,
+  TextBody,
+  TreeOut,
+} from './analyze';
+export { parseAuthenticationResults, type AuthProperty, type AuthResult, type AuthResultsHeader } from './auth-results';
+export { parseDkimSignature, parseTagList, type DkimSignature, type DkimTagRow, type TagList } from './dkim';
+export {
+  groupArc,
+  type ArcGroups,
+  type ArcInput,
+  type ArcResults,
+  type ArcSeal,
+  type ArcSet,
+  type ArcSignature,
+} from './arc';
 export { parseMailDate, readMailDate, formatDelay, formatUtc, type MailDate } from './dates';
 export { parseReceived, type ReceivedHop } from './received';
 export { parseAddressList, addressDomain, type AddressList, type Mailbox } from './addresses';

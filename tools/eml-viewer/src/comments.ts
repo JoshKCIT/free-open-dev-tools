@@ -80,6 +80,11 @@ export function stripComments(input: string, honourQuotes = true): StrippedComme
       i++;
       continue;
     }
+    if (c === BACKSLASH) {
+      // A quoted pair outside a comment and a quoted string (obsolete syntax): the next character is plain text.
+      i += 2;
+      continue;
+    }
     if (c === QUOTE && honourQuotes) {
       inQuote = true;
       i++;
