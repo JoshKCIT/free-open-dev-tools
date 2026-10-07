@@ -36,6 +36,9 @@ const OBSOLETE_ZONES: ReadonlyMap<string, number> = new Map([
 const MAX_DATE_CHARACTERS = 200;
 const MAX_DATE_TOKENS = 24;
 
+/** 9999-12-31T23:59:59Z, the last instant a date with a four digit year can state in UTC. */
+const LAST_MOMENT_OF_9999 = Date.UTC(9999, 11, 31, 23, 59, 59);
+
 interface Token {
   kind: 'num' | 'word' | 'sym';
   text: string;
@@ -95,8 +98,8 @@ function daysInMonth(year: number, monthIndex: number): number {
  * tokens, a missing day of week, no seconds, two and three digit years, the obsolete zones and the military letters. A
  * date with the month before the day (`Fri, Feb 15 2002 17:19:07 -0800`, the form RFC 8601's examples use) is read too, and
  * the result says it was lenient. Returns null for anything that is not a date: a day past the end of its month, an hour
- * of 24, a minute of 60, a four digit year before 1900, a zone with minutes of 60 or more, a missing zone, extra words.
- * The notes list what was assumed. The same input always gives the same answer.
+ * of 24, a minute of 60, a four digit year before 1900, a zone with minutes of 60 or more, a missing zone, extra words,
+ * or a time that its zone moves past the end of 9999 in UTC. The notes list what was assumed. The same input always gives the same answer.
  */
 export function readMailDate(value: string): MailDate | null {
   const stripped = stripComments(value);
@@ -215,6 +218,8 @@ export function readMailDate(value: string): MailDate | null {
 
   const ms = Date.UTC(year, monthIndex, day, hour, minute, second) - offsetMinutes * 60_000;
   if (!Number.isFinite(ms)) return null;
+  // A zone can move the last hours of 9999 into the year 10000, which a four digit year cannot name.
+  if (ms > LAST_MOMENT_OF_9999) return null;
   return { ms, lenient, notes };
 }
 
@@ -223,10 +228,14 @@ export function parseMailDate(value: string): number | null {
   return readMailDate(value)?.ms ?? null;
 }
 
-/** An instant as `YYYY-MM-DD HH:MM:SS` in UTC. */
+/**
+ * An instant as `YYYY-MM-DD HH:MM:SS` in UTC. The ISO text is split at its T, so a year past 9999 or before year 0
+ * (written with a sign and six digits) keeps its date and its time of day whole.
+ */
 export function formatUtc(ms: number): string {
   const iso = new Date(ms).toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 19)}`;
+  const t = iso.indexOf('T');
+  return `${iso.slice(0, t)} ${iso.slice(t + 1, t + 9)}`;
 }
 
 /** A delay as the page shows it: `N s` under a minute and `N min N s` from a minute up; a negative delay has a minus sign. */

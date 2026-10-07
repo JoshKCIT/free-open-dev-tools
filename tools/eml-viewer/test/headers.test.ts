@@ -7,7 +7,7 @@
  * code with the package.
  */
 import { it, expect } from 'vitest';
-import { analyzeMessage, parseMailDate, parseReceived, readMailDate } from '../src/index';
+import { analyzeMessage, formatUtc, parseMailDate, parseReceived, readMailDate } from '../src/index';
 import { build, bytesOf, messageText } from './helpers';
 
 const at = (iso: string): number => Date.parse(iso);
@@ -219,6 +219,25 @@ it('RFC 5322 dates read obsolete zones and two-digit years as section 4.3 says',
   expect(readMailDate('1 Jan 49 12:00:00 EST')?.notes.join(' ')).toMatch(/EST.*-0500/);
   expect(readMailDate('1 Jan 49 12:00:00 EST')?.notes.join(' ')).toContain('2049');
   expect(readMailDate('1 Jan 2000 12:00:00 Z')?.notes.join(' ')).toContain('-0000');
+});
+
+it('a date that falls after the year 9999 once its zone is applied is not read, and a time is written whatever its year', async () => {
+  // The last moment of 9999 in UTC is read; a zone west of UTC moves the same wall clock time into the year 10000, which
+  // a date of RFC 5322 (four digit years) cannot name, so it is not read; a zone east of UTC moves it back and is read.
+  expect(readMailDate('Fri, 31 Dec 9999 23:59:59 +0000')?.ms).toBe(at('9999-12-31T23:59:59Z'));
+  expect(readMailDate('Fri, 31 Dec 9999 23:59:59 -2359')).toBeNull();
+  expect(readMailDate('Fri, 31 Dec 9999 23:59:59 -0001')).toBeNull();
+  expect(parseMailDate('31 Dec 9999 23:00:00 EST')).toBeNull();
+  expect(readMailDate('Fri, 31 Dec 9999 23:59:59 +0100')?.ms).toBe(at('9999-12-31T22:59:59Z'));
+  // A hop with such a date has no stated time, so no broken time is ever shown for it.
+  const hop = await analyzeMessage(withReceived(['Received: from a.example by b.example; 31 Dec 9999 23:59:59 -2359']));
+  expect(hop.hops[0]?.time).toBe('');
+  expect(hop.hops[0]?.timeMs).toBeNull();
+  // A time is written as its date and its time of day, split where the ISO text puts its T, so a year past 9999 or before
+  // year 0 keeps both parts whole instead of a fixed-position cut.
+  expect(formatUtc(at('2026-10-07T01:02:03Z'))).toBe('2026-10-07 01:02:03');
+  expect(formatUtc(Date.UTC(10000, 0, 1, 23, 58, 0))).toBe('+010000-01-01 23:58:00');
+  expect(formatUtc(Date.UTC(-1, 0, 1, 0, 0, 0))).toBe('-000001-01-01 00:00:00');
 });
 
 it('a negative delay is shown as a clock note, not an error', async () => {
