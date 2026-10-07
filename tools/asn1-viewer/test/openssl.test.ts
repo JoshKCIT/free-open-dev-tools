@@ -99,7 +99,7 @@ const WYCHEPROOF = JSON.parse(readFixture('wycheproof', 'ecdsa-p256-sha256.json'
  * The InvalidEncoding vectors that the reader does not flag, by tcId. Each is something a reader that does not know the
  * schema cannot tell from a correct encoding: tcId 21 is an empty signature (no element, so nothing to find), and tcIds 38
  * and 39 are well-formed BER whose first octets (2e and 2f) are a constructed universal tag 14 and tag 15 where the
- * signature should have a SEQUENCE. The research prototype listed eight; it did not check a short-form length against the
+ * signature should have a SEQUENCE. An earlier, smaller sketch of the reader listed eight; it did not check a short-form length against the
  * container (tcIds 45 and 116 run past it), a constructed string (41), the unused-bits octet of a BIT STRING (97), a
  * constructed NULL (28) or a constructed INTEGER (31, 32, 88, 101, 131, 144), and this reader does.
  */
