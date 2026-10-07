@@ -85,8 +85,18 @@ export function checkInput(input: InputSizes): void {
       'trace',
     );
   }
+  // Lines are counted by the rule the trace is split by: a line feed, a carriage return and line feed, or a lone
+  // carriage return each end one line.
+  const trace = input.trace;
   let lines = 1;
-  for (let at = input.trace.indexOf('\n'); at !== -1; at = input.trace.indexOf('\n', at + 1)) lines++;
+  for (let at = 0; at < trace.length; at++) {
+    const code = trace.charCodeAt(at);
+    if (code === 10) lines++;
+    else if (code === 13) {
+      lines++;
+      if (trace.charCodeAt(at + 1) === 10) at++;
+    }
+  }
   if (lines > MAX_TRACE_LINES) {
     throw new SourceMapError(
       `The trace has ${withCommas(lines)} lines. The limit is ${withCommas(MAX_TRACE_LINES)} lines.`,
