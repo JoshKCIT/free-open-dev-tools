@@ -6,6 +6,10 @@ export { analyseMessage } from './analyse';
 export type { Analysis, Encoding, ForcedCharacter, Segment } from './analyse';
 export { DEFAULT_ALPHABET, ESCAPE_CODE, EXTENSION, septetsOf } from './alphabet';
 export { SmsSegmentsError } from './errors';
+export { OFFENDERS, codePointLabel, describeForced } from './offenders';
+export type { Offender } from './offenders';
+export { gsmSafeCopy } from './suggest';
+export type { SafeCopy } from './suggest';
 export {
   MAX_COPY_CHARACTERS,
   MAX_FORCED_ROWS,

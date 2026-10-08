@@ -1,5 +1,6 @@
 import { septetsOf } from './alphabet';
 import { MAX_PARTS, checkMessageLength } from './limits';
+import { codePointLabel } from './offenders';
 
 /** The two encodings a text message can use here: the GSM 7-bit default alphabet, or UCS-2 (16-bit units). */
 export type Encoding = 'gsm7' | 'ucs2';
@@ -136,10 +137,6 @@ function measure(text: string): Measured {
     segments: split(chars, unitsEach, text.length, UCS2_SINGLE, UCS2_PART),
     forced: [...forced.values()],
   };
-}
-
-function codePointLabel(codePoint: number): string {
-  return 'U+' + codePoint.toString(16).toUpperCase().padStart(4, '0');
 }
 
 function plural(count: number, one: string, many: string): string {
