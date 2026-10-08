@@ -1382,6 +1382,18 @@ it('a paste over 200,000 characters, a line over 10,000 characters and more than
   const tooMany = refusal(() => checkCommits({ text: `fix: a\n---\n${manyLines(MAX_LINES_PER_MESSAGE + 1)}` }));
   expect(tooMany.message).toContain('Message 2');
   expect(tooMany.message).toContain('2,000');
+  // The lines are counted up to the last one that is not blank: 2,000 lines followed by a blank line and the separator, or
+  // by the blank line git log prints before the next commit, are read (review B-IN-03).
+  const edgeThenBlank = checkCommits({ text: `${manyLines(MAX_LINES_PER_MESSAGE)}\n\n---\nfix: y` });
+  expect(edgeThenBlank.messages).toHaveLength(2);
+  expect(edgeThenBlank.messages[0]?.parsed.body.split('\n')).toHaveLength(MAX_LINES_PER_MESSAGE - 1);
+  expect(
+    checkCommits({ text: gitLogOf([manyLines(MAX_LINES_PER_MESSAGE), 'fix: y']), mode: 'gitlog' }).messages,
+  ).toHaveLength(2);
+  expect(checkCommits({ text: `${manyLines(MAX_LINES_PER_MESSAGE)}\n\n\n\n` }).messages).toHaveLength(1);
+  // A blank line inside a message counts once text follows it: 2,000 lines, a blank line and one more are refused.
+  const blankInside = refusal(() => checkCommits({ text: `${manyLines(MAX_LINES_PER_MESSAGE)}\n\nmore` }));
+  expect(blankInside.message).toContain('Message 1');
   // Footers: 100 are read, 101 are refused naming the message.
   expect(MAX_FOOTERS).toBe(100);
   const footers = (n: number): string => `fix: x\n\n${Array.from({ length: n }, (_, i) => `K${i}: v`).join('\n')}`;

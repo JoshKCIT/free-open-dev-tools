@@ -4,7 +4,7 @@ import { ConventionalCommitError } from './errors';
 export const MAX_PASTE_CHARACTERS = 200_000;
 /** The most messages that are read; later ones are counted and not read. */
 export const MAX_MESSAGES = 1_000;
-/** The most lines one message may hold. */
+/** The most lines one message may hold, counted up to its last line that is not blank. */
 export const MAX_LINES_PER_MESSAGE = 2_000;
 /** The longest line, in characters. A longer line is refused with its number. */
 export const MAX_LINE_CHARACTERS = 10_000;

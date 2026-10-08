@@ -116,7 +116,9 @@ class Gatherer {
     if (this.collector.full) return;
     this.lines.push(line);
     this.trailingBlank = blank ? this.trailingBlank + 1 : 0;
-    if (this.lines.length > MAX_LINES_PER_MESSAGE) {
+    // Counted up to the last line that is not blank: blank lines at the end are dropped when the message is closed, so
+    // the blank line before a separator or before git's next commit does not count. The paste limit bounds them.
+    if (this.lines.length - this.trailingBlank > MAX_LINES_PER_MESSAGE) {
       throw new ConventionalCommitError(
         `Message ${this.collector.count + 1} has more than ${withCommas(MAX_LINES_PER_MESSAGE)} lines, the most this page reads in one message.`,
         'messages',
