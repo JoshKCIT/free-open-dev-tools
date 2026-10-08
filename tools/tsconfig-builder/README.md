@@ -20,7 +20,7 @@ Assembles a tsconfig.json from a starting preset and a set of options, each expl
 
 ## Limits
 
-- This tool cannot know which TypeScript version the visitor's own project actually runs; options and values were checked against TypeScript 5.9.3, the version pinned here (D-80). A later major version, especially TypeScript 7's native compiler, may reject an option flagged here as fine, which only running that compiler on the visitor's own project can show.
+- This tool cannot know which TypeScript version the visitor's own project actually runs; options and values were checked against TypeScript 5.9.3, the version pinned here. A later major version, especially TypeScript 7's native compiler, may reject an option flagged here as fine, which only running that compiler on the visitor's own project can show.
 - paths and project references (composite project graphs beyond the single composite flag) are not generated, since they need a real multi-project layout this single-file tool has no way to know.
 - A conflict warning covers only the option combinations this tool's own battery found the compiler reporting; it is not a substitute for actually running tsc against the finished project.
 
@@ -73,7 +73,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-Every catalogued option and every value it offers is checked against the real, pinned TypeScript 5.9.3 compiler's own `parseJsonConfigFileContent` and `Program.getOptionsDiagnostics()` (a devDependency-only oracle, never shipped to visitors, per D-80). Every conflict rule was found by first reproducing it against the real compiler and reading off its diagnostic code, not guessed.
+Every catalogued option and every value it offers is checked against the real, pinned TypeScript 5.9.3 compiler's own `parseJsonConfigFileContent` and `Program.getOptionsDiagnostics()` (a devDependency-only oracle, never shipped to visitors). Every conflict rule was found by first reproducing it against the real compiler and reading off its diagnostic code, not guessed.
 
 ## Licence
 

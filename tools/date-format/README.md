@@ -84,7 +84,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-POSIX.1-2017 strftime conversions are checked against real GNU date output for a fixed instant (1996-07-10T15:08:56-07:00 in America/Los_Angeles, epoch 837036536) run live in this session, plus two January-boundary dates (2021-01-01, 2024-12-30) for the %U/%W/%V/%G week-numbering rules, which disagree with each other by design at a year boundary. LDML patterns are checked against UTS #35's own Date Format Pattern Examples table, fetched live this session, including its one internally inconsistent row (asserted as a documented inconsistency, not silently normalised). ECMA-402's Intl column is checked against a documented Intl.DateTimeFormat call for the same moment.
+POSIX.1-2017 strftime conversions are checked against real GNU date output for a fixed instant (1996-07-10T15:08:56-07:00 in America/Los_Angeles, epoch 837036536) run live when these tests were written, plus two January-boundary dates (2021-01-01, 2024-12-30) for the %U/%W/%V/%G week-numbering rules, which disagree with each other by design at a year boundary. LDML patterns are checked against UTS #35's own Date Format Pattern Examples table, fetched live when these tests were written, including its one internally inconsistent row (asserted as a documented inconsistency, not silently normalised). ECMA-402's Intl column is checked against a documented Intl.DateTimeFormat call for the same moment.
 
 ## Licence
 

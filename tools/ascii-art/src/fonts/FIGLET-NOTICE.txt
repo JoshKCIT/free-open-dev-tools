@@ -1,4 +1,4 @@
-FIGlet 2.2.5 fonts (15 bundled, D-41)
+FIGlet 2.2.5 fonts (15 bundled)
 
 Source repository: https://github.com/cmatsuoka/figlet
 Fonts directory: https://github.com/cmatsuoka/figlet/tree/master/fonts

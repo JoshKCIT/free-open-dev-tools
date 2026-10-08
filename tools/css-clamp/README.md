@@ -73,7 +73,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-The clamp() function's own min/preferred/max semantics are quoted from CSS Values and Units Module Level 4 ('clamp(MIN, VAL, MAX) ... represents exactly the same value as max(MIN, min(VAL, MAX))'), fetched this session. WCAG 2.2's Resize Text wording ('text can be resized without assistive technology up to 200 percent without loss of content or functionality') is quoted from the fetched specification. The slope/intercept construction is quoted from Utopia's own blog post 'Preparing clamp() for typographic scales' (utopia.fyi/blog/clamp/, crediting Pedro Rodriguez), fetched this session. Adrian Roselli's 1.4.4 warning is quoted via Smashing Magazine's 'Modern Fluid Typography Using CSS Clamp' (2022), fetched this session, since Roselli's own site could not be reached over TLS from this session.
+The clamp() function's own min/preferred/max semantics are quoted from CSS Values and Units Module Level 4 ('clamp(MIN, VAL, MAX) ... represents exactly the same value as max(MIN, min(VAL, MAX))'), fetched when these tests were written. WCAG 2.2's Resize Text wording ('text can be resized without assistive technology up to 200 percent without loss of content or functionality') is quoted from the fetched specification. The slope/intercept construction is quoted from Utopia's own blog post 'Preparing clamp() for typographic scales' (utopia.fyi/blog/clamp/, crediting Pedro Rodriguez), fetched when these tests were written. Adrian Roselli's 1.4.4 warning is quoted via Smashing Magazine's 'Modern Fluid Typography Using CSS Clamp' (2022), fetched when these tests were written, since Roselli's own site could not be reached over TLS when these tests were written.
 
 ## Licence
 

@@ -74,7 +74,7 @@ evaluateXPath('<a><b>1</b></a>', '/a/b', {});
 npm test
 ```
 
-The XML parser (@xmldom/xmldom) is called directly on external-entity, parameter-entity and billion-laughs payloads with fetch and XMLHttpRequest replaced by throwing spies, and the result recorded, before this package's own DOCTYPE guard is relied on as the sole defence in normal use (D-83). Section 2.5's abbreviated-syntax examples and section 4.2's string-function examples are quoted from the fetched recommendation and checked against real evaluation.
+The XML parser (@xmldom/xmldom) is called directly on external-entity, parameter-entity and billion-laughs payloads with fetch and XMLHttpRequest replaced by throwing spies, and the result recorded, before this package's own DOCTYPE guard is relied on as the sole defence in normal use. Section 2.5's abbreviated-syntax examples and section 4.2's string-function examples are quoted from the fetched recommendation and checked against real evaluation.
 
 ## Licence
 

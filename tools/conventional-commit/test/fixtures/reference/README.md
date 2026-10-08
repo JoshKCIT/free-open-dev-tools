@@ -10,7 +10,7 @@ the numbered rules of Conventional Commits 1.0.0 as worded, and every such place
 | Recorded      | 2026-10-08T07:48:45Z (UTC), Node v22.14.0. The first recording (2026-10-08T03:57:12Z) held the first 1,033 rows; they are byte for byte the same in this one |
 | Recorded by   | `record-reference.cjs`, run by hand from a scratch folder that already held the package (nothing installed here) |
 | Command       | `node record-reference.cjs <folder holding node_modules/@conventional-commits/parser> reference.json`        |
-| Messages      | `make-corpus.mjs`: the 33 research probes, then 1,000 generated messages (mulberry32, seed 20261008), then the 10 probes of the phase 20 code review (`REVIEW_PROBES`) |
+| Messages      | `make-corpus.mjs`: the 33 research probes, then 1,000 generated messages (mulberry32, seed 20261008), then the 10 probes added in code review (`REVIEW_PROBES`) |
 | Result        | 1,043 messages, 969 accepted and 74 rejected by the parser                                                    |
 | Held in file  | per message: `accepted`, and when accepted its parts: type, scope, `bang`, description, body, footers (token, separator, value) and `breaking` |
 

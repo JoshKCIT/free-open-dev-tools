@@ -14,12 +14,12 @@
   "limits": [
     "This tool cannot run either ESLint or Biome, so it cannot tell whether Biome reports exactly what ESLint reported on the visitor's own code -- only running both linters on that code can show that.",
     "Rule options are listed as not carried over, never translated: a rule enabled with custom options migrates at the right severity but without its configuration.",
-    "Only ESLint core rules and the six bundled plugins are mapped (D-108); a rule from any other plugin is listed as outside the bundled plugins.",
+    "Only ESLint core rules and the six bundled plugins are mapped; a rule from any other plugin is listed as outside the bundled plugins.",
     "The bundled rule map is a snapshot of one pinned Biome version; a rule Biome adds, removes or remaps afterwards is not reflected here."
   ],
   "ambiguities": [
     "The generated biome.json always sets linter.rules.recommended to false. This tool lists every migrated rule explicitly; leaving Biome's own recommended set enabled at the same time could silently turn on rules the original ESLint configuration never asked for, which this tool's own never-silently-add principle rules out just as much as never silently dropping a rule.",
-    "A flat eslint.config.js file is read from its syntax tree only (D-107): a value built by a function call, a spread, or a plain variable reference is reported as could not read statically rather than resolved, even when the referenced value is itself a literal elsewhere in the same file."
+    "A flat eslint.config.js file is read from its syntax tree only: a value built by a function call, a spread, or a plain variable reference is reported as could not read statically rather than resolved, even when the referenced value is itself a literal elsewhere in the same file."
   ],
   "standards": [
     { "label": "Biome migrate (biomejs.dev)", "url": "https://biomejs.dev/guides/migrate-eslint-prettier/" },

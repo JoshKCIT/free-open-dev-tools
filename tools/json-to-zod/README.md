@@ -28,7 +28,7 @@ Turns a pasted JSON sample or a JSON Schema document into Zod source text: sourc
 
 ## Ambiguous cases, and what this does about them
 
-- Sample mode's inference and another tool's own JSON-to-typed-code inference are two independent implementations of the same simplification rules (D-23 forbids importing between tool folders); a difference between them would be a bug in one, not an intentional divergence
+- Sample mode's inference and another tool's own JSON-to-typed-code inference are two independent implementations of the same simplification rules (tool folders may not import from one another); a difference between them would be a bug in one, not an intentional divergence
 - A draft-07 array items as a list (tuple-typed items) and 2020-12's prefixItems both become z.tuple; draft-07's own items list historically forbids extra items by default, which this tool does not model separately
 
 ## Defined by
@@ -65,7 +65,7 @@ jsonToZod('{"id":1,"name":"Ada"}', { source: 'sample', exportName: 'userSchema' 
 // { output: "import { z } from 'zod';\n\nexport const userSchema = z.object({ id: z.number().int(), name: z.string() });\n", warnings: [] }
 ```
 
-Sample mode's inference lives directly in index.ts, deliberately smaller than the type inference behind the eight-language code generator elsewhere on this site, and never imported from it (D-23). Schema mode walks the schema tree once, resolving $ref pointers with pointer.ts and collecting unsupported keywords by their RFC 6901 path as it goes.
+Sample mode's inference lives directly in index.ts, deliberately smaller than the type inference behind the eight-language code generator elsewhere on this site, and never imported from it, because tool folders may not import from one another. Schema mode walks the schema tree once, resolving $ref pointers with pointer.ts and collecting unsupported keywords by their RFC 6901 path as it goes.
 
 ## Dependencies
 

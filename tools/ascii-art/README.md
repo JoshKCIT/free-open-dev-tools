@@ -22,7 +22,7 @@ Renders text as a large ASCII banner using one of 15 bundled FIGlet fonts, each 
 - Only full-width and fitted layouts are implemented; this tool has no smushing (character-merging) layouts, so its output is wider than the reference FIGlet program's default for a font designed to smush
 - Right-to-left fonts and vertical layout are not supported
 - A character outside a font's own character set (anything past the 95 printable ASCII characters, the required Deutsch characters and that font's own code-tagged extras) is skipped, not substituted
-- Only the 15 fonts whose own FIGlet 2.2.5 header explicitly grants a modification permission are bundled; ivrit, mnemonic and banner, published in the same repository, are excluded because their headers grant no such permission (D-41)
+- Only the 15 fonts whose own FIGlet 2.2.5 header explicitly grants a modification permission are bundled; ivrit, mnemonic and banner, published in the same repository, are excluded because their headers grant no such permission
 
 ## Ambiguous cases, and what this does about them
 

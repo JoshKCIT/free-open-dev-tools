@@ -70,7 +70,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-The absolute-unit ratios (1in = 2.54cm = 96px, 1cm = 96px/2.54, 1mm = 1/10th of 1cm, 1pt = 1/72nd of 1in, 1pc = 1/6th of 1in) and the em/rem/vw/vh/percent definitions are quoted directly from CSS Values and Units Level 4 sections 6.1.1, 6.1.2.2, 6.2 and 5.5, fetched this session.
+The absolute-unit ratios (1in = 2.54cm = 96px, 1cm = 96px/2.54, 1mm = 1/10th of 1cm, 1pt = 1/72nd of 1in, 1pc = 1/6th of 1in) and the em/rem/vw/vh/percent definitions are quoted directly from CSS Values and Units Level 4 sections 6.1.1, 6.1.2.2, 6.2 and 5.5, fetched when these tests were written.
 
 ## Licence
 

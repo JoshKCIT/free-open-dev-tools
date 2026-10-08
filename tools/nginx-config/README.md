@@ -91,7 +91,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-listen, server_name, root, index, try_files, proxy_pass, proxy_set_header, fastcgi_pass, fastcgi_param, ssl_certificate, ssl_certificate_key, http2, gzip, gzip_types, expires, add_header, auth_basic and auth_basic_user_file syntax are checked against the official nginx documentation, fetched live and quoted in test comments (D-98); the config-file tokenizer's own escape handling is checked against nginx's own src/core/ngx_conf_file.c, fetched at the same time. No published known-answer-test vectors exist for a generated server block's own text; tests assert the generated lines match the fetched directive syntax exactly, plus a structural scan (balanced braces, every simple directive terminated).
+listen, server_name, root, index, try_files, proxy_pass, proxy_set_header, fastcgi_pass, fastcgi_param, ssl_certificate, ssl_certificate_key, http2, gzip, gzip_types, expires, add_header, auth_basic and auth_basic_user_file syntax are checked against the official nginx documentation, fetched live and quoted in test comments; the config-file tokenizer's own escape handling is checked against nginx's own src/core/ngx_conf_file.c, fetched at the same time. No published known-answer-test vectors exist for a generated server block's own text; tests assert the generated lines match the fetched directive syntax exactly, plus a structural scan (balanced braces, every simple directive terminated).
 
 ## Licence
 

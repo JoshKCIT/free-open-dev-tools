@@ -26,8 +26,8 @@ Solves a missing width, height or ratio from the other two, simplifies a width a
 
 ## Ambiguous cases, and what this does about them
 
-- DCI's own specification website returned no readable text this session (a JavaScript-rendered page); its title, resolutions and aspect ratios are cited from established, publicly documented industry convention rather than the specification's own fetched text.
-- VESA's Display Monitor Timing and Coordinated Video Timings standards were confirmed to exist and be named on VESA's own site this session; their full timing tables are a members-oriented PDF this session could not fetch as text, so the common 16:10 resolution names (WXGA, WXGA+, WSXGA+, WUXGA) are cited from established industry convention.
+- DCI's own specification website returned no readable text when these tests were written (a JavaScript-rendered page); its title, resolutions and aspect ratios are cited from established, publicly documented industry convention rather than the specification's own fetched text.
+- VESA's Display Monitor Timing and Coordinated Video Timings standards were confirmed to exist and be named on VESA's own site; their full timing tables are a members-oriented PDF that could not be fetched as text, so the common 16:10 resolution names (WXGA, WXGA+, WSXGA+, WUXGA) are cited from established industry convention.
 
 ## Defined by
 
@@ -76,7 +76,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-aspect-ratio's property definition is quoted from CSS Box Sizing Module Level 4 (fetched this session, https://www.w3.org/TR/css-sizing-4/), and the <ratio> type's grammar and serialization rule are quoted from CSS Values and Units Module Level 4 (fetched this session). D-121/D-122: the common ratio and resolution table is not vendored from any single third-party source (per the orchestrator amendment overriding this plan's original Wikipedia-table step); it is compiled in this project's own words, each row cited to the standard that defines it. ITU-R BT.709 and BT.2020's own recommendation index pages were fetched this session (2026-09-26) and confirm each recommendation's title, number and scope; the full recommendation text sits behind a PDF this session did not fetch. DCI's and VESA's exact timing tables likewise sit behind pages this session could not read as text; see ambiguities.
+aspect-ratio's property definition is quoted from CSS Box Sizing Module Level 4 (fetched when these tests were written, https://www.w3.org/TR/css-sizing-4/), and the <ratio> type's grammar and serialization rule are quoted from CSS Values and Units Module Level 4 (fetched when these tests were written). The common ratio and resolution table is not vendored from any single third-party source; it is compiled in this project's own words, each row cited to the standard that defines it. ITU-R BT.709 and BT.2020's own recommendation index pages were fetched when these tests were written (2026-09-26) and confirm each recommendation's title, number and scope; the full recommendation text sits behind a PDF that was not fetched. DCI's and VESA's exact timing tables likewise sit behind pages that could not be read as text; see ambiguities.
 
 ## Licence
 

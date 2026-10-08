@@ -31,7 +31,7 @@
   "primaryExport": "evaluateXPath",
   "usage": "import { evaluateXPath } from '@fodt/xpath-tester';\n\nevaluateXPath('<a><b>1</b></a>', '/a/b', {});\n// { kind: 'nodeset', total: 1, nodes: [{ type: 'element', name: 'b', path: '/a[1]/b[1]', value: '1', markup: '<b>1</b>' }] }",
   "apiNotes": "`evaluateXPath(xml, expression, options)` returns `{ kind, value?, nodes?, total? }` and throws `XPathTesterError` with `kind` (`'xml'` or `'expression'`) and `line`/`column` where meaningful. `options.namespaces` (default `{}`) maps a prefix to a URI; `options.maxNodes` (default 1000) caps the node-set rows returned; `options.rootNamespaces` (default true) also resolves a prefix from an `xmlns:prefix` declaration on the document's own root element.",
-  "testNotes": "The XML parser (@xmldom/xmldom) is called directly on external-entity, parameter-entity and billion-laughs payloads with fetch and XMLHttpRequest replaced by throwing spies, and the result recorded, before this package's own DOCTYPE guard is relied on as the sole defence in normal use (D-83). Section 2.5's abbreviated-syntax examples and section 4.2's string-function examples are quoted from the fetched recommendation and checked against real evaluation.",
+  "testNotes": "The XML parser (@xmldom/xmldom) is called directly on external-entity, parameter-entity and billion-laughs payloads with fetch and XMLHttpRequest replaced by throwing spies, and the result recorded, before this package's own DOCTYPE guard is relied on as the sole defence in normal use. Section 2.5's abbreviated-syntax examples and section 4.2's string-function examples are quoted from the fetched recommendation and checked against real evaluation.",
   "dependencies": {
     "xpath": "0.0.34",
     "@xmldom/xmldom": "0.9.12"

@@ -86,7 +86,7 @@ buildHtaccess throws HtaccessError (fields field, line) for a value this tool re
 npm test
 ```
 
-mod_rewrite, mod_expires, mod_auth_basic, mod_authn_file, mod_authz_core, core and htpasswd directive syntax are checked against the official Apache 2.4 documentation, fetched live and quoted in test comments (D-98). No published known-answer-test vectors exist for an .htaccess file's own text; tests assert the generated lines match the fetched directive syntax exactly. The $2y$ relabel is checked two ways: byte comparison against the un-relabelled $2b$ hash (differing only in the tag) and a real bcrypt-ts compare() call against the relabelled hash with its tag swapped back.
+mod_rewrite, mod_expires, mod_auth_basic, mod_authn_file, mod_authz_core, core and htpasswd directive syntax are checked against the official Apache 2.4 documentation, fetched live and quoted in test comments. No published known-answer-test vectors exist for an .htaccess file's own text; tests assert the generated lines match the fetched directive syntax exactly. The $2y$ relabel is checked two ways: byte comparison against the un-relabelled $2b$ hash (differing only in the tag) and a real bcrypt-ts compare() call against the relabelled hash with its tag swapped back.
 
 ## Licence
 

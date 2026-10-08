@@ -12680,7 +12680,7 @@ Licence: BSD-3-Clause ([full text](https://raw.githubusercontent.com/cmatsuoka/f
 Attribution: FIGlet fonts by Glenn Chappell, Ian Chai, John Cowan, Bruce Jakeway and Paul Burton, part of the FIGlet project (Copyright (C) 1991-2011 Glenn Chappell, Ian Chai, John Cowan, Christiaan Keet and Claudio Matsuoka), licensed under the BSD-3-Clause licence.
 
 ```text
-FIGlet 2.2.5 fonts (15 bundled, D-41)
+FIGlet 2.2.5 fonts (15 bundled)
 
 Source repository: https://github.com/cmatsuoka/figlet
 Fonts directory: https://github.com/cmatsuoka/figlet/tree/master/fonts
@@ -13675,7 +13675,7 @@ What is bundled: a rule-mapping table built from Biome's own generated
 ESLint-migrate match arms (crates/biome_cli/src/execute/migrate/eslint_any_rule_to_biome.rs)
 and unsupported-rule metadata (crates/biome_cli/src/execute/migrate/unsupported_rules.rs),
 scoped to ESLint core plus six commonly used plugins: @typescript-eslint, react,
-react-hooks, jsx-a11y, import and unicorn (D-108). 350 mapped rules, 107
+react-hooks, jsx-a11y, import and unicorn. 350 mapped rules, 107
 unsupported-rule entries within that scope, at this snapshot.
 
 What was changed: the generated match-arm and unsupported-rule source is

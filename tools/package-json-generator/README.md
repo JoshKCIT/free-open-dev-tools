@@ -74,7 +74,7 @@ None. This package has no runtime dependencies.
 npm test
 ```
 
-checkPackageName, isValidVersion and classifySpecifier are proven against the real, devDependency-only validate-npm-package-name and semver packages (D-82, never bundled): the package-name check on validate-npm-package-name's own README examples plus a generated battery, and the range parser on the semver README's own examples plus a generated battery, with zero disagreements found. normalize-package-data (also devDependency-only) proves the finished output passes npm's own strict-mode normalisation with no warnings.
+checkPackageName, isValidVersion and classifySpecifier are proven against the real, devDependency-only validate-npm-package-name and semver packages (never bundled): the package-name check on validate-npm-package-name's own README examples plus a generated battery, and the range parser on the semver README's own examples plus a generated battery, with zero disagreements found. normalize-package-data (also devDependency-only) proves the finished output passes npm's own strict-mode normalisation with no warnings.
 
 ## Licence
 

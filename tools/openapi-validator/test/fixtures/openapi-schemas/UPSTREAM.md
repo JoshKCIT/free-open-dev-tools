@@ -1,7 +1,7 @@
 # Upstream sources
 
-Every file in this folder is vendored byte for byte from the sources below, fetched live at plan
-execution time (2026-09-25) rather than transcribed from memory or an older cached copy, per D-83.
+Every file in this folder is vendored byte for byte from the sources below, fetched live on
+2026-09-25 rather than transcribed from memory or an older cached copy.
 
 ## Swagger 2.0
 
@@ -46,7 +46,7 @@ execution time (2026-09-25) rather than transcribed from memory or an older cach
 ## Notes
 
 - The `spec.openapis.org` URLs above are already dated (immutable) releases, not `latest`, so no
-  separate commit pin is needed for them (D-83, RESEARCH.md Pattern 6 Open Question 3): re-fetching the
+  separate commit pin is needed for them: re-fetching the
   same URL always returns the same bytes.
 - Field ordering and formatting are exactly as served; `src/schema-*.json` holds a prettier-formatted
   copy of each, proven deep-equal to these vendored originals by a required test.

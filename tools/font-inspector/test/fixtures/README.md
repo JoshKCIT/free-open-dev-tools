@@ -2,7 +2,7 @@
 
 Nothing here is a third-party font. Every font is built by `build-fonts.py` with fontTools 4.64.0 (MIT) and carries a
 statement in name ID 13 that it is released as CC0-1.0. The recorded readings in `recorded.json` are what fontTools itself
-reads from those fonts, so the package's own reader is held to a second opinion (D-233).
+reads from those fonts, so the package's own reader is held to a second opinion.
 
 ## The fonts
 

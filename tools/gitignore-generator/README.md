@@ -21,7 +21,7 @@ Builds a .gitignore file by combining templates bundled from github/gitignore's 
 ## Limits
 
 - This tool cannot see the visitor's own repository, so it cannot tell whether a pattern here would hide a file already meant to be committed, or whether a file matching a pattern is already tracked -- git itself keeps tracking a file it already knows about regardless of a later .gitignore rule. Only git, run against the real repository, can show that.
-- The community/ folder of the upstream repository is not bundled (D-108); only the repository root and Global/ folders are offered.
+- The community/ folder of the upstream repository is not bundled; only the repository root and Global/ folders are offered.
 - The bundled templates are a snapshot of github/gitignore at one pinned commit; a template added or changed upstream afterwards is not reflected here.
 - Duplicate lines across chosen templates are kept rather than merged, because removing one can change what is ignored when a negation pattern sits between two occurrences of the same line -- see the gitignore documentation's own precedence rule.
 

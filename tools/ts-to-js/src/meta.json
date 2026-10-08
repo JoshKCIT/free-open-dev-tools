@@ -33,7 +33,7 @@
   "primaryExport": "stripTypes",
   "usage": "import { stripTypes } from '@fodt/ts-to-js';\n\nstripTypes('function greet(person: string, date: Date) {}', { target: 'ES2022' });\n// { output: 'function greet(person, date) { }\\n', diagnostics: [] }",
   "apiNotes": "`stripTypes(source, options)` returns `{ output, diagnostics }`; `diagnostics` is `{ message, line, column }[]` (1-based). Options default to `target: 'ES2022'`, `module: 'preserve'`, `jsx: 'preserve'`, `removeComments: false`. Calls `ts.transpileModule` only: it never creates a `Program`, never type-checks and never emits to disk, so the pasted code is only parsed and rewritten, never executed. Throws `TsToJsError` only for a completely unparsable input; an ordinary syntax error is reported in `diagnostics` alongside a best-effort output.",
-  "testNotes": "The `typescript` dependency is pinned to the 5.x line (D-80): the npm `latest` dist-tag is now TypeScript 7, a native compiler with no in-process transpile API, so a test asserts the installed major stays 5. A test proves stripping types never runs the pasted code, and a second test proves that same check would itself catch code that does run.",
+  "testNotes": "The `typescript` dependency is pinned to the 5.x line: the npm `latest` dist-tag is now TypeScript 7, a native compiler with no in-process transpile API, so a test asserts the installed major stays 5. A test proves stripping types never runs the pasted code, and a second test proves that same check would itself catch code that does run.",
   "dependencies": {
     "typescript": "^5.9.3"
   },

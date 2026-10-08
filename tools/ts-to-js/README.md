@@ -75,7 +75,7 @@ stripTypes('function greet(person: string, date: Date) {}', { target: 'ES2022' }
 npm test
 ```
 
-The `typescript` dependency is pinned to the 5.x line (D-80): the npm `latest` dist-tag is now TypeScript 7, a native compiler with no in-process transpile API, so a test asserts the installed major stays 5. A test proves stripping types never runs the pasted code, and a second test proves that same check would itself catch code that does run.
+The `typescript` dependency is pinned to the 5.x line: the npm `latest` dist-tag is now TypeScript 7, a native compiler with no in-process transpile API, so a test asserts the installed major stays 5. A test proves stripping types never runs the pasted code, and a second test proves that same check would itself catch code that does run.
 
 ## Licence
 
