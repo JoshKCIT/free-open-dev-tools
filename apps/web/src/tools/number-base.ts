@@ -13,6 +13,7 @@ import {
   UNARY_OPERATIONS,
   FIXED_WIDTHS,
   EXPRESSION_WIDTHS,
+  MAX_STEPS_SHOWN,
   ExpressionError,
   evaluateExpression,
   formatResult,
@@ -40,21 +41,52 @@ function runExpression(values: Values): ToolResult {
   try {
     const result = evaluateExpression(source, { width, signed });
     const shown = formatResult(result, width, { uppercase });
-    return {
-      outputs: [
-        {
-          kind: 'keyvalue',
-          label: `Result at ${width} bits`,
-          pairs: [
-            ['Hexadecimal', shown.hex],
-            ['Unsigned (decimal)', shown.unsigned],
-            ['Signed (decimal)', shown.signed],
-            ['Octal', shown.octal],
-            ['Binary', grouped ? group(shown.binary, 2) : shown.binary],
-          ],
+    const outputs: OutputBlock[] = [
+      {
+        kind: 'keyvalue',
+        label: `Result at ${width} bits`,
+        pairs: [
+          ['Hexadecimal', shown.hex],
+          ['Unsigned (decimal)', shown.unsigned],
+          ['Signed (decimal)', shown.signed],
+          ['Octal', shown.octal],
+          ['Binary', grouped ? group(shown.binary, 2) : shown.binary],
+        ],
+      },
+    ];
+    for (const note of result.notes) outputs.push({ kind: 'note', tone: 'warn', value: note.message });
+    if (result.steps.length > 0) {
+      outputs.push({
+        kind: 'table',
+        label: 'Steps',
+        table: {
+          headers: ['Step', 'Operation', 'Left', 'Right', 'Result', 'Flags'],
+          rows: result.steps.map((step) => [
+            step.step,
+            step.operation,
+            step.left.toString(),
+            step.right === undefined ? '' : step.right.toString(),
+            step.result.toString(),
+            [
+              step.wrapped ? 'wrapped' : '',
+              step.note === 'undefined-in-c' ? 'undefined in C' : '',
+              step.note === 'shift-at-or-over-width' ? 'shift at or above the width' : '',
+            ]
+              .filter((flag) => flag !== '')
+              .join(', '),
+          ]),
+          mono: [1, 2, 3, 4],
         },
-      ],
-    };
+      });
+    }
+    if (result.stepsOmitted > 0) {
+      outputs.push({
+        kind: 'note',
+        tone: 'info',
+        value: `${result.stepsOmitted} more ${result.stepsOmitted === 1 ? 'step was' : 'steps were'} done and not listed: the table stops at ${MAX_STEPS_SHOWN} rows.`,
+      });
+    }
+    return { outputs };
   } catch (err) {
     if (err instanceof ExpressionError)
       return { outputs: [], errors: [{ message: err.message, column: err.position }] };
@@ -203,6 +235,14 @@ export default defineTool({
         second: '1',
         width: '32',
       },
+    },
+    {
+      label: 'C precedence at 8 bits',
+      values: { mode: 'expression', expression: '1 + 2 << 3', exprWidth: '8', exprSign: 'unsigned' },
+    },
+    {
+      label: 'A signed 32-bit wrap',
+      values: { mode: 'expression', expression: '0x7FFFFFFF + 1', exprWidth: '32', exprSign: 'signed' },
     },
   ],
   run(values): ToolResult {

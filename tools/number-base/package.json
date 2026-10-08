@@ -1,7 +1,7 @@
 {
   "name": "@fodt/number-base",
   "version": "1.0.0",
-  "description": "Convert integers between any bases from 2 to 36, with arbitrary precision.",
+  "description": "Convert integers between any bases from 2 to 36 with arbitrary precision, and evaluate C-style integer expressions at 8 to 256 bits.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,7 +31,13 @@
     "bitwise",
     "rotate",
     "byte swap",
-    "endianness"
+    "endianness",
+    "calculator",
+    "programmer calculator",
+    "integer expression",
+    "C precedence",
+    "wrap-around",
+    "fixed width"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -102,7 +102,7 @@
     "name": "Number Base Converter",
     "category": "encoding",
     "tier": 1,
-    "summary": "Convert integers between any bases from 2 to 36, with arbitrary precision."
+    "summary": "Convert integers between any bases from 2 to 36 with arbitrary precision, and evaluate C-style integer expressions at 8 to 256 bits."
   },
   {
     "id": "ieee754",

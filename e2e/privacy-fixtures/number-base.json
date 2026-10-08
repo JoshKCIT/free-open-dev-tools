@@ -1,0 +1,12 @@
+[
+  {
+    "mode": { "field": "mode", "value": "expression" },
+    "values": { "expression": "0xF0 | 0x0F", "exprWidth": "8" },
+    "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "expression" },
+    "values": { "expression": "-7 / 2", "exprWidth": "32", "exprSign": "signed" },
+    "attachesFile": false
+  }
+]

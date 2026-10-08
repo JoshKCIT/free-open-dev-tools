@@ -1,0 +1,11 @@
+{
+  "id": "number-base",
+  "label": "C precedence: one plus two shifted left by three is 24 at 8 bits unsigned, as ISO C draft N1570 section 6.5 orders the operators",
+  "steps": [
+    { "action": "radio", "field": "mode", "value": "expression" },
+    { "action": "select", "field": "exprWidth", "value": "8" },
+    { "action": "select", "field": "exprSign", "value": "unsigned" },
+    { "action": "fill", "field": "expression", "value": "1 + 2 << 3" }
+  ],
+  "expect": ["24", "0x18", "0o30", "00011000"]
+}
