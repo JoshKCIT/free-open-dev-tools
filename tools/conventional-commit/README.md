@@ -17,7 +17,7 @@ Paste one or more commit messages and see each one checked against the 16 number
 - Each failing rule named by its number in plain words, in a table with one row per message in pasted order
 - The Semantic Versioning bump: any breaking change gives major, otherwise any feat gives minor, otherwise any fix gives patch, otherwise no release; the next version when a current version is given, with an option that raises the minor part for a breaking change while the major part is 0
 - A draft changelog in Markdown: Breaking Changes, Features, Bug Fixes, Performance Improvements and Reverts, and the other types when you ask, each entry in pasted order
-- Two notes on how the numbered rules were applied, shown apart from the convention notes and also when those are turned off: a line that starts with breaking change in lower or mixed case (rules 12 and 15), and a BREAKING CHANGE line that follows body text without a blank line (rule 8); neither marks a breaking change
+- Three notes on how the numbered rules were applied, shown apart from the convention notes and also when those are turned off: a line that starts with breaking change in lower or mixed case (rules 12 and 15), a BREAKING CHANGE line that follows body text without a blank line (rule 8), and a BREAKING CHANGE line that is not a footer because of a plural, a colon that ends the line, no space after the colon or no colon, in the body or inside another footer value (rule 12); none of them marks a breaking change
 - Convention notes, shown apart from the specification: an unknown type, a header over 72 or 100 characters, a capital first letter, a trailing period, a space in the scope, a type outside ASCII, and look-alike characters such as a fullwidth colon or a no-break space after the colon
 - Lines that git writes itself (Merge, Revert with a quote, fixup!, squash!, amend! and # comment lines) are named and skipped, not judged
 
@@ -33,7 +33,8 @@ Paste one or more commit messages and see each one checked against the 16 number
 ## Ambiguous cases, and what this does about them
 
 - Where the footers start: this page reads the first footer-shaped line that follows a blank line as the start of the footers, and every later line as a new footer or the continuation of the one before. A line such as Note: text in the middle of a paragraph stays in the body.
-- Mixed case: the units of information are not case-sensitive except BREAKING CHANGE, which must be upper case. Breaking-Change: y is read as an ordinary footer and breaking change: y as body text, each with a note that rule 12 needs upper case; neither marks a breaking change.
+- Mixed case: the units of information are not case-sensitive except BREAKING CHANGE, which must be upper case. Breaking-Change: y is read as an ordinary footer, and breaking change: y as body text or, inside the footer block, as part of the footer value before it; each gets a note that rule 12 needs upper case, and neither marks a breaking change.
+- A BREAKING CHANGE line whose colon ends the line is not a footer (rule 12 asks for a colon, a space and a description) and gets a note; the same line with one space after the colon is a footer whose description is the next line (rule 10). So a space that an editor may strip decides whether the change is breaking.
 - A current version that already has a pre-release tag is raised from its release numbers (1.5.0-rc.1 with a fix gives 1.5.1); the specification does not say how.
 - More than one blank line between the description and the body is read as one blank line; the specification says only that the body begins one blank line after the description.
 

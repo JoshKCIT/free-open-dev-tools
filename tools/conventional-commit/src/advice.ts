@@ -157,9 +157,11 @@ function hasHiddenCharacter(text: string): boolean {
 /**
  * Convention notes for a message: an unknown type, a long header, a capital first letter, a trailing period, a space in the
  * scope, a type outside ASCII, look-alike characters (a fullwidth colon, a space-like character after the colon, a type
- * that mixes alphabets, hidden characters), and two notes on how the specification was applied: a lower case or mixed case
- * "breaking change" line, and a BREAKING CHANGE line that follows body text without a blank line, which are not breaking
- * changes (rules 8, 12 and 15). Each kind is given at most once per message.
+ * that mixes alphabets, hidden characters), and three notes on how the specification was applied: a lower case or mixed
+ * case "breaking change" line, a BREAKING CHANGE line that follows body text without a blank line, and a BREAKING CHANGE
+ * line that is not a footer (a plural, a colon that ends the line, no space after the colon, no colon, or text inside
+ * another footer value), none of which is a breaking change (rules 8, 10, 12 and 15). The body, every footer value and
+ * the footer tokens are read for them. Each kind is given at most once per message.
  *
  * `raw` is the whole message as pasted (the header is used when none is given). A note is made for what could be read even
  * when the message is not valid. This function only reads: it never changes the message or whether it is valid.
@@ -263,22 +265,24 @@ export function adviceFor(parsed: ParsedMessage, raw: string = parsed.header): A
     );
   }
 
-  // How the numbered rules were applied.
-  let wrongCase = false;
+  // How the numbered rules were applied: lines that look like a breaking change and do not mark one. The body is read
+  // line by line, and so is every footer value, because a line that is not a valid token continues the value of the
+  // footer before it (rule 10). Footer tokens are read too, for a plural or a different case written with a hyphen.
+  const found: BreakingLook = { wrongCase: false, glued: false, reasons: [] };
   for (const footer of parsed.footers) {
-    if (footer.token !== 'BREAKING-CHANGE' && footer.token.toLowerCase() === 'breaking-change') wrongCase = true;
+    if (footer.token === BREAKING_CHANGE || footer.token === BREAKING_HYPHEN) continue;
+    const token = footer.token;
+    if (token.length === BREAKING_HYPHEN.length || (token.length === BREAKING_HYPHEN.length + 1 && isS(token, 15))) {
+      lookAtLine(token + ':', 'footer', found);
+    }
   }
-  let glued = false;
   const body = parsed.body.split('\n');
-  for (let i = 0; i < body.length; i++) {
-    const line = body[i] as string;
-    const lower = line.toLowerCase();
-    const named = lower.startsWith('breaking change:') || lower.startsWith('breaking-change:');
-    if (!named) continue;
-    const exact = line.startsWith('BREAKING CHANGE:') || line.startsWith('BREAKING-CHANGE:');
-    if (!exact) wrongCase = true;
-    else if (i > 0 && footerStart(line) !== null) glued = true;
+  for (let i = 0; i < body.length; i++) lookAtLine(body[i] as string, i > 0 ? 'body-after-text' : 'body', found);
+  for (const footer of parsed.footers) {
+    for (const line of footer.value.split('\n')) lookAtLine(line, 'value', found);
   }
+  const wrongCase = found.wrongCase;
+  const glued = found.glued;
   if (wrongCase) {
     add(
       'breaking-case',
@@ -293,5 +297,93 @@ export function adviceFor(parsed: ParsedMessage, raw: string = parsed.header): A
       'A BREAKING CHANGE line follows body text without a blank line before it. Footers begin one blank line after the body (rule 8), so this line is part of the body and does not mark a breaking change.',
     );
   }
+  if (found.reasons.length > 0) {
+    add(
+      'breaking-not-footer',
+      'specification',
+      `Text that starts with BREAKING CHANGE does not mark a breaking change here: ${found.reasons.join('; ')}. A breaking change footer is BREAKING CHANGE or BREAKING-CHANGE in upper case, a colon, a space and the description, one blank line after the body (rules 8, 12 and 16).`,
+    );
+  }
   return out;
+}
+
+const BREAKING_CHANGE = 'BREAKING CHANGE';
+const BREAKING_HYPHEN = 'BREAKING-CHANGE';
+
+/** Where a line was found: the first body line, a body line after another, a line of a footer value, or a footer token. */
+type Place = 'body' | 'body-after-text' | 'value' | 'footer';
+
+interface BreakingLook {
+  wrongCase: boolean;
+  glued: boolean;
+  /** Distinct plain-words reasons, in the order they were first found. They never hold pasted text. */
+  reasons: string[];
+}
+
+/** True when the character at `index` is an S in either case. */
+function isS(text: string, index: number): boolean {
+  const c = text.charCodeAt(index);
+  return c === 83 || c === 115;
+}
+
+/** True when `line` starts with `word` (upper case ASCII letters, a space or a hyphen), the letters in any ASCII case. */
+function startsWithAnyCase(line: string, word: string): boolean {
+  if (line.length < word.length) return false;
+  for (let k = 0; k < word.length; k++) {
+    let c = line.charCodeAt(k);
+    if (c >= 97 && c <= 122) c -= 32;
+    if (c !== word.charCodeAt(k)) return false;
+  }
+  return true;
+}
+
+const PLACE_WORDS: Record<Place, string> = {
+  body: 'so it is read as body text',
+  'body-after-text': 'so it is read as body text',
+  value: 'so it is read as part of the value of another footer',
+  footer: 'so it is read as an ordinary footer',
+};
+
+/**
+ * Looks at one line for a breaking change that does not count. A line counts as a try when it starts with BREAKING CHANGE
+ * or BREAKING-CHANGE in any case, optionally followed by S, and then the end of the line, a colon or white space (so that
+ * BREAKING-CHANGELOG is not one). In a different case it is a try only when a colon follows (so that prose such as
+ * "Breaking changes are listed" is not one). Only the first 16 characters are looked at, so a long line costs nothing more.
+ */
+function lookAtLine(line: string, place: Place, found: BreakingLook): void {
+  const token = startsWithAnyCase(line, BREAKING_CHANGE)
+    ? BREAKING_CHANGE
+    : startsWithAnyCase(line, BREAKING_HYPHEN)
+      ? BREAKING_HYPHEN
+      : null;
+  if (token === null) return;
+  const plural = isS(line, token.length);
+  const end = token.length + (plural ? 1 : 0);
+  const next = line.charCodeAt(end);
+  if (!(end === line.length || next === 58 || isWhiteCode(next))) return;
+  if (!line.startsWith(token) || (plural && line.charCodeAt(token.length) !== 83)) {
+    if (next === 58) found.wrongCase = true;
+    return;
+  }
+  let reason: string;
+  if (plural) {
+    reason = `it says ${token}S, and the token has no S`;
+  } else if (footerStart(line) !== null) {
+    // The shape of a footer. In the body it can only follow body text with no blank line between (rule 8); in a value it
+    // is the text after another footer's token on the same line.
+    if (place === 'body-after-text') {
+      found.glued = true;
+      return;
+    }
+    if (place !== 'value') return;
+    reason = 'it follows the token of another footer on the same line';
+  } else if (next === 58 && end + 1 === line.length) {
+    reason = 'the colon ends the line with no space after it (with one space, the next line would be its description)';
+  } else if (next === 58) {
+    reason = 'the colon is not followed by a space';
+  } else {
+    reason = 'no colon and space follow it';
+  }
+  const sentence = `${reason}, ${PLACE_WORDS[place]}`;
+  if (!found.reasons.includes(sentence)) found.reasons.push(sentence);
 }

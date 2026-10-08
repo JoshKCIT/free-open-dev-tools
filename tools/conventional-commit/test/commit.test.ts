@@ -1185,6 +1185,83 @@ it('look-alike characters such as a fullwidth colon or a no-break space after th
   for (const note of adviceFor(parse(long), long)) expect(note.message).not.toContain('z'.repeat(41));
 });
 
+// Rules 8, 10 and 12: a breaking change footer is the upper case token, a colon, a space and a description, one blank line
+// after the body, and a footer value runs until the next valid token. A line that comes close and does not count is named
+// in a note saying why, in the body and inside another footer value (review B-WR-02).
+it('a BREAKING CHANGE line that does not make a breaking footer gets a note naming why', () => {
+  const notes = (message: string) => adviceFor(parse(message), message).filter((a) => a.label === 'specification');
+  const codes = (message: string): string[] => notes(message).map((a) => a.code);
+  const noteText = (message: string): string => notes(message).find((a) => a.code === 'breaking-not-footer')?.message ?? '';
+
+  // The colon ends the line, as it does when an editor strips trailing spaces: body text, not a breaking change.
+  const bare = 'feat: x\n\nBREAKING CHANGE:\nthe config format changed';
+  expect(parse(bare)).toMatchObject({ valid: true, breaking: false, footers: [] });
+  expect(codes(bare)).toEqual(['breaking-not-footer']);
+  expect(noteText(bare)).toContain('the colon ends the line');
+  expect(noteText(bare)).toContain('read as body text');
+  // Side by side: one space after that colon makes it a footer whose description is the next line (rule 10).
+  const spaced = 'feat: x\n\nBREAKING CHANGE: \nthe config format changed';
+  expect(parse(spaced)).toMatchObject({ valid: true, breaking: true, breakingText: 'the config format changed' });
+  expect(codes(spaced)).toEqual([]);
+  expect(checkCommits({ text: bare, currentVersion: '1.4.2' }).bump).toEqual({ level: 'minor', next: '1.5.0' });
+  expect(checkCommits({ text: spaced, currentVersion: '1.4.2' }).bump).toEqual({ level: 'major', next: '2.0.0' });
+
+  // No space after the colon.
+  const tight = 'feat: x\n\nBREAKING CHANGE:the config format changed';
+  expect(parse(tight)).toMatchObject({ valid: true, breaking: false, footers: [] });
+  expect(codes(tight)).toEqual(['breaking-not-footer']);
+  expect(noteText(tight)).toContain('the colon is not followed by a space');
+  // A plural, written with a space (body text) or with a hyphen (an ordinary footer).
+  const plural = 'feat: x\n\nBREAKING CHANGES: plural';
+  expect(parse(plural)).toMatchObject({ valid: true, breaking: false, footers: [] });
+  expect(codes(plural)).toEqual(['breaking-not-footer']);
+  expect(noteText(plural)).toContain('BREAKING CHANGES');
+  const hyphenPlural = 'feat: x\n\nBREAKING-CHANGES: plural';
+  expect(parse(hyphenPlural).breaking).toBe(false);
+  expect(parse(hyphenPlural).footers.map((f) => f.token)).toEqual(['BREAKING-CHANGES']);
+  expect(codes(hyphenPlural)).toEqual(['breaking-not-footer']);
+  expect(noteText(hyphenPlural)).toContain('read as an ordinary footer');
+  // No colon at all.
+  const noColon = 'feat: x\n\nBREAKING CHANGE removes the v1 API';
+  expect(parse(noColon).breaking).toBe(false);
+  expect(codes(noColon)).toEqual(['breaking-not-footer']);
+  expect(noteText(noColon)).toContain('no colon');
+
+  // Inside the footer block a line that is not a valid token continues the value before it (rule 10).
+  const lowerInFooter = 'feat: x\n\nRefs: #1\nbreaking change: lower in footer area';
+  expect(parse(lowerInFooter).footers.map((f) => [f.token, f.value])).toEqual([
+    ['Refs', '#1\nbreaking change: lower in footer area'],
+  ]);
+  expect(parse(lowerInFooter).breaking).toBe(false);
+  expect(codes(lowerInFooter)).toEqual(['breaking-case']);
+  const inValue = 'feat: x\n\nRefs: #1\nBREAKING CHANGE:\nthe config format changed';
+  expect(parse(inValue)).toMatchObject({ valid: true, breaking: false });
+  expect(codes(inValue)).toEqual(['breaking-not-footer']);
+  expect(noteText(inValue)).toContain('the colon ends the line');
+  expect(noteText(inValue)).toContain('part of the value of another footer');
+
+  // A breaking footer written right gets no note; prose that only mentions a breaking change gets none either.
+  for (const message of [
+    'feat: x\n\nBREAKING CHANGE: y',
+    'feat: x\n\nBREAKING-CHANGE: y',
+    'feat: x\n\nBreaking changes are listed in the docs.',
+    'feat: x\n\nThis is a BREAKING CHANGE: see below',
+    'feat: x\n\nBREAKING-CHANGELOG: y',
+  ]) {
+    expect(codes(message), JSON.stringify(message)).toEqual([]);
+  }
+  // One note per message, naming each distinct reason once.
+  const several = 'feat: x\n\nBREAKING CHANGES: a\nBREAKING CHANGES: b\nBREAKING CHANGE:c';
+  expect(codes(several)).toEqual(['breaking-not-footer']);
+  expect(noteText(several).split('BREAKING CHANGES').length - 1).toBe(1);
+  expect(noteText(several)).toContain('the colon is not followed by a space');
+  // The note is kept with the convention notes turned off, and repeats no pasted text.
+  const marked = `feat: x\n\nBREAKING CHANGE:${MARKER}`;
+  const off = checkCommits({ text: marked, advice: false }).advice;
+  expect(off.map((a) => a.code)).toEqual(['breaking-not-footer']);
+  expect(off[0]?.message).not.toContain(MARKER);
+});
+
 it('a paste over 200,000 characters, a line over 10,000 characters and more than 1,000 messages are refused or counted as the limits say', () => {
   expect(MAX_PASTE_CHARACTERS).toBe(200_000);
   expect(MAX_LINE_CHARACTERS).toBe(10_000);
