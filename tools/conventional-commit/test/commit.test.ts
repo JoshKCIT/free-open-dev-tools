@@ -28,7 +28,8 @@ import { MAX_SCALING_RATIO, scalingRatio } from './scaling';
 //    the seven examples of its section "Examples" (re-typed in fixtures/spec-examples.json) and the 16 numbered rules of
 //    its section "Specification". A rule is quoted by its number and a fragment of its words.
 //  - Semantic Versioning 2.0.0: items 4 (initial development), 6, 7 and 8 (patch, minor and major versions are raised and
-//    the lower numbers reset to zero), the official regular expression with its example versions, and the specification's
+//    the lower numbers reset to zero), 9 to 11 (a pre-release comes before its release; build text has no precedence),
+//    the official regular expression with its example versions, and the specification's
 //    own summary: a fix correlates with PATCH, a feat with MINOR and a breaking change with MAJOR.
 //  - The recorded answers of @conventional-commits/parser 0.4.1 (fixtures/reference) and the recorded default output of
 //    git 2.53.0 `git log` (fixtures/gitlog).
@@ -759,12 +760,34 @@ it('the next version follows SemVer and the zero major option moves a breaking c
   // The option moves only a breaking change that starts below 1.0.0.
   expect(next('1.0.0', 'feat!: a', true)).toBe('2.0.0');
   expect(next('0.0.9', 'feat!: a', true)).toBe('0.1.0');
-  // This page's stated rule for a current version that has a pre-release tag or build text: it is raised from its release
-  // numbers, and the tag and the build text are dropped.
-  expect(next('1.5.0-rc.1', 'fix: a')).toBe('1.5.1');
-  expect(next('2.0.0-alpha', 'feat: a')).toBe('2.1.0');
-  expect(next('1.2.3+build.5', 'fix: a')).toBe('1.2.4');
+  // A current version with a pre-release tag (SemVer 2.0.0 items 9 and 11: 2.0.0-rc.1 comes before 2.0.0) leads to the
+  // release it is a pre-release of: the tag and the build text are dropped, and a number is raised only when that release
+  // does not already cover the change (review B-WR-04). Major: kept when minor and patch are 0. Minor: kept when patch is
+  // 0. Patch: always kept.
+  expect(next('2.0.0-rc.1', 'feat!: a')).toBe('2.0.0');
+  expect(next('2.0.0-rc.1', 'feat: a')).toBe('2.0.0');
+  expect(next('2.0.0-rc.1', 'fix: a')).toBe('2.0.0');
+  expect(next('1.5.0-rc.1', 'fix: a')).toBe('1.5.0');
+  expect(next('1.5.0-rc.1', 'feat: a')).toBe('1.5.0');
+  expect(next('1.5.0-rc.1', 'feat!: a')).toBe('2.0.0');
+  expect(next('1.5.2-rc.1', 'fix: a')).toBe('1.5.2');
+  expect(next('1.5.2-rc.1', 'feat: a')).toBe('1.6.0');
+  expect(next('1.5.2-rc.1', 'feat!: a')).toBe('2.0.0');
+  expect(next('2.0.0-alpha', 'feat: a')).toBe('2.0.0');
+  expect(next('2.0.0-beta.3+build.5', 'fix: a')).toBe('2.0.0');
   expect(next('1.2.3-beta.2+exp.sha.5114f85', 'feat!: a')).toBe('2.0.0');
+  // The zero major option reads the same way: a breaking change raises the minor number unless the patch is 0.
+  expect(next('0.4.0-rc.1', 'feat!: a', true)).toBe('0.4.0');
+  expect(next('0.4.1-rc.1', 'feat!: a', true)).toBe('0.5.0');
+  expect(next('0.4.0-rc.1', 'feat!: a')).toBe('1.0.0');
+  // Build text alone is no pre-release (item 10): the version is a release and is raised as usual.
+  expect(next('1.2.3+build.5', 'fix: a')).toBe('1.2.4');
+  expect(next('2.0.0+build.5', 'feat!: a')).toBe('3.0.0');
+  // Through the whole check, as the page shows it.
+  expect(checkCommits({ text: 'feat!: a', currentVersion: '2.0.0-rc.1' }).bump).toEqual({
+    level: 'major',
+    next: '2.0.0',
+  });
   // Large numbers are exact.
   expect(next('9007199254740993.0.0', 'feat!: a')).toBe('9007199254740994.0.0');
   // increment and formatVersion on their own.

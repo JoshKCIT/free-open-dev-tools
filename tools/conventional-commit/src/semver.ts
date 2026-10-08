@@ -71,18 +71,27 @@ export function formatVersion(version: Version): string {
  * and resets the other two. With `zeroMajor`, a major raise of a version whose major number is 0 raises the minor number
  * instead (item 4 lets anything change below 1.0.0, so this is the caller's choice).
  *
- * This page's own rule, which the specification does not give: a version with a pre-release tag or build text is raised
- * from its release numbers, and the result carries neither (1.5.0-rc.1 raised by a patch is 1.5.1).
+ * A version with a pre-release tag comes before the release with the same numbers (items 9 and 11: 2.0.0-rc.1 is lower
+ * than 2.0.0), so that release is still to come and is where the next release goes when it covers the change. The
+ * specification does not say how to raise such a version; this is the usual rule: the tag is dropped, and a number is
+ * raised only when the release does not already cover the level. Major: the numbers are kept when minor and patch are 0
+ * (2.0.0-rc.1 gives 2.0.0), otherwise major is raised. Minor: kept when patch is 0 (1.5.0-rc.1 gives 1.5.0), otherwise
+ * minor is raised. Patch: always kept (1.5.2-rc.1 gives 1.5.2). The zero major option reads a breaking change as a minor
+ * raise in the same way. Build text alone is no pre-release (item 10): it is dropped and the version is raised as usual.
  */
 export function increment(version: Version, level: BumpLevel, options: { zeroMajor?: boolean } = {}): Version {
   const { major, minor, patch } = version;
+  const pre = version.prerelease.length > 0;
+  const minorRaise = (): [bigint, bigint, bigint] =>
+    pre && patch === 0n ? [major, minor, 0n] : [major, minor + 1n, 0n];
   let next: [bigint, bigint, bigint];
   if (level === 'major') {
-    next = options.zeroMajor === true && major === 0n ? [0n, minor + 1n, 0n] : [major + 1n, 0n, 0n];
+    if (options.zeroMajor === true && major === 0n) next = minorRaise();
+    else next = pre && minor === 0n && patch === 0n ? [major, 0n, 0n] : [major + 1n, 0n, 0n];
   } else if (level === 'minor') {
-    next = [major, minor + 1n, 0n];
+    next = minorRaise();
   } else if (level === 'patch') {
-    next = [major, minor, patch + 1n];
+    next = pre ? [major, minor, patch] : [major, minor, patch + 1n];
   } else {
     next = [major, minor, patch];
   }
