@@ -194,6 +194,10 @@ it('one character outside the alphabet turns the whole message into UCS-2 and is
     [0x2019, 2, 1],
     [0x1f600, 3, 3],
   ]);
+  expect(several.warnings[0]).toContain('5 characters outside the GSM 7-bit alphabet (2 kinds, listed below)');
+  // One kind repeated is named as one kind (review B-IN-01).
+  const repeated = analyseMessage(cp(0x436).repeat(70));
+  expect(repeated.warnings[0]).toContain('70 characters outside the GSM 7-bit alphabet (1 kind, listed below)');
   // 159 letters and a curly apostrophe: 160 units, which is more than the 70 of one UCS-2 message and makes 3 parts.
   const flipped = analyseMessage('a'.repeat(159) + CURLY_APOSTROPHE);
   expect(flipped.encoding).toBe('ucs2');

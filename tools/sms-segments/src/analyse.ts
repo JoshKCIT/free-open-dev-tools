@@ -167,7 +167,7 @@ export function analyseMessage(text: string): Analysis {
       );
     } else {
       warnings.push(
-        `${occurrences} characters outside the GSM 7-bit alphabet (${measured.forced.length} kinds, listed below) turn the whole message into UCS-2, which holds ${UCS2_SINGLE} units in one message instead of ${GSM_SINGLE} septets.`,
+        `${occurrences} characters outside the GSM 7-bit alphabet (${measured.forced.length} ${plural(measured.forced.length, 'kind', 'kinds')}, listed below) turn the whole message into UCS-2, which holds ${UCS2_SINGLE} units in one message instead of ${GSM_SINGLE} septets.`,
       );
     }
   }
