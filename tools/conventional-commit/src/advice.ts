@@ -294,7 +294,7 @@ export function adviceFor(parsed: ParsedMessage, raw: string = parsed.header): A
     add(
       'breaking-glued',
       'specification',
-      'A BREAKING CHANGE line follows body text without a blank line before it. Footers begin one blank line after the body (rule 8), so this line is part of the body and does not mark a breaking change.',
+      'A BREAKING CHANGE line follows body text without a blank line before it. Footers begin one blank line after the body (rule 8), so this line is part of the body and does not mark a breaking change. Put a blank line before it to make it a breaking change. Many release tools count this line as breaking anyway, so the version they choose may be higher than the one shown here.',
     );
   }
   if (found.reasons.length > 0) {

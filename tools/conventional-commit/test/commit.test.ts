@@ -1110,6 +1110,10 @@ it('convention notes never make a valid message invalid and are labelled as not 
   const gluedOff = checkCommits({ text: gluedOnly, currentVersion: '1.4.2', advice: false });
   expect(gluedOff.bump).toEqual({ level: 'minor', next: '1.5.0' });
   expect(gluedOff.advice.map((a) => [a.code, a.label])).toEqual([['breaking-glued', 'specification']]);
+  // The note says how to make the line count and that other release tooling may read it as breaking (review B-IN-05).
+  const gluedNote = gluedOff.advice[0]?.message ?? '';
+  expect(gluedNote).toContain('Put a blank line before it to make it a breaking change.');
+  expect(gluedNote).toContain('the version they choose may be higher than the one shown here');
   expect(all.messages.every((m) => m.parsed.valid)).toBe(true);
   const codesFor = (number: number): string[] => all.advice.filter((a) => a.number === number).map((a) => a.code);
   expect(codesFor(1).sort()).toEqual(['capital-first', 'trailing-period', 'unknown-type'].sort());
