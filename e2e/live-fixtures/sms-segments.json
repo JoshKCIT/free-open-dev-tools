@@ -1,0 +1,12 @@
+{
+  "id": "sms-segments",
+  "label": "161 plain letters need 2 segments of 153 and 8 septets, per 3GPP TS 23.040 clause 9.2.3.24.1",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "message",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "expect": ["GSM 7-bit default alphabet", "161", "153", "145"]
+}
