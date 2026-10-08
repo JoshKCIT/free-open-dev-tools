@@ -10,6 +10,7 @@ export {
   MAX_CODEOWNERS_CHARACTERS,
   MAX_CODEOWNERS_LINE_CHARACTERS,
   MAX_CODEOWNERS_RULES,
+  OWNER_SHAPES,
   checkCodeownersInput,
   codeownersRows,
   ownersForPaths,

@@ -1,5 +1,5 @@
 import { GlobTesterError } from './errors';
-import { MAX_PATH_PASTE_CHARACTERS, withCommas } from './limits';
+import { MAX_PATH_CHARACTERS, MAX_PATH_LINES, MAX_PATH_PASTE_CHARACTERS, withCommas } from './limits';
 import { checkPath, forEachLine, isBlank } from './lines';
 import { MAX_SHOWN_PATTERN, visible } from './visible';
 
@@ -68,8 +68,91 @@ const HASH = 35;
 
 const NOT_DOCUMENTED = 'not documented by GitHub';
 
+const AT = 64;
+
 function isSeparator(code: number): boolean {
   return code === SPACE || code === TAB;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Owners: `@username`, `@org/team-name` or an email address. How exactly each may be written is not documented by GitHub;
+// these checks are this page's loose reading, written as character tests and never as a regular expression, so no owner
+// can make them slow.
+// ---------------------------------------------------------------------------------------------------------------------
+
+function isNameCharacter(code: number): boolean {
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122) ||
+    code === 45 ||
+    code === 95 ||
+    code === 46
+  );
+}
+
+/** Whether text[from, to) is one or more letters, digits, hyphens, underscores or dots. */
+function isNameOnly(text: string, from: number, to: number): boolean {
+  if (to <= from) return false;
+  for (let i = from; i < to; i++) {
+    if (!isNameCharacter(text.charCodeAt(i))) return false;
+  }
+  return true;
+}
+
+/** Whether text[from, to) is one or more letters, digits or hyphens (one part of an email domain). */
+function isDomainLabel(text: string, from: number, to: number): boolean {
+  if (to <= from) return false;
+  for (let i = from; i < to; i++) {
+    const code = text.charCodeAt(i);
+    const letterOrDigit = (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+    if (!letterOrDigit && code !== 45) return false;
+  }
+  return true;
+}
+
+/**
+ * The three owner forms GitHub's page names. A name holds letters, digits, hyphen, underscore and dot; an email address has
+ * one @, something before it that holds no slash, and a domain of at least two parts joined by dots.
+ */
+export const OWNER_SHAPES: readonly { shape: 'user' | 'team' | 'email'; accepts(owner: string): boolean }[] = [
+  {
+    shape: 'user',
+    accepts(owner) {
+      return owner.charCodeAt(0) === AT && isNameOnly(owner, 1, owner.length);
+    },
+  },
+  {
+    shape: 'team',
+    accepts(owner) {
+      if (owner.charCodeAt(0) !== AT) return false;
+      const slash = owner.indexOf('/');
+      if (slash < 0 || owner.indexOf('/', slash + 1) >= 0) return false;
+      return isNameOnly(owner, 1, slash) && isNameOnly(owner, slash + 1, owner.length);
+    },
+  },
+  {
+    shape: 'email',
+    accepts(owner) {
+      const at = owner.indexOf('@');
+      if (at < 1 || owner.indexOf('@', at + 1) >= 0 || owner.indexOf('/') >= 0) return false;
+      let from = at + 1;
+      let parts = 0;
+      for (;;) {
+        const dot = owner.indexOf('.', from);
+        const to = dot < 0 ? owner.length : dot;
+        if (!isDomainLabel(owner, from, to)) return false;
+        parts += 1;
+        if (dot < 0) break;
+        from = dot + 1;
+      }
+      return parts >= 2;
+    },
+  },
+];
+
+function isOwner(owner: string): boolean {
+  return OWNER_SHAPES.some((shape) => shape.accepts(owner));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -212,30 +295,39 @@ function compileSegment(segment: string, marks: Set<string>): number[] {
  *  - a last segment that is exactly `*` matches direct children only (`docs/*` owns `docs/a.md`, not `docs/x/b.md`),
  *    while any other last segment also matches everything under it;
  *  - `**` at the start matches any directories, at the end everything below, and in the middle zero or more directories.
- * Runs of slashes and of `**` segments are read as one (GitHub does not document them, and the note says so), and a
- * pattern that is only `**` matches every path.
+ * GitHub documents none of the following, so each is this page's reading and the note says so: a run of slashes at the
+ * start or the end is read as one slash; a run of slashes in the middle leaves an empty name that no real path has, so the
+ * pattern matches nothing; a run of `**` segments is read as one; a pattern that is only `**` matches every path; and
+ * a double star with a trailing slash and nothing else matches every file inside some directory.
  */
 function compilePattern(pattern: string, marks: Set<string>): Token[] | null {
   const raw = pattern.split('/');
-  const anchored = raw.length > 1 && raw[0] === '';
-  const trailingSlash = raw.length > 1 && raw[raw.length - 1] === '';
-  const core = raw.filter((part) => part !== '');
-  if (core.length === 0) return null;
-  // One leading and one trailing slash are the ordinary ones; any more empty parts are a run of slashes.
-  let runs = raw.length - core.length - (anchored ? 1 : 0) - (trailingSlash ? 1 : 0);
-
-  const segments: string[] = [];
-  if (!anchored && core.length === 1 && core[0] !== '**') segments.push('**');
-  for (const part of core) segments.push(part);
-  if (trailingSlash) segments.push('**');
-
-  // Runs of `**` read as one.
-  const flat: string[] = [];
-  for (const part of segments) {
-    if (part === '**' && flat[flat.length - 1] === '**') runs += 1;
-    else flat.push(part);
+  let from = 0;
+  while (from < raw.length && raw[from] === '') from += 1;
+  if (from === raw.length) return null;
+  let to = raw.length;
+  while (raw[to - 1] === '') to -= 1;
+  const anchored = from > 0;
+  const trailingSlash = to < raw.length;
+  // Only the names between the outer slashes are left; an empty one among them is a run of slashes in the middle, and
+  // a run of `**` names is read as one.
+  const core: string[] = [];
+  let runs = (from > 1 ? 1 : 0) + (raw.length - to > 1 ? 1 : 0);
+  for (const part of raw.slice(from, to)) {
+    if (part === '') runs += 1;
+    if (part === '**' && core[core.length - 1] === '**') runs += 1;
+    else core.push(part);
   }
   if (runs > 0) marks.add('runs of ** or /');
+  if (core.length === 1 && core[0] === '**' && trailingSlash) {
+    marks.add('a bare **');
+    return [ANY_TOKEN, ANY_TOKEN, STAR_TOKEN];
+  }
+
+  const flat: string[] = [];
+  if (!anchored && core.length === 1 && core[0] !== '**') flat.push('**');
+  for (const part of core) flat.push(part);
+  if (trailingSlash && core[core.length - 1] !== '**') flat.push('**');
 
   const tokens: Token[] = [];
   const push = (token: Token): void => {
@@ -340,6 +432,16 @@ export function parseCodeowners(text: string): { rules: CodeownersRule[]; skippe
       if (token.charCodeAt(0) === HASH) break;
       owners.push(token);
     }
+    // One owner that is none of the three forms makes the whole line unreadable, and GitHub skips a line it cannot read.
+    if (!owners.every(isOwner)) {
+      skipped.push({
+        line,
+        shown: visible(pattern, MAX_SHOWN_PATTERN),
+        reason: 'an owner is not @username, @org/team-name or an email address',
+        documented: false,
+      });
+      return;
+    }
     const marks = new Set<string>();
     const compiled = compilePattern(pattern, marks);
     rules.push({
@@ -354,6 +456,17 @@ export function parseCodeowners(text: string): { rules: CodeownersRule[]; skippe
   return { rules, skipped };
 }
 
+function refusePath(line: number, problem: string): GlobTesterError {
+  return new GlobTesterError(`Line ${line} of the paths ${problem}`, 'paths', line);
+}
+
+/** One path line, checked by the rules every mode shares, and refused when it names a directory (it ends in a slash). */
+function checkCodeownersPath(text: string, line: number): string {
+  const { path, isDirectory } = checkPath(text, line);
+  if (isDirectory) throw refusePath(line, 'ends with /. In CODEOWNERS mode every path names a file, so remove the /.');
+  return path;
+}
+
 /**
  * The deciding rule for each pasted path: the rules are scanned from the last line to the first and the first that matches
  * decides, so the owners of earlier lines are never merged. A path no line matches has no owner and no deciding line. Rows
@@ -363,7 +476,7 @@ export function ownersForPaths(rules: readonly CodeownersRule[], pathsText: stri
   const rows: CodeownersRow[] = [];
   forEachLine(pathsText, (text, number) => {
     if (isBlank(text)) return;
-    const { path } = checkPath(text, number);
+    const path = checkCodeownersPath(text, number);
     const segments = path.split('/');
     let decided: CodeownersRule | null = null;
     for (let k = rules.length - 1; k >= 0; k--) {
@@ -401,8 +514,43 @@ export function checkCodeownersInput(text: string, pathsText: string): void {
   }
   if (pathsText.length > MAX_PATH_PASTE_CHARACTERS) {
     throw new GlobTesterError(
-      `This paste is ${withCommas(pathsText.length)} characters. The limit is ${withCommas(MAX_PATH_PASTE_CHARACTERS)}.`,
+      `This paste is ${withCommas(pathsText.length)} characters. The limit is ${withCommas(MAX_PATH_PASTE_CHARACTERS)} because that is the most that ${withCommas(MAX_PATH_LINES)} paths of up to ${withCommas(MAX_PATH_CHARACTERS)} characters can fill.`,
       'paths',
     );
   }
+  let rules = 0;
+  forEachLine(text, (line, number) => {
+    if (line.length > MAX_CODEOWNERS_LINE_CHARACTERS) {
+      throw new GlobTesterError(
+        `Line ${number} of the CODEOWNERS file is longer than ${withCommas(MAX_CODEOWNERS_LINE_CHARACTERS)} characters.`,
+        'patterns',
+        number,
+      );
+    }
+    if (isIgnorable(line)) return;
+    rules += 1;
+    if (rules > MAX_CODEOWNERS_RULES) {
+      throw new GlobTesterError(
+        `There are more than ${withCommas(MAX_CODEOWNERS_RULES)} rules (blank lines and comments do not count). Line ${number} is the first one past the limit of ${withCommas(MAX_CODEOWNERS_RULES)}.`,
+        'patterns',
+        number,
+      );
+    }
+  });
+  let paths = 0;
+  forEachLine(pathsText, (line, number) => {
+    if (line.length > MAX_PATH_CHARACTERS) {
+      throw refusePath(number, `is longer than ${withCommas(MAX_PATH_CHARACTERS)} characters.`);
+    }
+    if (isBlank(line)) return;
+    paths += 1;
+    if (paths > MAX_PATH_LINES) {
+      throw new GlobTesterError(
+        `There are more than ${withCommas(MAX_PATH_LINES)} paths (blank lines do not count). Line ${number} is the first one past the limit of ${withCommas(MAX_PATH_LINES)}.`,
+        'paths',
+        number,
+      );
+    }
+    checkCodeownersPath(line, number);
+  });
 }
