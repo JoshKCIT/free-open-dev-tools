@@ -2,13 +2,16 @@ import {
   GlobTesterError,
   MAX_SHOWN_PATH,
   MAX_SHOWN_PATTERN,
+  checkCodeownersInput,
   checkInput,
   meta,
   parsePaths,
   visible,
+  type CodeownersRow,
   type GitignoreRow,
   type GlobRegex,
   type GlobRow,
+  type SkippedLine,
   type TestResult,
 } from '@fodt/glob-tester';
 import {
@@ -146,7 +149,59 @@ function globOutputs(rows: GlobRow[], regexes: GlobRegex[]): Pick<ToolResult, 'o
   };
 }
 
+/** What the CODEOWNERS note says, in the page's own words: the mode follows GitHub's documentation and checks no owner. */
+const CODEOWNERS_NOTE =
+  'This mode follows the rules GitHub documents for CODEOWNERS files: the last line that matches a path decides, and the owners of earlier lines are never merged. This page cannot check that an owner exists or has write access, and where GitHub documents nothing it shows its own reading, marked not documented by GitHub.';
+
+function ownersText(row: CodeownersRow): string {
+  return row.owners.length === 0 ? 'no owner' : visible(row.owners.join(' '), MAX_SHOWN_PATH);
+}
+
+/** The "Decided by" cell of a CODEOWNERS row, in words. */
+function codeownersDecidedText(row: CodeownersRow): string {
+  return row.line === null ? 'no line matched' : `line ${row.line}: ${shownPattern(row.pattern)}`;
+}
+
+function skippedItem(skipped: SkippedLine): string {
+  const label = skipped.documented ? '' : ' (not documented by GitHub)';
+  return `line ${skipped.line}: ${skipped.shown}: ${skipped.reason}${label}`;
+}
+
+function codeownersOutputs(rows: CodeownersRow[], skipped: SkippedLine[]): Pick<ToolResult, 'outputs' | 'stats'> {
+  const unowned = rows.filter((r) => r.owners.length === 0);
+  const outputs: OutputBlock[] = [
+    {
+      kind: 'table',
+      label: 'Owners for each path',
+      table: {
+        headers: ['Path', 'Owners', 'Decided by', 'Notes'],
+        rows: rows.map((r) => [shownPath(r.path, false), ownersText(r), codeownersDecidedText(r), r.note]),
+        mono: [0, 2],
+      },
+    },
+  ];
+  if (unowned.length === 0) outputs.push({ kind: 'note', tone: 'info', value: 'Every path has an owner.' });
+  else
+    outputs.push(
+      listBlock(
+        'Paths with no owner',
+        unowned.map((r) => shownPath(r.path, false)),
+      ),
+    );
+  if (skipped.length > 0) outputs.push(listBlock('Lines GitHub does not support or skipped', skipped.map(skippedItem)));
+  outputs.push({ kind: 'note', tone: 'info', value: CODEOWNERS_NOTE });
+  return {
+    outputs,
+    stats: [
+      ['Paths', String(rows.length)],
+      ['Owned', String(rows.length - unowned.length)],
+      ['No owner', String(unowned.length)],
+    ],
+  };
+}
+
 function resultOutputs(result: TestResult): Pick<ToolResult, 'outputs' | 'stats'> {
+  if (result.mode === 'codeowners') return codeownersOutputs(result.rows, result.skipped);
   return result.mode === 'glob'
     ? globOutputs(result.rows as GlobRow[], result.regexes)
     : gitignoreOutputs(result.rows as GitignoreRow[]);
@@ -163,7 +218,7 @@ function failure(err: unknown): ToolResult {
 
 export default defineTool({
   id: 'glob-tester',
-  // Both kinds of matching run in a new background worker with a 5 second limit (see run-glob-tester-in-worker.ts's own
+  // All three modes run in a new background worker with a 5 second limit (see run-glob-tester-in-worker.ts's own
   // comment): a pattern that backtracks is stuck inside one synchronous call, so the page, not the matcher, decides when
   // it has taken too long, and Cancel stops it at once.
   cancellable: true,
@@ -178,6 +233,7 @@ export default defineTool({
       options: [
         { value: 'gitignore', label: '.gitignore rules' },
         { value: 'glob', label: 'Glob patterns' },
+        { value: 'codeowners', label: 'CODEOWNERS file' },
       ],
     },
     {
@@ -186,7 +242,7 @@ export default defineTool({
       type: 'textarea',
       rows: 8,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
-      help: 'The lines of a .gitignore file in .gitignore mode, or one glob per line in glob mode.',
+      help: 'The lines of a .gitignore file in .gitignore mode, or one glob per line in glob mode. In CODEOWNERS mode paste the whole CODEOWNERS file here.',
     },
     {
       name: 'paths',
@@ -194,7 +250,7 @@ export default defineTool({
       type: 'textarea',
       rows: 8,
       placeholder: 'Type or paste here. Nothing leaves your browser.',
-      help: 'Paths, one per line; end a directory with /.',
+      help: 'Paths, one per line; end a directory with /. In CODEOWNERS mode every path names a file.',
     },
     {
       name: 'dot',
@@ -230,15 +286,21 @@ export default defineTool({
     },
   ],
   async run(values, ctx): Promise<ToolResult> {
-    const mode = str(values, 'mode', 'gitignore') === 'glob' ? 'glob' : 'gitignore';
+    const chosen = str(values, 'mode', 'gitignore');
+    const mode = chosen === 'glob' ? 'glob' : chosen === 'codeowners' ? 'codeowners' : 'gitignore';
     const patterns = str(values, 'patterns');
     const paths = str(values, 'paths');
     if (paths.trim() === '') return { outputs: [] };
 
     try {
       // Refused before any worker starts, so an over-limit paste or a path that is not allowed never reaches matching.
-      checkInput(patterns, paths);
-      parsePaths(paths);
+      // CODEOWNERS mode has its own limits and path rules, so it is checked on its own.
+      if (mode === 'codeowners') {
+        checkCodeownersInput(patterns, paths);
+      } else {
+        checkInput(patterns, paths);
+        parsePaths(paths);
+      }
       // The two options belong to glob mode: in .gitignore mode they are never sent, so they can never change a result.
       const result = await globTesterInWorker(
         {
