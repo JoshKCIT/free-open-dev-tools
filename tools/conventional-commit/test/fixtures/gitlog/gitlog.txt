@@ -1,0 +1,87 @@
+commit 8a821e0a3104f5ead1752fd3f3e3382e5909ccc3
+Author: Example Author <author@example.invalid>
+Date:   Thu Jan 15 10:00:00 2026 +0000
+
+    fix: prevent racing of requests
+    
+    Introduce a request id and a reference to latest request. Dismiss
+    incoming responses other than from latest request.
+    
+    Remove timeouts which were used to mitigate the racing issue but are
+    obsolete now.
+    
+    Reviewed-by: Z
+    Refs: #123
+
+commit 69f782778f61f96b43c8d898a9a17d8634f668b8
+Author: Example Author <author@example.invalid>
+Date:   Wed Jan 14 10:00:00 2026 +0000
+
+    amend! feat!: drop support for Node 6
+    
+    feat!: drop support for Node 6
+    
+    BREAKING CHANGE: use JavaScript features not available in Node 6.
+
+commit afb15531b719f4e5a033096ff4aadb26c59201af
+Author: Example Author <author@example.invalid>
+Date:   Tue Jan 13 10:00:00 2026 +0000
+
+    squash! feat!: drop support for Node 6
+
+commit e80af6ad7d4a994f294d8b49530abc04501334e6
+Author: Example Author <author@example.invalid>
+Date:   Mon Jan 12 10:00:00 2026 +0000
+
+    fixup! fix(api): handle empty input
+
+commit 6c3f947fc49162c0815ed45efafcffb54f421e12
+Author: Example Author <author@example.invalid>
+Date:   Sun Jan 11 10:00:00 2026 +0000
+
+    Revert "feat: add a parser"
+    
+    This reverts commit 051ba03beb4402e67ba10195f110b18e6fe0a382.
+
+commit 2eed8950e650af16665eabc1b5ff42ae83340e31
+Merge: 3b8dac0 27b4465
+Author: Example Author <author@example.invalid>
+Date:   Sat Jan 10 10:00:00 2026 +0000
+
+    Merge branch 'topic'
+
+commit 3b8dac0bf8e657a3a8e6ec4ce910acb7b3a40f58
+Author: Example Author <author@example.invalid>
+Date:   Fri Jan 9 10:00:00 2026 +0000
+
+    chore: update the build image
+
+commit 27b4465a53d3c5f2d6a7ea8b1a08e621e5ffeb2a
+Author: Example Author <author@example.invalid>
+Date:   Thu Jan 8 10:00:00 2026 +0000
+
+    docs: correct spelling of CHANGELOG
+
+commit ed80edda1f790602529a1d8c96f77971fce4ce61
+Author: Example Author <author@example.invalid>
+Date:   Wed Jan 7 10:00:00 2026 +0000
+
+    feat!: drop support for Node 6
+    
+    BREAKING CHANGE: use JavaScript features not available in Node 6.
+
+commit a27ec208589c38f125b55f6d4bbd543ba07a6a45
+Author: Example Author <author@example.invalid>
+Date:   Tue Jan 6 10:00:00 2026 +0000
+
+    fix(api): handle empty input
+    
+    The parser returned null.
+    
+    Refs: #12
+
+commit 051ba03beb4402e67ba10195f110b18e6fe0a382
+Author: Example Author <author@example.invalid>
+Date:   Mon Jan 5 10:00:00 2026 +0000
+
+    feat: add a parser

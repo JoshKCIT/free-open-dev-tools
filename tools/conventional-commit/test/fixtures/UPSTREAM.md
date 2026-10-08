@@ -25,3 +25,23 @@ The version parser is the official regular expression with numbered groups from 
 (CC BY 3.0, "Semantic Versioning 2.0.0" by Tom Preston-Werner), run only on text of at most 256 characters. The bump follows
 the specification's own summary lines: a fix correlates with PATCH, a feat with MINOR and a breaking change with MAJOR,
 and "Additional types ... have no implicit effect in Semantic Versioning (unless they include a BREAKING CHANGE)".
+
+## The reference parser (recorded as data)
+
+| What        | Value                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Package     | `@conventional-commits/parser` 0.4.1, ISC licence, "reference implementation of conventionalcommits.org spec"                   |
+| Recorded as | `reference/reference.json`: 1,033 messages (the 33 research probes and 1,000 seeded ones) with its answer for each              |
+| Made by     | `reference/record-reference.cjs` on `reference/make-corpus.mjs`, run by hand from a scratch folder; nothing is installed here    |
+| Read how    | `reference/README.md` lists the versions, the seed, the date and the ten places where this page follows the wording instead      |
+
+No source code of the parser is copied; only its answers are kept.
+
+## git log output (recorded as data)
+
+| What        | Value                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Tool        | `git version 2.53.0.windows.1`                                                                                                  |
+| Recorded as | `gitlog/gitlog.txt`: the default `git log` output of a scratch repository with synthetic authors at example.invalid            |
+| Made by     | `gitlog/record-gitlog.sh`; `gitlog/README.md` lists the eleven commits                                                           |
+| Hashes      | real 40-digit hashes of a scratch repository that no longer exists (unit fixture only); page fixtures use short synthetic hashes |
