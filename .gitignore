@@ -24,8 +24,8 @@ blob-report/
 # gate reads it from here locally and from a CI repository variable in CI.
 .provenance-denylist
 
-# GSD planning docs are kept local (commit_docs: false)
+# Local planning notes, never published
 .planning/
 
-# GSD run-scoped isolation sentinel (tooling scaffolding, never shipped)
+# Local tooling scratch files, never published
 .gsd/
