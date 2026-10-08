@@ -55,7 +55,10 @@ export interface CheckInput {
   zeroMajor?: boolean;
   /** Also list the hidden types (docs, style, chore, test, build, ci, refactor) and every other type in the changelog. */
   includeHidden?: boolean;
-  /** Collect convention notes; default true. They never change a verdict, the bump or the changelog. */
+  /**
+   * Collect convention notes; default true. The notes on how the specification was applied (label `specification`) are
+   * collected either way. No note ever changes a verdict, the bump or the changelog.
+   */
   advice?: boolean;
 }
 
@@ -87,7 +90,7 @@ export interface CheckResult {
   bump: BumpResult;
   /** The draft changelog in Markdown; empty when there is nothing to list. */
   changelog: string;
-  /** Convention notes, in the order of the messages. */
+  /** Notes on how the specification was applied, and convention notes unless turned off, in the order of the messages. */
   advice: AdviceEntry[];
 }
 
@@ -110,8 +113,11 @@ export function checkCommits(input: CheckInput): CheckResult {
   for (const message of split.messages) {
     const parsed = parseMessage(message.text, message.number);
     messages.push({ number: message.number, line: message.line, parsed });
-    if (input.advice !== false) {
-      for (const note of adviceFor(parsed, message.text)) advice.push({ number: message.number, ...note });
+    // The notes on how the specification was applied are always kept: they say why a line that looks like a breaking
+    // change does not count. The option turns off only the convention notes.
+    for (const note of adviceFor(parsed, message.text)) {
+      if (input.advice === false && note.label === 'convention') continue;
+      advice.push({ number: message.number, ...note });
     }
   }
   const parsedList = messages.map((m) => m.parsed);

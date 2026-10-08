@@ -235,6 +235,7 @@ export default defineTool({
       label: 'Show convention notes',
       type: 'checkbox',
       default: true,
+      help: 'Notes on how the specification was applied are always shown.',
     },
   ],
   examples: [

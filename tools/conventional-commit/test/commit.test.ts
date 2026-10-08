@@ -1099,7 +1099,17 @@ it('convention notes never make a valid message invalid and are labelled as not 
   expect(all.messages).toEqual(without.messages);
   expect(all.bump).toEqual(without.bump);
   expect(all.changelog).toEqual(without.changelog);
-  expect(without.advice).toEqual([]);
+  // Turning the convention notes off keeps the notes on how the specification was applied: they say why a line that
+  // looks like a breaking change does not count (review B-WR-01).
+  expect(without.advice).toEqual(all.advice.filter((a) => a.label === 'specification'));
+  expect(without.advice.map((a) => [a.number, a.code])).toEqual([
+    [6, 'breaking-case'],
+    [7, 'breaking-glued'],
+  ]);
+  const gluedOnly = 'feat: x\n\nsome body\nBREAKING CHANGE: removes the v1 API';
+  const gluedOff = checkCommits({ text: gluedOnly, currentVersion: '1.4.2', advice: false });
+  expect(gluedOff.bump).toEqual({ level: 'minor', next: '1.5.0' });
+  expect(gluedOff.advice.map((a) => [a.code, a.label])).toEqual([['breaking-glued', 'specification']]);
   expect(all.messages.every((m) => m.parsed.valid)).toBe(true);
   const codesFor = (number: number): string[] => all.advice.filter((a) => a.number === number).map((a) => a.code);
   expect(codesFor(1).sort()).toEqual(['capital-first', 'trailing-period', 'unknown-type'].sort());
