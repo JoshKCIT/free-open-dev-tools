@@ -1559,5 +1559,12 @@
     "category": "devops",
     "tier": 3,
     "summary": "Check commit messages against Conventional Commits 1.0.0 and see the version bump they add up to and a draft changelog."
+  },
+  {
+    "id": "editorconfig",
+    "name": "EditorConfig Resolver",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Paste .editorconfig files and a file path to see which properties apply and which file, section and line decided each."
   }
 ]
