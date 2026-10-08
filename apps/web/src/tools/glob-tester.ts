@@ -214,18 +214,21 @@ function resultOutputs(result: TestResult): Pick<ToolResult, 'outputs' | 'stats'
 const CODEOWNERS_TIME_LIMIT_MESSAGE =
   'Stopped after 5 seconds: this CODEOWNERS file and these paths take too long to match together. Try fewer paths or fewer rules.';
 
-function failure(err: unknown, mode: 'glob' | 'gitignore' | 'codeowners'): ToolResult {
+type Mode = 'glob' | 'gitignore' | 'codeowners';
+
+/** One of the worker helper's fixed sentences, as the page shows it: the time limit has its own words in CODEOWNERS mode. */
+function fixedFailure(sentence: string, mode: Mode): ToolResult {
+  const shown =
+    mode === 'codeowners' && sentence === GLOB_TESTER_TIME_LIMIT_MESSAGE ? CODEOWNERS_TIME_LIMIT_MESSAGE : sentence;
+  return { outputs: [], errors: [{ message: shown }] };
+}
+
+function failure(err: unknown, mode: Mode): ToolResult {
   const issue = (message: string): ToolIssue => ({ message });
   if (err instanceof GlobTesterError || err instanceof GlobTesterRunError) {
     return { outputs: [], errors: [issue(err.message)] };
   }
-  if (err instanceof Error && FIXED_MESSAGES.has(err.message)) {
-    const timedOut = err.message === GLOB_TESTER_TIME_LIMIT_MESSAGE;
-    return {
-      outputs: [],
-      errors: [issue(mode === 'codeowners' && timedOut ? CODEOWNERS_TIME_LIMIT_MESSAGE : err.message)],
-    };
-  }
+  if (err instanceof Error && FIXED_MESSAGES.has(err.message)) return fixedFailure(err.message, mode);
   return { outputs: [], errors: [issue('Could not test these patterns.')] };
 }
 
