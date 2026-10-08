@@ -1,0 +1,9 @@
+# The vendored files of editorconfig-core-test are kept byte for byte, including the carriage returns of parser/crlf.in and
+# the byte order mark of parser/bom.in. Their git blob shas are recorded in UPSTREAM.md and a test compares them, so line
+# ending conversion must never touch them. (The repository root .gitattributes is shared, so this nested file does it.)
+LICENSE.txt -text
+README.md -text
+glob/** -text
+parser/** -text
+properties/** -text
+filetree/** -text
