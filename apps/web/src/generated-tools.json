@@ -509,6 +509,25 @@
       "a11y"
     ]
   },
+  "conventional-commit": {
+    "id": "conventional-commit",
+    "name": "Conventional Commit Checker",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "conventional commits",
+      "commit message",
+      "commitlint",
+      "semver",
+      "version bump",
+      "changelog",
+      "breaking change",
+      "feat",
+      "fix",
+      "git log"
+    ]
+  },
   "cors-checker": {
     "id": "cors-checker",
     "name": "CORS Checker",
@@ -1094,6 +1113,25 @@
       "devops"
     ]
   },
+  "editorconfig": {
+    "id": "editorconfig",
+    "name": "EditorConfig Resolver",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "editorconfig",
+      ".editorconfig",
+      "indent_style",
+      "indent_size",
+      "tab_width",
+      "end_of_line",
+      "charset",
+      "root",
+      "glob",
+      "properties"
+    ]
+  },
   "email-extractor": {
     "id": "email-extractor",
     "name": "Pattern Extractor",
@@ -1390,7 +1428,8 @@
       "ignore",
       "pathspec",
       "match",
-      "check-ignore"
+      "check-ignore",
+      "codeowners"
     ]
   },
   "go-formatter": {
@@ -2635,7 +2674,13 @@
       "bitwise",
       "rotate",
       "byte swap",
-      "endianness"
+      "endianness",
+      "calculator",
+      "programmer calculator",
+      "integer expression",
+      "C precedence",
+      "wrap-around",
+      "fixed width"
     ]
   },
   "number-to-words": {
@@ -3365,6 +3410,25 @@
       "url",
       "permalink",
       "transliterate"
+    ]
+  },
+  "sms-segments": {
+    "id": "sms-segments",
+    "name": "SMS Segment Calculator",
+    "version": "1.0.0",
+    "license": "MIT",
+    "dependencies": {},
+    "keywords": [
+      "sms",
+      "gsm 7-bit",
+      "gsm 03.38",
+      "ucs-2",
+      "segments",
+      "septets",
+      "text message",
+      "concatenated sms",
+      "160 characters",
+      "encoding"
     ]
   },
   "source-map-decoder": {

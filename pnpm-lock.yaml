@@ -437,6 +437,15 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
 
+  tools/conventional-commit:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
   tools/cors-checker:
     devDependencies:
       typescript:
@@ -842,6 +851,15 @@ importers:
       ajv:
         specifier: 8.20.0
         version: 8.20.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
+  tools/editorconfig:
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -2469,6 +2487,15 @@ importers:
         version: 5.3.0(@types/node@22.20.4)
 
   tools/slug-generator:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.4)(jsdom@29.1.1(@noble/hashes@2.4.0))(less@4.9.1)(sass@1.103.1)(terser@5.51.2)(yaml@2.9.1)
+
+  tools/sms-segments:
     devDependencies:
       typescript:
         specifier: ^5.7.3

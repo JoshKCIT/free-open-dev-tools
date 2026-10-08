@@ -132,7 +132,7 @@
       "category": "encoding",
       "categoryLabel": "Encoding, escaping and numbers",
       "tier": 1,
-      "summary": "Convert integers between any bases from 2 to 36, with arbitrary precision.",
+      "summary": "Convert integers between any bases from 2 to 36 with arbitrary precision, and evaluate C-style integer expressions at 8 to 256 bits.",
       "implemented": true
     },
     {
@@ -1860,7 +1860,7 @@
       "category": "devops",
       "categoryLabel": "Build, config and CI",
       "tier": 3,
-      "summary": "Test glob patterns and .gitignore rules against a list of paths and see which rule decided each one.",
+      "summary": "Test glob patterns, .gitignore rules and CODEOWNERS files against a list of paths and see which line decided each one.",
       "implemented": true
     },
     {
@@ -1987,6 +1987,33 @@
       "categoryLabel": "Images, documents and archives",
       "tier": 3,
       "summary": "Read a font's names, licence text, metrics, glyphs, coverage and features, and convert it between TTF/OTF, WOFF and WOFF2 on your device.",
+      "implemented": true
+    },
+    {
+      "id": "sms-segments",
+      "name": "SMS Segment Calculator",
+      "category": "text",
+      "categoryLabel": "Text",
+      "tier": 2,
+      "summary": "Count the SMS segments a message needs, see whether it fits the GSM 7-bit alphabet and which characters force Unicode.",
+      "implemented": true
+    },
+    {
+      "id": "conventional-commit",
+      "name": "Conventional Commit Checker",
+      "category": "devops",
+      "categoryLabel": "Build, config and CI",
+      "tier": 3,
+      "summary": "Check commit messages against Conventional Commits 1.0.0 and see the version bump they add up to and a draft changelog.",
+      "implemented": true
+    },
+    {
+      "id": "editorconfig",
+      "name": "EditorConfig Resolver",
+      "category": "devops",
+      "categoryLabel": "Build, config and CI",
+      "tier": 3,
+      "summary": "Paste .editorconfig files and a file path to see which properties apply and which file, section and line decided each.",
       "implemented": true
     }
   ]
