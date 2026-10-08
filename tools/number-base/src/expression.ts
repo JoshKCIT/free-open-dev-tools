@@ -183,13 +183,37 @@ interface Token {
 
 const OPERATOR_CHARACTERS = '+-*/%&|^~';
 const NUMBER_CHARACTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'";
+const LETTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$';
+/** Operators that can be written with an equals sign after them, which would make an assignment. */
+const ASSIGNABLE = ['+', '-', '*', '/', '%', '&', '|', '^', '<<', '>>', '>>>'];
 
-/** One pass over the text with an index. */
+/** 2000 as 2,000. Only ever given a number. */
+function withCommas(n: number): string {
+  const digits = String(n);
+  let out = '';
+  for (let k = 0; k < digits.length; k++) {
+    if (k > 0 && (digits.length - k) % 3 === 0) out += ',';
+    out += digits.charAt(k);
+  }
+  return out;
+}
+
+/** One pass over the text with an index. Every refusal is a fixed phrase with a position. */
 function tokenise(source: string): Token[] {
   const tokens: Token[] = [];
+  const push = (token: Token): void => {
+    tokens.push(token);
+    if (ASSIGNABLE.includes(token.text) && source.charAt(token.position - 1 + token.text.length) === '=') {
+      throw new ExpressionError(
+        'Assignment is not part of the calculator; it only evaluates one expression',
+        token.position,
+      );
+    }
+  };
   let i = 0;
   while (i < source.length) {
     const c = source.charAt(i);
+    const next = source.charAt(i + 1);
     if (c === ' ' || c === '\t' || c === '\n' || c === '\r') {
       i++;
     } else if (c >= '0' && c <= '9') {
@@ -197,15 +221,19 @@ function tokenise(source: string): Token[] {
       while (j < source.length && NUMBER_CHARACTERS.includes(source.charAt(j))) j++;
       tokens.push({ kind: 'number', text: source.slice(i, j), position: i + 1 });
       i = j;
-    } else if (c === '<' && source.charAt(i + 1) === '<') {
-      tokens.push({ kind: 'operator', text: '<<', position: i + 1 });
+    } else if (c === '<' && next === '<') {
+      push({ kind: 'operator', text: '<<', position: i + 1 });
       i += 2;
-    } else if (c === '>' && source.charAt(i + 1) === '>') {
+    } else if (c === '>' && next === '>') {
       const triple = source.charAt(i + 2) === '>';
-      tokens.push({ kind: 'operator', text: triple ? '>>>' : '>>', position: i + 1 });
+      push({ kind: 'operator', text: triple ? '>>>' : '>>', position: i + 1 });
       i += triple ? 3 : 2;
+    } else if (c === '*' && next === '*') {
+      throw new ExpressionError('There is no power operator; multiply instead', i + 1);
+    } else if ((c === '&' && next === '&') || (c === '|' && next === '|')) {
+      throw new ExpressionError('Logical AND and OR are not part of the calculator; use & and | on the bits', i + 1);
     } else if (OPERATOR_CHARACTERS.includes(c)) {
-      tokens.push({ kind: 'operator', text: c, position: i + 1 });
+      push({ kind: 'operator', text: c, position: i + 1 });
       i++;
     } else if (c === '(') {
       tokens.push({ kind: 'open', text: c, position: i + 1 });
@@ -213,6 +241,23 @@ function tokenise(source: string): Token[] {
     } else if (c === ')') {
       tokens.push({ kind: 'close', text: c, position: i + 1 });
       i++;
+    } else if (c === '!') {
+      throw new ExpressionError('Logical NOT and not-equal are not part of the calculator; use ~ for the bits', i + 1);
+    } else if (c === '<' || c === '>') {
+      throw new ExpressionError(
+        'Comparisons are not part of the calculator; it gives a number, not true or false',
+        i + 1,
+      );
+    } else if (c === '=') {
+      throw new ExpressionError('Assignment and comparison are not part of the calculator', i + 1);
+    } else if (c === '?' || c === ':') {
+      throw new ExpressionError('The conditional operator is not part of the calculator', i + 1);
+    } else if (c === '.') {
+      throw new ExpressionError('Only whole numbers are read; a decimal point is not part of the calculator', i + 1);
+    } else if (c === ',' || c === ';') {
+      throw new ExpressionError('Write one expression; a comma or semicolon is not part of the calculator', i + 1);
+    } else if (LETTERS.includes(c)) {
+      throw new ExpressionError('Variables, names and functions are not part of the calculator', i + 1);
     } else {
       throw new ExpressionError('This character is not part of the calculator', i + 1);
     }
@@ -221,40 +266,126 @@ function tokenise(source: string): Token[] {
 }
 
 /** C precedence among the binary operators present, lowest first. All are left associative. */
-const PRECEDENCE: Readonly<Record<string, number>> = {
-  '|': 1,
-  '^': 2,
-  '&': 3,
-  '<<': 4,
-  '>>': 4,
-  '>>>': 4,
-  '+': 5,
-  '-': 5,
-  '*': 6,
-  '/': 6,
-  '%': 6,
-};
+const PRECEDENCE: ReadonlyMap<string, number> = new Map([
+  ['|', 1],
+  ['^', 2],
+  ['&', 3],
+  ['<<', 4],
+  ['>>', 4],
+  ['>>>', 4],
+  ['+', 5],
+  ['-', 5],
+  ['*', 6],
+  ['/', 6],
+  ['%', 6],
+]);
 
-function readLiteral(token: Token, type: ExpressionType): bigint {
-  const text = token.text.split('_').join('').split("'").join('');
-  const prefix = text.slice(0, 2).toLowerCase();
-  let pattern: string;
-  if (prefix === '0x' || prefix === '0b' || prefix === '0o') pattern = prefix + text.slice(2);
-  else pattern = text;
-  let value: bigint;
-  try {
-    value = BigInt(pattern);
-  } catch {
-    throw new ExpressionError('This number is not valid', token.position);
+const DIGITS = '0123456789abcdef';
+
+interface Literal {
+  value: bigint;
+  /** A decimal written with a leading zero, which C would read as octal. */
+  leadingZero: boolean;
+  /** The decimal 2^(w-1), read as the smallest value because a minus sign stands directly in front of it. */
+  usedMinus: boolean;
+}
+
+/** The range of the type in words, with the numbers only where they are short. */
+function rangeText(type: ExpressionType): string {
+  const kind = `${type.width} bits ${type.signed ? 'signed' : 'unsigned'}`;
+  return type.width <= 64 ? `${kind}, ${type.min} to ${type.max}` : kind;
+}
+
+/** How many significant digits a number of this base can have and still be tested against the width. */
+function digitLimit(base: number, width: number): number {
+  if (base === 16) return Math.ceil((width + 2) / 4);
+  if (base === 8) return Math.ceil((width + 2) / 3);
+  if (base === 2) return width + 2;
+  return Math.floor((width + 2) * 0.30103) + 2;
+}
+
+/**
+ * Reads one number token. A hexadecimal, octal or binary number is a bit pattern of the width, read in the chosen
+ * signedness. A decimal number must lie in the type's range; the one exception is the smallest value of a signed type,
+ * which can only be written with a minus sign directly in front of the decimal (`allowMinimum`).
+ */
+function readLiteral(token: Token, type: ExpressionType, allowMinimum: boolean): Literal {
+  const text = token.text;
+  const marker = text.length > 1 && text.charAt(0) === '0' ? text.charAt(1).toLowerCase() : '';
+  const base = marker === 'x' ? 16 : marker === 'b' ? 2 : marker === 'o' ? 8 : 10;
+  const body = base === 10 ? text : text.slice(2);
+  if (body === '') throw new ExpressionError('A number needs digits after its prefix', token.position);
+  let digits = '';
+  for (let k = 0; k < body.length; k++) {
+    const ch = body.charAt(k);
+    if (ch === '_' || ch === "'") {
+      const before = k > 0 ? body.charAt(k - 1) : '';
+      const after = k + 1 < body.length ? body.charAt(k + 1) : '';
+      if (before === '' || before === '_' || before === "'" || after === '' || after === '_' || after === "'") {
+        throw new ExpressionError('A digit separator must sit between two digits', token.position);
+      }
+      continue;
+    }
+    const digit = DIGITS.indexOf(ch.toLowerCase());
+    if (digit < 0 || digit >= base) {
+      throw new ExpressionError(
+        base === 10
+          ? 'Only whole decimal numbers are read; suffixes such as u or L and exponents are not part of the calculator'
+          : `This digit is not valid in a ${base === 16 ? 'hexadecimal' : base === 8 ? 'octal' : 'binary'} number`,
+        token.position,
+      );
+    }
+    digits += ch;
   }
-  return type.wrap(value);
+  let first = 0;
+  while (first < digits.length - 1 && digits.charAt(first) === '0') first++;
+  const significant = digits.slice(first);
+  // Checked against the width before BigInt reads the digits, so a huge run of digits costs nothing more.
+  if (significant.length > digitLimit(base, type.width)) {
+    throw new ExpressionError(`This number does not fit in ${type.width} bits`, token.position);
+  }
+  const parsed = BigInt((base === 16 ? '0x' : base === 8 ? '0o' : base === 2 ? '0b' : '') + significant);
+  if (base !== 10) {
+    if (parsed >= 1n << BigInt(type.width)) {
+      throw new ExpressionError(`This bit pattern does not fit in ${type.width} bits`, token.position);
+    }
+    return { value: type.signed ? BigInt.asIntN(type.width, parsed) : parsed, leadingZero: false, usedMinus: false };
+  }
+  const leadingZero = digits.length > 1 && digits.charAt(0) === '0';
+  if (parsed <= type.max) return { value: parsed, leadingZero, usedMinus: false };
+  if (type.signed && allowMinimum && parsed === type.max + 1n) return { value: type.min, leadingZero, usedMinus: true };
+  const asPattern = type.signed && parsed < 1n << BigInt(type.width);
+  const advice = asPattern
+    ? ` Write 0x${parsed
+        .toString(16)
+        .toUpperCase()
+        .padStart(type.width / 4, '0')} for the bit pattern.`
+    : '';
+  throw new ExpressionError(`This number is outside the range of ${rangeText(type)}.${advice}`, token.position);
+}
+
+/** Counts one kind of note over the whole expression and remembers where the first one was. */
+class Tally {
+  count = 0;
+  first = 0;
+  add(position: number): void {
+    if (this.count === 0) this.first = position;
+    this.count++;
+  }
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
 }
 
 /** Evaluates one expression at a width, signed or unsigned for the whole expression. Throws ExpressionError. */
 export function evaluateExpression(source: string, options: { width: number; signed: boolean }): ExpressionResult {
+  if (!(EXPRESSION_WIDTHS as readonly number[]).includes(options.width)) {
+    throw new ExpressionError(`The width must be one of ${EXPRESSION_WIDTHS.join(', ')} bits`, 1);
+  }
   if (source.length > MAX_EXPRESSION_CHARACTERS) {
     throw new ExpressionError(
-      `The expression is ${source.length} characters; the limit is ${MAX_EXPRESSION_CHARACTERS}`,
+      `The expression is ${withCommas(source.length)} characters; the limit is ${withCommas(MAX_EXPRESSION_CHARACTERS)}`,
       MAX_EXPRESSION_CHARACTERS + 1,
     );
   }
@@ -262,12 +393,14 @@ export function evaluateExpression(source: string, options: { width: number; sig
   const tokens = tokenise(source);
   const end = source.length + 1;
   const steps: Step[] = [];
-  const notes: ExpressionNote[] = [];
   let stepCount = 0;
   let wrapped = 0;
   let firstWrapAt: number | undefined;
   let index = 0;
   let depth = 0;
+  const shifts = new Tally();
+  const undefinedInC = new Tally();
+  const leadingZeros = new Tally();
 
   const record = (
     operation: string,
@@ -281,6 +414,8 @@ export function evaluateExpression(source: string, options: { width: number; sig
       wrapped++;
       firstWrapAt ??= position;
     }
+    if (result.note === 'shift-at-or-over-width') shifts.add(position);
+    if (result.note === 'undefined-in-c') undefinedInC.add(position);
     if (steps.length < MAX_STEPS_SHOWN) {
       const step: Step = { step: stepCount, operation, left, result: result.value, wrapped: result.wrapped, position };
       if (right !== undefined) step.right = right;
@@ -302,7 +437,12 @@ export function evaluateExpression(source: string, options: { width: number; sig
     if (!token) throw new ExpressionError('An operand is missing', end);
     let value: bigint;
     if (token.kind === 'number') {
-      value = readLiteral(token, type);
+      const nearest = prefixes[prefixes.length - 1];
+      const literal = readLiteral(token, type, nearest !== undefined && nearest.text === '-');
+      if (literal.leadingZero) leadingZeros.add(token.position);
+      value = literal.value;
+      // The smallest value of a signed type is the literal with its own minus sign: that sign is not a separate step.
+      if (literal.usedMinus) prefixes.pop();
       index++;
     } else if (token.kind === 'open') {
       depth++;
@@ -321,8 +461,8 @@ export function evaluateExpression(source: string, options: { width: number; sig
     for (let k = prefixes.length - 1; k >= 0; k--) {
       const prefix = prefixes[k] as Token;
       const op = prefix.text as UnaryOperator;
-      const result = applyUnary(op, value, type);
-      value = op === '+' ? value : record(op, value, undefined, result, prefix.position);
+      if (op === '+') continue;
+      value = record(op, value, undefined, applyUnary(op, value, type), prefix.position);
     }
     return value;
   };
@@ -332,7 +472,7 @@ export function evaluateExpression(source: string, options: { width: number; sig
     for (;;) {
       const token = tokens[index];
       if (!token || token.kind !== 'operator') return left;
-      const precedence = PRECEDENCE[token.text];
+      const precedence = PRECEDENCE.get(token.text);
       if (precedence === undefined || precedence < minimum) return left;
       index++;
       const right = expression(precedence + 1);
@@ -349,6 +489,38 @@ export function evaluateExpression(source: string, options: { width: number; sig
       rest.position,
     );
   }
+
+  // Notes hold counts, positions and fixed words, never any of the text that was typed.
+  const notes: ExpressionNote[] = [];
+  if (firstWrapAt !== undefined) {
+    notes.push({
+      kind: 'wrapped',
+      message: `${plural(wrapped, 'step', 'steps')} did not fit in ${type.width} bits and ${wrapped === 1 ? 'was' : 'were'} wrapped; the first is the operator at position ${firstWrapAt}.`,
+      position: firstWrapAt,
+    });
+  }
+  if (shifts.count > 0) {
+    notes.push({
+      kind: 'shift',
+      message: `${plural(shifts.count, 'shift uses', 'shifts use')} a count at or above the width of ${type.width} bits, which C leaves undefined; the result is 0, or -1 for a negative value shifted right. The first is the operator at position ${shifts.first}.`,
+      position: shifts.first,
+    });
+  }
+  if (undefinedInC.count > 0) {
+    notes.push({
+      kind: 'undefined-in-c',
+      message: `${plural(undefinedInC.count, 'step is', 'steps are')} undefined in C (the smallest value divided by -1, or with its sign changed); the wrapped result is shown. The first is the operator at position ${undefinedInC.first}.`,
+      position: undefinedInC.first,
+    });
+  }
+  if (leadingZeros.count > 0) {
+    notes.push({
+      kind: 'leading-zero',
+      message: `${plural(leadingZeros.count, 'number starts', 'numbers start')} with 0 and ${leadingZeros.count === 1 ? 'is' : 'are'} read as decimal; C would read it as octal. Write 0o for octal. The first is at position ${leadingZeros.first}.`,
+      position: leadingZeros.first,
+    });
+  }
+
   const result: ExpressionResult = {
     value,
     bits: BigInt.asUintN(options.width, value),
