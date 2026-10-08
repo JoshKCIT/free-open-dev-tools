@@ -30,3 +30,27 @@ The page states these rules, each of which a test cites by its sentence:
 - Using `!` to negate a pattern, escaping a leading `#` with a backslash, and using `[ ]` ranges "doesn't work".
 - "If any line in your CODEOWNERS file contains invalid syntax, that line will be skipped."
 - The example file's own comments for `docs/*`, `apps/`, `/docs/`, `**/logs`, `/apps/github` and the inline comment line.
+
+## hmarr/codeowners: the pattern table
+
+| What          | Value                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| Repository    | `hmarr/codeowners` (https://github.com/hmarr/codeowners)                                        |
+| Commit        | `11d3ff2659b769bcb43ddef81a6ab19d1205d9c2` (2026-07-18)                                         |
+| Vendored file | `testdata/patterns.json` as `patterns.json`, git blob `1006cea030a65c5127ebc85167354bb8aa35ee84` |
+| Licence       | MIT, Copyright (c) 2020 Harry Marr; git blob `135bee730092f2149be3412f82e21d02f301ec1d`, vendored as `LICENSE.txt` |
+| Read on       | 2026-10-06                                                                                     |
+
+`patterns.json` is kept byte for byte (30 pattern groups, 153 path cases); its git blob checksum is the one in the table.
+
+## codeowners 0.9.0: the recorded second matcher
+
+| What       | Value                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------- |
+| Package    | `codeowners` 0.9.0 on PyPI (MIT), a Python port of the matching rules of `hmarr/codeowners`                  |
+| Used how   | `record-second-matcher.py` asks it about 3,498 seeded pairs; the answers are stored in `second-matcher.json` |
+| Run with   | Python 3.14.3, from a scratch environment; the package is not part of this repository                    |
+| Recorded   | 2026-10-08 (UTC)                                                                                        |
+
+No source code of either project is copied: the table and its licence are vendored as data, the package's answers are
+recorded as data, and the matcher in `src/codeowners.ts` is written from GitHub's documented rules.
