@@ -10,12 +10,13 @@ Run this once per clone:
 git config core.hooksPath .githooks
 ```
 
-This turns on two local hooks that check every commit against a small local gate before it is
-written. They read their list from `.provenance-denylist` at the repository root, which is
-deliberately git-ignored and not distributed with the repository. A fresh clone without that file
-still works: the hooks print a warning and run a reduced check instead of failing. The same gate
-also runs in CI on every push and pull request, reading its list from a repository secret
-instead — that is the enforcement; the local hooks are a convenience so you find out sooner.
+This turns on two local hooks, one before each commit and one on its message, that run the
+forbidden-reference gate (`scripts/check-provenance.mjs`) before the commit is written. They read
+their list from `.provenance-denylist` at the repository root, which is deliberately git-ignored and
+not distributed with the repository. A fresh clone without that file still works: the hooks print a
+warning and run a reduced check instead of failing. The same gate also runs in CI on every push and
+pull request, reading its list from a repository secret instead. CI is the enforcement; the local
+hooks are a convenience so you find out sooner.
 
 It is a secret rather than a variable for a specific reason: GitHub Actions masks secrets in job
 logs and does not mask variables. A variable is echoed verbatim in the `env:` group of every step

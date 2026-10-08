@@ -1,7 +1,7 @@
 # Free & Open Dev Tools
 
-**[Open the live site](https://joshkcit.github.io/free-open-dev-tools/)** — 211 free developer tools and money calculators, every one running
-in your browser.
+**[Open the live site](https://joshkcit.github.io/free-open-dev-tools/)**: 224 free developer tools and money calculators,
+every one running in your browser.
 
 Free developer tools and money calculators, published for anyone to use. Explore the source, download individual tools, and make them your own.
 
@@ -32,7 +32,7 @@ That gets you a working, tested copy with no reference back here. The same three
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | [`tools/`](tools)                        | One self-contained package per tool: pure TypeScript logic plus its tests. No DOM, no React, no network. |
 | [`apps/web/`](apps/web)                  | The website. A thin layer over the tool packages: form controls in, rendered results out.                |
-| [`docs/catalog.json`](docs/catalog.json) | The list of every tool this project intends to have, with each one's category and build tier.            |
+| [`docs/catalog.json`](docs/catalog.json) | The list of every tool, with each one's category and build tier.                                         |
 | [`e2e/`](e2e)                            | Browser tests, including the privacy harness that checks the central claim.                              |
 | [`scripts/`](scripts)                    | The release gates and the generators that keep documentation from drifting.                              |
 
@@ -100,12 +100,30 @@ request happens at all during processing.
 
 ## The catalog
 
-All **211** tools in the catalog are built, tested and live.
+All **224** tools in the catalog are built, tested and live, in fourteen categories:
 
-- [`docs/LEDGER.md`](docs/LEDGER.md) — every shipped tool, by category.
-- The release manifest, mapping each shipped tool to its version and its verification result, is not a file in this
-  repository: it is produced fresh on every CI run and published as that run's job summary and workflow artifact. A push's run records the tools it rechecked and lists the
-  rest as not run in that build; the daily full run's manifest covers every tool.
+| Category                       | Tools | For example                                                                                                                        |
+| ------------------------------ | ----: | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Encoding, escaping and numbers |    22 | Base64, URL and HTML entities, Unicode inspector, number bases with a programmer's calculator, Gzip, Punycode                      |
+| Hashing, secrets and tokens    |    19 | Hashes and HMAC, bcrypt, JWT decode and sign, AES, TOTP, X.509 and ASN.1 viewers, PKCE and OAuth, SAML messages                    |
+| Identifiers and randomness     |     3 | UUIDs, Nano IDs, random numbers                                                                                                    |
+| JSON and structured data       |    21 | JSON formatter, diff, JSONPath, JSON Schema, jq, YAML, TOML, XML and CSV conversion, SQLite viewer, CBOR                           |
+| Text                           |    11 | Line tools, case conversion, text diff, regex tester, SMS segment calculator                                                       |
+| Code and markup                |    38 | Formatters for over a dozen languages, TypeScript to JavaScript, OpenAPI, Mermaid, source-mapped stack traces, WebAssembly modules |
+| CSS and layout                 |    21 | Gradients, shadows, `clamp()`, grid and flexbox, SCSS and Less compiler, easing curves                                             |
+| Colour                         |     4 | Colour conversion, palettes, contrast checker, colours from an image                                                               |
+| Date and time                  |     5 | Unix timestamps, time zones, durations, cron expressions, date formats                                                             |
+| Network and web                |    21 | Subnets, cURL builder, security headers, CORS, Set-Cookie, SPF and DMARC, saved emails and their headers, nginx                    |
+| Build, config and CI           |    19 | Docker, Kubernetes and GitHub Actions validators, tsconfig, glob and CODEOWNERS, Conventional Commits, EditorConfig                |
+| Reference tables               |     5 | HTTP status codes, MIME types, ASCII, emoji, units                                                                                 |
+| Images, documents and archives |    19 | Image conversion, EXIF, PDF merge and split, ZIP and TAR, hex viewer with code-array export, font inspector and web font converter |
+| Money                          |    16 | Loans and mortgages, compound interest, margins, sales tax, freelance rates, invoices, NPV and IRR                                 |
+
+- [`docs/LEDGER.md`](docs/LEDGER.md) lists every tool, by category.
+- The release manifest, mapping each tool to its version and its verification result, is not a file in this
+  repository: it is produced fresh on every CI run and published as that run's job summary and workflow artifact. A
+  push's run records the tools it rechecked and lists the rest as not run in that build; the daily full run's manifest
+  covers every tool.
 
 ## Contributing
 

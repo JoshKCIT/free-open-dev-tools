@@ -30,7 +30,7 @@ Three reasons, in order of importance:
 ## Why the website builds from source, not from dist
 
 `apps/web/vite.config.ts` aliases every `@fodt/<id>` import straight to `tools/<id>/src/index.ts`. The alternative,
-importing each package built output, introduces a class of bug where the deployed site runs a stale copy of logic the
+importing each package's built output, introduces a class of bug where the deployed site runs a stale copy of logic the
 tests have already changed. Building from source removes it entirely.
 
 The standalone `tsc` build of each package still has to work, and `scripts/check-standalone.mjs --full` proves it by
@@ -56,9 +56,10 @@ needing its own layout code.
 ### Output blocks
 
 `run()` returns blocks rather than markup: `code`, `text`, `keyvalue`, `table`, `list`, `swatches`, `image`, `files`,
-`diff`, `note`, `tree`, `countdown` and `sandboxed-html`. Tools describe what they produced; the renderer decides how
-it looks. A tool cannot inject raw HTML into the page: `sandboxed-html` goes into a fully sandboxed iframe with its
-own restrictive content security policy.
+`diff`, `note`, `tree`, `countdown`, `preview` and `sandboxed-html`. Tools describe what they produced; the renderer
+decides how it looks. A tool cannot inject raw HTML into the page: `sandboxed-html` goes into a fully sandboxed iframe
+with its own restrictive content security policy, and `preview` applies a tool's CSS to an element tree the tool
+describes, inside its own shadow root, so the CSS styles that preview and nothing else on the page.
 
 Two of the blocks are for results that are not flat text:
 
@@ -88,7 +89,7 @@ Documentation drifts. The defence is to have one source and generate the rest.
 | Source of truth                       | What is generated from it                                                         |
 | ------------------------------------- | --------------------------------------------------------------------------------- |
 | `tools/<id>/src/meta.json`            | The folder README, the documentation panels on the tool page, and `package.json`. |
-| `docs/catalog.json`                   | The catalog the website renders.                                                  |
+| `docs/catalog.json`                   | The catalog the website renders, and `docs/LEDGER.md`.                            |
 | The installed dependency tree         | `docs/THIRD-PARTY.md`.                                                            |
 | The test reports produced by a CI run | `docs/RELEASE-MANIFEST.json` and `.md`.                                           |
 
@@ -98,8 +99,8 @@ never committed: CI builds it fresh on every run and publishes it as that run's 
 
 ## Routing and static hosting
 
-The site is a single-page app, but `scripts/prerender.mjs` writes a real HTML file per route, carrying that route
-title and description, as both `<path>.html` and `<path>/index.html`. Static hosts differ on which one they serve for
+The site is a single-page app, but `scripts/prerender.mjs` writes a real HTML file per route, carrying that
+route's title and description, as both `<path>.html` and `<path>/index.html`. Static hosts differ on which one they serve for
 an extensionless URL, so both exist.
 
 This is not server rendering. The body is still built by the bundle; only the head differs per route. The benefit is
@@ -139,8 +140,9 @@ five terms. A page with no `needs` gets the baseline and nothing else.
 
 Run-time code generation is limited to eight pages, fixed in the gate and in its test: `docker-compose-validator`,
 `docker-run-to-compose` (it compiles the Compose schema when its page loads), `github-actions-validator`,
-`json-schema-validator`, `k8s-validator`, `openapi-validator`, `sass-less-compiler`, and `font-inspector`, which is
-reserved for a later phase. No page's policy allows inline scripts in general (no `'unsafe-inline'` for scripts): the
+`json-schema-validator`, `k8s-validator`, `openapi-validator`, `sass-less-compiler` and `font-inspector`. The
+WebAssembly inspector is held the other way: its page may never declare WebAssembly or code generation, so the
+browser proves it reads a module without compiling it. No page's policy allows inline scripts in general (no `'unsafe-inline'` for scripts): the
 only inline scripts that run are the hashed theme script on every page and, on the Mermaid page, the two hashed frame
 scripts.
 
@@ -186,9 +188,12 @@ spec. The sizes the specs count come from the catalog at run time, never from a 
 
 ## Dependency policy
 
-Runtime dependencies are kept to what genuinely should not be written by hand. The entire shipped dependency set is
-React, React DOM, React Router and `@noble/hashes`.
+Runtime dependencies are kept to what genuinely should not be written by hand. The website itself depends only on
+React, React DOM and React Router. A tool package adds a dependency where the job is large and a mature library already
+does it well, such as a format parser, a compiler, a PDF engine or a formatter compiled to WebAssembly. Each dependency
+belongs to the tool folder that uses it, must be permissively licensed, and is listed with its notice in
+`docs/THIRD-PARTY.md`.
 
-Cryptographic primitives always come from a reviewed library. Everything else, including CRC-32, the IP arithmetic,
+Cryptographic primitives always come from a reviewed library. Smaller, well-specified logic, including CRC-32, the IP arithmetic,
 the JSON parser and the chmod logic, is implemented here because doing so is straightforward, testable against a
 published standard, and avoids a supply chain entry for no real gain.

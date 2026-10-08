@@ -42,9 +42,7 @@ used for pushing code.
    **It must be a secret, not a variable.** GitHub Actions masks secrets in job logs and does not mask variables.
    A variable is printed verbatim in the `env:` group of every step that uses it, and on a public repository those
    logs are public. Storing this list in a variable therefore publishes, on every single CI run, the exact list the
-   gate exists to keep out of public view. This was found the hard way on 2026-09-22: the list appeared in plain
-   text in four public run logs before it was caught, the logs were deleted, and the variable was replaced with a
-   secret. Do not "simplify" this back to a variable.
+   gate exists to keep out of public view. Do not change it back to a variable.
 
 8. Go to **Settings, Branches**, and confirm whether any branch protection rule exists on the default branch. If one
    does, note its settings before the repository is deleted; nothing about it is stored in git.
@@ -54,18 +52,18 @@ Optionally, to require a review before anything is published:
 9. Go to **Settings, Environments, github-pages**.
 10. Add yourself under **Required reviewers**.
 
-If this is enabled today, it is also lost on a repository recreation and is easy to forget precisely because it is
-optional — check whether it is on before deleting the repository, not just how to turn it on.
+If this is turned on, it is also lost when the repository is recreated, and it is easy to forget because it is
+optional. Check whether it is on before deleting the repository, not just how to turn it on.
 
 Until steps 1 to 3 are done, the deploy workflow will run and fail at the `deploy-pages` step with a message about
 Pages not being enabled. That is the expected behaviour, not a bug in the workflow.
 
 ### Recorded settings
 
-None of this lives in git, so it is written down here. These values were read from the live repository on
-2026-09-22, immediately before it was deleted and recreated. Anything not listed was not configured.
+None of this lives in git, so it is written down here. These are the values this repository uses; anything not
+listed is not configured.
 
-| Setting                     | Where                                    | Value at capture                                                                                                                               |
+| Setting                     | Where                                    | Value                                                                                                                                          |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Visibility                  | Settings                                 | Public                                                                                                                                         |
 | Description                 | Settings                                 | `Free developer tools that run entirely in your browser. Every tool is a self-contained MIT-licensed folder you can download, test and reuse.` |
@@ -78,11 +76,10 @@ None of this lives in git, so it is written down here. These values were read fr
 | Custom domain               | Settings, Pages                          | None                                                                                                                                           |
 | `github-pages` environment  | Settings, Environments                   | Exists. **No required reviewers.** Deployment branch policy: custom, allowing `main` only                                                      |
 | Branch protection on `main` | Settings, Branches                       | **None.** No rule existed                                                                                                                      |
-| Repository variables        | Settings, Secrets and variables, Actions | **None.** `PROVENANCE_DENYLIST` had never been set. It is now a **secret**, not a variable, see step 7                                         |
+| Repository variables        | Settings, Secrets and variables, Actions | **None.** `PROVENANCE_DENYLIST` is a **secret**, not a variable, see step 7                                                                    |
 | Issues / Projects / Wiki    | Settings                                 | All enabled                                                                                                                                    |
-| Stars / Forks               | Repository home                          | 0 / 0, so nothing lost on recreation                                                                                                           |
 
-**Labels at capture.** Ten in total. Nine are GitHub's standard set and are re-created automatically. One is
+**Labels.** Ten in total. Nine are GitHub's standard set and are re-created automatically. One is
 custom and is **not**, so it has to be added by hand:
 
 | Label              | Colour   | Description                                | Standard?                                    |
@@ -100,7 +97,7 @@ custom and is **not**, so it has to be added by hand:
 
 The `github-pages` environment and its branch policy are created by GitHub itself when Pages is pointed at
 GitHub Actions, so step 1 normally restores them. Check afterwards rather than assuming, and note that the
-optional required-reviewers setting in steps 9 and 10 was **not** in use, so there is nothing to restore there.
+optional required-reviewers setting in steps 9 and 10 is **not** in use, so there is nothing to restore there.
 
 ## How a deploy happens
 
@@ -154,8 +151,9 @@ Locally, `node scripts/affected-tools.mjs --base origin/main` prints the same pl
 
 ### Full runs
 
-CI runs everything once a day at 08:23 UTC (skipped when that commit already passed a full run) and whenever someone
-presses Run workflow on the CI workflow in the Actions tab. A full run never deploys.
+CI runs everything once a day, scheduled for 08:23 UTC (GitHub often starts scheduled runs hours late, and the run is
+skipped when that commit already passed a full run), and whenever someone presses Run workflow on the CI workflow in
+the Actions tab. A full run never deploys.
 
 The trade-off, stated plainly: a push whose partial check passes is deployed, and the daily full run is the safety
 net. If a daily run fails, fix it promptly, because push runs compare with the last passing run and will not recheck
@@ -223,10 +221,9 @@ A failure here means the deployment is broken even though the build passed. Roll
 This rebuilds and republishes that exact commit. It does not touch `main`, so the broken commit is still in history
 and can be fixed properly afterwards.
 
-**This option is unavailable until a second deploy has succeeded.** Immediately after the repository is deleted and
-recreated, there is exactly one commit in the history, so there is no earlier known-good commit to redeploy. In that
-window, use option 3 to take the site down instead, and wait for a second, working deploy before option 1 becomes a
-real choice again.
+**This option needs an earlier deploy that worked.** Right after the repository is created or recreated, there may be
+only one deployed commit, so there is no earlier known-good commit to redeploy. In that window, use option 3 to take
+the site down instead, and wait for a second, working deploy before option 1 becomes a real choice again.
 
 ### Option 2: revert the commit (when the code itself is wrong)
 

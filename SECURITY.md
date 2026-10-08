@@ -35,13 +35,15 @@ This is a static site with no accounts, no server and no database, so the intere
 removed, and ESLint forbids the same globals inside `tools/*/src`. `e2e/privacy.spec.ts` then drives the built site in
 a real browser and fails if any request is made while a tool is processing input.
 
-**No third-party assets.** Everything is bundled and served from the site own origin. There is no CDN, no font
+**No third-party assets.** Everything is bundled and served from the site's own origin. There is no CDN, no font
 service and no analytics. The check runs in CI and again against the live site after deployment.
 
-**Pasted content is not executed.** Markup rendered from user input is sanitised in the tool package, then rendered
-inside an iframe with an empty `sandbox` attribute and a `default-src 'none'` content security policy, under the policy of the page that holds the frame. Tools that
-would have required executing pasted code, such as a JavaScript or SQL playground, were deliberately excluded and are
-recorded as such in the catalog.
+**Pasted content is contained.** Markup rendered from user input is sanitised in the tool package, then rendered
+inside an iframe with an empty `sandbox` attribute and a `default-src 'none'` content security policy, under the
+policy of the page that holds the frame. Tools that would have to run pasted JavaScript, such as a JavaScript
+playground, were deliberately left out. Where a tool does run what you type in another language (SQL in the SQLite
+Database Viewer, a filter in the jq Playground), it runs in an engine compiled to WebAssembly inside a background
+worker that can be stopped, under the policy of its page.
 
 **Each page carries its own content security policy.** It is a meta element written at build time as the first element
 of the head, and the build fails if a page's policy and its built code disagree. It forbids the page from requesting
