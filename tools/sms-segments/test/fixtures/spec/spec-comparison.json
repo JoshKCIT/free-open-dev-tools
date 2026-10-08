@@ -1,0 +1,35 @@
+{
+ "recordedAt": "2026-10-08T03:06:09Z",
+ "source": "3GPP TS 23.038 V20.0.0 (2026-06), clause 6.2.1 (default alphabet) and 6.2.1.1 (extension table), read as text from 23038-k00.docx in 23038-k00.zip of the 3GPP archive (https://www.3gpp.org/ftp/Specs/archive/23_series/23.038/)",
+ "compared": "the 128 cells of the default alphabet against the recorded Android table",
+ "equal": 117,
+ "symbolCells": [
+  16,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25,
+  26,
+  27
+ ],
+ "symbolCellsNote": "Ten Greek capitals (codes 16 and 18 to 26) and the escape (code 27) are drawn as symbols in the Word file, so the extraction holds no text for them; they are checked against the Unicode file and the Android table only.",
+ "androidDifferences": [],
+ "unicodeFileDifferences": [
+  {
+   "code": 9,
+   "specification": "U+00C7",
+   "unicodeFile": "U+00E7"
+  }
+ ],
+ "unicodeFileDifferencesNote": "Code 9: the specification draws capital C cedilla; the Unicode file maps it to lower case c cedilla and says why in its own header.",
+ "extensionCells": 9,
+ "extensionEqual": 9,
+ "extensionNote": "Form feed (code 10) is drawn as a note marker in the Word file and is not counted.",
+ "androidBlob": "5c53f7e5a4d0403d510b8ed5a148558175f212b2",
+ "tableSha256": "d01ac621f490580f4fbf0834402772904a30ac2ab45b93259830f85c1ced1f59",
+ "tableHashOf": "the UTF-8 bytes of the 128 cells of the Android default table, joined with nothing between them (code 27 is U+FFFF there)"
+}
