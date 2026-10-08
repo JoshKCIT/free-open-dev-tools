@@ -1,6 +1,7 @@
 /**
- * The messages the reference parser is recorded on: the 33 probes of the research (kept in their order) followed by 1,000
- * generated messages from a seeded generator (mulberry32, seed 20261008). The generator writes three classes:
+ * The messages the reference parser is recorded on: the 33 probes of the research (kept in their order), 1,000 generated
+ * messages from a seeded generator (mulberry32, seed 20261008), then the 10 probes of the phase 20 code review
+ * (REVIEW_PROBES). The generator writes three classes:
  *
  *   clean       60 %  a well-formed header, plain prose paragraphs, then footers after one blank line; the reference parser
  *                     and this page are expected to read these the same way
@@ -57,6 +58,24 @@ export const PROBES = [
   E_ACUTE + 'tude: x',
   'feat' + E_ACUTE + ': x',
   'feat: x\n\n\n\nbody after many blanks',
+];
+
+/**
+ * The messages of the phase 20 code review (part B, findings B-WR-01 to B-WR-03): BREAKING CHANGE lines that come close to
+ * a breaking footer and are not one, and a BREAKING CHANGE footer written with a space and a number sign. Appended after the
+ * generated messages, in this order.
+ */
+export const REVIEW_PROBES = [
+  'feat: x\n\nsome body\nBREAKING CHANGE: removes the v1 API',
+  'feat: x\n\nBREAKING CHANGE:\nthe config format changed',
+  'feat: x\n\nBREAKING CHANGE: \nthe config format changed',
+  'feat: x\n\nBREAKING CHANGE:the config format changed',
+  'feat: x\n\nBREAKING CHANGES: plural',
+  'feat: x\n\nRefs: #1\nbreaking change: lower in footer area',
+  'feat: x\n\nRefs: #1\nBREAKING CHANGE:\nthe config format changed',
+  'feat: x\n\nBREAKING CHANGE #12',
+  'feat: x\n\nBREAKING-CHANGE #12',
+  'feat: x\n\nRefs: #1\nBREAKING CHANGE #12',
 ];
 
 function mulberry32(seed) {
@@ -224,6 +243,13 @@ export function makeCorpus() {
   while (rows.length < PROBES.length + GENERATED) {
     const roll = rnd();
     const message = roll < 0.6 ? makeClean() : roll < 0.85 ? makeStructural() : makeHeader();
+    if (!seen.has(message)) {
+      seen.add(message);
+      rows.push(message);
+    }
+  }
+  // The review probes come last, so the rows before them are the same as in the first recording.
+  for (const message of REVIEW_PROBES) {
     if (!seen.has(message)) {
       seen.add(message);
       rows.push(message);

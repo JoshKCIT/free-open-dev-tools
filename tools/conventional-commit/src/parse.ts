@@ -313,7 +313,13 @@ export function parseMessage(text: string, number?: number): ParsedMessage {
   for (const footer of footers) {
     if (footer.token === BREAKING_CHANGE || footer.token === BREAKING_HYPHEN) {
       breakingFooter ??= footer;
-      if (footer.value === '') {
+      // Rule 12 asks for "a colon, space, and description"; the space and # separator of rule 8 is not that.
+      if (footer.separator === ' #') {
+        failures.push({
+          rule: 12,
+          message: 'A BREAKING CHANGE footer is written with a colon and a space, not a space and #.',
+        });
+      } else if (footer.value === '') {
         failures.push({
           rule: 12,
           message: 'A BREAKING CHANGE footer needs a description after the colon and space.',

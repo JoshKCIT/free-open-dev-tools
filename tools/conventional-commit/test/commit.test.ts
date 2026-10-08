@@ -354,6 +354,22 @@ const RULE_CASES: RuleCase[] = [
     fail: (a) => {
       a('no description', rulesOf('feat: x\n\nBREAKING CHANGE: ').join() === '12');
       a('no colon is no footer', !parse('feat: x\n\nBREAKING CHANGE environment variables').breaking);
+      // The separator of rule 8 that is a space and a number sign is not the colon and space rule 12 asks for (review
+      // B-WR-03): the message is not valid, so it adds no release and no changelog entry.
+      const hashed = parse('feat: x\n\nBREAKING CHANGE #12');
+      a('a space and # is a rule 12 failure', rulesOf('feat: x\n\nBREAKING CHANGE #12').join() === '12');
+      a('the hyphen synonym with a space and # too', rulesOf('feat: x\n\nBREAKING-CHANGE #12').join() === '12');
+      a(
+        'the failure names the colon and space',
+        hashed.failures[0]?.message ===
+          'A BREAKING CHANGE footer is written with a colon and a space, not a space and #.',
+      );
+      a('after another footer too', rulesOf('feat: x\n\nRefs: #1\nBREAKING CHANGE #12').join() === '12');
+      const hashedCheck = checkCommits({ text: 'feat: x\n\nBREAKING CHANGE #12\n---\nfix: y' });
+      a('adds no release of its own', hashedCheck.bump.level === 'patch');
+      a('no changelog entry', !hashedCheck.changelog.includes('- 12'));
+      // Other footers keep the space and # separator of rule 8.
+      a('Refs #12 is a footer', parse('feat: x\n\nRefs #12').valid);
     },
   },
   {
@@ -487,7 +503,10 @@ interface Family {
   applies: (message: string, mine: ParsedMessage) => boolean;
 }
 
-/** The ten places where this page follows the wording of the specification and the reference parser is more lenient. */
+/**
+ * The twelve places where this page follows the wording of the specification and the reference parser reads a message
+ * another way. The last two were added with the review probes of the phase 20 code review (fixtures/reference/README.md).
+ */
 const NAMED_DIFFERENCES: Family[] = [
   {
     name: 'no space after the colon',
@@ -553,7 +572,7 @@ const NAMED_DIFFERENCES: Family[] = [
     applies: (m) =>
       linesOf(m)
         .slice(1)
-        .some((l) => /^[^\s:()!]+:/.test(l) && footerStart(l) === null),
+        .some((l) => /^([^\s:()!]+|BREAKING CHANGE):/.test(l) && footerStart(l) === null),
   },
   {
     name: 'a footer token that holds a scope or a mark',
@@ -563,6 +582,22 @@ const NAMED_DIFFERENCES: Family[] = [
         .slice(1)
         .some((l) => /^[^\s:()!]+(\([^()]*\)|!)+(:| #)/.test(l)),
   },
+  {
+    name: 'a BREAKING CHANGE footer written with a space and a number sign',
+    rule: 'rule 12: the uppercase text BREAKING CHANGE, followed by a colon, space, and description',
+    applies: (m) =>
+      linesOf(m)
+        .slice(1)
+        .some((l) => /^BREAKING[ -]CHANGE #/.test(l)),
+  },
+  {
+    name: 'a line that starts with BREAKING CHANGES',
+    rule: 'rule 12: the token is BREAKING CHANGE, and rule 7: a body is free-form text kept as written',
+    applies: (m) =>
+      linesOf(m)
+        .slice(1)
+        .some((l) => l.startsWith('BREAKING CHANGES')),
+  },
 ];
 
 // The reference parser's answers are a second opinion (README.md beside the recording): the two agree wherever the
@@ -571,9 +606,12 @@ const NAMED_DIFFERENCES: Family[] = [
 it('the recorded reference parser agrees wherever the specification is unambiguous and its leniencies are listed by name', () => {
   expect(REFERENCE.parser).toBe('@conventional-commits/parser 0.4.1');
   expect(REFERENCE.recordedAt).toMatch(/^2026-10-0\dT/);
-  expect(REFERENCE.rows).toHaveLength(1033);
-  expect(NAMED_DIFFERENCES).toHaveLength(10);
-  expect(new Set(NAMED_DIFFERENCES.map((f) => f.name)).size).toBe(10);
+  expect(REFERENCE.rows).toHaveLength(1043);
+  expect(NAMED_DIFFERENCES).toHaveLength(12);
+  expect(new Set(NAMED_DIFFERENCES.map((f) => f.name)).size).toBe(12);
+  // The ten probes of the code review come last; the parser counts BREAKING CHANGE #12 as a breaking change.
+  expect(REFERENCE.rows.slice(1033).map((r) => r.message)[7]).toBe('feat: x\n\nBREAKING CHANGE #12');
+  expect(REFERENCE.rows[1040]?.parts?.breaking).toBe(true);
 
   // The 33 probes of the research come first in the recording.
   expect(REFERENCE.rows.slice(0, 33).map((r) => r.message)[0]).toBe('feat: add x');
@@ -595,9 +633,9 @@ it('the recorded reference parser agrees wherever the specification is unambiguo
   for (const family of NAMED_DIFFERENCES) {
     expect(explained.get(family.name) ?? 0, `family never needed: ${family.name}`).toBeGreaterThan(0);
   }
-  expect(agree + differ).toBe(1033);
+  expect(agree + differ).toBe(1043);
   expect(agree).toBe(768);
-  expect(differ).toBe(265);
+  expect(differ).toBe(275);
 
   // Every message the specification itself shows is read the same by both (they are the clearest ground).
   for (const example of EXAMPLES) {
@@ -1195,7 +1233,8 @@ it('look-alike characters such as a fullwidth colon or a no-break space after th
 it('a BREAKING CHANGE line that does not make a breaking footer gets a note naming why', () => {
   const notes = (message: string) => adviceFor(parse(message), message).filter((a) => a.label === 'specification');
   const codes = (message: string): string[] => notes(message).map((a) => a.code);
-  const noteText = (message: string): string => notes(message).find((a) => a.code === 'breaking-not-footer')?.message ?? '';
+  const noteText = (message: string): string =>
+    notes(message).find((a) => a.code === 'breaking-not-footer')?.message ?? '';
 
   // The colon ends the line, as it does when an editor strips trailing spaces: body text, not a breaking change.
   const bare = 'feat: x\n\nBREAKING CHANGE:\nthe config format changed';
