@@ -233,12 +233,18 @@ interface SecondMatcherRecording {
   differences: { pattern: string; path: string; theirs: boolean; ours: boolean; reason: string }[];
 }
 
-/** Why a pair is a difference: every one is a double star followed by a slash in a pattern with other parts before it. */
+/**
+ * Why a pair is a difference. The one family known is a double star followed by a trailing slash. Any other difference
+ * has no known reason, so this fails rather than record a reason that may not apply (20-REVIEW-A, A-IN-04): a new
+ * difference must be looked at and given its own reason here first.
+ */
 function explainDifference(pattern: string): string {
   if (pattern.endsWith('**/')) {
     return 'a double star followed by a trailing slash: the vendored table (hmarr/codeowners) says foo/**/ owns foo/bar, so this page does too, while codeowners 0.9.0 wants one more directory level below the double star';
   }
-  return 'a run of stars or slashes that GitHub does not document; the two matchers read it differently';
+  throw new Error(
+    `The pattern ${JSON.stringify(pattern)} disagrees with codeowners 0.9.0 in no known family of differences. Look at it and name its reason before recording it.`,
+  );
 }
 
 it('the recorded second matcher agrees on every generated pair except the differences listed by name, all in runs of stars and slashes', () => {
@@ -267,7 +273,8 @@ it('the recorded second matcher agrees on every generated pair except the differ
   );
   for (const difference of listed) {
     expect(difference.pattern, difference.pattern).toMatch(/[*/]/);
-    expect(difference.reason.length).toBeGreaterThan(20);
+    // The recorded reason is the one its family gives, so a reason cannot be kept for a pair it does not explain.
+    expect(difference.reason, difference.pattern).toBe(explainDifference(difference.pattern));
   }
   // Agreement is the rule: at least 99 percent of the pairs.
   expect(recording.pairs.length - listed.length).toBeGreaterThanOrEqual(Math.floor(recording.pairs.length * 0.99));
