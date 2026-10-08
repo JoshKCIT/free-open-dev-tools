@@ -1,10 +1,21 @@
 import meta from './meta.json';
+import { codeownersRows, checkCodeownersInput, type CodeownersRow, type SkippedLine } from './codeowners';
 import { gitignoreRows, type GitignoreRow } from './gitignore';
 import { globRows, type GlobRegex, type GlobRow } from './glob';
 import { checkInput } from './limits';
 
 export { meta };
 export { GlobTesterError } from './errors';
+export {
+  MAX_CODEOWNERS_CHARACTERS,
+  MAX_CODEOWNERS_LINE_CHARACTERS,
+  MAX_CODEOWNERS_RULES,
+  checkCodeownersInput,
+  codeownersRows,
+  ownersForPaths,
+  parseCodeowners,
+} from './codeowners';
+export type { CodeownersRow, CodeownersRule, SkippedLine } from './codeowners';
 export {
   MAX_ALSO_LINES,
   MAX_PATH_CHARACTERS,
@@ -25,7 +36,7 @@ export type { GlobRegex, GlobRow } from './glob';
 
 /** What to test: the mode, the two pasted texts, and (glob mode only) the dot and ignore-case options. */
 export interface TestJob {
-  mode: 'glob' | 'gitignore';
+  mode: 'glob' | 'gitignore' | 'codeowners';
   patterns: string;
   paths: string;
   dot: boolean;
@@ -34,7 +45,8 @@ export interface TestJob {
 
 export type TestResult =
   | { mode: 'glob'; rows: GlobRow[]; regexes: GlobRegex[] }
-  | { mode: 'gitignore'; rows: GitignoreRow[]; regexes: GlobRegex[] };
+  | { mode: 'gitignore'; rows: GitignoreRow[]; regexes: GlobRegex[] }
+  | { mode: 'codeowners'; rows: CodeownersRow[]; skipped: SkippedLine[] };
 
 /**
  * Tests every pasted path against the pasted patterns. The size of the paste is checked first, so a paste that is too
@@ -42,6 +54,12 @@ export type TestResult =
  * read: .gitignore matching here is always case-sensitive and the options belong to glob mode.
  */
 export function testPatterns(job: TestJob): TestResult {
+  // CODEOWNERS mode has its own limits (a file of up to 600,000 characters), so its check comes before the earlier one.
+  if (job.mode === 'codeowners') {
+    checkCodeownersInput(job.patterns, job.paths);
+    const { rows, skipped } = codeownersRows(job.patterns, job.paths);
+    return { mode: 'codeowners', rows, skipped };
+  }
   checkInput(job.patterns, job.paths);
   if (job.mode === 'glob') {
     const { rows, regexes } = globRows(job.patterns, job.paths, { dot: job.dot, nocase: job.nocase });

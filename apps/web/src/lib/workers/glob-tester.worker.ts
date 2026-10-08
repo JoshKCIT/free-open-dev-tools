@@ -18,7 +18,7 @@ import { GlobTesterError, testPatterns, type TestResult } from '@fodt/glob-teste
 
 export interface GlobTesterJobMessage {
   type: 'glob-tester-job';
-  mode: 'glob' | 'gitignore';
+  mode: 'glob' | 'gitignore' | 'codeowners';
   patterns: string;
   paths: string;
   /** Glob mode only; the page sends false in .gitignore mode. */
