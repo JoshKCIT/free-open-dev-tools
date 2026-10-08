@@ -1,0 +1,13 @@
+{
+  "id": "editorconfig",
+  "label": "A later section overrides an earlier one and tab_width follows indent_size, per EditorConfig 0.17.2 and core test tab_width_default",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "files",
+      "value": "root = true\n\n[*.{js,py}]\nindent_style = space\nindent_size = 4\n\n[*.py]\nindent_size = 2"
+    },
+    { "action": "fill", "field": "path", "value": "src/app.py" }
+  ],
+  "expect": ["indent_style", "space", "[*.py]", "tab_width"]
+}

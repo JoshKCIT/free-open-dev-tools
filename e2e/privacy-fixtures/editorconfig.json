@@ -1,0 +1,9 @@
+[
+  {
+    "values": {
+      "files": "root = true\n\n[*.js]\nindent_style = space\n\n=== src ===\n[lib/**.js]\nindent_size = 4",
+      "path": "src/lib/a.js"
+    },
+    "attachesFile": false
+  }
+]
