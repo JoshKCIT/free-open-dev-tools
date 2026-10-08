@@ -25,7 +25,7 @@ import { MAX_SHOWN_PATTERN, visible } from './visible';
 export const MAX_CODEOWNERS_CHARACTERS = 600_000;
 /** The most rules (lines that are neither blank nor a comment). */
 export const MAX_CODEOWNERS_RULES = 5_000;
-/** The longest single CODEOWNERS line. */
+/** The longest rule line. A comment line or a blank line may be longer: GitHub skips it, and so does this page. */
 export const MAX_CODEOWNERS_LINE_CHARACTERS = 4_000;
 /**
  * The most matching work one paste may take, in steps: one for each rule tried on each path, one for each time part of a
@@ -806,6 +806,8 @@ export function checkCodeownersInput(text: string, pathsText: string): void {
   }
   let rules = 0;
   forEachLine(text, (line, number) => {
+    // A comment line or a blank line is skipped, as GitHub skips it, so only the size of the paste limits it.
+    if (isIgnorable(line)) return;
     if (line.length > MAX_CODEOWNERS_LINE_CHARACTERS) {
       throw new GlobTesterError(
         `Line ${number} of the CODEOWNERS file is longer than ${withCommas(MAX_CODEOWNERS_LINE_CHARACTERS)} characters.`,
@@ -813,7 +815,6 @@ export function checkCodeownersInput(text: string, pathsText: string): void {
         number,
       );
     }
-    if (isIgnorable(line)) return;
     rules += 1;
     if (rules > MAX_CODEOWNERS_RULES) {
       throw new GlobTesterError(

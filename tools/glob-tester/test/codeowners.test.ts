@@ -479,6 +479,15 @@ it('a paste over 600,000 characters, over 5,000 rules or a line over 4,000 chara
   expect(longLine.part).toBe('patterns');
   expect(longLine.line).toBe(3);
   expect(longLine.message).toBe('Line 3 of the CODEOWNERS file is longer than 4,000 characters.');
+  // A comment line and a blank line are skipped as GitHub skips them, so only the paste limits their length; a rule line
+  // with a long inline comment is still a rule line (20-REVIEW-A, A-IN-05).
+  const banner = '# ' + '='.repeat(5_000);
+  expect(() =>
+    checkCodeownersInput('a @o\n' + banner + '\n   ' + banner + '\n' + ' '.repeat(5_000), 'a'),
+  ).not.toThrow();
+  expect(codeownersRows('* @a\n' + banner, 'x').rows[0]).toMatchObject({ owners: ['@a'], line: 1 });
+  const longComment = refusal(() => checkCodeownersInput('*.js @a #' + 'x'.repeat(4_000), 'a'));
+  expect(longComment.line).toBe(1);
 
   // The paths keep the limits the other modes have: 5,000 paths of up to 1,024 characters.
   expect(() => checkCodeownersInput('a', Array.from({ length: 5_000 }, () => 'p').join('\n'))).not.toThrow();
