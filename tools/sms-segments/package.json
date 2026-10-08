@@ -23,10 +23,14 @@
   "keywords": [
     "sms",
     "gsm 7-bit",
+    "gsm 03.38",
     "ucs-2",
     "segments",
     "septets",
-    "text message"
+    "text message",
+    "concatenated sms",
+    "160 characters",
+    "encoding"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

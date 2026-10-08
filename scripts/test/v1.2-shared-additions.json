@@ -100,7 +100,7 @@
       "category": "text",
       "phase": 20,
       "needs": [],
-      "outputKinds": ["table", "keyvalue", "list", "note"],
+      "outputKinds": ["table", "keyvalue", "list", "code", "note"],
       "sharedAdditions": []
     },
     {
