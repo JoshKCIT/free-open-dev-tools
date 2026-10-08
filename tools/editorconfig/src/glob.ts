@@ -151,11 +151,15 @@ function readNumberRange(g: readonly number[], from: number, to: number): Range 
  * and a slash come first); without one it matches a path relative to the folder of its file, which is what the resolver
  * does. A name with no slash outside brackets may match at any folder level below its file; a name with a slash is
  * anchored at its file's folder, and a leading slash is dropped.
+ *
+ * `maxLength` is the longest name, in UTF-16 units, that is compiled; the default is the parser's limit of 1,024 characters
+ * with room for characters outside the basic plane. The resolver never passes it: it exists so that a test can time the
+ * compiler on names longer than a page would ever hand it.
  */
-export function compileGlob(name: string, folder = ''): Program {
-  // The parser already refuses a name over 1,024 characters. The compiler checks again (a character outside the basic plane is
-  // two UTF-16 units) so that no caller can make it follow an endless run of nested braces.
-  if (name.length > 2 * MAX_SECTION_NAME) {
+export function compileGlob(name: string, folder = '', maxLength = 2 * MAX_SECTION_NAME): Program {
+  // The parser already refuses a name over 1,024 characters. The compiler checks again so that no caller can make it follow
+  // an endless run of nested braces.
+  if (name.length > maxLength) {
     throw new EditorConfigError(
       `A section name is longer than this page reads: at most ${withCommas(MAX_SECTION_NAME)} characters.`,
     );
