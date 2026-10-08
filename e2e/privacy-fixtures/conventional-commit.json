@@ -3,14 +3,16 @@
     "mode": { "field": "split", "value": "separator" },
     "values": {
       "messages": "feat(api)!: drop v1\n---\nfix: typo\n\nRefs: #12",
-      "separator": "---"
+      "separator": "---",
+      "currentVersion": "1.4.2"
     },
     "attachesFile": false
   },
   {
     "mode": { "field": "split", "value": "gitlog" },
     "values": {
-      "messages": "commit 1a2b3c4\nAuthor: A <a@example.invalid>\nDate:   Mon Oct 5 10:00:00 2026 +0000\n\n    feat: add x\n"
+      "messages": "commit 1a2b3c4\nAuthor: A <a@example.invalid>\nDate:   Mon Oct 5 10:00:00 2026 +0000\n\n    feat: add x\n",
+      "currentVersion": "1.4.2"
     },
     "attachesFile": false
   }

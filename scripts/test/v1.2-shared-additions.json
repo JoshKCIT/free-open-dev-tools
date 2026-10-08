@@ -109,7 +109,7 @@
       "category": "devops",
       "phase": 20,
       "needs": [],
-      "outputKinds": ["table", "code", "keyvalue", "note"],
+      "outputKinds": ["table", "code", "keyvalue", "note", "list"],
       "sharedAdditions": []
     },
     {
