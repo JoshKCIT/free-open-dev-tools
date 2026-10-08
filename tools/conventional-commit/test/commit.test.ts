@@ -1021,6 +1021,51 @@ it('messages split by a separator line, one per line or from recorded git log ou
       'gitlog',
     ),
   ).toEqual(['feat: a', 'fix: b']);
+  // git log indents every message line by four spaces. With --stat, -p, --name-only or notes, git adds lines after the
+  // message that are not indented that way (file names and counts, a patch, a Notes: heading). The first such line ends
+  // the message, and the lines up to the next commit line are not read, so none of them can become a body line or a
+  // footer (review B-IN-04).
+  const withStat = [
+    'commit 0123456789abcdef0123456789abcdef01234567',
+    'Author: A <a@example.invalid>',
+    'Date:   Mon Oct 5 10:00:00 2026 +0000',
+    '',
+    '    feat: add x',
+    '    ',
+    '    Body line',
+    '',
+    ' src/a.ts | 2 +-',
+    ' 1 file changed, 1 insertion(+), 1 deletion(-)',
+    '',
+    'commit 1123456789abcdef0123456789abcdef01234567',
+    'Author: A <a@example.invalid>',
+    'Date:   Mon Oct 5 10:00:00 2026 +0000',
+    '',
+    '    fix: y',
+    '',
+    'diff --git a/notes.txt b/notes.txt',
+    'index 1234567..89abcde 100644',
+    '--- a/notes.txt',
+    '+++ b/notes.txt',
+    '@@ -1 +1,3 @@',
+    ' Refs: #1',
+    '+',
+    '+Reviewed-by: Z',
+    '',
+    'commit 2123456789abcdef0123456789abcdef01234567',
+    'Author: A <a@example.invalid>',
+    'Date:   Mon Oct 5 10:00:00 2026 +0000',
+    '',
+    '    docs: z',
+    '',
+    'Notes:',
+    '    a note',
+    '',
+  ].join('\n');
+  expect(texts(withStat, 'gitlog')).toEqual(['feat: add x\n\nBody line', 'fix: y', 'docs: z']);
+  expect(checkCommits({ text: withStat, mode: 'gitlog' }).messages.map((m) => m.parsed.footers)).toEqual([[], [], []]);
+  // A message pasted without the four-space indent is read as before.
+  expect(texts('commit 1234567\n\nfeat: a\n\nbody line\n', 'gitlog')).toEqual(['feat: a\n\nbody line']);
 
   // The recorded output of git 2.53.0 (fixtures/gitlog): six messages and five lines git wrote itself, newest first.
   const recorded = fixture('gitlog/gitlog.txt');

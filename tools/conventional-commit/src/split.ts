@@ -183,17 +183,38 @@ function stripIndent(line: string): string {
   return i === 0 ? line : line.slice(i);
 }
 
+/** True when the line starts with the four spaces git log puts before every line of a message. */
+function hasGitIndent(line: string): boolean {
+  return line.startsWith('    ');
+}
+
+/**
+ * Reads `git log` output. A message whose first line carries git's four-space indent ends at the first line that is not
+ * blank and not indented that way: the file names and counts of `--stat`, the patch of `-p`, the names of `--name-only`
+ * or a `Notes:` heading, which git writes after the message. The lines up to the next `commit` line are not read. A
+ * message pasted without the indent is read up to the next `commit` line, as before.
+ */
 function splitGitLog(text: string, collector: Collector): void {
   const gatherer = new Gatherer(collector);
-  let state: 'before' | 'header' | 'message' = 'before';
+  let state: 'before' | 'header' | 'message' | 'after' = 'before';
+  /** Null until the first line of the message that is not blank; then whether it carried git's indent. */
+  let indented: boolean | null = null;
   forEachLine(text, (line, number) => {
     checkLineLength(line, number);
     if (isCommitLine(line)) {
       gatherer.close();
       state = 'header';
+      indented = null;
     } else if (state === 'header') {
       if (line.trim() === '') state = 'message';
     } else if (state === 'message') {
+      if (line.trim() !== '') {
+        if (indented === null) indented = hasGitIndent(line);
+        else if (indented && !hasGitIndent(line)) {
+          state = 'after';
+          return;
+        }
+      }
       gatherer.push(stripIndent(line), number);
     }
   });
@@ -204,7 +225,7 @@ function splitGitLog(text: string, collector: Collector): void {
  * Cuts a paste into messages. Mode `separator` ends a message at a line that equals the separator once white space is
  * trimmed (default `---`); mode `lines` takes every non-blank line as a message; mode `gitlog` reads the default output of
  * `git log`: a `commit` line, the `Author:` and `Date:` lines up to the first blank line, then the four-space indented
- * message. A separator that touches a message on either side splits it with nothing lost; two separators in a row, or one at
+ * message, which ends at the first line without that indent (what `--stat`, `-p` or notes add is not read). A separator that touches a message on either side splits it with nothing lost; two separators in a row, or one at
  * the start or the end, make no empty message; a message of blank lines only is no message. Messages are numbered together
  * with the lines git wrote itself (`Merge`, `Revert "`, `fixup!`, `squash!`, `amend!`, `#`), which are named in `skipped`
  * and not judged. After the 1,000th message the rest are counted in `unread` and not read.

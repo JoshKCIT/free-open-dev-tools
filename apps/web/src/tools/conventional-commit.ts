@@ -201,6 +201,7 @@ export default defineTool({
         { value: 'lines', label: 'One message per line' },
         { value: 'gitlog', label: 'git log output' },
       ],
+      help: 'For git log output, the lines that --stat or -p add after each message are left out.',
     },
     {
       name: 'separator',

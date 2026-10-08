@@ -11,7 +11,7 @@ Paste one or more commit messages and see each one checked against the 16 number
 
 ## Supported
 
-- Messages split by a line that holds a separator (default ---), one message per line, or the default output of git log (a commit line with a full or abbreviated hash, then Author, Date and the indented message)
+- Messages split by a line that holds a separator (default ---), one message per line, or the default output of git log (a commit line with a full or abbreviated hash, then Author, Date and the indented message); the lines that --stat, -p, --name-only or notes add after a message end it and are not read
 - The 16 numbered rules of Conventional Commits 1.0.0: the type, an optional scope in one pair of parentheses, an optional ! right before the colon, the colon and a space, a description, a body one blank line after the description, footers one blank line after the body, footer tokens that use - in place of white space, and BREAKING CHANGE or BREAKING-CHANGE in upper case as a footer
 - A footer value that runs over lines until the next line that starts a valid footer token, with the separator : or a space and # (a BREAKING CHANGE footer takes only the colon and a space, rule 12)
 - Each failing rule named by its number in plain words, in a table with one row per message in pasted order
