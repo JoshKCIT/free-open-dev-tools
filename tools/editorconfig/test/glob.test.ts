@@ -114,8 +114,9 @@ it('number ranges match integers without leading zeros and a range whose ends ar
     // Negative and signed ends. The specification only requires num1 to be less than num2 and says nothing of a sign.
     ...rows('{-5..5}', ['-5', '-1', '0', '1', '5'], ['-6', '6', '05', '00']),
     ...rows('f{1..3}.txt', ['f1.txt', 'f2.txt', 'f3.txt'], ['f0.txt', 'f4.txt', 'f01.txt', 'f.txt']),
-    // Specification: "num1 is required to be less than num2". Equal or reversed ends are the text itself
-    // (braces_alpha_range1 to 6 show the same for ends that are not numbers).
+    // Specification: "num1 is required to be less than num2". Equal or reversed ends are the text itself. No core test
+    // covers numeric ends like these, so this is the page's own reading, named in its ambiguous cases (braces_alpha_range1
+    // to 6 show the same for ends that are not numbers).
     ...rows('{3..3}', ['{3..3}'], ['3']),
     ...rows('{5..1}', ['{5..1}'], ['1', '3', '5']),
     ...rows('{aardvark..antelope}', ['{aardvark..antelope}'], ['a', 'aardvark', 'agreement', 'antelope', 'antimatter']),

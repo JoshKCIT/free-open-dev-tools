@@ -32,6 +32,7 @@ Paste the .editorconfig files of a project, the top one first and one more for e
 - Derived values: indent_style = tab without an indent_size gives indent_size = tab, indent_size = tab together with a tab_width takes the width, and a number in indent_size without a tab_width gives the same tab_width. These rows say derived and name the property they come from. A tab_width of unset is copied like any other width, the way the reference cores copy it, so indent_style = tab or indent_size = tab together with tab_width = unset reports indent_size = unset, with a note.
 - Backslashes: the specification does not allow a backslash as a path separator, so a backslash in the path is an ordinary character and is matched as written, with a note.
 - Where the specification is silent the published core tests decide: a bracket pair that holds a slash is not a class, a double star between two slashes matches zero or more folders, {single}, {} and a { with no closing } are ordinary text, {a,b,} keeps the empty alternative, and {3..120} matches 60 but not 060.
+- Number ranges whose ends are equal or reversed, such as {5..5} or {10..3}: the specification requires the first number to be less than the second and no core test covers this case, so the page reads such a range as ordinary text, the way it reads {aardvark..antelope}. Another implementation may match the numbers in it instead.
 
 ## Defined by
 

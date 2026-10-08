@@ -14,7 +14,11 @@ import { MAX_RANGE_DIGITS, MAX_SECTION_NAME, WORK_BUDGET, withCommas } from './l
  * The rules the specification does not spell out but the published core tests require are kept (see test/glob.test.ts):
  * a bracket pair that holds a slash is not a class and its `[` is an ordinary character; a double star between two slashes
  * matches zero or more folders; `{one}`, `{}` and a `{` with no closing `}` are ordinary text; `{a,b,}` keeps the empty branch;
- * `{n..m}` matches the integers from n to m written without leading zeros, and is ordinary text when n is not below m.
+ * `{n..m}` matches the integers from n to m written without leading zeros.
+ *
+ * One rule is this page's own reading, which no core test covers: a number range whose ends are equal or reversed
+ * (`{5..5}`, `{10..3}`) is ordinary text, because the specification says "num1 is required to be less than num2".
+ * Another implementation may match the numbers in it instead; the README and meta.json list it among the ambiguous cases.
  */
 
 const OP_CHAR = 0;
