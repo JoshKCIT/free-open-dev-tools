@@ -18,6 +18,9 @@ const { pathToFileURL } = require('node:url');
 /**
  * The three named families of degenerate globs that the specification does not define. They are tried in this order: a
  * glob that holds an escaped star followed by two stars also holds three stars in a row, and belongs to the escaped family.
+ * They cover every disagreement of seed 99 only: other seeds also draw globs with an empty alternative first, a double star
+ * after a brace that may expand to nothing, or a double star at the start of a brace branch (README.md, "Other seeds",
+ * gives one glob of each), and this script then stops until such a family is named here and in README.md.
  */
 const FAMILIES = [
   ['escaped star followed by a star', (glob) => glob.includes('\\**')],

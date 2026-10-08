@@ -48,6 +48,20 @@ listed below with both answers.
 - escaped star followed by a star: `ab*\***`. The library does not match and this package does: an escaped star is
   the character * and the stars after it are stars.
 
+## Other seeds
+
+That every disagreement falls in these three families is a property of seed 99, not of the matcher. A wider run made
+while this package was reviewed (seed 12345, a few more tokens, 19,598 pairs) found 57 globs outside the three families,
+all just as degenerate and just as undefined by the specification:
+
+- an empty alternative first: `{,a}/**`;
+- a double star after a brace that may expand to nothing: `{x/,}**/*`;
+- a double star at the start of a brace branch, which the library treats as the start of the glob: `[a-c]{a,**/b}`.
+
+The recorder stops on a disagreement that fits no family, so rerunning it with another seed may stop there. That is not a
+regression of this package: name the new family in `record-editorconfig.cjs` and here, with its pairs, before such a
+recording replaces this one.
+
 ## Every disagreement
 
 | Glob | Path | Library says | This package says | Family |
