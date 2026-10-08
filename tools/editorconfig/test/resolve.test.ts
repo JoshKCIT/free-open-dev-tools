@@ -89,6 +89,7 @@ it('the nearest file with root set to true stops the search and root is read in 
     ['tab_width', '2', 'src/.editorconfig'],
   ]);
   expect(stopped.filesUsed.map((f) => f.label)).toEqual(['src/.editorconfig']);
+  expect(stopped.filesUsed).toEqual([{ label: 'src/.editorconfig', folder: 'src', root: true }]);
   expect(stopped.filesNotUsed).toEqual([{ label: '.editorconfig', folder: '', reason: REASON_ABOVE_ROOT }]);
   expect(stopped.sectionsNotMatched).toEqual([
     { file: '.editorconfig', section: '*', line: 1, reason: 'its file is not used' },
@@ -100,6 +101,7 @@ it('the nearest file with root set to true stops the search and root is read in 
     'src/a.js',
   );
   expect(open.filesUsed.map((f) => f.label)).toEqual(['.editorconfig', 'src/.editorconfig']);
+  expect(open.filesUsed.map((f) => f.root)).toEqual([true, undefined]);
   expect(open.filesNotUsed).toEqual([]);
   expect(open.properties.map((p) => p.key)).toEqual(['charset', 'indent_size', 'tab_width']);
 

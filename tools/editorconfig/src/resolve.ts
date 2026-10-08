@@ -39,6 +39,8 @@ export interface FileRow {
   folder: string;
   /** Why a file was not used; absent for a file that was. */
   reason?: string;
+  /** True for a used file that sets root to true, so the search stopped there. */
+  root?: true;
 }
 
 export interface SectionRow {
@@ -178,7 +180,11 @@ export function resolveProperties(
       }
       continue;
     }
-    result.filesUsed.push({ label: file.label, folder: file.folder });
+    result.filesUsed.push(
+      content.root
+        ? { label: file.label, folder: file.folder, root: true }
+        : { label: file.label, folder: file.folder },
+    );
     const relative = file.folder === '' ? path : path.slice(file.folder.length + 1);
     for (const section of content.sections) {
       let program = programs.get(section.name);
