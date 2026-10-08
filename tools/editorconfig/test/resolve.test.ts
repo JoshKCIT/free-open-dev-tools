@@ -249,6 +249,45 @@ it('unset removes the earlier setting and indent_size unset also reports tab_wid
   ]);
 });
 
+it('tab_width = unset is copied into a tab indent_size, as the reference cores copy it', () => {
+  // The reference cores treat unset as an ordinary value in their derived-value rules (core test unset_indent_size_ML
+  // already depends on that for tab_width): indent_style = tab without an indent_size gives indent_size = tab, and
+  // indent_size = tab together with a tab_width takes the width, unset included. The answers below are the ones the
+  // editorconfig library for JavaScript, version 3.0.2, gave for these two pastes (recorded in a scratch run on
+  // 2026-10-08): {"indent_style":"tab","tab_width":"unset","indent_size":"unset"} and
+  // {"indent_size":"unset","tab_width":"unset"}.
+  const fromStyle = resolveEditorConfig(
+    ['root = true', '[*]', 'indent_style = tab', 'tab_width = unset'].join('\n'),
+    'a.c',
+  );
+  expect(fromStyle.properties.map((p) => [p.key, p.value, p.how])).toEqual([
+    ['indent_style', 'tab', 'set'],
+    ['tab_width', 'unset', 'unset'],
+    ['indent_size', 'unset', 'derived'],
+  ]);
+  expect(find(fromStyle, 'indent_size')).toMatchObject({ from: 'tab_width', line: 4 });
+  expect(fromStyle.notes.join(' ')).toContain('indent_size is reported as unset because tab_width is unset');
+
+  const fromSize = resolveEditorConfig(
+    ['root = true', '[*]', 'indent_size = tab', 'tab_width = UNSET'].join('\n'),
+    'a.c',
+  );
+  expect(fromSize.properties.map((p) => [p.key, p.value, p.how])).toEqual([
+    ['indent_size', 'unset', 'derived'],
+    ['tab_width', 'unset', 'unset'],
+  ]);
+  expect(fromSize.overridden.map((o) => [o.key, o.value])).toEqual([['indent_size', 'tab']]);
+  expect(fromSize.notes.join(' ')).toContain('indent_size is reported as unset because tab_width is unset');
+
+  // indent_size = unset itself is no copy, so no note about tab_width.
+  const bothUnset = resolveEditorConfig(['[*]', 'indent_size = unset', 'tab_width = unset'].join('\n'), 'a.c');
+  expect(bothUnset.properties.map((p) => [p.key, p.value, p.how])).toEqual([
+    ['indent_size', 'unset', 'unset'],
+    ['tab_width', 'unset', 'unset'],
+  ]);
+  expect(bothUnset.notes.join(' ')).not.toContain('because tab_width is unset');
+});
+
 it('known values are lower-cased and every other value keeps its case', () => {
   // Specification 0.17.2: the values of indent_style, indent_size, end_of_line, charset (and the booleans) are read without
   // regard to case; keys are case-insensitive. Core tests lowercase_names and lowercase_values (properties/*.in).

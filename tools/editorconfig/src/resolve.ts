@@ -248,7 +248,8 @@ function deriveValues(settings: Map<string, Setting>, result: Resolution): void 
   const style = settings.get('indent_style');
   const size = settings.get('indent_size');
   const width = settings.get('tab_width');
-  const widthIsSet = width !== undefined && width.value !== UNSET;
+  // unset is copied too, as the reference cores copy it: they treat unset as an ordinary value in these rules.
+  const widthIsSet = width !== undefined;
   if (style !== undefined && style.value === 'tab' && size === undefined) {
     const source = widthIsSet ? width : style;
     settings.set('indent_size', derived('indent_size', widthIsSet ? width.value : 'tab', source));
@@ -266,6 +267,11 @@ function deriveValues(settings: Map<string, Setting>, result: Resolution): void 
     settings.set('indent_size', derived('indent_size', width.value, width));
   }
   const nowSize = settings.get('indent_size');
+  if (nowSize !== undefined && nowSize.how === 'derived' && nowSize.value === UNSET && width?.value === UNSET) {
+    result.notes.push(
+      'indent_size is reported as unset because tab_width is unset: the reference cores copy it that way.',
+    );
+  }
   if (nowSize !== undefined && nowSize.value !== 'tab' && width === undefined) {
     settings.set('tab_width', derived('tab_width', nowSize.value, nowSize));
     if (nowSize.value === UNSET) {

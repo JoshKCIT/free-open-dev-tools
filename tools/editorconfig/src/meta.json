@@ -20,7 +20,7 @@
   ],
   "ambiguities": [
     "unset: a pair whose value is unset removes the effect of every earlier pair for that property. The page shows it as the value unset, the way the reference cores report it, and says so in the How column. indent_size = unset also reports tab_width = unset, because the reference cores derive tab_width from indent_size.",
-    "Derived values: indent_style = tab without an indent_size gives indent_size = tab, indent_size = tab together with a tab_width takes the width, and a number in indent_size without a tab_width gives the same tab_width. These rows say derived and name the property they come from.",
+    "Derived values: indent_style = tab without an indent_size gives indent_size = tab, indent_size = tab together with a tab_width takes the width, and a number in indent_size without a tab_width gives the same tab_width. These rows say derived and name the property they come from. A tab_width of unset is copied like any other width, the way the reference cores copy it, so indent_style = tab or indent_size = tab together with tab_width = unset reports indent_size = unset, with a note.",
     "Backslashes: the specification does not allow a backslash as a path separator, so a backslash in the path is an ordinary character and is matched as written, with a note.",
     "Where the specification is silent the published core tests decide: a bracket pair that holds a slash is not a class, a double star between two slashes matches zero or more folders, {single}, {} and a { with no closing } are ordinary text, {a,b,} keeps the empty alternative, and {3..120} matches 60 but not 060."
   ],
