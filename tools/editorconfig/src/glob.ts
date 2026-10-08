@@ -164,8 +164,11 @@ export function compileGlob(name: string, folder = '', maxLength = 2 * MAX_SECTI
   // The parser already refuses a name over 1,024 characters. The compiler checks again so that no caller can make it follow
   // an endless run of nested braces.
   if (name.length > maxLength) {
+    // The page's own sentence for the default; a caller that set its own longest name is told that length instead.
     throw new EditorConfigError(
-      `A section name is longer than this page reads: at most ${withCommas(MAX_SECTION_NAME)} characters.`,
+      maxLength === 2 * MAX_SECTION_NAME
+        ? `A section name is longer than this page reads: at most ${withCommas(MAX_SECTION_NAME)} characters.`
+        : `A section name is longer than this compiler was asked to read: at most ${withCommas(maxLength)} UTF-16 units.`,
     );
   }
   const g = codePoints(name);

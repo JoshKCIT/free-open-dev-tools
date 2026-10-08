@@ -80,6 +80,13 @@ it('a section name of 1,024, a key of 1,024 and a value of 4,096 characters are 
   const tooLong = refusal(() => compileGlob(MARKER + 'a'.repeat(2048)));
   expect(tooLong.message).toBe('A section name is longer than this page reads: at most 1,024 characters.');
   expect(tooLong.message).not.toContain(MARKER);
+  // A caller that passes its own longest name is told that length, not the page's.
+  expect(compileGlob('a'.repeat(5000), '', 5000).instructions.length).toBeGreaterThan(5000);
+  const ownLimit = refusal(() => compileGlob(MARKER + 'a'.repeat(5000), '', 5000));
+  expect(ownLimit.message).toBe(
+    'A section name is longer than this compiler was asked to read: at most 5,000 UTF-16 units.',
+  );
+  expect(ownLimit.message).not.toContain(MARKER);
 });
 
 it('folder separator lines are read and a folder with a leading slash, a dot segment or a backslash is refused', () => {
