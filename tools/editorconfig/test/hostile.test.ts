@@ -113,9 +113,20 @@ it('folder separator lines are read and a folder with a leading slash, a dot seg
     ['=== src/ ===', 'an empty part'],
     [`=== src${BACKSLASH}lib ===`, 'never a backslash'],
     ['=== ===', 'no folder name'],
-    ['=======', 'no folder name'],
     [`=== ${'d'.repeat(1025)} ===`, 'at most 1,024'],
   ];
+  // A line made only of equals signs (a decorative rule some hand-written files carry) is no folder line: the reference
+  // cores read it as a pair with an empty key and skip it, so it stays in its file and is listed as a skipped line.
+  for (const rule of ['=======', '   ==========   ']) {
+    const paste = `[*]\nk = v\n${rule}\n[*]\nm = w`;
+    expect(splitFiles(paste).map((f) => f.label)).toEqual(['.editorconfig']);
+    const ruled = resolveEditorConfig(paste, 'a.js');
+    expect(ruled.properties.map((p) => [p.key, p.value])).toEqual([
+      ['k', 'v'],
+      ['m', 'w'],
+    ]);
+    expect(ruled.problems.map((p) => [p.file, p.line])).toEqual([['.editorconfig', 3]]);
+  }
   for (const [line, part] of bad) {
     const error = refusal(() => splitFiles(`[*]\nk = v\n${line}\n[*]`));
     expect(error.line, line.slice(0, 20)).toBe(3);

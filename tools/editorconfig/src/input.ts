@@ -34,8 +34,10 @@ const EQUALS = 0x3d;
 
 /**
  * Reads a line as a folder line, `=== src/lib ===`: three or more equals signs, the folder, three or more equals signs.
- * Returns null for any other line. No EditorConfig file can hold such a line (it would be a pair with an empty key), so the
- * marker cannot clash with real content.
+ * Returns null for any other line. An EditorConfig file reads such a line as a pair with an empty key, which the reference
+ * cores skip, so the marker cannot change what a real file means. A line made only of equals signs (a decorative rule some
+ * hand-written files carry) is not a folder line: it stays in its file and is listed as a skipped line, the way the
+ * reference cores skip it.
  */
 export function folderLine(line: string): string | null {
   const text = line.trim();
@@ -45,7 +47,7 @@ export function folderLine(line: string): string | null {
   let right = text.length;
   while (right > 0 && text.charCodeAt(right - 1) === EQUALS) right -= 1;
   if (left < 3 || text.length - right < 3) return null;
-  if (right <= left) return '';
+  if (right <= left) return null;
   return text.slice(left, right).trim();
 }
 
