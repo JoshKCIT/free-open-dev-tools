@@ -417,3 +417,5 @@ export function fitsWidth(value: bigint, width: FixedWidth): boolean {
   const w = BigInt(width);
   return value >= -(1n << (w - 1n)) && value <= (1n << w) - 1n;
 }
+
+export * from './expression';
