@@ -12,15 +12,55 @@ import {
   WIDTH_OPERATIONS,
   UNARY_OPERATIONS,
   FIXED_WIDTHS,
+  EXPRESSION_WIDTHS,
+  ExpressionError,
+  evaluateExpression,
+  formatResult,
   type Operation,
   type FixedWidth,
 } from '@fodt/number-base';
-import { defineTool, str, num, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
+import { defineTool, str, num, bool, type OutputBlock, type ToolResult, type Values } from '../lib/tool-ui';
 
 const BASES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 20, 32, 36];
 
 /** and/or/xor/nand/nor/xnor: both operands are values, so both are checked against fitsWidth. Every other width operation's second operand is an amount, never wrapped. */
 const BINARY_BITWISE_OPERATIONS = new Set<Operation>(['and', 'or', 'xor', 'nand', 'nor', 'xnor']);
+
+/** The programmer's calculator mode: one expression at a chosen width, shown in every base. */
+function runExpression(values: Values): ToolResult {
+  const source = str(values, 'expression');
+  if (!source.trim()) return { outputs: [] };
+
+  const chosen = Number(str(values, 'exprWidth', '32'));
+  const width = EXPRESSION_WIDTHS.find((w) => w === chosen) ?? 32;
+  const signed = str(values, 'exprSign', 'unsigned') === 'signed';
+  const uppercase = bool(values, 'uppercase');
+  const grouped = bool(values, 'grouped', true);
+
+  try {
+    const result = evaluateExpression(source, { width, signed });
+    const shown = formatResult(result, width, { uppercase });
+    return {
+      outputs: [
+        {
+          kind: 'keyvalue',
+          label: `Result at ${width} bits`,
+          pairs: [
+            ['Hexadecimal', shown.hex],
+            ['Unsigned (decimal)', shown.unsigned],
+            ['Signed (decimal)', shown.signed],
+            ['Octal', shown.octal],
+            ['Binary', grouped ? group(shown.binary, 2) : shown.binary],
+          ],
+        },
+      ],
+    };
+  } catch (err) {
+    if (err instanceof ExpressionError)
+      return { outputs: [], errors: [{ message: err.message, column: err.position }] };
+    return { outputs: [], errors: [{ message: 'That expression could not be evaluated.' }] };
+  }
+}
 
 export default defineTool({
   id: 'number-base',
@@ -34,7 +74,38 @@ export default defineTool({
       options: [
         { value: 'convert', label: 'Convert' },
         { value: 'calculate', label: 'Calculate' },
+        { value: 'expression', label: "Programmer's calculator" },
       ],
+    },
+    {
+      name: 'expression',
+      label: 'Expression',
+      type: 'text',
+      mono: true,
+      wide: true,
+      default: '',
+      placeholder: '(0xFF & ~0x0F) >> 2',
+      help: "One C integer expression with + - * / % & | ^ ~ << >> >>> and parentheses. C precedence applies. It is read by this page's own parser and never run as code.",
+      visible: (v) => v.mode === 'expression',
+    },
+    {
+      name: 'exprWidth',
+      label: 'Width',
+      type: 'select',
+      default: '32',
+      options: EXPRESSION_WIDTHS.map((w) => ({ value: String(w), label: `${w} bits` })),
+      visible: (v) => v.mode === 'expression',
+    },
+    {
+      name: 'exprSign',
+      label: 'Signedness',
+      type: 'select',
+      default: 'unsigned',
+      options: [
+        { value: 'unsigned', label: 'Unsigned' },
+        { value: 'signed', label: "Signed (two's complement)" },
+      ],
+      visible: (v) => v.mode === 'expression',
     },
     {
       name: 'input',
@@ -44,6 +115,7 @@ export default defineTool({
       default: '255',
       placeholder: '255, 0xff, 0b1010, or dead_beef',
       help: 'A 0x, 0o or 0b prefix and underscore, space or comma separators are all accepted.',
+      visible: (v) => v.mode !== 'expression',
     },
     {
       name: 'fromBase',
@@ -54,6 +126,7 @@ export default defineTool({
         value: String(b),
         label: `Base ${b}${b === 2 ? ' (binary)' : b === 8 ? ' (octal)' : b === 10 ? ' (decimal)' : b === 16 ? ' (hexadecimal)' : ''}`,
       })),
+      visible: (v) => v.mode !== 'expression',
     },
     {
       name: 'operation',
@@ -112,6 +185,7 @@ export default defineTool({
       min: 0,
       max: 36,
       help: '0 to skip. Any base from 2 to 36.',
+      visible: (v) => v.mode !== 'expression',
     },
   ],
   examples: [
@@ -132,6 +206,10 @@ export default defineTool({
     },
   ],
   run(values): ToolResult {
+    // The calculator mode is judged first: the hidden Number field keeps its default, so the earlier empty-input
+    // return below must not decide for it.
+    if (values.mode === 'expression') return runExpression(values);
+
     const input = str(values, 'input');
     if (!input.trim()) return { outputs: [] };
 
