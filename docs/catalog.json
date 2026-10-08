@@ -1545,5 +1545,12 @@
     "category": "media",
     "tier": 3,
     "summary": "Read a font's names, licence text, metrics, glyphs, coverage and features, and convert it between TTF/OTF, WOFF and WOFF2 on your device."
+  },
+  {
+    "id": "sms-segments",
+    "name": "SMS Segment Calculator",
+    "category": "text",
+    "tier": 2,
+    "summary": "Count the SMS segments a message needs, see whether it fits the GSM 7-bit alphabet and which characters force Unicode."
   }
 ]
