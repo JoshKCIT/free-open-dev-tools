@@ -1,5 +1,5 @@
 import { EditorConfigError } from './errors';
-import { MAX_RANGE_DIGITS, WORK_BUDGET, withCommas } from './limits';
+import { MAX_RANGE_DIGITS, MAX_SECTION_NAME, WORK_BUDGET, withCommas } from './limits';
 
 /**
  * EditorConfig glob matching without a regular expression.
@@ -153,6 +153,13 @@ function readNumberRange(g: readonly number[], from: number, to: number): Range 
  * anchored at its file's folder, and a leading slash is dropped.
  */
 export function compileGlob(name: string, folder = ''): Program {
+  // The parser already refuses a name over 1,024 characters. The compiler checks again (a character outside the basic plane is
+  // two UTF-16 units) so that no caller can make it follow an endless run of nested braces.
+  if (name.length > 2 * MAX_SECTION_NAME) {
+    throw new EditorConfigError(
+      `A section name is longer than this page reads: at most ${withCommas(MAX_SECTION_NAME)} characters.`,
+    );
+  }
   const g = codePoints(name);
   const n = g.length;
   const out: Instruction[] = [];
