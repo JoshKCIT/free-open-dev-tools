@@ -148,6 +148,21 @@ it('the smallest value divided by minus one and minus the smallest value wrap to
   expect(remainder.notes.some((n) => n.kind === 'undefined-in-c')).toBe(true);
   // Unsigned values cannot hit this case.
   expect(at('128 / 1', 8).notes).toEqual([]);
+  // C widens an 8 or 16 bit value to int before it divides or negates (integer promotion, N1570 6.3.1.1), so there these
+  // steps are defined; from 32 bits up they are undefined. The note says which (20-REVIEW-A, A-IN-01).
+  const note = (width: number, expression: string): string =>
+    at(expression, width, true).notes.find((n) => n.kind === 'undefined-in-c')?.message ?? '';
+  for (const width of [8, 16]) {
+    const min = `-${(1n << BigInt(width - 1)).toString()}`;
+    for (const expression of [`${min} / -1`, `-(${min})`, `${min} % -1`]) {
+      expect(note(width, expression), expression).not.toContain('undefined in C');
+      expect(note(width, expression), expression).toContain('where this step is defined');
+    }
+  }
+  for (const width of [32, 64, 128, 256]) {
+    const min = `-${(1n << BigInt(width - 1)).toString()}`;
+    expect(note(width, `${min} / -1`)).toContain('undefined in C');
+  }
 });
 
 it('a shift by the width or more gives 0, or minus one for a negative value shifted right, and is noted', () => {
@@ -167,7 +182,8 @@ it('a shift by the width or more gives 0, or minus one for a negative value shif
   expect(ordinary.notes).toEqual([]);
   expect(at('1 << 255', 256).value).toBe(1n << 255n);
   expect(at('1 << 255', 256).notes).toEqual([]);
-  // At 8 bits signed the same shift reaches the sign bit and is flagged as wrapped (C leaves it undefined).
+  // At 8 bits signed the same shift reaches the sign bit and is flagged as wrapped (C would compute 128 as an int and only
+  // storing it back in 8 bits would change it).
   const sign = at('1 << 7', 8, true);
   expect(sign.value).toBe(-128n);
   expect(sign.wrapped).toBe(1);
@@ -177,6 +193,28 @@ it('a shift by the width or more gives 0, or minus one for a negative value shif
     wrapped: false,
     note: 'shift-at-or-over-width',
   });
+  // C widens an 8 or 16 bit value to int before it shifts, so there only a count of 32 or more is undefined; from 32
+  // bits up a count at or above the width is. The -1 is the arithmetic shift >> alone: >>> gives 0 (20-REVIEW-A, A-IN-01).
+  const shiftNote = (expression: string, width: number, signed = false): string =>
+    at(expression, width, signed).notes.find((n) => n.kind === 'shift')?.message ?? '';
+  for (const [expression, width] of [
+    ['1 << 8', 8],
+    ['1 << 16', 16],
+  ] as const) {
+    expect(shiftNote(expression, width), expression).not.toContain('which C leaves undefined');
+    expect(shiftNote(expression, width), expression).toContain('only a count of 32 or more is undefined');
+    expect(shiftNote(expression, width), expression).toContain('shifted right with >>');
+  }
+  for (const [expression, width] of [
+    ['1 << 32', 32],
+    ['1 << 64', 64],
+    ['1 << 256', 256],
+  ] as const) {
+    expect(shiftNote(expression, width), expression).toContain('which C leaves undefined');
+    expect(shiftNote(expression, width), expression).toContain('shifted right with >>');
+  }
+  expect(at('-1 >>> 8', 8, true).value).toBe(0n);
+  expect(at('-1 >> 8', 8, true).value).toBe(-1n);
 });
 
 it('the unsigned right shift is logical in both signednesses', () => {

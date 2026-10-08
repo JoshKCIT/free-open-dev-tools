@@ -69,7 +69,8 @@ function runExpression(values: Values): ToolResult {
             step.result.toString(),
             [
               step.wrapped ? 'wrapped' : '',
-              step.note === 'undefined-in-c' ? 'undefined in C' : '',
+              // Below 32 bits C widens the value to int first, where this step is defined (the note above says so).
+              step.note === 'undefined-in-c' ? (width < 32 ? 'smallest value with -1' : 'undefined in C') : '',
               step.note === 'shift-at-or-over-width' ? 'shift at or above the width' : '',
             ]
               .filter((flag) => flag !== '')

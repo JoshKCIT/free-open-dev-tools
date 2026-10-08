@@ -490,7 +490,11 @@ export function evaluateExpression(source: string, options: { width: number; sig
     );
   }
 
-  // Notes hold counts, positions and fixed words, never any of the text that was typed.
+  // Notes hold counts, positions and fixed words, never any of the text that was typed. C widens a value narrower than int
+  // (32 bits in the recorded clang) to int before it computes (integer promotion), so at 8 and 16 bits a shift by the
+  // width and the smallest value with -1 are defined in C; the notes say so rather than call them undefined.
+  const narrow = type.width < 32;
+  const widened = `C first widens a ${type.width}-bit value to int (32 bits in the recorded clang)`;
   const notes: ExpressionNote[] = [];
   if (firstWrapAt !== undefined) {
     notes.push({
@@ -502,14 +506,18 @@ export function evaluateExpression(source: string, options: { width: number; sig
   if (shifts.count > 0) {
     notes.push({
       kind: 'shift',
-      message: `${plural(shifts.count, 'shift uses', 'shifts use')} a count at or above the width of ${type.width} bits, which C leaves undefined; the result is 0, or -1 for a negative value shifted right. The first is the operator at position ${shifts.first}.`,
+      message: narrow
+        ? `${plural(shifts.count, 'shift uses', 'shifts use')} a count at or above the width of ${type.width} bits; the result is 0, or -1 for a negative value shifted right with >>. ${widened}, so there only a count of 32 or more is undefined. The first is the operator at position ${shifts.first}.`
+        : `${plural(shifts.count, 'shift uses', 'shifts use')} a count at or above the width of ${type.width} bits, which C leaves undefined; the result is 0, or -1 for a negative value shifted right with >>. The first is the operator at position ${shifts.first}.`,
       position: shifts.first,
     });
   }
   if (undefinedInC.count > 0) {
     notes.push({
       kind: 'undefined-in-c',
-      message: `${plural(undefinedInC.count, 'step is', 'steps are')} undefined in C (the smallest value divided by -1, or with its sign changed); the wrapped result is shown. The first is the operator at position ${undefinedInC.first}.`,
+      message: narrow
+        ? `${plural(undefinedInC.count, 'step takes', 'steps take')} the smallest value with -1 (divided by -1, or with its sign changed); the wrapped result is shown. ${widened}, where this step is defined. The first is the operator at position ${undefinedInC.first}.`
+        : `${plural(undefinedInC.count, 'step is', 'steps are')} undefined in C (the smallest value divided by -1, or with its sign changed); the wrapped result is shown. The first is the operator at position ${undefinedInC.first}.`,
       position: undefinedInC.first,
     });
   }
