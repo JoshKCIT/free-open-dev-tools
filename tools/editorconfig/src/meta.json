@@ -15,7 +15,7 @@
   "limits": [
     "Only the files you paste are read. The page does not look at your disk, so a parent folder's .editorconfig that you did not paste is not part of the result.",
     "Results follow the EditorConfig specification, version 0.17.2, and the EditorConfig project's published core tests, including the values the reference cores work out for indent_size and tab_width. An editor or plugin can implement only some properties, and some read extra properties that the specification does not define; unknown properties are passed through as written.",
-    "Matching treats the path as written with forward slashes and is case-sensitive; an editor on a case-insensitive file system may behave differently. A backslash in a path is an ordinary character. One path is resolved at a time, relative to the top folder.",
+    "Matching treats the path as written with forward slashes and is case-sensitive; an editor on a case-insensitive file system may behave differently. A backslash in a path is an ordinary character, and white space at the start or end of the path is part of it; each gets a note. One path is resolved at a time, relative to the top folder.",
     "Not read: more than 50 files, 10,000 lines or 1,000,000 characters in all, a line over 8,192 characters, a section name or key over 1,024 characters, a value over 4,096 characters, a path or folder name over 1,024 characters, or a number range with an end of more than 9 digits. Matching is limited by a work budget of 40,000,000 steps, and a paste that needs more is refused with a sentence instead of freezing the page."
   ],
   "ambiguities": [

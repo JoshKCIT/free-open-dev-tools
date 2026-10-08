@@ -161,6 +161,17 @@ it('an empty paste or path gives nothing and a path the page cannot match is ref
   const result = resolveEditorConfig('[*]\nk = v', `a${BACKSLASH}b.js`);
   expect(result.properties).toHaveLength(1);
   expect(result.notes.join(' ')).toContain('backslash');
+  // White space at the start or end of the path is matched as written too, with a note that explains an empty answer.
+  for (const spaced of ['src/a.js ', ' src/a.js', `src/a.js${String.fromCharCode(9)}`]) {
+    const answer = resolveEditorConfig('[src/*.js]\nk = v', spaced);
+    expect(answer.properties, JSON.stringify(spaced)).toEqual([]);
+    expect(answer.notes.join(' '), JSON.stringify(spaced)).toContain(
+      'The path starts or ends with white space. It is matched as written',
+    );
+  }
+  const plain = resolveEditorConfig('[src/*.js]\nk = v', 'src/a b.js');
+  expect(plain.properties).toHaveLength(1);
+  expect(plain.notes.join(' ')).not.toContain('white space');
 });
 
 it('a paste whose matching would exceed the work budget is refused in plain words', () => {

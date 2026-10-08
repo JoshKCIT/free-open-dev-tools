@@ -144,6 +144,11 @@ export function resolveProperties(
       'The path holds a backslash. A backslash is an ordinary character here, because paths use forward slashes, so it is matched as written.',
     );
   }
+  if (path.trim() !== path) {
+    result.notes.push(
+      'The path starts or ends with white space. It is matched as written, so a section that names the file without that space does not match it.',
+    );
+  }
 
   const parsed = new Map<PastedFile, ParsedFile>();
   for (const file of files) parsed.set(file, parseEditorConfig(file.text, `File ${file.number}`));
