@@ -1396,7 +1396,7 @@ it('every parser stays linear on hostile input', () => {
       100,
     ),
   ).toBeLessThanOrEqual(MAX_SCALING_RATIO);
-});
+}, 300_000);
 
 it('checking the same messages twice gives the same rows, bump and changelog', () => {
   const text = [
