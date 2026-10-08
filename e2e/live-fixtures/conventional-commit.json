@@ -1,0 +1,12 @@
+{
+  "id": "conventional-commit",
+  "label": "The specification examples add up to a major bump because a breaking change outranks a feature and a fix, per Conventional Commits 1.0.0",
+  "steps": [
+    {
+      "action": "fill",
+      "field": "messages",
+      "value": "feat!: send an email to the customer when a product is shipped\n---\nfix: prevent racing of requests\n\nIntroduce a request id and a reference to latest request. Dismiss\nincoming responses other than from latest request.\n\nReviewed-by: Z\nRefs: #123\n---\ndocs: correct spelling of CHANGELOG"
+    }
+  ],
+  "expect": ["major", "send an email to the customer when a product is shipped", "prevent racing of requests"]
+}
