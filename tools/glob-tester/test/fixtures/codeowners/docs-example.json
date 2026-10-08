@@ -1,0 +1,230 @@
+{
+  "source": "github/docs, content/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners.md",
+  "blob": "a0ff66d59c8819c28c87e94c61195e175afd8ec2",
+  "commit": "0b183d589a7f22b5ed23a4b4b7f40eb4cc0dbe0a",
+  "lastChanged": "2026-08-14",
+  "licence": "CC BY 4.0",
+  "note": "File A is the documentation example (its comment line, then the lines it shows, then the first /apps/ pair); file B is the second /apps/ pair on its own. Lines are counted over every pasted line. A line of null means no line matched; an empty owners list with a line number means a line with no owners decided.",
+  "files": {
+    "A": "# This is a comment.\n*       @global-owner1 @global-owner2\n*.js    @js-owner #This is an inline comment.\n*.go docs@example.com\n*.txt @octo-org/octocats\n/build/logs/ @doctocat\ndocs/* docs@example.com\napps/ @octocat\n/docs/ @doctocat\n/scripts/ @doctocat @octocat\n**/logs @octocat\n/apps/ @octocat\n/apps/github\n",
+    "B": "/apps/ @octocat\n/apps/github @doctocat\n"
+  },
+  "paths": [
+    "README.md",
+    "src/app.js",
+    "cmd/main.go",
+    "notes/a.txt",
+    "build/logs/x.log",
+    "build/logs/x.txt",
+    "docs/getting-started.md",
+    "docs/build-app/troubleshooting.md",
+    "lib/apps/z.rb",
+    "scripts/run.sh",
+    "a/b/logs/c.log",
+    "apps/github/readme.md",
+    "apps/web/a.ts",
+    "logs"
+  ],
+  "answers": [
+    {
+      "file": "A",
+      "path": "README.md",
+      "owners": [
+        "@global-owner1",
+        "@global-owner2"
+      ],
+      "line": 2
+    },
+    {
+      "file": "A",
+      "path": "src/app.js",
+      "owners": [
+        "@js-owner"
+      ],
+      "line": 3
+    },
+    {
+      "file": "A",
+      "path": "cmd/main.go",
+      "owners": [
+        "docs@example.com"
+      ],
+      "line": 4
+    },
+    {
+      "file": "A",
+      "path": "notes/a.txt",
+      "owners": [
+        "@octo-org/octocats"
+      ],
+      "line": 5
+    },
+    {
+      "file": "A",
+      "path": "build/logs/x.log",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 11
+    },
+    {
+      "file": "A",
+      "path": "build/logs/x.txt",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 11
+    },
+    {
+      "file": "A",
+      "path": "docs/getting-started.md",
+      "owners": [
+        "@doctocat"
+      ],
+      "line": 9
+    },
+    {
+      "file": "A",
+      "path": "docs/build-app/troubleshooting.md",
+      "owners": [
+        "@doctocat"
+      ],
+      "line": 9
+    },
+    {
+      "file": "A",
+      "path": "lib/apps/z.rb",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 8
+    },
+    {
+      "file": "A",
+      "path": "scripts/run.sh",
+      "owners": [
+        "@doctocat",
+        "@octocat"
+      ],
+      "line": 10
+    },
+    {
+      "file": "A",
+      "path": "a/b/logs/c.log",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 11
+    },
+    {
+      "file": "A",
+      "path": "apps/github/readme.md",
+      "owners": [],
+      "line": 13
+    },
+    {
+      "file": "A",
+      "path": "apps/web/a.ts",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 12
+    },
+    {
+      "file": "A",
+      "path": "logs",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 11
+    },
+    {
+      "file": "B",
+      "path": "README.md",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "src/app.js",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "cmd/main.go",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "notes/a.txt",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "build/logs/x.log",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "build/logs/x.txt",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "docs/getting-started.md",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "docs/build-app/troubleshooting.md",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "lib/apps/z.rb",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "scripts/run.sh",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "a/b/logs/c.log",
+      "owners": [],
+      "line": null
+    },
+    {
+      "file": "B",
+      "path": "apps/github/readme.md",
+      "owners": [
+        "@doctocat"
+      ],
+      "line": 2
+    },
+    {
+      "file": "B",
+      "path": "apps/web/a.ts",
+      "owners": [
+        "@octocat"
+      ],
+      "line": 1
+    },
+    {
+      "file": "B",
+      "path": "logs",
+      "owners": [],
+      "line": null
+    }
+  ]
+}
