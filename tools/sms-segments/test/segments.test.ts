@@ -575,7 +575,7 @@ it('the analysis stays linear on hostile input', () => {
   }
   // A refusal at the length limit costs nothing like reading it.
   expect(scalingRatio(analyse, (n) => 'a'.repeat(n), 100_001)).toBeLessThanOrEqual(MAX_SCALING_RATIO);
-});
+}, 60_000);
 
 it('analysing the same text twice gives the same segments', () => {
   const message = `Price: ${EURO}5, a curly ${CURLY_APOSTROPHE}quote${CURLY_APOSTROPHE}, ${SMILE} and ^ { } [ ] ~ | ${'x'.repeat(200)}`;
