@@ -1,0 +1,113 @@
+{
+  "blob": "4fa8464d66f7659c3565a2a84ce0577839552046",
+  "licence": "Creative Commons Attribution 3.0 (CC BY 3.0); the repository is MIT. See UPSTREAM.md.",
+  "source": "conventional-commits/conventionalcommits.org, content/v1.0.0/index.md, section Examples (repository head 7d293dc5 of 2026-03-11)",
+  "examples": [
+    {
+      "title": "Commit message with description and breaking change footer",
+      "message": "feat: allow provided config object to extend other configs\n\nBREAKING CHANGE: `extends` key in config file is now used for extending other config files",
+      "expect": {
+        "type": "feat",
+        "scope": null,
+        "bang": false,
+        "breaking": true,
+        "description": "allow provided config object to extend other configs",
+        "body": "",
+        "footers": [
+          {
+            "token": "BREAKING CHANGE",
+            "separator": ": ",
+            "value": "`extends` key in config file is now used for extending other config files"
+          }
+        ]
+      }
+    },
+    {
+      "title": "Commit message with ! to draw attention to breaking change",
+      "message": "feat!: send an email to the customer when a product is shipped",
+      "expect": {
+        "type": "feat",
+        "scope": null,
+        "bang": true,
+        "breaking": true,
+        "description": "send an email to the customer when a product is shipped",
+        "body": "",
+        "footers": []
+      }
+    },
+    {
+      "title": "Commit message with scope and ! to draw attention to breaking change",
+      "message": "feat(api)!: send an email to the customer when a product is shipped",
+      "expect": {
+        "type": "feat",
+        "scope": "api",
+        "bang": true,
+        "breaking": true,
+        "description": "send an email to the customer when a product is shipped",
+        "body": "",
+        "footers": []
+      }
+    },
+    {
+      "title": "Commit message with both ! and BREAKING CHANGE footer",
+      "message": "feat!: drop support for Node 6\n\nBREAKING CHANGE: use JavaScript features not available in Node 6.",
+      "expect": {
+        "type": "feat",
+        "scope": null,
+        "bang": true,
+        "breaking": true,
+        "description": "drop support for Node 6",
+        "body": "",
+        "footers": [
+          {
+            "token": "BREAKING CHANGE",
+            "separator": ": ",
+            "value": "use JavaScript features not available in Node 6."
+          }
+        ]
+      }
+    },
+    {
+      "title": "Commit message with no body",
+      "message": "docs: correct spelling of CHANGELOG",
+      "expect": {
+        "type": "docs",
+        "scope": null,
+        "bang": false,
+        "breaking": false,
+        "description": "correct spelling of CHANGELOG",
+        "body": "",
+        "footers": []
+      }
+    },
+    {
+      "title": "Commit message with scope",
+      "message": "feat(lang): add Polish language",
+      "expect": {
+        "type": "feat",
+        "scope": "lang",
+        "bang": false,
+        "breaking": false,
+        "description": "add Polish language",
+        "body": "",
+        "footers": []
+      }
+    },
+    {
+      "title": "Commit message with multi-paragraph body and multiple footers",
+      "message": "fix: prevent racing of requests\n\nIntroduce a request id and a reference to latest request. Dismiss\nincoming responses other than from latest request.\n\nRemove timeouts which were used to mitigate the racing issue but are\nobsolete now.\n\nReviewed-by: Z\nRefs: #123",
+      "expect": {
+        "type": "fix",
+        "scope": null,
+        "bang": false,
+        "breaking": false,
+        "description": "prevent racing of requests",
+        "body": "Introduce a request id and a reference to latest request. Dismiss\nincoming responses other than from latest request.\n\nRemove timeouts which were used to mitigate the racing issue but are\nobsolete now.",
+        "footers": [
+          { "token": "Reviewed-by", "separator": ": ", "value": "Z" },
+          { "token": "Refs", "separator": ": ", "value": "#123" }
+        ]
+      }
+    }
+  ]
+}

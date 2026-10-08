@@ -1552,5 +1552,12 @@
     "category": "text",
     "tier": 2,
     "summary": "Count the SMS segments a message needs, see whether it fits the GSM 7-bit alphabet and which characters force Unicode."
+  },
+  {
+    "id": "conventional-commit",
+    "name": "Conventional Commit Checker",
+    "category": "devops",
+    "tier": 3,
+    "summary": "Check commit messages against Conventional Commits 1.0.0 and see the version bump they add up to and a draft changelog."
   }
 ]
