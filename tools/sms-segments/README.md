@@ -17,7 +17,7 @@ Type or paste a text message and see how many SMS segments it needs. The count f
 - A table of the segments with how much of each is used and the text it carries; a character that does not fit in what is left of a part moves whole to the next part
 - A table of every character that forced Unicode, with its code point, what it is, a replacement written in the GSM 7-bit alphabet and how many times it occurs, for about 40 common characters such as curly quotes, dashes, the ellipsis, no-break and zero-width spaces, accented letters the alphabet lacks, look-alike letters and emoji
 - A copy of the message with those replacements made, shown for you to copy; what you typed is never changed
-- Warnings for a part left one short because the next character takes two, for text written as letters followed by combining marks that Unicode normalisation (NFC) would shorten, and for more than 255 parts
+- Warnings for a part left one short because the next character takes two, for text that the composed form of Unicode normalisation (NFC) would shorten, such as letters followed by combining marks or the Angstrom, Ohm and Kelvin signs, and for more than 255 parts
 
 ## Limits
 

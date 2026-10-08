@@ -314,13 +314,25 @@ it('decomposed text that NFC would shorten and more than 255 parts are warned ab
   const decomposed = analyseMessage(`caf${'e' + COMBINING_ACUTE}`);
   const warning = decomposed.warnings.find((w) => w.includes('NFC'));
   expect(warning).toBeDefined();
-  expect(warning).toContain('4 septets in 1 segment instead of 5 UTF-16 units in 1');
+  expect(warning).toContain('4 septets in 1 segment instead of 5 UTF-16 units in 1 segment.');
   // Forty such letters are 80 units and 2 segments; joined they are 40 septets and 1 segment.
   const forty = analyseMessage(('e' + COMBINING_ACUTE).repeat(40));
   expect(used(forty)).toEqual([67, 13]);
   expect(
-    forty.warnings.some((w) => w.includes('NFC') && w.includes('in 1 segment instead of 80 UTF-16 units in 2')),
+    forty.warnings.some(
+      (w) => w.includes('NFC') && w.includes('in 1 segment instead of 80 UTF-16 units in 2 segments.'),
+    ),
   ).toBe(true);
+  // NFC also replaces single signs with the letter they look like: the Angstrom sign, the Ohm sign and the Kelvin sign.
+  // The warning names both kinds of change, not only a combining mark (review B-IN-02).
+  for (const text of [`Size 5${cp(0x212b)}`, `10 ${cp(0x2126)}`, `300 ${cp(0x212a)}`]) {
+    const sign = analyseMessage(text).warnings.find((w) => w.includes('NFC'));
+    expect(sign, text).toBeDefined();
+    expect(sign).toContain('a sign such as the Angstrom, Ohm or Kelvin sign becomes the letter it looks like');
+    expect(sign).toContain('in 1 segment instead of');
+    expect(sign).toMatch(/UTF-16 units in 1 segment[.]/);
+  }
+  expect(warning).toContain('a letter followed by a combining mark becomes one letter');
   // No warning when joining would change nothing: a letter with no composed form, composed text, an emoji.
   for (const text of [`q${COMBINING_ACUTE}`, `caf${cp(0xe9)}`, `${SMALL_C_CEDILLA}${SMILE}`, 'plain']) {
     expect(

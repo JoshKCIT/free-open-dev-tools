@@ -194,7 +194,7 @@ export function analyseMessage(text: string): Analysis {
       const backToGsm = other.encoding === 'gsm7';
       if (fewerParts || shorter || backToGsm) {
         warnings.push(
-          `Some characters are written as a letter followed by a combining mark. Joined into single characters (Unicode NFC) the text would be ${other.units} ${unitWord(other.encoding, other.units)} in ${other.segments.length} ${plural(other.segments.length, 'segment', 'segments')} instead of ${measured.units} ${unitWord(measured.encoding, measured.units)} in ${measured.segments.length}. This page counts the text as it is and does not change it.`,
+          `Some characters have a composed form in Unicode (NFC): a letter followed by a combining mark becomes one letter, and a sign such as the Angstrom, Ohm or Kelvin sign becomes the letter it looks like. In that form the text would be ${other.units} ${unitWord(other.encoding, other.units)} in ${other.segments.length} ${plural(other.segments.length, 'segment', 'segments')} instead of ${measured.units} ${unitWord(measured.encoding, measured.units)} in ${measured.segments.length} ${plural(measured.segments.length, 'segment', 'segments')}. This page counts the text as it is and does not change it.`,
         );
       }
     }
