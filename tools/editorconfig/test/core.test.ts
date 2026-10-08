@@ -113,7 +113,7 @@ it('every vendored core test file has the git blob sha UPSTREAM.md records', () 
   if (recorded.has('README.md')) onDisk.push('README.md');
   const rootDirectory = fileURLToPath(CORE);
   for (const folder of ['glob', 'parser', 'properties', 'filetree']) {
-    for (const relative of readdirSync(join(rootDirectory, folder), { recursive: true })) {
+    for (const relative of readdirSync(join(rootDirectory, folder), { recursive: true, encoding: 'utf8' })) {
       if (statSync(join(rootDirectory, folder, relative)).isFile())
         onDisk.push(`${folder}/${relative.replace(/\\/g, '/')}`);
     }
