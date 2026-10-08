@@ -10,9 +10,15 @@ import { MAX_SHOWN_PATTERN, visible } from './visible';
  * skipped. Behaviour GitHub does not document (runs of double stars and slashes, a question mark, other backslash
  * escapes, the exact shape of an owner) is this page's reading, and each place it is used is marked.
  *
- * Nothing here builds a regular expression from pasted text. A pattern is compiled to a short list of tokens and matched
- * with a two-pointer walk, once over the path's segments and once over the characters of a segment, so a hostile pattern
- * costs time in proportion to its length and the path's, never an exponential search.
+ * Nothing here builds a regular expression from pasted text. A pattern is compiled to a short list of tokens, cut at its
+ * stars into parts, and matched against the path's segments and, inside one segment, against its characters. The part
+ * before the first star must start the text, the part after the last star must end it, and each part in between is
+ * looked for from left to right at the first place it fits, which is what the usual two-pointer walk for wildcards finds
+ * too. A part made only of plain characters, or only of plain names, is found with the Knuth-Morris-Pratt search in one
+ * pass over the text. A part that holds a ?, a name with wildcards in it, or a token for any one directory is tried at
+ * each place in turn, so one such pattern and one path can cost about the product of their two lengths. No search is
+ * ever exponential, and every step is counted: one paste may take at most MAX_CODEOWNERS_WORK steps, and a paste that
+ * needs more is refused with a fixed sentence instead of running on.
  */
 
 /** The most CODEOWNERS text that is read. GitHub itself does not load a file of 3 MB or more; a paste this size is no longer a quick check. */
@@ -21,6 +27,20 @@ export const MAX_CODEOWNERS_CHARACTERS = 600_000;
 export const MAX_CODEOWNERS_RULES = 5_000;
 /** The longest single CODEOWNERS line. */
 export const MAX_CODEOWNERS_LINE_CHARACTERS = 4_000;
+/**
+ * The most matching work one paste may take, in steps: one for each rule tried on each path, one for each time part of a
+ * pattern is laid at a place, one for each name or character looked at there or by a search, and one for each step back
+ * of a search. A paste that needs more is refused, naming the path line where matching stopped, so no paste inside the
+ * other limits can keep the page or a script busy for long: on the machine that set it, a step took 3 to 7 nanoseconds,
+ * so the whole budget takes about 1 to 2 seconds, well inside the page's 5 second stop. 5,000 folder rules against 5,000
+ * paths of eight folders need 75 to 250 million steps and are answered.
+ */
+export const MAX_CODEOWNERS_WORK = 300_000_000;
+
+/** The work counter for one paste: the steps used so far. */
+export interface CodeownersWork {
+  used: number;
+}
 
 /** One CODEOWNERS line that is a rule. */
 export interface CodeownersRule {
@@ -33,8 +53,11 @@ export interface CodeownersRule {
   note: string;
   /** Whether a path (written with forward slashes, no trailing slash) is matched by this line. */
   matches(path: string): boolean;
-  /** The same question for a path already split at its slashes (what ownersForPaths asks many times over). */
-  matchesSegments(segments: readonly string[]): boolean;
+  /**
+   * The same question for a path already split at its slashes (what ownersForPaths asks many times over). The steps it
+   * takes are added to `work` when one is given, so a caller can bound a whole paste.
+   */
+  matchesSegments(segments: readonly string[], work?: CodeownersWork): boolean;
 }
 
 /** A line that is not a rule: GitHub does not support it, or it holds something that cannot be read. */
@@ -157,12 +180,16 @@ function isOwner(owner: string): boolean {
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Matching one path segment against a segment of the pattern: `*` is any characters, `?` is one character, a backslash
-// takes the next character literally. Characters are compared by UTF-16 unit, and `?` and a retrying `*` step over a
-// surrogate pair as one character, so half of an emoji is never matched.
+// takes the next character literally. Characters are compared by UTF-16 unit, and `?` and a star step over a surrogate
+// pair as one character, so a star never ends, and `?` never takes, half of an emoji.
 // ---------------------------------------------------------------------------------------------------------------------
 
 const ANY_CHARACTER = -1;
 const ANY_RUN = -2;
+
+/** What a part tried at one place gives when it does not fit there: a character differs, or the text ran out first. */
+const MISMATCH = -1;
+const RAN_OUT = -2;
 
 function unitsAt(text: string, index: number): number {
   const high = text.charCodeAt(index);
@@ -173,33 +200,173 @@ function unitsAt(text: string, index: number): number {
   return 1;
 }
 
-function matchSegment(pattern: readonly number[], text: string): boolean {
-  let p = 0;
-  let t = 0;
-  let starAt = -1;
-  let starText = 0;
-  while (t < text.length) {
-    const code = p < pattern.length ? (pattern[p] as number) : 0;
-    if (p < pattern.length && code === ANY_RUN) {
-      starAt = p;
-      starText = t;
-      p += 1;
-    } else if (p < pattern.length && code === ANY_CHARACTER) {
-      t += unitsAt(text, t);
-      p += 1;
-    } else if (p < pattern.length && code === text.charCodeAt(t)) {
-      p += 1;
-      t += 1;
-    } else if (starAt >= 0) {
-      starText += unitsAt(text, starText);
-      t = starText;
-      p = starAt + 1;
-    } else {
-      return false;
+/**
+ * Whether a star that began at `from` can end at `at`: it steps over whole characters, so `at` must not be the second
+ * half of a surrogate pair that starts at or after `from`.
+ */
+function startsCharacter(text: string, from: number, at: number): boolean {
+  if (at <= from) return true;
+  const before = text.charCodeAt(at - 1);
+  const here = text.charCodeAt(at);
+  return !(before >= 0xd800 && before <= 0xdbff && here >= 0xdc00 && here <= 0xdfff);
+}
+
+/**
+ * The Knuth-Morris-Pratt table of a sequence: for each length k, how long the longest proper prefix that is also a
+ * suffix of the first k items is. `same` says whether two items are equal.
+ */
+function failureTable<T>(items: readonly T[], same: (a: T, b: T) => boolean): Int32Array {
+  const table = new Int32Array(items.length);
+  let k = 0;
+  for (let i = 1; i < items.length; i++) {
+    while (k > 0 && !same(items[i] as T, items[k] as T)) k = table[k - 1] as number;
+    if (same(items[i] as T, items[k] as T)) k += 1;
+    table[i] = k;
+  }
+  return table;
+}
+
+/** A part of a segment pattern between two stars: literal UTF-16 units and ANY_CHARACTER. */
+interface CharacterPart {
+  codes: number[];
+  /** How many codes at the start are plain characters (no `?`): all of them when the part holds no `?`. */
+  lead: number;
+  /** The search table of those plain leading codes, so the part's places can be found in one pass. */
+  table: Int32Array;
+}
+
+/** One segment of a pattern, cut at its stars. */
+interface SegmentPattern {
+  /** One part when the segment holds no star; with k stars, k + 1 parts, of which the first and last may be empty. */
+  parts: CharacterPart[];
+  /** The segment as plain text when it holds no star and no `?`, so a name is simply compared with it; null otherwise. */
+  plain: string | null;
+}
+
+function sameUnit(a: number, b: number): boolean {
+  return a === b;
+}
+
+function segmentPattern(codes: readonly number[]): SegmentPattern {
+  const parts: CharacterPart[] = [];
+  let current: number[] = [];
+  const close = (): void => {
+    const question = current.indexOf(ANY_CHARACTER);
+    const lead = question < 0 ? current.length : question;
+    parts.push({ codes: current, lead, table: failureTable(current.slice(0, lead), sameUnit) });
+    current = [];
+  };
+  for (const code of codes) {
+    if (code === ANY_RUN) close();
+    else current.push(code);
+  }
+  close();
+  const only = parts[0] as CharacterPart;
+  const plain = parts.length === 1 && only.lead === only.codes.length ? String.fromCharCode(...only.codes) : null;
+  return { parts, plain };
+}
+
+/** Where `part`, from its code `skip` on, ends when it is laid at `at`, or MISMATCH, or RAN_OUT. */
+function partAt(part: CharacterPart, text: string, at: number, work: CodeownersWork, skip = 0): number {
+  const codes = part.codes;
+  let t = at;
+  work.used += 1;
+  for (let p = skip; p < codes.length; p++) {
+    work.used += 1;
+    if (t >= text.length) return RAN_OUT;
+    const code = codes[p] as number;
+    if (code === ANY_CHARACTER) t += unitsAt(text, t);
+    else if (code === text.charCodeAt(t)) t += 1;
+    else return MISMATCH;
+  }
+  return t;
+}
+
+/**
+ * Lays `part` at each place at or after `from` where it could start, a star having begun at `from`, in order, and hands
+ * `settle` where it ends there (or MISMATCH, or RAN_OUT). `settle` returns true to stop. The places are found with the
+ * part's plain leading characters in one Knuth-Morris-Pratt pass, so only the rest of the part (from its first `?` on)
+ * is tried place by place; a part that starts with `?` is tried at every character. Every step is added to `work`.
+ */
+function eachPlace(
+  part: CharacterPart,
+  text: string,
+  from: number,
+  work: CodeownersWork,
+  settle: (end: number) => boolean,
+): void {
+  const codes = part.codes;
+  const lead = part.lead;
+  if (lead === 0) {
+    let at = from;
+    for (;;) {
+      const end = partAt(part, text, at, work);
+      if (settle(end) || end === RAN_OUT) return;
+      at += unitsAt(text, at);
     }
   }
-  while (p < pattern.length && pattern[p] === ANY_RUN) p += 1;
-  return p === pattern.length;
+  const table = part.table;
+  let k = 0;
+  for (let t = from; t < text.length; t++) {
+    const unit = text.charCodeAt(t);
+    while (k > 0 && codes[k] !== unit) {
+      k = table[k - 1] as number;
+      work.used += 1;
+    }
+    work.used += 1;
+    if (codes[k] === unit) k += 1;
+    if (k === lead) {
+      if (startsCharacter(text, from, t + 1 - lead)) {
+        const end = lead === codes.length ? t + 1 : partAt(part, text, t + 1, work, lead);
+        if (settle(end) || end === RAN_OUT) return;
+      }
+      k = table[k - 1] as number;
+    }
+  }
+  // Every later place runs out of text within the plain leading characters.
+  settle(RAN_OUT);
+}
+
+/** Where the first place `part` fits at or after `from` ends, a star having begun at `from`, or -1. */
+function findPart(part: CharacterPart, text: string, from: number, work: CodeownersWork): number {
+  if (part.codes.length === 0) return from;
+  let found = -1;
+  eachPlace(part, text, from, work, (end) => {
+    if (end >= 0) found = end;
+    return end >= 0;
+  });
+  return found;
+}
+
+/** Whether `part` can end the text, a star having begun at `from`. */
+function partEnds(part: CharacterPart, text: string, from: number, work: CodeownersWork): boolean {
+  const codes = part.codes;
+  if (codes.length === 0) return true;
+  if (part.lead === codes.length) {
+    // Only one place can end the text: the part's own length before the end.
+    const at = text.length - codes.length;
+    if (at < from || !startsCharacter(text, from, at)) return false;
+    return partAt(part, text, at, work) === text.length;
+  }
+  let ends = false;
+  eachPlace(part, text, from, work, (end) => {
+    ends = end === text.length;
+    return ends;
+  });
+  return ends;
+}
+
+function matchSegment(pattern: SegmentPattern, text: string, work: CodeownersWork): boolean {
+  const parts = pattern.parts;
+  const first = parts[0] as CharacterPart;
+  if (parts.length === 1) return partAt(first, text, 0, work) === text.length;
+  let at = partAt(first, text, 0, work);
+  if (at < 0) return false;
+  for (let i = 1; i < parts.length - 1; i++) {
+    at = findPart(parts[i] as CharacterPart, text, at, work);
+    if (at < 0) return false;
+  }
+  return partEnds(parts[parts.length - 1] as CharacterPart, text, at, work);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -210,48 +377,139 @@ function matchSegment(pattern: readonly number[], text: string): boolean {
 //   seg   exactly one segment that matches the pattern's characters
 // ---------------------------------------------------------------------------------------------------------------------
 
-type Token = { kind: 'star' } | { kind: 'one' } | { kind: 'any' } | { kind: 'seg'; codes: number[] };
+type Token = { kind: 'star' } | { kind: 'one' } | { kind: 'any' } | { kind: 'seg'; pattern: SegmentPattern };
 
 const STAR_TOKEN: Token = { kind: 'star' };
 const ONE_TOKEN: Token = { kind: 'one' };
 const ANY_TOKEN: Token = { kind: 'any' };
 
-function matchesOne(token: Token, segment: string): boolean {
+/** A part of a compiled pattern between two `star` tokens. */
+interface TokenPart {
+  tokens: Token[];
+  /** The plain names the part starts with (all of its tokens when each is a plain name), and their search table. */
+  names: string[];
+  table: Int32Array;
+}
+
+/** A compiled pattern, cut at its `star` tokens: one part with no star, k + 1 parts with k (the first and last may be empty). */
+interface CompiledPattern {
+  parts: TokenPart[];
+}
+
+function sameName(a: string, b: string): boolean {
+  return a === b;
+}
+
+function compiledPattern(tokens: readonly Token[]): CompiledPattern {
+  const parts: TokenPart[] = [];
+  let current: Token[] = [];
+  const close = (): void => {
+    const names: string[] = [];
+    for (const token of current) {
+      if (token.kind !== 'seg' || token.pattern.plain === null) break;
+      names.push(token.pattern.plain);
+    }
+    parts.push({ tokens: current, names, table: failureTable(names, sameName) });
+    current = [];
+  };
+  for (const token of tokens) {
+    if (token.kind === 'star') close();
+    else current.push(token);
+  }
+  close();
+  return { parts };
+}
+
+function matchesOne(token: Token, segment: string, work: CodeownersWork): boolean {
   if (token.kind === 'any') return true;
   if (token.kind === 'one') return segment.length > 0;
-  if (token.kind === 'seg') return matchSegment(token.codes, segment);
+  if (token.kind === 'seg') {
+    const plain = token.pattern.plain;
+    return plain !== null ? plain === segment : matchSegment(token.pattern, segment, work);
+  }
   return false;
 }
 
+/** Where `part`, from its token `skip` on, ends when it is laid at segment `at`, or MISMATCH, or RAN_OUT. */
+function tokensAt(part: TokenPart, segments: readonly string[], at: number, work: CodeownersWork, skip = 0): number {
+  const tokens = part.tokens;
+  let s = at;
+  work.used += 1;
+  for (let t = skip; t < tokens.length; t++) {
+    work.used += 1;
+    if (s >= segments.length) return RAN_OUT;
+    if (!matchesOne(tokens[t] as Token, segments[s] as string, work)) return MISMATCH;
+    s += 1;
+  }
+  return s;
+}
+
 /**
- * Matches the tokens against the segments with the usual two-pointer walk for wildcards: the last `star` remembers where
- * it is, and on a mismatch it takes one more segment and the walk goes on. Each segment is passed over a bounded number of
- * times, so the cost is the tokens times the segments at most, and nothing is ever tried twice from the same place.
+ * Where the first place `part` fits at or after segment `from` ends, or -1. The places where its plain leading names
+ * fit are found in one Knuth-Morris-Pratt pass, and only the rest of the part is tried at each of them; a part that does
+ * not start with a plain name is tried at every segment. The search stops where the segments run out.
  */
-function matchTokens(tokens: readonly Token[], segments: readonly string[]): boolean {
-  let t = 0;
-  let s = 0;
-  let starAt = -1;
-  let starSegment = 0;
-  while (s < segments.length) {
-    const token = tokens[t];
-    if (token !== undefined && token.kind === 'star') {
-      starAt = t;
-      starSegment = s;
-      t += 1;
-    } else if (token !== undefined && matchesOne(token, segments[s] as string)) {
-      t += 1;
-      s += 1;
-    } else if (starAt >= 0) {
-      starSegment += 1;
-      s = starSegment;
-      t = starAt + 1;
-    } else {
-      return false;
+function findTokens(part: TokenPart, segments: readonly string[], from: number, work: CodeownersWork): number {
+  const tokens = part.tokens;
+  const names = part.names;
+  const lead = names.length;
+  if (tokens.length === 0) return from;
+  if (lead === 0) {
+    for (let at = from; ; at++) {
+      const end = tokensAt(part, segments, at, work);
+      if (end >= 0) return end;
+      if (end === RAN_OUT) return -1;
     }
   }
-  while (t < tokens.length && (tokens[t] as Token).kind === 'star') t += 1;
-  return t === tokens.length;
+  const table = part.table;
+  let k = 0;
+  for (let s = from; s < segments.length; s++) {
+    const segment = segments[s] as string;
+    while (k > 0 && names[k] !== segment) {
+      k = table[k - 1] as number;
+      work.used += 1;
+    }
+    work.used += 1;
+    if (names[k] === segment) k += 1;
+    if (k === lead) {
+      const end = lead === tokens.length ? s + 1 : tokensAt(part, segments, s + 1, work, lead);
+      if (end >= 0) return end;
+      if (end === RAN_OUT) return -1;
+      k = table[k - 1] as number;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Whether `part` can end the segments, a `star` having begun at segment `from`. Every token stands for exactly one
+ * segment, so only one place can end the path: the part's own length before the end.
+ */
+function tokensEnd(part: TokenPart, segments: readonly string[], from: number, work: CodeownersWork): boolean {
+  const length = part.tokens.length;
+  if (length === 0) return true;
+  const at = segments.length - length;
+  return at >= from && tokensAt(part, segments, at, work) === segments.length;
+}
+
+/**
+ * Matches a compiled pattern against the segments. The part before the first `star` must start the path, the part after
+ * the last must end it, and each part in between is taken at the first place it fits, left to right: the same answer the
+ * usual two-pointer walk for wildcards gives, since that walk only ever moves its last star. A part's places are found
+ * from its plain leading names in one pass; only a part with a wildcard name, a `one` or an `any` token in it is then
+ * tried place by place, so such a part can cost its length times the segments. Every step is added to `work`.
+ */
+function matchTokens(pattern: CompiledPattern, segments: readonly string[], work: CodeownersWork): boolean {
+  const parts = pattern.parts;
+  const first = parts[0] as TokenPart;
+  if (parts.length === 1) return tokensAt(first, segments, 0, work) === segments.length;
+  let at = tokensAt(first, segments, 0, work);
+  if (at < 0) return false;
+  for (let i = 1; i < parts.length - 1; i++) {
+    at = findTokens(parts[i] as TokenPart, segments, at, work);
+    if (at < 0) return false;
+  }
+  return tokensEnd(parts[parts.length - 1] as TokenPart, segments, at, work);
 }
 
 /** One segment of a pattern as codes: literal UTF-16 units, ANY_CHARACTER and ANY_RUN. Marks what GitHub does not document. */
@@ -300,7 +558,7 @@ function compileSegment(segment: string, marks: Set<string>): number[] {
  * pattern matches nothing; a run of `**` segments is read as one; a pattern that is only `**` matches every path; and
  * a double star with a trailing slash and nothing else matches every file inside some directory.
  */
-function compilePattern(pattern: string, marks: Set<string>): Token[] | null {
+function compilePattern(pattern: string, marks: Set<string>): CompiledPattern | null {
   const raw = pattern.split('/');
   let from = 0;
   while (from < raw.length && raw[from] === '') from += 1;
@@ -321,7 +579,7 @@ function compilePattern(pattern: string, marks: Set<string>): Token[] | null {
   if (runs > 0) marks.add('runs of ** or /');
   if (core.length === 1 && core[0] === '**' && trailingSlash) {
     marks.add('a bare **');
-    return [ANY_TOKEN, ANY_TOKEN, STAR_TOKEN];
+    return compiledPattern([ANY_TOKEN, ANY_TOKEN, STAR_TOKEN]);
   }
 
   const flat: string[] = [];
@@ -351,12 +609,12 @@ function compilePattern(pattern: string, marks: Set<string>): Token[] | null {
     } else if (part === '*') {
       push(ONE_TOKEN);
     } else {
-      push({ kind: 'seg', codes: compileSegment(part, marks) });
+      push({ kind: 'seg', pattern: segmentPattern(compileSegment(part, marks)) });
       // Any other last segment also owns everything under a directory of that name.
       if (i === last) push(STAR_TOKEN);
     }
   }
-  return tokens;
+  return compiledPattern(tokens);
 }
 
 function hasStarRun(text: string): boolean {
@@ -449,8 +707,8 @@ export function parseCodeowners(text: string): { rules: CodeownersRule[]; skippe
       pattern,
       owners,
       note: marks.size === 0 ? '' : `${NOT_DOCUMENTED}: ${[...marks].join(', ')}`,
-      matches: (path) => compiled !== null && matchTokens(compiled, path.split('/')),
-      matchesSegments: (segments) => compiled !== null && matchTokens(compiled, segments),
+      matches: (path) => compiled !== null && matchTokens(compiled, path.split('/'), { used: 0 }),
+      matchesSegments: (segments, work = { used: 0 }) => compiled !== null && matchTokens(compiled, segments, work),
     });
   });
   return { rules, skipped };
@@ -467,13 +725,24 @@ function checkCodeownersPath(text: string, line: number): string {
   return path;
 }
 
+/** The refusal of a paste that needs more matching work than MAX_CODEOWNERS_WORK. It names the path line, never text. */
+function tooMuchWork(line: number): GlobTesterError {
+  return new GlobTesterError(
+    `Matching stopped at line ${line} of the paths: this CODEOWNERS file and these paths need more matching work than this page allows (${withCommas(MAX_CODEOWNERS_WORK)} steps). Try fewer paths or fewer rules.`,
+    'paths',
+    line,
+  );
+}
+
 /**
  * The deciding rule for each pasted path: the rules are scanned from the last line to the first and the first that matches
  * decides, so the owners of earlier lines are never merged. A path no line matches has no owner and no deciding line. Rows
- * keep the pasted order, and a path pasted twice gives two rows.
+ * keep the pasted order, and a path pasted twice gives two rows. The work of the whole paste is counted, and once it
+ * passes MAX_CODEOWNERS_WORK the paste is refused, naming the path line where matching stopped.
  */
 export function ownersForPaths(rules: readonly CodeownersRule[], pathsText: string): CodeownersRow[] {
   const rows: CodeownersRow[] = [];
+  const work: CodeownersWork = { used: 0 };
   forEachLine(pathsText, (text, number) => {
     if (isBlank(text)) return;
     const path = checkCodeownersPath(text, number);
@@ -481,7 +750,10 @@ export function ownersForPaths(rules: readonly CodeownersRule[], pathsText: stri
     let decided: CodeownersRule | null = null;
     for (let k = rules.length - 1; k >= 0; k--) {
       const rule = rules[k] as CodeownersRule;
-      if (rule.matchesSegments(segments)) {
+      work.used += 1;
+      const matched = rule.matchesSegments(segments, work);
+      if (work.used > MAX_CODEOWNERS_WORK) throw tooMuchWork(number);
+      if (matched) {
         decided = rule;
         break;
       }

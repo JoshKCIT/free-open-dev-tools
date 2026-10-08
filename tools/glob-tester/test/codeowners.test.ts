@@ -5,6 +5,7 @@ import {
   MAX_CODEOWNERS_CHARACTERS,
   MAX_CODEOWNERS_LINE_CHARACTERS,
   MAX_CODEOWNERS_RULES,
+  MAX_CODEOWNERS_WORK,
   OWNER_SHAPES,
   checkCodeownersInput,
   codeownersRows,
@@ -613,6 +614,21 @@ it('the matcher builds no regular expression from pasted text and stays linear o
     ['many rules', (n) => '*.js @o\n'.repeat(Math.floor(n / 8)) + '\u0000' + 'a/b.c'],
     ['many comment lines', (n) => '#\n'.repeat(Math.floor(n / 2)) + '* @o\u0000' + 'a/b.c'],
     ['many blank owners', (n) => 'a' + ' @o'.repeat(Math.floor(n / 3)) + '\u0000' + 'a'],
+    // A star must give way at every letter of the path, and the letters after it run half the path, so a walk that
+    // re-reads them at each letter costs about the square of the path (20-REVIEW-A, A-WR-01).
+    [
+      'a star that gives way inside the path',
+      (n) => '*' + 'a'.repeat(Math.floor(n / 2)) + 'b @o\u0000' + 'a'.repeat(n),
+    ],
+    ['a star, letters and a question mark', (n) => '*' + 'a'.repeat(Math.floor(n / 2)) + '?b @o\u0000' + 'a'.repeat(n)],
+    [
+      'a double star that gives way inside the path',
+      (n) => '**/' + 'a/'.repeat(Math.floor(n / 4)) + 'b @o\u0000' + 'a/'.repeat(Math.floor(n / 2)) + 'a',
+    ],
+    [
+      'a double star, names and a trailing slash',
+      (n) => '**/' + 'a/'.repeat(Math.floor(n / 4)) + 'b/ @o\u0000' + 'a/'.repeat(Math.floor(n / 2)) + 'a',
+    ],
   ];
   const median = (values: number[]) => [...values].sort((x, y) => x - y)[1] as number;
   for (const [name, make] of shapes) {
@@ -632,11 +648,193 @@ it('the matcher builds no regular expression from pasted text and stays linear o
     expect(median(fourfold), name).toBeLessThanOrEqual(12);
   }
 
-  // The worst case inside the limits (a 4,000 character line against a 1,024 character path) is answered, not abandoned.
+  // The longest line against the longest path (a 4,000 character line against a 1,024 character path) is answered, not
+  // abandoned. A part that starts with a question mark or a wildcard name is tried place by place and is not linear; the
+  // work budget bounds it (the next test).
   const worst = codeownersRows('*' + 'a'.repeat(3_990) + 'b @o', 'a'.repeat(1_024)).rows;
   expect(worst[0]?.owners).toEqual([]);
   const manyRules = codeownersRows(Array.from({ length: 5_000 }, (_, i) => `*.ext${i} @o`).join('\n'), 'src/a/b/c.txt');
   expect(manyRules.rows[0]?.line).toBeNull();
+});
+
+it('a paste whose matching would exceed the work budget is refused in plain words naming the path line', () => {
+  expect(MAX_CODEOWNERS_WORK).toBe(300_000_000);
+  const sentence = (line: number) =>
+    `Matching stopped at line ${line} of the paths: this CODEOWNERS file and these paths need more matching work than this page allows (300,000,000 steps). Try fewer paths or fewer rules.`;
+
+  // The paste of the review (20-REVIEW-A, A-WR-01): 1,158 lines of a star, 512 letters a and a b, inside every limit,
+  // against 5,000 paths of 1,024 letters a. It took about 1 second a path before the budget, so 5,000 paths would have
+  // run for over an hour; now the work is counted and the paste is refused, at the same path line every time.
+  const line = '*' + 'a'.repeat(512) + 'b @o';
+  const file = ['# ' + MARKER, ...Array.from({ length: 1_158 }, () => line)].join('\n');
+  const paths = [MARKER + '/a.txt', ...Array.from({ length: 4_999 }, () => 'a'.repeat(1_024))].join('\n');
+  expect(file.length).toBeLessThanOrEqual(MAX_CODEOWNERS_CHARACTERS);
+  expect(() => checkCodeownersInput(file, paths)).not.toThrow();
+  const first = refusal(() => codeownersRows(file, paths));
+  expect(first.part).toBe('paths');
+  const stoppedAt = first.line as number;
+  expect(stoppedAt).toBeGreaterThan(1);
+  expect(stoppedAt).toBeLessThan(5_000);
+  expect(first.message).toBe(sentence(stoppedAt));
+  expect(first.message).not.toContain(MARKER);
+  // Every entry point that matches a whole paste counts the same work and stops at the same line.
+  const job = { mode: 'codeowners' as const, patterns: file, paths, dot: false, nocase: false };
+  for (const run of [() => testPatterns(job), () => ownersForPaths(parseCodeowners(file).rules, paths)]) {
+    const again = refusal(run);
+    expect(again.line).toBe(stoppedAt);
+    expect(again.message).toBe(first.message);
+  }
+
+  // A part that starts with a question mark is tried at every letter, so one such rule and one long path cost about
+  // the square of the path: one path against 1,158 of them is already past the budget, and line 1 is named.
+  const question = Array.from({ length: 1_158 }, () => '*?' + 'a'.repeat(510) + 'b @o').join('\n');
+  const one = refusal(() => codeownersRows(question, 'a'.repeat(1_024) + '\n' + 'a'.repeat(1_024)));
+  expect(one.line).toBe(1);
+  expect(one.message).toBe(sentence(1));
+
+  // An ordinary paste of the same size is answered: 5,000 rules for folders at the top against 5,000 paths of eight
+  // folders that the last 4,999 rules never match (every path is tried against every rule), and the first rule decides
+  // the paths it names.
+  const folders = [
+    '/packages/pkg7/ @org/seven',
+    ...Array.from({ length: 4_999 }, (_, i) => `/component${i}/ @org/team-${i % 50}`),
+  ].join('\n');
+  const many = Array.from(
+    { length: 5_000 },
+    (_, i) => `packages/pkg${i % 300}/src/lib/feature${i}/internal/helpers/file${i}.ts`,
+  ).join('\n');
+  const rows = codeownersRows(folders, many).rows;
+  expect(rows).toHaveLength(5_000);
+  const owned = rows.filter((row) => row.line !== null);
+  expect(owned.map((row) => row.path)).toEqual(
+    rows.filter((row) => row.path.startsWith('packages/pkg7/')).map((row) => row.path),
+  );
+  expect(owned.every((row) => row.line === 1 && row.owners[0] === '@org/seven')).toBe(true);
+}, 120_000);
+
+/** A seeded generator (mulberry32), so the random names are the same on every run. */
+function seeded(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), state | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The usual two-pointer walk for wildcards over the UTF-16 units of one name, the way this matcher read a name before
+ * its parts were searched in one pass: a run of stars is one star, a star gives way one whole character at a time, and a
+ * question mark takes one character, a surrogate pair counting as one.
+ */
+function walkName(pattern: string, name: string): boolean {
+  const codes: number[] = [];
+  for (let i = 0; i < pattern.length; i++) {
+    const code = pattern.charCodeAt(i);
+    if (code === 42) {
+      if (codes[codes.length - 1] !== -2) codes.push(-2);
+    } else codes.push(code === 63 ? -1 : code);
+  }
+  const units = (i: number): number => {
+    const high = name.charCodeAt(i);
+    const low = name.charCodeAt(i + 1);
+    return high >= 0xd800 && high <= 0xdbff && low >= 0xdc00 && low <= 0xdfff ? 2 : 1;
+  };
+  let p = 0;
+  let t = 0;
+  let starAt = -1;
+  let starText = 0;
+  while (t < name.length) {
+    if (p < codes.length && codes[p] === -2) {
+      starAt = p;
+      starText = t;
+      p += 1;
+    } else if (p < codes.length && codes[p] === -1) {
+      t += units(t);
+      p += 1;
+    } else if (p < codes.length && codes[p] === name.charCodeAt(t)) {
+      p += 1;
+      t += 1;
+    } else if (starAt >= 0) {
+      starText += units(starText);
+      t = starText;
+      p = starAt + 1;
+    } else return false;
+  }
+  while (p < codes.length && codes[p] === -2) p += 1;
+  return p === codes.length;
+}
+
+/**
+ * The same walk over the folders of a path: `**` is any number of folders, `*` is one folder that is not empty, any other
+ * name is that folder, and a pattern that ends with a name also owns everything under it.
+ */
+function walkFolders(pattern: string[], segments: string[]): boolean {
+  const tokens = [...pattern];
+  if (tokens[tokens.length - 1] !== '*') tokens.push('**');
+  let t = 0;
+  let s = 0;
+  let starAt = -1;
+  let starSegment = 0;
+  while (s < segments.length) {
+    const token = tokens[t];
+    const segment = segments[s] as string;
+    if (token === '**') {
+      starAt = t;
+      starSegment = s;
+      t += 1;
+    } else if (token !== undefined && (token === '*' ? segment.length > 0 : token === segment)) {
+      t += 1;
+      s += 1;
+    } else if (starAt >= 0) {
+      starSegment += 1;
+      s = starSegment;
+      t = starAt + 1;
+    } else return false;
+  }
+  while (tokens[t] === '**') t += 1;
+  return t === tokens.length;
+}
+
+it('the matcher gives the answers of the two-pointer walk for wildcards on seeded random names and folders', () => {
+  const random = seeded(2031);
+  const pick = <T>(list: readonly T[]): T => list[Math.floor(random() * list.length)] as T;
+  const high = String.fromCharCode(0xd83d);
+  const low = String.fromCharCode(0xde00);
+  const nameParts = ['a', 'b', 'a', 'ab', 'aa', 'ba', '*', '*', '?', high, low, high + low];
+  const textParts = ['a', 'b', 'a', 'a', 'ab', 'aab', high, low, high + low];
+  let names = 0;
+  for (let i = 0; i < 20_000; i++) {
+    let pattern = '';
+    for (let k = 1 + Math.floor(random() * 8); k > 0; k--) pattern += pick(nameParts);
+    // A name that is only a star, or a double star, is a folder token rather than a name; three stars are unsupported.
+    if (pattern === '*' || pattern === '**' || pattern.includes('***')) continue;
+    let name = '';
+    for (let k = 1 + Math.floor(random() * 10); k > 0; k--) name += pick(textParts);
+    // A leading slash anchors the one name at the top; the rule owns the path when its first folder matches.
+    const rule = parseCodeowners('/' + pattern + ' @o').rules[0];
+    expect(rule, pattern).toBeDefined();
+    const path = random() < 0.5 ? name : name + '/x';
+    expect(rule?.matches(path), JSON.stringify([pattern, path])).toBe(walkName(pattern, name));
+    names += 1;
+  }
+  expect(names).toBeGreaterThan(15_000);
+
+  const folderParts = ['a', 'b', 'c', 'a', '**', '*'];
+  let folders = 0;
+  for (let i = 0; i < 20_000; i++) {
+    const pattern: string[] = [];
+    for (let k = 1 + Math.floor(random() * 6); k > 0; k--) pattern.push(pick(folderParts));
+    // Kept to the forms the walk above reads the same way: no double star at the end and no two in a row.
+    if (pattern[pattern.length - 1] === '**' || pattern.some((p, k) => p === '**' && pattern[k + 1] === '**')) continue;
+    const segments: string[] = [];
+    for (let k = 1 + Math.floor(random() * 12); k > 0; k--) segments.push(pick(['a', 'b', 'c', 'a']));
+    const rule = parseCodeowners('/' + pattern.join('/') + ' @o').rules[0];
+    expect(rule?.matches(segments.join('/')), JSON.stringify([pattern, segments])).toBe(walkFolders(pattern, segments));
+    folders += 1;
+  }
+  expect(folders).toBeGreaterThan(10_000);
 });
 
 it('question marks and backslash escapes are this page reading and are marked not documented by GitHub', () => {

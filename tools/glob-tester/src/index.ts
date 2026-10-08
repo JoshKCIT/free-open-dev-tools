@@ -10,13 +10,14 @@ export {
   MAX_CODEOWNERS_CHARACTERS,
   MAX_CODEOWNERS_LINE_CHARACTERS,
   MAX_CODEOWNERS_RULES,
+  MAX_CODEOWNERS_WORK,
   OWNER_SHAPES,
   checkCodeownersInput,
   codeownersRows,
   ownersForPaths,
   parseCodeowners,
 } from './codeowners';
-export type { CodeownersRow, CodeownersRule, SkippedLine } from './codeowners';
+export type { CodeownersRow, CodeownersRule, CodeownersWork, SkippedLine } from './codeowners';
 export {
   MAX_ALSO_LINES,
   MAX_PATH_CHARACTERS,
