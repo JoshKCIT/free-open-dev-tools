@@ -626,7 +626,18 @@ function hasStarRun(text: string): boolean {
   return false;
 }
 
-/** The reason a pattern is unsupported, or null. GitHub's page says the first three do not work; the fourth is this page's. */
+function isOnlySlashes(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) !== 47) return false;
+  }
+  return true;
+}
+
+/**
+ * The reason a pattern is unsupported, or null. GitHub's page says the first three do not work; the last two are this
+ * page's reading. A pattern of only slashes names no file, so it would match nothing and decide no row, and its line
+ * would never be seen labelled: it is listed instead.
+ */
 function unsupportedReason(pattern: string): { reason: string; documented: boolean } | null {
   if (pattern.charCodeAt(0) === 33) {
     return { reason: 'a leading ! to negate a pattern does not work in CODEOWNERS files', documented: true };
@@ -639,6 +650,9 @@ function unsupportedReason(pattern: string): { reason: string; documented: boole
   }
   if (hasStarRun(pattern)) {
     return { reason: 'three or more stars in a row', documented: false };
+  }
+  if (isOnlySlashes(pattern)) {
+    return { reason: 'a pattern of only slashes names no file', documented: false };
   }
   return null;
 }

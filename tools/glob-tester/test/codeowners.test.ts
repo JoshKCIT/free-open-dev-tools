@@ -878,6 +878,15 @@ it('runs of stars and slashes are read as one at the ends and marked not documen
   // A slash alone, or only slashes, is no pattern that names a file.
   expect(owns('//', 'a')).toBe(false);
   expect(owns('/', 'a')).toBe(false);
+  // Such a line decides no row, so it is listed with the other skipped lines and marked as this page reading, or the
+  // visitor would never see it labelled (20-REVIEW-A, A-IN-02).
+  const slashes = parseCodeowners('/ @org/all\n# c\n// @a\n/docs @b\n');
+  expect(slashes.rules.map((r) => r.line)).toEqual([4]);
+  expect(slashes.skipped).toEqual([
+    { line: 1, shown: '/', reason: 'a pattern of only slashes names no file', documented: false },
+    { line: 3, shown: '//', reason: 'a pattern of only slashes names no file', documented: false },
+  ]);
+  expect(codeownersRows('/ @org/all\n', 'a\nb/c').rows.map((row) => row.line)).toEqual([null, null]);
   // A double star and a trailing slash with nothing else means every file inside some directory.
   expect(owns('**/', 'a/b')).toBe(true);
   expect(owns('**/', 'a')).toBe(false);
