@@ -1446,7 +1446,7 @@
     "name": "Glob & .gitignore Pattern Tester",
     "category": "devops",
     "tier": 3,
-    "summary": "Test glob patterns and .gitignore rules against a list of paths and see which rule decided each one."
+    "summary": "Test glob patterns, .gitignore rules and CODEOWNERS files against a list of paths and see which line decided each one."
   },
   {
     "id": "semver-checker",

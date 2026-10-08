@@ -148,7 +148,7 @@
       "category": "devops",
       "phase": 20,
       "needs": ["workers"],
-      "outputKinds": ["table", "list", "note"],
+      "outputKinds": ["table", "list", "note", "code"],
       "sharedAdditions": []
     }
   ]

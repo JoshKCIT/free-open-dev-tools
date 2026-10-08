@@ -8,5 +8,13 @@
     "mode": { "field": "mode", "value": "glob" },
     "values": { "patterns": "src/**/*.ts\n*.md", "paths": "src/a.ts\nREADME.md\nsrc/lib/b.js" },
     "attachesFile": false
+  },
+  {
+    "mode": { "field": "mode", "value": "codeowners" },
+    "values": {
+      "patterns": "* @global-owner1 @global-owner2\n*.js @js-owner\ndocs/* docs@example.com\n/build/logs/ @doctocat\n/apps/\n",
+      "paths": "README.md\nsrc/app.js\ndocs/readme.md\ndocs/sub/y.md\nbuild/logs/z.log"
+    },
+    "attachesFile": false
   }
 ]

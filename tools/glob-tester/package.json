@@ -1,7 +1,7 @@
 {
   "name": "@fodt/glob-tester",
   "version": "1.0.0",
-  "description": "Test glob patterns and .gitignore rules against a list of paths and see which rule decided each one.",
+  "description": "Test glob patterns, .gitignore rules and CODEOWNERS files against a list of paths and see which line decided each one.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +28,8 @@
     "ignore",
     "pathspec",
     "match",
-    "check-ignore"
+    "check-ignore",
+    "codeowners"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
