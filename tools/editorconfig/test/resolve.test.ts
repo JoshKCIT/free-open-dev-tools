@@ -263,6 +263,7 @@ it('known values are lower-cased and every other value keeps its case', () => {
     'tab_width = 4',
     'max_line_length = Off',
     'Foo_Bar = KeepCase',
+    'Equation = a=b=c',
   ].join('\n');
   const result = resolveEditorConfig(files, 'a.txt');
   expect(result.properties.map((p) => [p.key, p.value])).toEqual([
@@ -275,6 +276,7 @@ it('known values are lower-cased and every other value keeps its case', () => {
     ['tab_width', '4'],
     ['max_line_length', 'Off'],
     ['foo_bar', 'KeepCase'],
+    ['equation', 'a=b=c'],
   ]);
 });
 
@@ -324,11 +326,16 @@ it('an empty paste or path gives nothing and a file with no matching section say
   expect(comments.filesUsed).toHaveLength(1);
 
   // Lines the format has no place for are skipped and reported by file label and line.
-  const odd = resolveEditorConfig(['[*]', 'this line has no equals sign', '= no key', 'k = v'].join('\n'), 'a.js');
-  expect(odd.properties.map((p) => [p.key, p.value])).toEqual([['k', 'v']]);
+  // A line that starts with ; or # is a comment even when it looks like a pair; a ; or # anywhere else starts no comment
+  // (specification 0.17.2, and core tests comment_before_props and semicolon_or_hash_in_property).
+  const odd = resolveEditorConfig(
+    ['[*]', '# k2 = v2', '; k3 = v3', 'this line has no equals sign', '= no key', 'k = v ; not a comment'].join('\n'),
+    'a.js',
+  );
+  expect(odd.properties.map((p) => [p.key, p.value])).toEqual([['k', 'v ; not a comment']]);
   expect(odd.problems.map((p) => [p.file, p.line])).toEqual([
-    ['.editorconfig', 2],
-    ['.editorconfig', 3],
+    ['.editorconfig', 4],
+    ['.editorconfig', 5],
   ]);
 });
 

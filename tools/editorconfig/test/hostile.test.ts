@@ -132,8 +132,19 @@ it('folder separator lines are read and a folder with a leading slash, a dot seg
 
 it('an empty paste or path gives nothing and a path the page cannot match is refused', () => {
   expect(resolveEditorConfig('', '').empty).toBe(true);
-  for (const path of ['/a.js', 'a//b.js', 'a/b/', './a.js', 'a/./b.js', '../a.js', 'a/../b.js']) {
-    expect(refusal(() => resolveEditorConfig('[*]\nk = v', path)).message, path).toMatch(/^The path /);
+  const refused: Array<[string, string]> = [
+    ['/a.js', 'cannot start with a slash'],
+    ['a//b.js', 'an empty part'],
+    ['a/b/', 'an empty part'],
+    ['./a.js', 'a . or .. part'],
+    ['a/./b.js', 'a . or .. part'],
+    ['../a.js', 'a . or .. part'],
+    ['a/../b.js', 'a . or .. part'],
+  ];
+  for (const [path, part] of refused) {
+    const message = refusal(() => resolveEditorConfig('[*]\nk = v', path)).message;
+    expect(message, path).toMatch(/^The path /);
+    expect(message, path).toContain(part);
   }
   // A backslash is an ordinary character, with a note.
   const result = resolveEditorConfig('[*]\nk = v', `a${BACKSLASH}b.js`);
@@ -202,8 +213,10 @@ it('more than 50 files, 10,000 lines or 1,000,000 characters are refused before 
   expect(trap.length + exactly.length).toBe(1_001_034);
   expect(refusal(() => resolveEditorConfig(exactly + 'x', 'a.txt')).message).toContain('1,000,001 characters');
 
-  // A line: 8,192 characters are read, 8,193 are refused naming file and line.
+  // A line: 8,192 characters are read, 8,193 are refused naming file and line. A byte order mark at the start of the paste is
+  // no part of the first line (core test bom_at_head reads a file that starts with one).
   expect(resolveEditorConfig(`#${'x'.repeat(8191)}`, 'a.txt').empty).toBe(false);
+  expect(resolveEditorConfig(`${String.fromCodePoint(0xfeff)}#${'x'.repeat(8191)}`, 'a.txt').empty).toBe(false);
   const long = refusal(() => resolveEditorConfig(`[*]\n#${'x'.repeat(8192)}`, 'a.txt'));
   expect(long).toMatchObject({ file: 'File 1', line: 2 });
   expect(long.message).toBe(
@@ -393,11 +406,17 @@ it('every parser stays linear on hostile input', () => {
   }
 
   // Section names as globs (compiled once each; the longest name read is 1,024 characters, so the sizes stay under 2,048).
+  // Names that nest are followed through one call of the compiler per level, so those stay inside the length a page reads; the
+  // others are timed on names far longer than that, through the compiler's own length argument, so that a rescan per
+  // character shows up even though a page never hands the compiler more than 1,024 characters.
+  const deepGlobs: Array<[string, (n: number) => string]> = [
+    ['nested braces', (n) => '{'.repeat(Math.floor(n / 2)) + '}'.repeat(Math.floor(n / 2))],
+    ['nested choices', (n) => '{a,'.repeat(Math.floor(n / 3)) + '}'.repeat(Math.floor(n / 3))],
+  ];
+  for (const [name, make] of deepGlobs) expectLinear(`compile ${name}`, (glob) => compileGlob(glob), make, 250);
   const globs: Array<[string, (n: number) => string]> = [
     ['opening braces', (n) => '{'.repeat(n)],
     ['closing braces', (n) => '}'.repeat(n)],
-    ['nested braces', (n) => '{'.repeat(Math.floor(n / 2)) + '}'.repeat(Math.floor(n / 2))],
-    ['nested choices', (n) => '{a,'.repeat(Math.floor(n / 3)) + '}'.repeat(Math.floor(n / 3))],
     ['commas inside braces', (n) => '{' + ','.repeat(n) + '}'],
     ['many choices', (n) => '{a,b}'.repeat(Math.floor(n / 5))],
     ['opening brackets', (n) => '['.repeat(n)],
@@ -410,7 +429,7 @@ it('every parser stays linear on hostile input', () => {
     ['question marks', (n) => '?'.repeat(n)],
   ];
   for (const [name, make] of globs) {
-    expectLinear(`compile ${name}`, (glob) => compileGlob(glob), make, 250);
+    expectLinear(`compile ${name}`, (glob) => compileGlob(glob, '', 1_000_000), make, 5000);
   }
 
   // Many files of the same kind and the numbers a visitor can reach: all 50 files at once.
