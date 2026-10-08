@@ -13,11 +13,74 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
  * *.log and !keep.log, .gitignore mode names line 1 and line 2 as the deciding lines, and glob mode names the first
  * matching line.
  *
+ * Test 4 crosses the page's 5 second limit in CODEOWNERS mode and reads the sentence that mode gives
+ * (20-REVIEW-A, A-WR-02): the glob tester's own time-limit sentence talks about one slow pattern and a .gitignore paste,
+ * which is wrong for a CODEOWNERS file. As in e2e/dev-workers.spec.ts, the first worker never receives its job (as if it
+ * were stuck inside one long call) and the page clock, not real time, crosses the limit, so the test never depends on how
+ * fast the machine is.
+ *
  * A spec of its own with helpers copied in shape from e2e/number-base-calculator.spec.ts, because a shared test helper would
  * make every importing spec run whole for every tool. It is read in four browser projects: chromium, firefox, webkit and
  * mobile-chrome. The page is driven only through its labelled controls, and matching runs in its background worker.
  */
 const rel = (path: string) => path.replace(/^\//, '');
+
+declare global {
+  interface Window {
+    /** What the wrapper of test 4 saw: `log` holds `out-swallowed:<n>:<type>` and `out:<n>:<type>`; `ended` the stopped workers. */
+    __FODT_CODEOWNERS_WORKERS__?: { log: string[]; ended: number[] };
+  }
+}
+
+/**
+ * Wraps the global Worker constructor before any page script runs, so the first worker the page builds never receives the
+ * job it is posted (as if the matcher were stuck inside one synchronous call), every later worker behaves normally, and
+ * every message the page posts and every terminate() call is logged. A copy in shape of the wrapper in
+ * e2e/dev-workers.spec.ts, kept to the one behaviour this spec needs.
+ */
+async function swallowFirstJob(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const OriginalWorker = window.Worker;
+    const state = { log: [] as string[], ended: [] as number[] };
+    window.__FODT_CODEOWNERS_WORKERS__ = state;
+    let built = 0;
+    const typeOf = (data: unknown): string => {
+      const type = (data as { type?: unknown } | null | undefined)?.type;
+      return typeof type === 'string' ? type : '?';
+    };
+    class WrappedWorker {
+      inner: Worker;
+      index: number;
+      constructor(scriptURL: string | URL, workerOptions?: WorkerOptions) {
+        this.inner = new OriginalWorker(scriptURL, workerOptions);
+        this.index = built;
+        built += 1;
+      }
+      postMessage(...args: Parameters<Worker['postMessage']>): void {
+        if (this.index === 0) {
+          state.log.push(`out-swallowed:${this.index}:${typeOf(args[0])}`);
+          return;
+        }
+        state.log.push(`out:${this.index}:${typeOf(args[0])}`);
+        this.inner.postMessage(...args);
+      }
+      addEventListener(...args: Parameters<Worker['addEventListener']>): void {
+        this.inner.addEventListener(...args);
+      }
+      removeEventListener(...args: Parameters<Worker['removeEventListener']>): void {
+        this.inner.removeEventListener(...args);
+      }
+      terminate(): void {
+        state.ended.push(this.index);
+        this.inner.terminate();
+      }
+      dispatchEvent(event: Event): boolean {
+        return this.inner.dispatchEvent(event);
+      }
+    }
+    window.Worker = WrappedWorker as unknown as typeof Worker;
+  });
+}
 
 interface DocsExample {
   files: Record<'A' | 'B', string>;
@@ -175,4 +238,46 @@ test('glob-tester: the gitignore and glob modes still give their earlier answers
   expect(glob['src/lib/util.ts']).toContain('matched line 1: src/**/*.ts');
   expect(glob['src/lib/util.test.ts']).toContain('matched line 1: src/**/*.ts');
   expect(glob['src/lib/util.test.ts']).toContain('line 2');
+});
+
+test('glob-tester: a CODEOWNERS run past the 5 second limit stops with a sentence about the CODEOWNERS paste', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await swallowFirstJob(page);
+  await page.clock.install();
+  await openTester(page);
+  await chooseMode(page, 'CODEOWNERS file');
+  // The file is filled first and starts nothing (there are no paths yet); the run starts when the paths arrive.
+  await fillAndHold(page, 'patterns', '* @global-owner\n*.js @js-owner');
+  await fillAndHold(page, 'paths', 'src/app.js');
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+  // The job has been posted (and swallowed), so the run's 5 second timer exists; page time then jumps past it.
+  await expect
+    .poll(() => page.evaluate(() => window.__FODT_CODEOWNERS_WORKERS__!.log.join(' ')), {
+      timeout: 15_000,
+      intervals: [50, 100],
+    })
+    .toContain('out-swallowed:0:glob-tester-job');
+  await page.clock.fastForward(6_000);
+
+  const issues = outputArea(page).locator('.issue-list');
+  await expect(issues).toContainText('Stopped after 5 seconds', { timeout: 5_000 });
+  const message = (await issues.innerText()).replace(/\s+/g, ' ').trim();
+  expect(message).toContain(
+    'Stopped after 5 seconds: this CODEOWNERS file and these paths take too long to match together. Try fewer paths or fewer rules.',
+  );
+  // Not the glob tester's own sentence, which blames one pattern and calls the paste a .gitignore paste.
+  expect(message).not.toContain('a pattern took too long');
+  expect(message).not.toContain('.gitignore');
+  expect(await outputArea(page).locator('table').count()).toBe(0);
+  expect(await page.evaluate(() => window.__FODT_CODEOWNERS_WORKERS__!.ended)).toEqual([0]);
+
+  // The next run works, in a new worker, and the last matching line decides.
+  await fillAndHold(page, 'paths', 'src/app.js\nREADME.md');
+  await expect.poll(async () => Object.keys(await tableRows(page)).length, { timeout: 15_000 }).toBe(2);
+  const rows = await tableRows(page);
+  expect(rows['src/app.js']).toContain('@js-owner');
+  expect(rows['src/app.js']).toContain('line 2: *.js');
+  expect(rows['README.md']).toContain('@global-owner');
 });

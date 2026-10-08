@@ -207,12 +207,25 @@ function resultOutputs(result: TestResult): Pick<ToolResult, 'outputs' | 'stats'
     : gitignoreOutputs(result.rows as GitignoreRow[]);
 }
 
-function failure(err: unknown): ToolResult {
+/**
+ * What the 5 second stop says in CODEOWNERS mode. The worker helper's own sentence blames one slow pattern and talks about
+ * a .gitignore paste; in this mode the cause is the size of the file and the paths together.
+ */
+const CODEOWNERS_TIME_LIMIT_MESSAGE =
+  'Stopped after 5 seconds: this CODEOWNERS file and these paths take too long to match together. Try fewer paths or fewer rules.';
+
+function failure(err: unknown, mode: 'glob' | 'gitignore' | 'codeowners'): ToolResult {
   const issue = (message: string): ToolIssue => ({ message });
   if (err instanceof GlobTesterError || err instanceof GlobTesterRunError) {
     return { outputs: [], errors: [issue(err.message)] };
   }
-  if (err instanceof Error && FIXED_MESSAGES.has(err.message)) return { outputs: [], errors: [issue(err.message)] };
+  if (err instanceof Error && FIXED_MESSAGES.has(err.message)) {
+    const timedOut = err.message === GLOB_TESTER_TIME_LIMIT_MESSAGE;
+    return {
+      outputs: [],
+      errors: [issue(mode === 'codeowners' && timedOut ? CODEOWNERS_TIME_LIMIT_MESSAGE : err.message)],
+    };
+  }
   return { outputs: [], errors: [issue('Could not test these patterns.')] };
 }
 
@@ -318,7 +331,7 @@ export default defineTool({
       // An abort rejection is let through rather than swallowed: the runner's own cancellation note already owns that
       // message.
       if (ctx.signal.aborted) throw err;
-      return failure(err);
+      return failure(err, mode);
     }
   },
 });
