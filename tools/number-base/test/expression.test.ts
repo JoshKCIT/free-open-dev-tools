@@ -453,15 +453,22 @@ it('the evaluator stays linear on hostile input', () => {
     ['hexadecimal', (n) => '0x' + 'F'.repeat(n)],
   ];
   const run = (source: string) => evaluateExpression(source, { width: 256, signed: true });
+  const median = (values: number[]) => [...values].sort((x, y) => x - y)[1] as number;
   for (const [name, make] of shapes) {
-    // The doubling rule: 2n against n.
-    const ratio = scalingRatio(run, make, 250);
-    // Quadratic growth shows up as a ratio near 4 for doubling and 16 for four times as long; judge four times as long
-    // against 12 by taking the doubling from 2n to 4n as well and multiplying the two.
-    const next = scalingRatio(run, make, 500);
-    expect(Number.isFinite(ratio), name).toBe(true);
-    expect(ratio, name).toBeLessThanOrEqual(MAX_SCALING_RATIO);
-    expect(ratio * next, name).toBeLessThanOrEqual(12);
+    // The doubling rule (2n against n, over 6 fails) and, because it does not catch quadratic growth by itself, an input
+    // four times as long against a limit of 12: the doubling from n to 2n times the doubling from 2n to 4n. Each is the
+    // median of three measurements, so one slow moment on a busy machine decides nothing.
+    const doublings: number[] = [];
+    const fourfold: number[] = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const first = scalingRatio(run, make, 450);
+      const second = scalingRatio(run, make, 900);
+      doublings.push(first);
+      fourfold.push(first * second);
+    }
+    expect(Number.isFinite(median(doublings)), name).toBe(true);
+    expect(median(doublings), name).toBeLessThanOrEqual(MAX_SCALING_RATIO);
+    expect(median(fourfold), name).toBeLessThanOrEqual(12);
   }
   // A refusal at the length limit costs nothing like reading it.
   const refusedAtOnce = scalingRatio(run, (n) => '~'.repeat(n), 4000);
