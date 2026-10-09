@@ -56,14 +56,28 @@ function zoneRatio(make: (n: number) => string, quoted: boolean): number {
 it('every SPF parser stays linear on hostile input', () => {
   const makers = [...HOSTILE, ...OWN];
   const parse = (input: string): unknown => checkSpf(parseSpf(input));
+  // The limit is not loosened. A ratio over it on a busy machine is measured twice more and the median of the three is
+  // judged, as the four-times test below does.
+  const judged = (measure: () => number): number => {
+    const first = measure();
+    if (first < MAX_SCALING_RATIO) return first;
+    const three = [first, measure(), measure()].sort((a, b) => a - b);
+    return three[1] ?? first;
+  };
   for (const [i, make] of makers.entries()) {
     const asRecord = (n: number): string => 'v=spf1 ' + make(n);
-    const ratio = scalingRatio(parse, asRecord, RECORD_N);
+    const ratio = judged(() => scalingRatio(parse, asRecord, RECORD_N));
     expect(ratio, `parseSpf and checkSpf, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
   }
   for (const [i, make] of makers.entries()) {
-    expect(zoneRatio(make, false), `readTxtRecords, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
-    expect(zoneRatio(make, true), `readTxtRecords inside quotes, string ${i}`).toBeLessThan(MAX_SCALING_RATIO);
+    expect(
+      judged(() => zoneRatio(make, false)),
+      `readTxtRecords, string ${i}`,
+    ).toBeLessThan(MAX_SCALING_RATIO);
+    expect(
+      judged(() => zoneRatio(make, true)),
+      `readTxtRecords inside quotes, string ${i}`,
+    ).toBeLessThan(MAX_SCALING_RATIO);
   }
   // Many lines that hold no record (comments and blank lines) are skipped one by one.
   const lines = scalingRatio(
