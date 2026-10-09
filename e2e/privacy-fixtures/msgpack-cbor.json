@@ -1,5 +1,8 @@
 [
-  { "attachesFile": true },
+  {
+    "attachesFile": true,
+    "inlineFiles": [{ "name": "sample.msgpack", "mimeType": "application/octet-stream", "base64": "gaFhAQ==" }]
+  },
   {
     "mode": { "field": "format", "value": "cbor" },
     "values": { "input": "a1 61 61 01" },

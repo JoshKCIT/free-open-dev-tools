@@ -6,7 +6,14 @@
     "attachesFile": false
   },
   {
-    "attachesFile": true
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "certificate.pem",
+        "mimeType": "application/x-pem-file",
+        "text": "Opened as a file {{MARKER}}\n-----BEGIN CERTIFICATE-----\nMIIBijCCATCgAwIBAgIUED5RxjMVDd2fI2wufVef2SPzau0wCgYIKoZIzj0EAwIw\nHDEaMBgGA1UEAwwRZWMyNTYuZXhhbXBsZS5jb20wHhcNMjYxMDAzMDQzNzU5WhcN\nMzYwOTMwMDQzNzU5WjAcMRowGAYDVQQDDBFlYzI1Ni5leGFtcGxlLmNvbTBZMBMG\nByqGSM49AgEGCCqGSM49AwEHA0IABFkWXKw1rwtfB5ostBPImPfCQvF3GWEYK3sy\nNup3PAsaUarywX2rFwT8AB6gOhbLSivhYngMmI/Gd4HqZRCNHlajUDBOMBwGA1Ud\nEQQVMBOCEWVjMjU2LmV4YW1wbGUuY29tMB0GA1UdDgQWBBSzFLM7ld8o0Jq2UqCE\ntSrG7hB/2zAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCIQCZhrjP\nAzWAc4kQkyD5CN+qn0NH0a9PhNhZ+u9JRTRNYgIgBgmdaLr2sgpD6x5MnJXVPdfo\nDwHWJO89NhBQjG1HnC4=\n-----END CERTIFICATE-----\n"
+      }
+    ]
   },
   {
     "values": {

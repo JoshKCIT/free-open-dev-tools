@@ -1,7 +1,7 @@
 [
   {
     "mode": { "field": "mode", "value": "beautify" },
-    "values": { "input": "{ hero { name } }" },
+    "values": { "input": "{ hero { name } }", "printWidth": "80" },
     "attachesFile": false
   },
   {

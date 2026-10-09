@@ -1,1 +1,7 @@
-[{ "attachesFile": true }, { "values": { "input": "089601" }, "attachesFile": false }]
+[
+  {
+    "attachesFile": true,
+    "inlineFiles": [{ "name": "sample.bin", "mimeType": "application/octet-stream", "base64": "CJYB" }]
+  },
+  { "values": { "input": "089601" }, "attachesFile": false }
+]

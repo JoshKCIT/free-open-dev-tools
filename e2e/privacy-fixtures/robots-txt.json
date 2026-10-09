@@ -4,6 +4,8 @@
     "values": {
       "agents": "*",
       "disallow": "/private/",
+      "allow": "/public/",
+      "blockAgents": "ExampleBot",
       "sitemaps": "https://example.invalid/sitemap.xml"
     },
     "attachesFile": false

@@ -1,5 +1,15 @@
 [
-  { "attachesFile": true },
+  {
+    "values": { "status": "2xx", "row": "1", "page": "1" },
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "recording.har",
+        "mimeType": "application/json",
+        "text": "{\"log\":{\"version\":\"1.2\",\"creator\":{\"name\":\"x\",\"version\":\"1\"},\"entries\":[{\"startedDateTime\":\"2009-04-16T12:07:23.596Z\",\"time\":6,\"request\":{\"method\":\"GET\",\"url\":\"https://example.com/p?q={{MARKER}}\",\"httpVersion\":\"HTTP/1.1\",\"cookies\":[{\"name\":\"session\",\"value\":\"abcdef123456\"}],\"headers\":[{\"name\":\"Host\",\"value\":\"example.com\"}],\"queryString\":[{\"name\":\"q\",\"value\":\"{{MARKER}}\"}],\"headersSize\":-1,\"bodySize\":0},\"response\":{\"status\":200,\"statusText\":\"OK\",\"httpVersion\":\"HTTP/1.1\",\"cookies\":[],\"headers\":[],\"content\":{\"size\":2,\"mimeType\":\"text/plain\",\"text\":\"ok\"},\"redirectURL\":\"\",\"headersSize\":-1,\"bodySize\":2},\"cache\":{},\"timings\":{\"send\":1,\"wait\":2,\"receive\":3}}]}}"
+      }
+    ]
+  },
   {
     "values": {
       "pasted": "{\"log\":{\"version\":\"1.2\",\"creator\":{\"name\":\"x\",\"version\":\"1\"},\"entries\":[]}}",
