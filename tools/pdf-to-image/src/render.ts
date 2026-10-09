@@ -44,10 +44,9 @@ const ACCEPTED_KINDS: FileKind[] = ['pdf'];
 
 /**
  * PDF.js's own fixed options for this tool, chosen so that once a document
- * is loaded, rendering it can never make a network request of any kind
- *: `useWorkerFetch: false` forces every
- * cMap/standard-font/wasm request through the caller's own
- * `BinaryDataFactory` rather than the worker's built-in `fetch`; no
+ * is loaded, rendering it can never make a network request of any kind:
+ * `useWorkerFetch: false` forces every cMap/standard-font/wasm request
+ * through the caller's own `BinaryDataFactory` rather than the worker's built-in `fetch`; no
  * `cMapUrl`, `standardFontDataUrl` or `wasmUrl` is ever set (undefined,
  * never an address or a path); `enableXfa: false` and `verbosity: 0`
  * (`VerbosityLevel.ERRORS`, pdfjs-dist's own enum) keep XFA forms and
