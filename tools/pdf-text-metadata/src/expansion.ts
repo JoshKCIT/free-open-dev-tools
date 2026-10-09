@@ -34,7 +34,9 @@
  * binary stream data can never produce a reference. The reference scan then reads that text and the object stream data,
  * with name escapes undone (section 7.3.5), using bounded patterns and a forward-only search for the closing bracket so a
  * hostile file cannot make it slow. A second pass decodes the used pictures through the same filters, the same meter and
- * the same caps. A picture used twice is decoded once.
+ * the same caps. A picture used twice is decoded once. A picture whose object number cannot be read (a comment or a long
+ * run of white space between `obj` and its dictionary, which a reader allows, section 7.2.3) can never be matched to a
+ * use, so it is counted whether anything uses it or not: the check fails closed.
  *
  * What it does not do: it is a bound, not a parser of everything PDF.js and pdf-lib read. It finds streams by their
  * keyword and reads the dictionary just before it, so a deliberately crafted file can still hide a stream from it: a
@@ -873,7 +875,7 @@ async function countThrough(
 // --- Finding the pictures that something uses ------------------------------------------------------------------------
 
 interface HeldPicture {
-  objectNumber: number | null;
+  objectNumber: number;
   body: Uint8Array;
   dict: StreamDict;
 }
@@ -1152,7 +1154,9 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
     if (report.streams % 2000 === 0) options.onProgress?.();
     gaps.add(bytes.subarray(Math.min(gapFrom, start), start));
     gapFrom = Math.max(gapFrom, end);
-    if (dict.image && !dict.objectStream && !dict.xref) {
+    // A picture whose object number cannot be read can never be matched to a use, so it is not held but counted below:
+    // the check fails closed. Ordinary writers put `number generation obj` straight before the dictionary.
+    if (dict.image && !dict.objectStream && !dict.xref && objectNumber !== null) {
       // Whether something a reader decodes uses this picture is known only once the whole file has been read.
       report.images++;
       if (held.length < MAX_HELD_PICTURES) held.push({ objectNumber, body, dict });
@@ -1172,7 +1176,8 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
       continue;
     }
     report.decoded++;
-    // A picture label does not exempt an object stream or a cross-reference stream: the readers decode them regardless.
+    // A picture label does not exempt an object stream or a cross-reference stream (the readers decode them regardless),
+    // nor a picture whose object number cannot be read.
     if (dict.image) report.picturesCounted++;
     const keeping = dict.objectStream && complete ? retainObjectStream(retained, dict) : null;
     await countThrough(body, dict, stages, counter, options, keeping?.add);
@@ -1183,7 +1188,7 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
     gaps.add(bytes.subarray(Math.min(gapFrom, bytes.length)));
     options.onProgress?.();
     const wanted = new Set<number>();
-    for (const picture of held) if (picture.objectNumber !== null) wanted.add(picture.objectNumber);
+    for (const picture of held) wanted.add(picture.objectNumber);
     const used = new Set<number>();
     const candidates = new Set<number>();
     const noteReference = (n: number): void => {
@@ -1206,7 +1211,7 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
 
     for (const picture of held) {
       if (options.signal?.aborted) throw options.signal.reason ?? new Error('The check was cancelled.');
-      if (picture.objectNumber === null || !used.has(picture.objectNumber)) continue;
+      if (!used.has(picture.objectNumber)) continue;
       const { stages } = stagesFor(picture.dict, picture.body);
       if (stages.length === 0) continue;
       // Counted as used, no longer as an image.

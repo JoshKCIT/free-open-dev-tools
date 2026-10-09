@@ -203,6 +203,70 @@ it('a picture label written with name escapes, without spaces or beside nested e
   expect((await checkExpansion(used, { limits: { perStream: 4 * MIB } })).picturesCounted).toBe(1);
 });
 
+/**
+ * A one page file whose `/Contents` is object 4, a picture-labelled stream that shows "headertext", written with the
+ * object header `header` (`4 0 obj` and whatever stands between it and the dictionary). The cross-reference table points
+ * at the header, so a reader finds the object however its header is written.
+ */
+function contentWithHeader(header: string): Uint8Array {
+  const objects: [number, Buffer][] = [
+    [1, Buffer.from('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n')],
+    [2, Buffer.from('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n')],
+    [
+      3,
+      Buffer.from(
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 6 0 R >> >> /Contents 4 0 R >>\nendobj\n',
+      ),
+    ],
+    [
+      4,
+      Buffer.concat([
+        Buffer.from(header, 'latin1'),
+        pictureStream('', flateShowing('headertext')),
+        Buffer.from('\nendobj\n'),
+      ]),
+    ],
+    [6, Buffer.from('6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n')],
+  ];
+  let out = Buffer.from('%PDF-1.5\n');
+  const offsets = new Map<number, number>();
+  for (const [number, body] of objects) {
+    offsets.set(number, out.length);
+    out = Buffer.concat([out, body]);
+  }
+  let xref = 'xref\n0 7\n0000000000 65535 f \n';
+  for (let n = 1; n < 7; n++) {
+    const at = offsets.get(n);
+    xref += at === undefined ? '0000000000 00000 f \n' : `${String(at).padStart(10, '0')} 00000 n \n`;
+  }
+  const xrefAt = out.length;
+  out = Buffer.concat([out, Buffer.from(`${xref}trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`)]);
+  return new Uint8Array(out);
+}
+
+it('a picture-labelled stream whose object number cannot be read is counted, used or not', async () => {
+  const headers: [string, string][] = [
+    ['a comment between the header and the dictionary', '4 0 obj\n% a note\n'],
+    ['a comment between the two numbers', '4 %x\n0 obj\n'],
+    ['two thousand spaces before the dictionary', `4 0 obj${' '.repeat(2000)}`],
+  ];
+  for (const [name, header] of headers) {
+    const bytes = contentWithHeader(header);
+    // The reader finds the object through the cross-reference table and decodes it as the page content.
+    expect(await pdfJsText(bytes), name).toBe('headertext');
+    const error = await refusal(checkExpansion(bytes, { limits: LIMITS }));
+    expect(error.kind, name).toBe('size');
+    expect(error.message, name).toBe(EXPANSION_MESSAGE);
+    const report = await checkExpansion(bytes, { limits: { perStream: 4 * MIB } });
+    expect(report.picturesCounted, name).toBe(1);
+    expect(report.images, name).toBe(0);
+  }
+  // The same file with an ordinary header: the picture is matched to its use and counted, as before.
+  const plain = contentWithHeader('4 0 obj\n');
+  expect(await pdfJsText(plain)).toBe('headertext');
+  expect((await refusal(checkExpansion(plain, { limits: LIMITS }))).message).toBe(EXPANSION_MESSAGE);
+});
+
 function median(values: number[]): number {
   return [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] ?? 0;
 }
