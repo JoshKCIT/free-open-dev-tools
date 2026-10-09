@@ -46,6 +46,27 @@ export function objectStreamWith(objects: HeldObject[], number: number, extraDic
   return { number, body: streamObject(dictionary, data) };
 }
 
+/**
+ * A one page file whose page content is object 4, a picture-labelled stream, followed by `unused` more picture-labelled
+ * streams (objects 10 and up) that nothing uses. It has no cross-reference table: the memory check reads streams by
+ * their keywords, and the quadratic cost of `buildRawPdf` (it copies the whole file once per object) would swamp a test
+ * of twenty thousand streams.
+ */
+export function pageWithManyPictures(unused: number, data: Uint8Array): Uint8Array {
+  const parts: Buffer[] = [
+    Buffer.from(
+      '%PDF-1.5\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n' +
+        '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n' +
+        '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R >>\nendobj\n',
+    ),
+  ];
+  const stream = pictureStream('', data);
+  for (let i = -1; i < unused; i++) {
+    parts.push(Buffer.from(`${i < 0 ? 4 : 10 + i} 0 obj\n`), stream, Buffer.from('\nendobj\n'));
+  }
+  return new Uint8Array(Buffer.concat(parts));
+}
+
 const CATALOG: RawObject = { number: 1, body: Buffer.from('<< /Type /Catalog /Pages 2 0 R >>') };
 const PAGES: RawObject = { number: 2, body: Buffer.from('<< /Type /Pages /Kids [3 0 R] /Count 1 >>') };
 
