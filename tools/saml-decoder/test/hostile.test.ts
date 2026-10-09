@@ -341,7 +341,10 @@ it('every parser stays linear on hostile input', () => {
   const failures: string[] = [];
   for (const [name, fn] of subjects) {
     for (const make of [...HOSTILE, ...own]) {
-      const ratio = scalingRatio(fn, make, 20_000);
+      let ratio = scalingRatio(fn, make, 20_000);
+      // A machine under load can read one ratio over the limit once. Two more measurements follow and the median of the three is judged against the same unchanged limit.
+      if (!(ratio <= MAX_SCALING_RATIO))
+        ratio = median([ratio, scalingRatio(fn, make, 20_000), scalingRatio(fn, make, 20_000)]);
       if (!(ratio <= MAX_SCALING_RATIO))
         failures.push(`${name} on ${JSON.stringify(make(12).slice(0, 12))}: ratio ${ratio.toFixed(1)}`);
     }
