@@ -29,11 +29,9 @@ export class PlaceholderError extends Error {
 export const MAX_SVG_SIDE = 10_000;
 
 /**
- * No side of the PNG may exceed this many pixels -- a measured value (this
- * phase's own R rule), not a guessed constant: the largest square side
- * every tested browser project's own `OffscreenCanvas` encodes to PNG in
- * comfortably under one second. See the phase SUMMARY for the per-engine
- * timings this number is measured from.
+ * No side of the PNG may exceed this many pixels -- a measured value, not a
+ * guessed constant: the largest square side every tested browser project's
+ * own `OffscreenCanvas` encodes to PNG in comfortably under one second.
  */
 export const MAX_PNG_SIDE = 4096;
 

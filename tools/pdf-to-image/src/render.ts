@@ -30,10 +30,9 @@ export const MAX_PDF_BYTES = 100 * 1024 * 1024;
 
 /**
  * The largest rendered page area (width times height, in pixels) this tool
- * ever asks a browser to encode. Set from the smallest value the executor
- * measured every one of the four tested browser projects successfully
- * encoding with `convertToBlob` (see this plan's own SUMMARY for the
- * per-engine figures); a page whose rendered size at the requested
+ * ever asks a browser to encode. Set from the smallest value that every one
+ * of the four tested browser projects was measured to encode successfully
+ * with `convertToBlob`; a page whose rendered size at the requested
  * resolution would exceed it is refused before a surface is ever created.
  */
 export const MAX_PAGE_PIXELS = 40_000_000;
@@ -60,7 +59,7 @@ const ACCEPTED_KINDS: FileKind[] = ['pdf'];
  * entirely for every one of the 14 standard fonts except Symbol and
  * ZapfDingbats -- which would mean the bundled Foxit Times and Courier
  * files are never even asked for, and this tool's own licence-driven
- * bundling decision (see the SUMMARY) would have no effect. With
+ * bundling decision would have no effect. With
  * `useSystemFonts: false`, PDF.js asks this tool's own `BinaryDataFactory`
  * for standard-font data by name for all 14 fonts (`getFontNameToFileMap`,
  * same file): the ten Foxit files this tool bundles (Times, Courier,

@@ -223,7 +223,7 @@ const PHONE_NUMBER_RE = /^\+?[0-9]+$/;
 /**
  * RFC 5724 (fetched, www.rfc-editor.org/rfc/rfc5724.txt), section 2.5's own
  * example: "sms:+15105550101?body=hello%20there". SMSTO: is the older,
- * still widely-scanned convention this tool's own read_first sources
+ * still widely-scanned convention this tool's own sources
  * describe as plain (colon-delimited, not percent-encoded) -- disclosed as
  * an ambiguity since no normative text for it was found (see meta.json).
  */

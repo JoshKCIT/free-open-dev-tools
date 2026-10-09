@@ -9,8 +9,8 @@
  *
  * A close copy of run-ts-to-js-in-worker.ts, not a shared helper -- same
  * reason that file gives for its own duplication (and that one gives for
- * run-jsonpath-in-worker.ts before it). Measured this session (orchestrator
- * amendment, 2026-09-25): the installed yaml 2.9.1 checks duplicate mapping
+ * run-jsonpath-in-worker.ts before it). Measured on 2026-09-25: the
+ * installed yaml 2.9.1 checks duplicate mapping
  * keys by scanning the whole mapping for every new key it composes, so a
  * flat mapping's parse time grows quadratically with its key count -- about
  * 200ms at 5,000 keys, 550ms at 10,000, 1.8s at 20,000 and 6.8s at 40,000,

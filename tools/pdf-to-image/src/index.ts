@@ -37,8 +37,8 @@ export type { PDFDocumentProxy, PDFPageProxy, PDFDocumentLoadingTask } from 'pdf
  * Decodes bundled binary data for a PDF.js `BinaryDataFactory` request, or
  * returns `null` when this tool does not bundle that file (for example
  * every Liberation Sans file the Helvetica standard fonts map to, which
- * this project's licence gate does not allow -- see the SUMMARY's licence
- * decision). `kind` is accepted for callers that want to record it
+ * this project's licence gate does not allow). `kind` is accepted for
+ * callers that want to record it
  * alongside a request; lookup itself is by `filename`, which is unique
  * across every bundled entry.
  */

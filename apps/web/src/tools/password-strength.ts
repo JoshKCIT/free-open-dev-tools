@@ -43,7 +43,7 @@ export default defineTool({
     // and risking the two drifting apart.
     const leadingReason = report.reasons[0]?.sentence ?? 'No specific weak pattern was found.';
 
-    // Fixed contract order (02-UI-SPEC.md Section 4): verdict note, then
+    // Fixed display order: verdict note, then
     // stats, then the reasons list, then the crack-time table. The runner
     // renders every `stats` entry before every output block unless told
     // otherwise (ToolRunner.tsx), so `statsPosition: 'after-first-output'`

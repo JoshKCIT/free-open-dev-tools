@@ -6,7 +6,7 @@
  *
  * The 107 symbol patterns (values 0-106) are transcribed byte for byte from
  * the installed `@zxing/library`'s own `Code128Reader.CODE_PATTERNS`
- * (fetched source, per this task's read_first), which this file's own test
+ * (fetched source), which this file's own test
  * asserts against directly. Value 0's pattern "2 1 2 2 2 2" matches the
  * fetched GS1 text's own Table 5-25 element-width column for symbol
  * character value 0 exactly ("212222"), and value 100 ("Code B") matches

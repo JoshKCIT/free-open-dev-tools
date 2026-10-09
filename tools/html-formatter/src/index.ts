@@ -19,8 +19,8 @@ import * as estreePlugin from 'prettier/plugins/estree';
 // file is even called. The pre-built browser bundle
 // (`dist/htmlminifier.esm.bundle.js`) has no such reference and was
 // confirmed this session to import and run cleanly through a real Vite
-// build in chromium, firefox, webkit and mobile-chrome (see the SUMMARY for
-// the build log evidence behind this choice). `minifyCSS` and `minifyJS`
+// build in chromium, firefox, webkit and mobile-chrome. `minifyCSS` and
+// `minifyJS`
 // are always given as functions below regardless, so this package's own
 // bundled CSS minifier (which can read local files and resolve `@import`
 // over the network) and its own bundled terser call are never reached --

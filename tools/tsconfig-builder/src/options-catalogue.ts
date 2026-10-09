@@ -20,7 +20,7 @@ export type OptionType = 'boolean' | 'enum' | 'string' | 'list';
 
 export interface Ts6Flag {
   status: 'deprecated' | 'removed';
-  /** The release note's own wording, quoted, for the SUMMARY and the flagged-option test. */
+  /** The release note's own wording, quoted, for the flagged-option test. */
   note: string;
   /** Restricts the flag to specific values of this option. Absent means the whole option. */
   values?: readonly string[];

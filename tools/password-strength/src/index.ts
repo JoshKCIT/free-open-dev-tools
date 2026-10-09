@@ -34,7 +34,7 @@ export const MAX_PASSWORD_LENGTH = 256;
 export interface ScoreLabel {
   score: 0 | 1 | 2 | 3 | 4;
   label: string;
-  /** Matches the design contract's tone mapping (02-UI-SPEC.md Section 4): 0-1 error, 2 warn, 3 info, 4 success. */
+  /** Matches the design contract's tone mapping: 0-1 error, 2 warn, 3 info, 4 success. */
   tone: 'error' | 'warn' | 'info' | 'success';
   note: string;
 }

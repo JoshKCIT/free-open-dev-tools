@@ -12,8 +12,8 @@
  *
  * The digit element-width tables (Table 5-3) are cross-checked byte for
  * byte against the installed `@zxing/library`'s own
- * `AbstractUPCEANReader.L_PATTERNS` (fetched source, per this task's
- * read_first) -- both sources agree exactly (digit 0's set-A widths are
+ * `AbstractUPCEANReader.L_PATTERNS` (fetched source)
+ * -- both sources agree exactly (digit 0's set-A widths are
  * "3 2 1 1" in the fetched GS1 text and `[3, 2, 1, 1]` in the installed
  * library). The "set C" (right-half) width sequence per digit is the SAME
  * array as set A -- confirmed directly from `EAN13Reader.decodeMiddle`,

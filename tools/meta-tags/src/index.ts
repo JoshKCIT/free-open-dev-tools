@@ -26,8 +26,8 @@ export interface BuildMetaTagsResult {
   warnings: string[];
 }
 
-// X Cards markup reference (fetched from an archived snapshot, recorded in
-// the SUMMARY, since the live page no longer serves its property table
+// X Cards markup reference (fetched from an archived snapshot,
+// since the live page no longer serves its property table
 // server-rendered): "Description of content (maximum 200 characters)",
 // "Title of content (max 70 characters)", and for twitter:image:alt,
 // "Maximum 420 characters."

@@ -63,8 +63,8 @@ const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'
  * OpenAPI 3.1/3.2 document schema and replaces it with a plain `allOf` of
  * the standard 2020-12 meta-schema and this version's own OAS base
  * vocabulary document, both added to the Ajv instance under their own
- * `$id`. This is a deliberate, tested workaround (see openapi-validator's
- * SUMMARY): Ajv 8.20.0 does not resolve a `$dynamicAnchor` declared inside
+ * `$id`. This is a deliberate, tested workaround:
+ * Ajv 8.20.0 does not resolve a `$dynamicAnchor` declared inside
  * a `$defs` entry of the outermost compiled schema resource into the
  * dynamic scope, so `$dynamicRef: "#meta"` silently resolves to nothing
  * and every property inside a Schema Object is reported as an unevaluated
