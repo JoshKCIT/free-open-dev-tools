@@ -13,8 +13,9 @@ import { pageWithManyPictures, pageWithObjects, pictureStream } from './picture-
  * digits), sections 9.6 to 9.10 (fonts, embedded font programs, `/ToUnicode` maps, CMaps named by `/Encoding`), section
  * 9.7.4 (`/CIDToGIDMap`) and section 9.6.6 (Type 3 `/CharProcs`). The readers do not look at `/Subtype` when they decode
  * such a stream: the repository's pdfjs-dist 6.3.289 was run on a 150 MiB picture-labelled stream under each key
- * (eight executed probes, recorded in the plan's SUMMARY) and its peak memory rose by 250 MB to over 4 GB each time, while
- * the same file without the key stayed at 85 MB. pdf-lib decodes every object stream whatever its label (research probe).
+ * (eight executed probes, recorded in this tool's testNotes) and its peak memory rose by 250 MB to over 4 GB each time,
+ * while the same file without the key stayed at 85 MB. pdf-lib decodes every object stream whatever its label (a probe
+ * made before the rule was written: an object stream labelled as a picture was found and read).
  *
  * Every title is a top-level `it(...)` call (see index.test.ts for why). To keep runs fast the cap is 1 MiB for one
  * stream and the data is 2 MiB of zeros written as Flate by the platform's zlib (the second opinion, never the code under
