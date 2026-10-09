@@ -13,13 +13,23 @@
  * filter can also be written with its abbreviation), section 7.4.4 (FlateDecode, RFC 1950 and RFC 1951), section 7.4.4.2
  * (LZWDecode and its `/EarlyChange` entry), sections 7.4.2, 7.4.3 and 7.4.5 (ASCIIHexDecode, ASCII85Decode,
  * RunLengthDecode). Every stage of a chain is counted, so a doubled filter (`/Filter [/FlateDecode /FlateDecode]`) costs
- * both stages. A stream whose dictionary says `/Subtype /Image` is not counted: neither library decodes an image to read
- * text or metadata, and a large photograph is a legitimate file. The image filters (DCT, CCITT, JBIG2, JPX) are never
- * run; a chain stops at the first filter this module does not decode.
+ * both stages. A stream whose dictionary says `/Subtype /Image` is not counted while it is only an image: neither library
+ * decodes an image to read text or metadata, and a large photograph is a legitimate file. But the readers do not look at
+ * that label when they decode a stream a page or a font uses, so a picture-labelled stream is counted when a page's
+ * `/Contents` (one reference or an array) points at it (section 7.8.2). The image filters (DCT, CCITT, JBIG2, JPX) are
+ * never run; a chain stops at the first filter this module does not decode.
+ *
+ * How a picture is found to be used: the first pass over the file's streams notes each stream's object number (the
+ * `number generation obj` just before its dictionary), holds every picture-labelled stream as a view of the file (no
+ * copy, at most `MAX_HELD_PICTURES`) and joins the bytes outside stream data with a space (at most
+ * `MAX_REFERENCE_TEXT_BYTES`), so binary data can never produce a reference. The reference scan then reads that text with
+ * name escapes undone (section 7.3.5), using bounded patterns and a monotone search for the closing bracket so a hostile
+ * file cannot make it slow, and a second pass decodes the used pictures through the same filters, the same meter and the
+ * same caps. A picture used twice is decoded once.
  *
  * What it does not do: it is a bound, not a parser of everything PDF.js and pdf-lib read. It finds streams by their
  * keyword and reads the dictionary just before it, so a deliberately crafted file can hide a stream from it (a
- * dictionary written with an unbalanced string, a content stream labelled as an image). A stream that fails to inflate is
+ * dictionary written with an unbalanced string). A stream that fails to inflate is
  * left for the library to judge and is not refused here. The decoded bytes of the stages are counted as they are
  * produced and never held, so the check itself needs only a few chunks of memory.
  *
@@ -37,6 +47,15 @@ export const MAX_TOTAL_DECODED_BYTES = 256 * 1024 * 1024;
 
 /** The plain sentence a visitor sees. It never holds a byte of the file. */
 export const EXPANSION_MESSAGE = 'This PDF expands to more data than this page can hold in memory.';
+
+/** The bytes outside stream data that are searched for references to pictures; the rest of the file is not searched. */
+const MAX_REFERENCE_TEXT_BYTES = 32 * 1024 * 1024;
+
+/** Picture-labelled streams held (as views of the file) while the references are found; the rest stay exempt. */
+const MAX_HELD_PICTURES = 20_000;
+
+/** An array of references is read only when its closing bracket is within this many characters. */
+const MAX_ARRAY_WINDOW = 64 * 1024;
 
 export interface ExpansionLimits {
   /** The most one stage of one stream may decode to. */
@@ -59,8 +78,13 @@ export interface ExpansionReport {
   streams: number;
   /** Streams that were decoded to count them (those with a decoding filter that were not images). */
   decoded: number;
-  /** Streams left out because their dictionary says they are images. */
+  /** Streams left out because their dictionary says they are images and nothing but an image uses them. */
   images: number;
+  /**
+   * Picture-labelled streams that were counted after all because page content, a font, a map or an object stream uses
+   * them. They are also in `decoded`, and never in `images`.
+   */
+  picturesCounted: number;
   /** The bytes counted, over every stage of every decoded stream. */
   decodedBytes: number;
 }
@@ -486,8 +510,15 @@ function readDict(text: string): StreamDict {
   };
 }
 
-/** The dictionary that ends just before `keyword` (white space aside), or null when none can be found. */
-function dictBefore(bytes: Uint8Array, keyword: number, budget: { left: number }): StreamDict | null {
+/**
+ * The dictionary that ends just before `keyword` (white space aside) and where it starts, or null when none can be
+ * found.
+ */
+function dictBefore(
+  bytes: Uint8Array,
+  keyword: number,
+  budget: { left: number },
+): { dict: StreamDict; start: number } | null {
   let end = keyword - 1;
   while (end >= 0 && isSpace(bytes[end])) end--;
   if (end < 1 || bytes[end] !== 0x3e || bytes[end - 1] !== 0x3e) return null;
@@ -501,11 +532,42 @@ function dictBefore(bytes: Uint8Array, keyword: number, budget: { left: number }
       depth--;
       at--;
       if (depth === 0) {
-        return latin1 ? readDict(latin1.decode(bytes.subarray(at, end + 1))) : null;
+        return latin1 ? { dict: readDict(latin1.decode(bytes.subarray(at, end + 1))), start: at } : null;
       }
     }
   }
   return null;
+}
+
+/** Digits read backwards from `end` (exclusive) as a number, with the position they start at; null when there are none. */
+function digitsBefore(bytes: Uint8Array, end: number, longest: number): { value: number; start: number } | null {
+  let start = end;
+  while (start > 0 && end - start < longest && bytes[start - 1]! >= 0x30 && bytes[start - 1]! <= 0x39) start--;
+  if (start === end) return null;
+  let value = 0;
+  for (let i = start; i < end; i++) value = value * 10 + (bytes[i]! - 0x30);
+  return { value, start };
+}
+
+/**
+ * The object number of the `number generation obj` that ends just before `dictStart` (white space aside), or null when
+ * the dictionary does not follow an object header (ISO 32000-1:2008 section 7.3.10).
+ */
+function objectNumberBefore(bytes: Uint8Array, dictStart: number): number | null {
+  let q = dictStart;
+  let steps = 0;
+  while (q > 0 && isSpace(bytes[q - 1]) && steps++ < 1024) q--;
+  if (!spells(bytes, q - 3, 'obj')) return null;
+  q -= 3;
+  let gap = 0;
+  while (q > 0 && isSpace(bytes[q - 1]) && gap++ < 1024) q--;
+  const generation = digitsBefore(bytes, q, 5);
+  if (!generation) return null;
+  q = generation.start;
+  gap = 0;
+  while (q > 0 && isSpace(bytes[q - 1]) && gap++ < 1024) q--;
+  const number = digitsBefore(bytes, q, 10);
+  return number ? number.value : null;
 }
 
 /** True when the first two bytes are a valid zlib header (RFC 1950): deflate, a window of at most 32 KiB, a good check. */
@@ -517,6 +579,11 @@ function looksLikeZlib(body: Uint8Array): boolean {
 interface FoundStream {
   body: Uint8Array;
   dict: StreamDict;
+  /** The `number` of the `number generation obj` just before the dictionary, or null when there is none. */
+  objectNumber: number | null;
+  /** Where the data starts and ends in the file; the bytes between one stream's end and the next one's start are not data. */
+  start: number;
+  end: number;
 }
 
 /** Every stream in the file, in file order, without decoding any of them. */
@@ -545,7 +612,9 @@ function* streamsIn(bytes: Uint8Array): Generator<FoundStream> {
     while (q >= 0 && isSpace(bytes[q])) q--;
     if (q < 1 || bytes[q] !== 0x3e || bytes[q - 1] !== 0x3e) continue;
 
-    const dict = dictBefore(bytes, s, budget) ?? UNKNOWN_DICT;
+    const found = dictBefore(bytes, s, budget);
+    const dict = found?.dict ?? UNKNOWN_DICT;
+    const objectNumber = found ? objectNumberBefore(bytes, found.start) : null;
     let end = -1;
     if (dict.length !== null && data + dict.length <= bytes.length) {
       let probe = data + dict.length;
@@ -558,7 +627,7 @@ function* streamsIn(bytes: Uint8Array): Generator<FoundStream> {
     } else {
       const marker = find(bytes, 'endstream', data);
       if (marker < 0) {
-        yield { body: bytes.subarray(data), dict };
+        yield { body: bytes.subarray(data), dict, objectNumber, start: data, end: bytes.length };
         return;
       }
       end = marker;
@@ -567,7 +636,7 @@ function* streamsIn(bytes: Uint8Array): Generator<FoundStream> {
       if (end > data && bytes[end - 1] === 0x0d) end--;
       next = marker;
     }
-    yield { body: bytes.subarray(data, end), dict };
+    yield { body: bytes.subarray(data, end), dict, objectNumber, start: data, end };
     from = Math.max(from, next);
   }
 }
@@ -578,6 +647,154 @@ async function* chunksOf(body: Uint8Array): Chunks {
   for (let at = 0; at < body.length; at += size) yield body.subarray(at, Math.min(body.length, at + size));
 }
 
+/** The filters of a stream that this module decodes, in order. Empty when the stream costs nothing to decode. */
+function stagesFor(dict: StreamDict, body: Uint8Array): Stage[] {
+  // A dictionary that could not be read, or a filter written as a reference, is treated as Flate when the data starts
+  // like zlib data; any other stream with no decoding filter costs nothing to decode.
+  const names = dict.filters ?? (looksLikeZlib(body) ? ['FlateDecode'] : []);
+  const stages: Stage[] = [];
+  for (const name of names) {
+    const stage = STAGES.get(name);
+    if (!stage) break;
+    stages.push(stage);
+  }
+  return stages;
+}
+
+/** Runs the body through the stages and counts what they produce; throws the plain refusal when a cap is passed. */
+async function countThrough(
+  body: Uint8Array,
+  dict: StreamDict,
+  stages: Stage[],
+  counter: Counter,
+  options: ExpansionOptions,
+): Promise<void> {
+  let output: Chunks = chunksOf(body);
+  for (const stage of stages) output = stage(output, stageMeter(counter), { earlyChange: dict.earlyChange });
+  try {
+    for await (const chunk of output) void chunk;
+  } catch (err) {
+    if (counter.exceeded) throw new PdfToolError('size', EXPANSION_MESSAGE);
+    if (options.signal?.aborted) throw err;
+    // The stream did not decode (damaged data, or not the format its dictionary names): the reader judges it.
+  }
+}
+
+// --- Finding the pictures that something uses ------------------------------------------------------------------------
+
+interface HeldPicture {
+  objectNumber: number | null;
+  body: Uint8Array;
+  dict: StreamDict;
+}
+
+/** The bytes outside stream data, each piece followed by a space, kept up to a cap; one string at the end. */
+class GapText {
+  private buffer = new Uint8Array(0);
+  private used = 0;
+  private readonly limit: number;
+
+  constructor(limit: number) {
+    this.limit = limit;
+  }
+
+  add(part: Uint8Array): void {
+    const take = Math.min(part.length, this.limit - this.used - 1);
+    if (take < 0) return;
+    const needed = this.used + take + 1;
+    if (needed > this.buffer.length) {
+      const grown = new Uint8Array(Math.min(this.limit, Math.max(needed, this.buffer.length * 2, 64 * 1024)));
+      grown.set(this.buffer.subarray(0, this.used));
+      this.buffer = grown;
+    }
+    this.buffer.set(part.subarray(0, take), this.used);
+    this.used += take;
+    this.buffer[this.used++] = 0x20;
+  }
+
+  text(): string {
+    return latin1 ? latin1.decode(this.buffer.subarray(0, this.used)) : '';
+  }
+}
+
+const NUL = String.fromCharCode(0);
+/** PDF white space (ISO 32000-1:2008 section 7.2.2): NUL, tab, line feed, form feed, carriage return and space. */
+const WS = `[${NUL}\\t\\n\\f\\r ]`;
+/** The next character ends a name or a keyword: white space, a delimiter or the end of the text. */
+const ENDS_TOKEN = `(?=[${NUL}\\t\\n\\f\\r ()<>\\[\\]{}/%]|$)`;
+/** `number generation R` (section 7.3.10). Every repeat is bounded or runs over white space only. */
+const REFERENCE_SOURCE = `(\\d{1,10})${WS}+\\d{1,5}${WS}+R${ENDS_TOKEN}`;
+const REFERENCES_IN_TEXT = new RegExp(REFERENCE_SOURCE, 'g');
+const REFERENCE_HERE = new RegExp(REFERENCE_SOURCE, 'y');
+/** The entries whose value is a reference or an array of references to a stream a reader decodes (see `collectReferences`). */
+const KEY_NAMES = 'Contents';
+const KEY = `/(${KEY_NAMES})${ENDS_TOKEN}`;
+const NAME_ESCAPE = /#([0-9A-Fa-f]{2})/g;
+
+function isPdfSpaceCode(c: number): boolean {
+  return c === 0x00 || c === 0x09 || c === 0x0a || c === 0x0c || c === 0x0d || c === 0x20;
+}
+
+/** A name may write any character as `#` and two hexadecimal digits (section 7.3.5). */
+function undoNameEscapes(text: string): string {
+  if (!text.includes('#')) return text;
+  return text.replace(NAME_ESCAPE, (_match, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+/**
+ * A search for `token` that is called with ever larger positions: it remembers the last answer, so a text with no token
+ * after some point is searched once and the whole run is linear, whatever the text.
+ */
+function forwardFinder(text: string, token: string): (at: number) => number {
+  let from = 0;
+  let found = -2;
+  return (at) => {
+    if (found !== -2 && at >= from && (found === -1 || found >= at)) return found;
+    from = at;
+    found = text.indexOf(token, at);
+    return found;
+  };
+}
+
+/** Every `number generation R` in `part`, except one that starts in the middle of a longer number. */
+function referencesIn(part: string, onReference: (objectNumber: number) => void): void {
+  REFERENCES_IN_TEXT.lastIndex = 0;
+  for (let m = REFERENCES_IN_TEXT.exec(part); m; m = REFERENCES_IN_TEXT.exec(part)) {
+    const before = m.index > 0 ? part.charCodeAt(m.index - 1) : 0;
+    if (before >= 0x30 && before <= 0x39) continue;
+    onReference(Number(m[1]));
+  }
+}
+
+/**
+ * Calls `onReference` with the object number of every reference that the entries named in `KEY_NAMES` point at: one
+ * reference (`/Contents 4 0 R`) or an array of them (`/Contents [4 0 R 5 0 R]`) whose closing bracket is within
+ * `MAX_ARRAY_WINDOW` characters. Name escapes are undone first, so `/Cont#65nts` is found. The text is searched once from
+ * start to end; an array nested inside the span of an earlier one is not read again, so the work is linear.
+ */
+function collectReferences(raw: string, onReference: (objectNumber: number) => void): void {
+  const text = undoNameEscapes(raw);
+  const keys = new RegExp(KEY, 'g');
+  const closeBracket = forwardFinder(text, ']');
+  let scanned = 0;
+  for (let m = keys.exec(text); m; m = keys.exec(text)) {
+    let at = m.index + m[0].length;
+    while (at < text.length && isPdfSpaceCode(text.charCodeAt(at))) at++;
+    const c = text.charCodeAt(at);
+    if (c === 0x5b) {
+      const close = closeBracket(at);
+      if (close < 0 || close - at > MAX_ARRAY_WINDOW) continue;
+      const from = Math.max(at, scanned);
+      if (close > from) referencesIn(text.slice(from, close), onReference);
+      if (close > scanned) scanned = close;
+    } else if (c >= 0x30 && c <= 0x39) {
+      REFERENCE_HERE.lastIndex = at;
+      const reference = REFERENCE_HERE.exec(text);
+      if (reference) onReference(Number(reference[1]));
+    }
+  }
+}
+
 /**
  * Counts what the streams of a PDF decode to, and throws `PdfToolError` with kind `size` and the plain sentence the
  * moment one stage of one stream passes `limits.perStream` (default 64 MiB) or all stages together pass `limits.total`
@@ -586,7 +803,7 @@ async function* chunksOf(body: Uint8Array): Chunks {
  * the bytes it did produce are counted and the reader that opens the file judges the rest.
  */
 export async function checkExpansion(bytes: Uint8Array, options: ExpansionOptions = {}): Promise<ExpansionReport> {
-  const report: ExpansionReport = { streams: 0, decoded: 0, images: 0, decodedBytes: 0 };
+  const report: ExpansionReport = { streams: 0, decoded: 0, images: 0, picturesCounted: 0, decodedBytes: 0 };
   if (!expansionCheckAvailable()) return report;
   const counter: Counter = {
     total: 0,
@@ -598,34 +815,46 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
     onProgress: options.onProgress,
   };
 
-  for (const { body, dict } of streamsIn(bytes)) {
+  const held: HeldPicture[] = [];
+  const gaps = new GapText(MAX_REFERENCE_TEXT_BYTES);
+  let gapFrom = 0;
+
+  for (const { body, dict, objectNumber, start, end } of streamsIn(bytes)) {
     if (options.signal?.aborted) throw options.signal.reason ?? new Error('The check was cancelled.');
     report.streams++;
     if (report.streams % 2000 === 0) options.onProgress?.();
+    gaps.add(bytes.subarray(Math.min(gapFrom, start), start));
+    gapFrom = Math.max(gapFrom, end);
     if (dict.image) {
+      // Whether something a reader decodes uses this picture is known only once the whole file has been read.
       report.images++;
+      if (held.length < MAX_HELD_PICTURES) held.push({ objectNumber, body, dict });
       continue;
     }
-    // A dictionary that could not be read, or a filter written as a reference, is treated as Flate when the data starts
-    // like zlib data; any other stream with no decoding filter costs nothing to decode.
-    const names = dict.filters ?? (looksLikeZlib(body) ? ['FlateDecode'] : []);
-    const stages: Stage[] = [];
-    for (const name of names) {
-      const stage = STAGES.get(name);
-      if (!stage) break;
-      stages.push(stage);
-    }
+    const stages = stagesFor(dict, body);
     if (stages.length === 0) continue;
-
     report.decoded++;
-    let output: Chunks = chunksOf(body);
-    for (const stage of stages) output = stage(output, stageMeter(counter), { earlyChange: dict.earlyChange });
-    try {
-      for await (const chunk of output) void chunk;
-    } catch (err) {
-      if (counter.exceeded) throw new PdfToolError('size', EXPANSION_MESSAGE);
-      if (options.signal?.aborted) throw err;
-      // The stream did not decode (damaged data, or not the format its dictionary names): the reader judges it.
+    await countThrough(body, dict, stages, counter, options);
+  }
+
+  if (held.length > 0) {
+    gaps.add(bytes.subarray(Math.min(gapFrom, bytes.length)));
+    const wanted = new Set<number>();
+    for (const picture of held) if (picture.objectNumber !== null) wanted.add(picture.objectNumber);
+    const used = new Set<number>();
+    collectReferences(gaps.text(), (n) => {
+      if (wanted.has(n)) used.add(n);
+    });
+    for (const picture of held) {
+      if (options.signal?.aborted) throw options.signal.reason ?? new Error('The check was cancelled.');
+      if (picture.objectNumber === null || !used.has(picture.objectNumber)) continue;
+      const stages = stagesFor(picture.dict, picture.body);
+      if (stages.length === 0) continue;
+      // Counted as used, no longer as an image.
+      report.images--;
+      report.decoded++;
+      report.picturesCounted++;
+      await countThrough(picture.body, picture.dict, stages, counter, options);
     }
   }
   report.decodedBytes = counter.total;
