@@ -1,10 +1,11 @@
 #!/bin/sh
-# Local convenience layer for the provenance gate (scripts/check-provenance.mjs).
-# CI is the real enforcement; this hook only saves a contributor a round trip.
+# Runs the forbidden-reference gate (scripts/check-provenance.mjs) before each
+# commit, over the tracked files and, when one has been built, the built site.
+# CI runs the same gate on every push and pull request and is the real
+# enforcement; this hook only saves a contributor a round trip.
 #
-# NOT YET ACTIVATED. The tree still carries references at this point in the
-# cleanup, so turning this on now (`git config core.hooksPath .githooks`)
-# would block every commit the rest of this phase needs to make. Activation
-# happens in the final local-verification plan of this phase.
+# Turn it on once per clone with: git config core.hooksPath .githooks
+# Without the git-ignored .provenance-denylist file it prints a warning and
+# runs a reduced check instead of failing.
 node scripts/check-provenance.mjs
 exit $?
