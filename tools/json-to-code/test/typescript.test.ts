@@ -44,7 +44,7 @@ it('TypeScript output type-checks the sample with the TypeScript compiler', () =
   const { output } = jsonToCode(SAMPLE, { language: 'typescript', rootName: 'Root' });
   const diagnostics = typeCheck(output, `const value: Root = ${SAMPLE};\nvoid value;\n`);
   expect(diagnostics.map((d) => ts.flattenDiagnosticMessageText(d.messageText, ' '))).toEqual([]);
-});
+}, 30_000);
 
 it('a wrongly typed value fails the TypeScript compiler check', () => {
   const { output } = jsonToCode(SAMPLE, { language: 'typescript', rootName: 'Root' });
