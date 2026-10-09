@@ -732,8 +732,10 @@ const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
  * An entry that cannot complete by design is named here, by tool id, with the 1-based positions of those entries and the
  * reason, and only then does the test excuse it. The list is empty: when the rule was added, six pages had an entry that
  * never completed (a field left holding the harness marker, or a synthetic file the page cannot read), and every one of
- * them was wrong rather than stopping by design, so each was fixed in that tool's own fixture file. Put an entry here
- * only for one that, by design, stops before its run completes, and say why in the reason.
+ * them was wrong rather than stopping by design, so each was fixed in that tool's own fixture file. When the rule was
+ * then made to judge what a Run produced, not only that the Run button came back, nine more entries on eight pages with
+ * a Run button were found the same way and fixed the same way (a real file the page can open, a key, a page number).
+ * Put an entry here only for one that, by design, stops before its run completes, and say why in the reason.
  */
 const FIXTURE_ENTRIES_THAT_STOP: Record<string, { positions: number[]; reason: string }> = {};
 
@@ -817,6 +819,18 @@ test('a malformed privacy fixture entry or inline file is refused, naming the fi
 async function autoRunSucceeded(page: Page): Promise<boolean> {
   const output = page.locator('section[aria-label="Output"]');
   if ((await output.locator('.issue-list, .note-error').count()) > 0) return false;
+  return (await output.locator('.panel-body > div:not(.note)').count()) > 0;
+}
+
+/**
+ * True when, after a Run press, the Output holds a result and no input problem. A result may itself be a "no" (a
+ * password that does not match a stored hash, a signature that does not verify): that is the tool's real answer, shown
+ * inside a result, and it counts. An input problem (the `.issue-list` a refusal renders) or an Output with no result
+ * (the empty prompt, or only a note) does not.
+ */
+async function runProducedResult(page: Page): Promise<boolean> {
+  const output = page.locator('section[aria-label="Output"]');
+  if ((await output.locator('.issue-list').count()) > 0) return false;
   return (await output.locator('.panel-body > div:not(.note)').count()) > 0;
 }
 
@@ -1082,9 +1096,12 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     // one of them did.
     let entryCompleted = false;
     if (await pressRunIfPresent(page)) {
+      // Counted as a run whatever it answered, as before, so the coverage counts stay comparable between runs. The entry
+      // itself counts as completed only when the Run reached the tool's real work: the button coming back to "Run"
+      // also follows a run that stopped at an input problem or produced nothing.
       runsCompleted++;
-      entryCompleted = true;
       await settle(page);
+      entryCompleted = await runProducedResult(page);
     } else {
       // A page that runs as you type has no Run button: the fixture counts as a
       // completed run only when the automatic run produced output without an
