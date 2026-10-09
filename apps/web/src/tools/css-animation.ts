@@ -28,7 +28,7 @@ const EASING_OPTIONS = [
 // simply the pre-jump-* aliases for jump-start/jump-end): measured this
 // session, this page's own discoverable-state count needed trimming to
 // bring the shared privacy harness back under its own 120-second ceiling on
-// webkit, following an earlier phase 8 plan's own precedent for dropping
+// webkit, following an earlier precedent on this site for dropping
 // one field's own least-essential options rather than the package's.
 const STEP_POSITION_OPTIONS = ['jump-start', 'jump-end', 'jump-none', 'jump-both'].map((v) => ({
   value: v,
@@ -75,7 +75,7 @@ function frameVisible(i: number): (v: Values) => boolean {
 // placed after Mode, Keyframes name, Number of frames, Editing frame and a
 // frame's own position field landed at y=710 on a 720px-tall viewport, so
 // even a plain pointerdown at its own centre never reached the element --
-// same root cause 08-04-SUMMARY.md documents for a differently-positioned
+// same root cause as for a differently-positioned
 // point field on a different page).
 function framePointField(i: number): Field {
   const n = i + 1;

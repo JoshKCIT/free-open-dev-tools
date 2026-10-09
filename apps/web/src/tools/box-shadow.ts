@@ -26,8 +26,7 @@ interface LayerDefault {
 // sub-pixel difference between the live preview's own on-page position and
 // the paste-compare test's freshly loaded blank page. A stronger, more
 // visible default shadow measured well past the shared paste-compare
-// harness's pixel-difference budget on every browser project (see
-// 08-02-SUMMARY.md "Measured per-engine behaviour"); this default keeps
+// harness's pixel-difference budget on every browser project (measured per engine); this default keeps
 // comfortably under it while still reading as a soft card shadow.
 const LAYER_DEFAULTS: LayerDefault[] = [
   { offset: { x: 0, y: 2 }, blur: 4, spread: 0, opacity: 6, color: '#000000', inset: false },

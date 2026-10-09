@@ -12,7 +12,7 @@ import {
  * The key capture area of the Keyboard Event Viewer: a page-local box placed at the top of the Output panel, with the
  * history table and a Clear button under it.
  *
- * Privacy rules this file keeps (D-206):
+ * Privacy rules this file keeps:
  *  - Keys and composition events are read only by listeners on the capture box itself, never on the document or the
  *    window, so nothing is read while focus is anywhere else.
  *  - The history lives in this module's memory, is bounded by the package's KeyHistory (200 rows), is emptied by

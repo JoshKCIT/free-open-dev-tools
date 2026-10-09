@@ -1,13 +1,12 @@
 /**
  * This page's own worker, calling this tool's own package directly -- not a
  * second copy of another page's worker importing a different tool's
- * package. The planner's own recorded choice (06-06-PLAN.md
- * `<objective>`): an existing worker pair on another page could have been
+ * package. A deliberate choice: an existing worker pair on another page could have been
  * reused, but that page's own worker header comment already documents
  * one-worker-pair-per-page duplication as deliberate (each page is its own
  * lazily loaded chunk), and this keeps the site running the exact code
- * this folder's own tests cover, never another tool's package (D-02
- * applies to pages; this lib file stays neutral too).
+ * this folder's own tests cover, never another tool's package (a page names no other
+ * catalog tool, and this lib file stays neutral too).
  *
  * A close copy of that established worker shape otherwise: this file only
  * owns the message protocol back to the page. All hashing logic lives in

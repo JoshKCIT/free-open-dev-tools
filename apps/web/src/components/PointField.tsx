@@ -17,7 +17,7 @@ function roundToStep(v: number, step: number): number {
 }
 
 /**
- * A draggable `{ x, y }` handle with paired numeric inputs (D-111, D-112).
+ * A draggable `{ x, y }` handle with paired numeric inputs.
  * The handle is a keyboard-operable slider (WAI-ARIA 1.2's slider role,
  * https://www.w3.org/TR/wai-aria-1.2/#slider: "An input where the user
  * selects a value from within a given range... Authors MUST set the

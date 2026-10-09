@@ -497,7 +497,7 @@ export default defineTool({
         return { outputs: [], errors: [{ message: err.message }] };
       }
       // Any other error (a picked file that changed or vanished makes the browser's read fail with its own text) gets
-      // one fixed sentence, never the browser's message (19-01 S10).
+      // one fixed sentence, never the browser's message.
       const fromFile = str(values, 'source', 'file') === 'file';
       const message = fromFile
         ? 'Could not read that file. If it changed or moved after you picked it, pick it again.'

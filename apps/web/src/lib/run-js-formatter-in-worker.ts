@@ -16,7 +16,7 @@
  * ~92 seconds), confirmed again directly against this tool's own TypeScript
  * minify path this session. Beautify (either language) and JavaScript
  * minify all measured well under 1 second on a 200KB realistic input and
- * stay off the worker (D-57, profile first -- only the path shown to need
+ * stay off the worker (profile first -- only the path shown to need
  * it gets one).
  */
 import JsFormatterWorker from './workers/js-formatter.worker.ts?worker&inline';

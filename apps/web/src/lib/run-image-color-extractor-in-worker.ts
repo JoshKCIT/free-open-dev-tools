@@ -64,7 +64,7 @@ function targetCanvasSize(
  * only when `OffscreenCanvas` itself is unavailable on the main thread
  * too; either way the canvas this function draws into is a plain local
  * variable, never appended to the document, so the picked image is still
- * never shown -- the one property D-115 actually requires, independent of
+ * never shown -- the one property that actually matters, independent of
  * which canvas class happens to provide it on a given engine.
  */
 function finishOnPageThread(

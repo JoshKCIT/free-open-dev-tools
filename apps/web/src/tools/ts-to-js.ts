@@ -6,7 +6,7 @@ export default defineTool({
   id: 'ts-to-js',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   // Compiling runs in a background worker with a 10 second time limit
-  // (D-57: a long chain of string concatenation showed clear super-linear
+  // (a long chain of string concatenation showed clear super-linear
   // growth measured against the installed compiler), so the run can be
   // cancelled.
   cancellable: true,

@@ -25,8 +25,8 @@ const DEFAULT_CACHE_RULES = 'image/png 1 year\nimage/jpeg 1 year\ntext/css 1 mon
 
 export default defineTool({
   id: 'htaccess-generator',
-  // A .htpasswd line hashes with bcrypt (a salted, random-looking output,
-  // D-10) at a cost that can be slow (D-14), so this page waits for a
+  // A .htpasswd line hashes with bcrypt (a salted, random-looking output)
+  // at a cost that can be slow, so this page waits for a
   // deliberate Run press and offers Cancel, like the bcrypt page itself.
   autoRun: false,
   cancellable: true,

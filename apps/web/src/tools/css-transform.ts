@@ -50,7 +50,7 @@ export default defineTool({
     // This checkbox is the origin drag entry's own scroll trigger (its
     // fixture steps check and uncheck it): being right below `origin`, the
     // minimal scroll needed to reveal it also reveals the origin pad above
-    // it, on every engine (measured this session, see 08-04-SUMMARY.md).
+    // it, on every engine (measured this session).
     { name: 'uniformScale', label: 'Uniform scale', type: 'checkbox', default: false },
     { name: 'rotate', label: 'Rotate (deg)', type: 'number', default: 0, min: -360, max: 360, step: 1 },
     { name: 'scaleX', label: 'Scale horizontal', type: 'number', default: 1, min: 0.1, max: 4, step: 0.1 },

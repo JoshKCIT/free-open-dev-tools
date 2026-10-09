@@ -272,8 +272,8 @@ const MAX_PREVIEW_BYTES = 2 * 1024 * 1024;
 
 export default defineTool({
   id: 'image-converter',
-  // A picked image is only ever read once the visitor presses Run (D-130,
-  // D-10): decoding, resizing and encoding are all real background work.
+  // A picked image is only ever read once the visitor presses Run:
+  // decoding, resizing and encoding are all real background work.
   autoRun: false,
   cancellable: true,
   runLimit: { ms: IMAGE_CONVERTER_STALL_LIMIT_MS, kind: 'quiet' },

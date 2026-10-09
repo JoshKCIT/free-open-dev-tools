@@ -4,7 +4,7 @@
  * into a real stop.
  *
  * A close copy of `run-in-worker.ts`'s settle contract, the same shape
- * `run-image-converter-in-worker.ts` (09-03 Task 1) already established for
+ * `run-image-converter-in-worker.ts` already established for
  * this phase's canvas-drawing worker pages, including its own page-thread
  * fallback for an engine with no `OffscreenCanvas` anywhere.
  *

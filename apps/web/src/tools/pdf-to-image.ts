@@ -16,7 +16,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 export default defineTool({
   id: 'pdf-to-image',
-  // A file is read only when Run is pressed (D-10), and rendering runs in
+  // A file is read only when Run is pressed, and rendering runs in
   // a background worker, so a Cancel control is offered while it is in
   // flight.
   autoRun: false,

@@ -10,7 +10,7 @@ export default defineTool({
   id: 'js-formatter',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },
   // Only the TypeScript + minify combination runs in a background worker
-  // with a 10 second time limit (D-57: `ts.transpileModule` showed clear
+  // with a 10 second time limit (`ts.transpileModule` showed clear
   // super-linear growth on a long chain of string concatenation, the same
   // pattern found elsewhere on this site's own type-stripping page). Every
   // other combination measured well under 1 second and runs on the main

@@ -114,8 +114,8 @@ function bytesToDataUrl(bytes: Uint8Array, mediaType: string): string {
 
 export default defineTool({
   id: 'favicon-generator',
-  // The Image source reads a picked file only once the visitor presses Run
-  // (D-130, D-10); text and emoji sources are just as worker-backed since
+  // The Image source reads a picked file only once the visitor presses Run;
+  // text and emoji sources are just as worker-backed since
   // drawing and encoding six sizes is real background work either way.
   autoRun: false,
   cancellable: true,

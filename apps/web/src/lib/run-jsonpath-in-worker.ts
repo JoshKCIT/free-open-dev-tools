@@ -5,7 +5,7 @@
  *
  * Imports the worker with the build-time inlining suffix, not the
  * URL-and-constructor form -- the single most important line in this file,
- * for exactly the reason `run-in-worker.ts` (plan 02-10) documents: the
+ * for exactly the reason `run-in-worker.ts` documents: the
  * default form emits the worker as a separately fetched file, and because
  * the worker is constructed when the visitor presses Run, that fetch would
  * land inside the window the privacy harness records, where it is an
@@ -13,7 +13,7 @@
  * page chunk and constructs it from an object URL, which the harness's
  * existing filter already excludes.
  *
- * A close copy of `run-regex-in-worker.ts` (plan 03-02), not a shared
+ * A close copy of `run-regex-in-worker.ts`, not a shared
  * helper -- see that file's own comment on why the duplication is
  * deliberate. The settlement contract is copied wholesale: one guarded
  * `settle` closure, the same fixed failure message on every native-failure

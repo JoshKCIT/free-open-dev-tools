@@ -1,6 +1,6 @@
 /**
  * The second background worker in this project (the first is
- * `hash-file.worker.ts`, plan 02-10). Runs one bcrypt hash or verify job at
+ * `hash-file.worker.ts`). Runs one bcrypt hash or verify job at
  * a cost slow enough to freeze the tab if run on the main thread. All logic
  * that actually calls bcrypt lives in the tool package (@fodt/bcrypt); this
  * file only owns the message protocol back to the page and forwarding the

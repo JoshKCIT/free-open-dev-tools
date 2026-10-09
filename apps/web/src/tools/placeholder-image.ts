@@ -18,7 +18,7 @@ const PATTERN_OPTIONS: Field['options'] = [
 
 export default defineTool({
   id: 'placeholder-image',
-  // Deterministic and cheap: reruns as the visitor types (D-10), same as
+  // Deterministic and cheap: reruns as the visitor types, same as
   // every other tool in this phase that reads no file.
   autoRun: true,
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },

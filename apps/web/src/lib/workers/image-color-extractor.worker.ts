@@ -9,7 +9,7 @@
  * decoding it with browser APIs the package itself never names, and the
  * message protocol back to the page.
  *
- * Engine fallback (D-115, measured this session, not merely `[ASSUMED]`):
+ * Engine fallback (measured this session, not merely `[ASSUMED]`):
  * this worker's own browser decoder is available in every tested engine's
  * worker, but this project's tested WebKit build has no `OffscreenCanvas`
  * anywhere at all -- not in a worker, and, confirmed directly, not on the

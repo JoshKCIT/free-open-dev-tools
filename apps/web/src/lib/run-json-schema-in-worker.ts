@@ -5,7 +5,7 @@
  *
  * Imports the worker with the build-time inlining suffix, not the
  * URL-and-constructor form -- the single most important line in this file,
- * for exactly the reason `run-in-worker.ts` (plan 02-10) documents: the
+ * for exactly the reason `run-in-worker.ts` documents: the
  * default form emits the worker as a separately fetched file, and because
  * the worker is constructed when the visitor presses Run, that fetch would
  * land inside the window the privacy harness records, where it is an
@@ -13,8 +13,8 @@
  * page chunk and constructs it from an object URL, which the harness's
  * existing filter already excludes.
  *
- * A close copy of `run-jsonpath-in-worker.ts` (plan 04-03) and
- * `run-regex-in-worker.ts` (plan 03-02), not a shared helper -- see those
+ * A close copy of `run-jsonpath-in-worker.ts` and
+ * `run-regex-in-worker.ts`, not a shared helper -- see those
  * files' own comments on why the duplication is deliberate. The
  * settlement contract is copied wholesale: one guarded `settle` closure,
  * the same fixed failure message on every native-failure path, and the
@@ -33,7 +33,7 @@ import type { SchemaJobMessage, SchemaWorkerMessage } from './workers/json-schem
 import type { ValidateJsonResult } from '@fodt/json-schema-validator';
 import type { RunContext } from './tool-ui';
 
-/** "About 1-2 seconds" per D-14/D-15/D-27; the exact value this file enforces. */
+/** "About 1-2 seconds"; the exact value this file enforces. */
 export const SCHEMA_TIME_LIMIT_MS = 1500;
 
 export const SCHEMA_TIME_LIMIT_MESSAGE =

@@ -11,7 +11,7 @@ import {
 } from '@fodt/unicode-inspector';
 import { defineTool, str, bool, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
-/** D-24: the row cap for the inspection table. Stated in meta.json limits too. */
+/** The row cap for the inspection table. Stated in meta.json limits too. */
 const ROW_CAP = 5000;
 
 /** Converts a character-offset position into a one-based line and column for multi-line input. */

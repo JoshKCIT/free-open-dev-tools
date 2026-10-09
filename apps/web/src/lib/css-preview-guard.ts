@@ -1,5 +1,5 @@
 /**
- * A second, independent fence in front of the live preview (D-118, D-111).
+ * A second, independent fence in front of the live preview.
  * `CssPreview.tsx` calls this before ever adopting a stylesheet built from a
  * tool's own generated CSS text. Written without reading any tool
  * package's `css-safe.ts` -- the shared page layer must not depend on a

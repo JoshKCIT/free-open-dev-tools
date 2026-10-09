@@ -277,7 +277,7 @@ export default function ToolRunner({ tool }: { tool: ToolPage }) {
   const [resetSeq, setResetSeq] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const runSeq = useRef(0);
-  // The working cue (HARD-01). `run` is keyed on the run, not on `running`: `running` stays true when a new run
+  // The working cue. `run` is keyed on the run, not on `running`: `running` stays true when a new run
   // supersedes a running one, so only a counter bumped inside `execute` restarts the cue's clock. `startedAt` is a
   // `performance.now()` reading from the start of the run.
   const [run, setRun] = useState({ id: 0, startedAt: 0 });

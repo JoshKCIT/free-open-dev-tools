@@ -45,7 +45,7 @@ function colorOutputs(colors: QuantizedColor[]): OutputBlock[] {
 export default defineTool({
   id: 'image-color-extractor',
   // The only file-reading page in this phase: a file is read only when the
-  // visitor presses Run (D-10), and the read happens entirely in a
+  // visitor presses Run, and the read happens entirely in a
   // background worker so the tab stays responsive.
   autoRun: false,
   cancellable: true,

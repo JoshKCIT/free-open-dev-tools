@@ -1,7 +1,7 @@
 /**
  * Reads every picked image in fixed-size slices (progress per slice),
  * converts GIF, WebP and BMP inputs to PNG with the browser's own decoder
- * and canvas (D-139: the encoded `Blob`'s own `type` is checked, since an
+ * and canvas (the encoded `Blob`'s own `type` is checked, since an
  * engine can silently substitute a different format rather than fail), and
  * places the result with `@fodt/image-to-pdf` -- all inside this worker, so
  * the tab that constructed it stays responsive and the files are never sent
@@ -150,7 +150,7 @@ async function convertToPng(bytes: Uint8Array, mimeType: string): Promise<Uint8A
     if (!ctx) throw new Error('This browser could not provide a 2D drawing surface for this image.');
     ctx.drawImage(bitmap, 0, 0);
     const pngBlob = await canvas.convertToBlob({ type: 'image/png' });
-    // D-139: an engine can silently substitute a different format rather
+    // An engine can silently substitute a different format rather
     // than fail; the returned Blob's own `type` is what tells the truth.
     if (pngBlob.type !== 'image/png') {
       throw new Error('This browser could not encode this image as PNG.');

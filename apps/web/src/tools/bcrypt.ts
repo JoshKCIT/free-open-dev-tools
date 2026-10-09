@@ -3,10 +3,10 @@ import { bcryptInWorker } from '../lib/run-bcrypt-in-worker';
 import { defineTool, str, num, type OutputBlock, type ToolResult } from '../lib/tool-ui';
 
 /**
- * D-14: work above this cost runs on the worker so the tab stays
+ * Work above this cost runs on the worker so the tab stays
  * responsive; at or below it, calling the package directly is faster than
- * the round trip to a worker would be. Matches UI-SPEC Section 2 and the
- * warning threshold D-06 sets.
+ * the round trip to a worker would be. Matches the interface design and the
+ * warning threshold the package sets.
  */
 const WORKER_THRESHOLD = 12;
 
@@ -25,7 +25,7 @@ function formatDuration(ms: number): string {
  * `ToolRunner` always hands `run()` a freshly constructed, non-aborted
  * `AbortController` for every run, so the only way to exercise this
  * defensive branch honestly is a direct call. Same pattern
- * `apps/web/src/tools/hash-file.ts` (plan 02-10) uses for the same
+ * `apps/web/src/tools/hash-file.ts` uses for the same
  * reason. Unconditionally assigned, and a real visitor never reads or
  * calls it.
  */
@@ -161,7 +161,7 @@ export default defineTool({
     const hash = str(values, 'hash').trim();
     if (!hash) return { outputs: [] };
 
-    // Read the cost out of the hash itself (unbounded, D-06) to decide
+    // Read the cost out of the hash itself (unbounded) to decide
     // whether this run belongs on the worker. A malformed hash makes this
     // throw; swallowed here on purpose so the direct call below produces
     // the real, descriptive error instead of a generic worker failure.

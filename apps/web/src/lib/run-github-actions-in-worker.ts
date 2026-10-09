@@ -3,7 +3,7 @@
  * it against a fixed time limit, terminating it unconditionally if that
  * limit wins.
  *
- * A close copy of `run-docker-compose-in-worker.ts` (plan 07-01), not a
+ * A close copy of `run-docker-compose-in-worker.ts`, not a
  * shared helper -- see that file's own comment on why the duplication is
  * deliberate. Imports the worker with the build-time inlining suffix, not
  * the URL-and-constructor form, for the same privacy-harness reason that
@@ -21,7 +21,7 @@ import type { WorkflowJobMessage, WorkflowWorkerMessage } from './workers/github
 import type { WorkflowValidateResult } from '@fodt/github-actions-validator';
 import type { RunContext } from './tool-ui';
 
-/** "About 2 seconds" per D-09/D-25/D-14/D-15/D-27; the exact value this file enforces. */
+/** "About 2 seconds"; the exact value this file enforces. */
 export const GITHUB_ACTIONS_TIME_LIMIT_MS = 2000;
 
 export const GITHUB_ACTIONS_TIME_LIMIT_MESSAGE =

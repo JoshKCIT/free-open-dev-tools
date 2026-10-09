@@ -64,7 +64,7 @@ declare global {
 
 export interface RenderPdfResult {
   pages: RenderedPage[];
-  /** True when the document asked for a built-in CMap this tool does not bundle (D-138). */
+  /** True when the document asked for a built-in CMap this tool does not bundle. */
   cjkNoteNeeded: boolean;
   /** The document's own total page count, independent of how many pages this run actually rendered. */
   documentPageCount: number;
@@ -76,7 +76,7 @@ export interface RenderPdfResult {
  * pdfjs-dist package). Never reads a URL, never touches the network: a
  * request for anything not bundled (every Liberation Sans file the
  * Helvetica standard fonts map to, or a built-in CMap, which this tool
- * never bundles at all, D-138) is refused, which PDF.js's own
+ * never bundles at all) is refused, which PDF.js's own
  * `fetchStandardFontData`/`fetchBuiltInCMap` already treat as "fall back",
  * not a failure. `onCmapRequest` is called once per refused `cMapUrl`
  * request, which the caller turns into the visitor-facing CJK note.

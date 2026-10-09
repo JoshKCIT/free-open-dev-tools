@@ -7,8 +7,8 @@ import { defineTool, str, type OutputBlock, type ToolResult } from '../lib/tool-
 // which keeps `defineTool`'s own site default (see ../lib/tool-ui) in
 // effect rather than overriding it. The existing 140ms debounce
 // (ToolRunner.tsx) already covers this page's typing latency; the
-// dictionaries were bundled statically for exactly this reason
-// (02-CONTEXT.md D-12), so no worker and no spinner is needed.
+// dictionaries were bundled statically for exactly this reason,
+// so no worker and no spinner is needed.
 export default defineTool({
   id: 'password-strength',
   docs: { about: meta.about, supports: meta.supports, limits: meta.limits, standards: meta.standards },

@@ -192,7 +192,7 @@ async function encodeAllSizes(
     if (!ctx) throw new FaviconError('This browser could not provide a 2D drawing surface for the favicon.');
     drawFaviconSize(ctx, size, plan, bitmap);
     const blob = await canvas.convertToBlob({ type: 'image/png' });
-    // D-139: read the returned blob's own type, never assume PNG encoding
+    // Read the returned blob's own type, never assume PNG encoding
     // succeeded just because a blob came back.
     if (blob.type !== 'image/png') {
       throw new FaviconError('This browser cannot write PNG images, so no favicon could be produced.');

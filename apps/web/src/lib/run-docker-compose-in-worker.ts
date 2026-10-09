@@ -3,8 +3,7 @@
  * it against a fixed time limit, terminating it unconditionally if that
  * limit wins.
  *
- * A close copy of `run-json-schema-in-worker.ts` (plan 07-01's own read_first
- * analog, itself copied from `run-jsonpath-in-worker.ts` and
+ * A close copy of `run-json-schema-in-worker.ts` (itself copied from `run-jsonpath-in-worker.ts` and
  * `run-regex-in-worker.ts`), not a shared helper -- see those files' own
  * comments on why the duplication is deliberate. Imports the worker with the
  * build-time inlining suffix, not the URL-and-constructor form, for the same
@@ -23,7 +22,7 @@ import type { ComposeJobMessage, ComposeWorkerMessage } from './workers/docker-c
 import type { ComposeValidateResult } from '@fodt/docker-compose-validator';
 import type { RunContext } from './tool-ui';
 
-/** "About 2 seconds" per D-09/D-25/D-14/D-15/D-27; the exact value this file enforces. */
+/** "About 2 seconds"; the exact value this file enforces. */
 export const COMPOSE_TIME_LIMIT_MS = 2000;
 
 export const COMPOSE_TIME_LIMIT_MESSAGE =

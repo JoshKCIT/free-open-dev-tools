@@ -1,6 +1,6 @@
 /**
  * Runs one schema-validation job and posts back its result or its error.
- * Mirrors jsonpath.worker.ts's shape (plan 04-03): no progress message (a
+ * Mirrors jsonpath.worker.ts's shape: no progress message (a
  * synchronous Ajv compile plus one validate call has no point partway
  * through where it could report how far along it is), and this worker
  * cannot report its own timeout either -- see

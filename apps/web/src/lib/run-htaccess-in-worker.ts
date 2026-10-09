@@ -5,7 +5,7 @@
  *
  * Imports the worker with the build-time inlining suffix, not the
  * URL-and-constructor form -- the single most important line in this file,
- * for exactly the reason `run-in-worker.ts` (plan 02-10) documents: the
+ * for exactly the reason `run-in-worker.ts` documents: the
  * default form emits the worker as a separately fetched file, and because
  * the worker is constructed when the visitor presses Run, that fetch would
  * land inside the window the privacy harness records, where it is an

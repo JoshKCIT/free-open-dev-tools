@@ -16,7 +16,7 @@ function renderNode(node: PreviewNode, key: number | string = 0) {
 
 /**
  * The preview stage: a shadow host whose own shadow root is styled only by
- * the tool's exact CSS text, shown beside that text (D-110, D-111).
+ * the tool's exact CSS text, shown beside that text.
  *
  * This renders in the live page, never inside `OutputView.tsx`'s
  * `sandbox=""` iframe -- that sandbox runs no scripts at all by design, and
@@ -34,7 +34,7 @@ function renderNode(node: PreviewNode, key: number | string = 0) {
  * adopted by the shadow root and nothing else, so the preview is styled by
  * exactly the CSS a visitor would copy. On an engine without constructed
  * stylesheets on shadow roots, a `<style>` element carrying the same text
- * is used instead (D-111's own scoped-style-element fallback).
+ * is used instead (the scoped-style-element fallback).
  */
 export default function CssPreview({ block }: { block: PreviewBlock }) {
   const hostRef = useRef<HTMLDivElement | null>(null);

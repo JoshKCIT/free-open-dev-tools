@@ -9,7 +9,7 @@
  *
  * A close copy of run-ts-to-js-in-worker.ts, not a shared helper -- same
  * reason that file gives for its own duplication. Measured this session
- * (D-57, profile first; T-05-29): a 200KB realistic script of 2,500 simple
+ * (profile first): a 200KB realistic script of 2,500 simple
  * statements formats in well under half a second, and minifying anything
  * (a single linear lexer pass) is fast regardless of shape. The real risk
  * is a deeply nested parenthesised expression: the installed sql-formatter

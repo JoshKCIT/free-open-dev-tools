@@ -1,6 +1,6 @@
 /**
  * Runs one workflow-file validation job and posts back its result or its
- * error. Mirrors docker-compose-validator.worker.ts's shape (plan 07-01):
+ * error. Mirrors docker-compose-validator.worker.ts's shape:
  * no progress message (a synchronous YAML parse plus one Ajv validate call
  * has no point partway through where it could report how far along it is),
  * and this worker cannot report its own timeout either -- see

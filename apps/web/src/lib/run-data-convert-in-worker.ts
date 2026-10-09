@@ -13,7 +13,7 @@
  * including YAML-to-YAML): the installed yaml 2.9.1 checks duplicate
  * mapping keys by scanning the whole mapping for every new key it composes,
  * so a flat mapping's parse time grows quadratically with its key count
- * (`.planning/WINDOWS.md` id 14) -- the exact same package and the exact
+ * -- the exact same package and the exact
  * same risk yaml-formatter already carries a time limit for. A JSON or TOML
  * source never calls this function; neither parser has a comparable
  * pathological case, so those conversions still run directly on the main

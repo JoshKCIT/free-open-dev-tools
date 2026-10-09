@@ -1,7 +1,7 @@
 /**
  * Draws the same picture `generatePlaceholder`'s own SVG describes, using
  * the browser's own canvas -- directly in the page thread (BP and BQ do not
- * apply to this tool: it reads no file, per D-10 it reruns as the visitor
+ * apply to this tool: it reads no file, so it reruns as the visitor
  * types, and drawing a flat rectangle, a few lines and one line of text is
  * fast enough that a worker would only add a round trip, not responsiveness).
  * `OffscreenCanvas` is used when available; a plain, never-appended
@@ -74,7 +74,7 @@ export async function drawPlaceholderPng(result: PlaceholderResult, options: Dra
   ctx.fillText(result.label, Math.round(width / 2), Math.round(height / 2));
 
   const blob = await toBlob();
-  // D-139: a browser's own encoder can silently substitute a different
+  // A browser's own encoder can silently substitute a different
   // format from the one requested; PNG is universally supported so this is
   // not expected to ever fire, but the check costs nothing and matches
   // every other canvas-encoding tool in this phase.
