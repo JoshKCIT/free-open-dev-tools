@@ -1,1 +1,18 @@
-[{ "values": { "threshold": "0.1" }, "attachesFile": true, "file": "png" }]
+[
+  {
+    "values": { "threshold": "0.1" },
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "before.png",
+        "mimeType": "image/png",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAKnRFWHRDb21tZW50AENBTkFSWS03ZjNhOTEtaW1hZ2UtY29tcGFyZS1kNGU4YjJBRwVzAAAAJ0lEQVR4nGO4o6GBFWkssMGKGEY10ESDhtsJrOjDCQ2saFQDTTQAAJCpUZAVL9voAAAAAElFTkSuQmCC"
+      },
+      {
+        "name": "after.png",
+        "mimeType": "image/png",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAKnRFWHRDb21tZW50AENBTkFSWS03ZjNhOTEtaW1hZ2UtY29tcGFyZS1kNGU4YjJBRwVzAAAAJElEQVR4nGO4o6GBFWkssMGKGEY10ESDhtsJrOgXDjCqgSYaAOV5lRBflpvmAAAAAElFTkSuQmCC"
+      }
+    ]
+  }
+]

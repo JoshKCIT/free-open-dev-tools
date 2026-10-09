@@ -1,1 +1,13 @@
-[{ "mode": { "field": "source", "value": "file" }, "attachesFile": true }]
+[
+  {
+    "mode": { "field": "source", "value": "file" },
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "quadrants.png",
+        "mimeType": "image/png",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAMnRFWHRDb21tZW50AENBTkFSWS03ZjNhOTEtaW1hZ2UtY29sb3ItZXh0cmFjdG9yLWQ0ZThiMha2nQEAAAAnSURBVHicY7ijoYEVaSywwYoYRjXQRIOG2wms6MMJDaxoVANNNAAAkKlRkBUv2+gAAAAASUVORK5CYII="
+      }
+    ]
+  }
+]

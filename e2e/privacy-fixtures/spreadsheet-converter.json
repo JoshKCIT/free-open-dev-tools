@@ -1,5 +1,16 @@
 [
-  { "mode": { "field": "mode", "value": "xlsx-to-text" }, "attachesFile": true },
+  {
+    "mode": { "field": "mode", "value": "xlsx-to-text" },
+    "values": { "sheet": "Sheet1" },
+    "attachesFile": true,
+    "inlineFiles": [
+      {
+        "name": "sample.xlsx",
+        "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "base64": "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"
+      }
+    ]
+  },
   {
     "mode": { "field": "mode", "value": "text-to-xlsx" },
     "values": { "input": "a,b\n1,2", "sheetName": "Sheet1" },

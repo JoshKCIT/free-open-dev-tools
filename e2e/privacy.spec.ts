@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Request, type TestInfo } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Request, type TestInfo } from '@playwright/test';
+import { createHash, createPrivateKey, createPublicKey } from 'node:crypto';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -442,23 +443,38 @@ async function attachRealFixtureFiles(page: Page, kinds: string, marker: string)
 
 /**
  * Attaches the inline files of a fixture entry (`inlineFiles`, e2e/fixture-inline.ts), built with `marker` (the
- * page's canary) wherever a text file holds `{{MARKER}}`, to the first visible file input. Like
- * `attachRealFixtureFiles`, every file goes to that one input; a page whose input is not `multiple` takes one
- * file per entry, so a fixture for it lists one inline file in each entry.
+ * page's canary) wherever a text file holds `{{MARKER}}`. One file, or a first visible file input that is `multiple`:
+ * like `attachRealFixtureFiles`, every file goes to that first visible input. Several files and a first visible input
+ * that takes one file (a page with one field per picture, such as two pictures to compare): the files go one to each
+ * visible file input, in order, and more files than visible inputs fails the test naming the page. (A single-file input
+ * refuses a list of several files outright, so no fixture could have relied on the first input taking them all.)
  */
 async function attachInlineFixtureFiles(page: Page, files: InlineFixtureFile[], marker: string): Promise<number> {
   const fileInputs = page.locator('main input[type="file"]');
   const count = await fileInputs.count();
-  const built = buildInlineFiles(files, marker);
+  const built = buildInlineFiles(files, marker).map((f) => ({
+    name: f.name,
+    mimeType: f.mimeType,
+    buffer: Buffer.from(f.buffer),
+  }));
+  const visible: Locator[] = [];
   for (let i = 0; i < count; i++) {
     const field = fileInputs.nth(i);
-    if (!(await field.isVisible())) continue;
-    await field.setInputFiles(
-      built.map((f) => ({ name: f.name, mimeType: f.mimeType, buffer: Buffer.from(f.buffer) })),
-    );
+    if (await field.isVisible()) visible.push(field);
+  }
+  const first = visible[0];
+  if (!first) return 0;
+  if (built.length === 1 || (await first.evaluate((el) => (el as HTMLInputElement).multiple))) {
+    await first.setInputFiles(built);
     return built.length;
   }
-  return 0;
+  if (built.length > visible.length) {
+    throw new Error(
+      `${built.length} inline files for ${visible.length} visible file inputs that each take one file on ${page.url()}`,
+    );
+  }
+  for (const [i, file] of built.entries()) await visible[i]!.setInputFiles(file);
+  return built.length;
 }
 
 /**
@@ -516,6 +532,36 @@ interface FixtureEntry {
   inlineFiles?: InlineFixtureFile[];
 }
 
+/**
+ * The JWT page's asymmetric fixture: a P-256 key whose private number is the SHA-256 of a fixed phrase, so it is the
+ * same key on every run (the typed values, and so the coverage report, stay comparable between runs) and it is test
+ * data, not a secret; it is built here rather than kept as key text. The verify token's header and payload, which
+ * carry the page's canary, are rebuilt on every run; its ES256 signature was made once with this key and is kept as
+ * text, because an ECDSA signature is random and a new one each run would change the typed values.
+ */
+const JWT_FIXTURE = (() => {
+  const privateNumber = createHash('sha256')
+    .update('free-open-dev-tools privacy fixture: jwt-signature ES256')
+    .digest();
+  // SEC 1 ECPrivateKey: version 1, the 32-byte private number, and the named curve prime256v1.
+  const der = Buffer.concat([
+    Buffer.from('30310201010420', 'hex'),
+    privateNumber,
+    Buffer.from('a00a06082a8648ce3d030107', 'hex'),
+  ]);
+  const key = createPrivateKey({ key: der, format: 'der', type: 'sec1' });
+  const part = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return {
+    privatePem: key.export({ type: 'pkcs8', format: 'pem' }).toString(),
+    publicPem: createPublicKey(key).export({ type: 'spki', format: 'pem' }).toString(),
+    token: [
+      part({ alg: 'ES256', typ: 'JWT' }),
+      part({ sub: canary('jwt-signature'), iat: 1767225600 }),
+      'dJWvtWS9ok3Vq2v9xt_tC1qcxkewy62cUFITd1WjyMb8isjrjF4M6Anp2uFVnQMBzhGpv-33fbHhiKkezBuF0w',
+    ].join('.'),
+  };
+})();
+
 const BUILT_IN_FIXTURES: Record<string, FixtureEntry[]> = {
   // Encode mode with a synthetic file attached: reaches file reading and
   // media-type sniffing instead of the invalid-URI rejection.
@@ -537,13 +583,27 @@ const BUILT_IN_FIXTURES: Record<string, FixtureEntry[]> = {
   uuid: [{ mode: { field: 'mode', value: 'generate' }, attachesFile: false }],
   // Three entries, because one successful path is not every successful path:
   // (a) Sign, HMAC, a shared secret and a payload carrying the canary as a
-  // claim value; (b) Sign, an asymmetric algorithm, exercising key import;
-  // (c) Verify, with a token and key that actually verify, exercising the
-  // success branch rather than only rejection.
+  // claim value; (b) Sign, an asymmetric algorithm with its private key,
+  // exercising key import; (c) Verify, with a token and public key that
+  // actually verify, exercising the signature check rather than only the
+  // token-format rejection. The key and token are built in JWT_FIXTURE.
   'jwt-signature': [
     { mode: { field: 'mode', value: 'sign' }, values: { algorithm: 'HS256' }, attachesFile: false },
-    { mode: { field: 'mode', value: 'sign' }, values: { algorithm: 'RS256' }, attachesFile: false },
-    { mode: { field: 'mode', value: 'verify' }, attachesFile: false },
+    {
+      mode: { field: 'mode', value: 'sign' },
+      values: { algorithm: 'ES256', keyFormat: 'pem-private', pemPrivateKey: JWT_FIXTURE.privatePem },
+      attachesFile: false,
+    },
+    {
+      mode: { field: 'mode', value: 'verify' },
+      values: {
+        algorithm: 'ES256',
+        token: JWT_FIXTURE.token,
+        keyFormat: 'pem-public',
+        pemPublicKey: JWT_FIXTURE.publicPem,
+      },
+      attachesFile: false,
+    },
   ],
   // A published, widely-reproduced Luhn-valid test number, so the checksum
   // path runs rather than the not-a-digit-or-separator rejection.
