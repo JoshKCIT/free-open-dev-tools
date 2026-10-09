@@ -55,6 +55,8 @@ export default tseslint.config(
       'test-results/**',
       'playwright-report/**',
       'tools/*/test/fixtures/**',
+      // The planning folder is git-ignored and never reaches CI; its scripts are notes, not part of the site.
+      '.planning/**',
     ],
   },
   js.configs.recommended,
