@@ -13,6 +13,7 @@
  * own timeout: it may be inside a long scan, so the page owns the limit and terminates it.
  */
 import { HexViewerError, searchChunks, type SearchResult } from '@fodt/hex-viewer';
+import { hexViewerUnknownFailure } from '../hex-viewer-failure';
 
 export type HexViewerJob =
   | { kind: 'file'; file: File; needle: Uint8Array; matchCase: boolean }
@@ -52,8 +53,6 @@ interface WorkerGlobal {
 
 const workerGlobal = self as unknown as WorkerGlobal;
 
-const MEMORY_MESSAGE = 'The search needed more memory than this tab could give.';
-
 /** The chunks of a file, read one at a time from its stream. */
 async function* chunksOfFile(file: File): AsyncGenerator<Uint8Array> {
   const reader = file.stream().getReader();
@@ -73,17 +72,14 @@ async function* chunksOfBytes(bytes: Uint8Array): AsyncGenerator<Uint8Array> {
   yield bytes;
 }
 
-/** The viewer's own plain sentence for an expected failure; a memory failure is named as running out of memory. */
-function failure(err: unknown): HexViewerErrorMessage {
+/**
+ * The viewer's own plain sentence for an expected failure. Any other error gets one fixed sentence from
+ * hex-viewer-failure.ts, never the error's own text (a picked file that changed makes the browser's read fail with its
+ * own words).
+ */
+function failure(err: unknown, kind: 'file' | 'bytes' | undefined): HexViewerErrorMessage {
   if (err instanceof HexViewerError) return { type: 'hex-viewer-error', message: err.message };
-  const text = err instanceof Error ? `${err.name} ${err.message}` : String(err);
-  if (/RangeError|Invalid (array|string) length|allocation|memory/i.test(text)) {
-    return { type: 'hex-viewer-error', message: MEMORY_MESSAGE };
-  }
-  return {
-    type: 'hex-viewer-error',
-    message: err instanceof Error && err.message ? err.message : 'The background task failed for an unknown reason.',
-  };
+  return { type: 'hex-viewer-error', message: hexViewerUnknownFailure(err, kind) };
 }
 
 async function handleJob(message: HexViewerJobMessage): Promise<void> {
@@ -93,7 +89,7 @@ async function handleJob(message: HexViewerJobMessage): Promise<void> {
     const result = await searchChunks(chunks, job.needle, { matchCase: job.matchCase });
     workerGlobal.postMessage({ type: 'hex-viewer-done', result });
   } catch (err) {
-    workerGlobal.postMessage(failure(err));
+    workerGlobal.postMessage(failure(err, message?.job?.kind));
   }
 }
 
