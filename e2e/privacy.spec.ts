@@ -666,6 +666,17 @@ const VALID_SCENARIO_FIXTURES: Record<string, FixtureEntry[]> = {
   ...loadPrivacyFixtureFiles(),
 };
 
+/**
+ * A page with valid-scenario fixture entries passes its privacy test only when EVERY entry completed its run, not when
+ * any one did (the coverage report counts the entries and lists, by 1-based position, each one that never completed).
+ * An entry that cannot complete by design is named here, by tool id, with the 1-based positions of those entries and the
+ * reason, and only then does the test excuse it. The list is empty: when the rule was added, six pages had an entry that
+ * never completed (a field left holding the harness marker, or a synthetic file the page cannot read), and every one of
+ * them was wrong rather than stopping by design, so each was fixed in that tool's own fixture file. Put an entry here
+ * only for one that, by design, stops before its run completes, and say why in the reason.
+ */
+const FIXTURE_ENTRIES_THAT_STOP: Record<string, { positions: number[]; reason: string }> = {};
+
 test('every privacy fixture file is loaded and names a real tool page', () => {
   const dir = join(root, 'e2e', 'privacy-fixtures');
   const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')) : [];
@@ -785,6 +796,12 @@ interface CoverageReport {
   discoveredAfterChange: number;
   filesAttached: number;
   runsCompleted: number;
+  /** How many valid-scenario fixture entries the page has. */
+  fixtureEntries: number;
+  /** How many of them completed their run. */
+  fixtureEntriesCompleted: number;
+  /** The 1-based positions of the entries that never completed their run. */
+  fixtureEntriesNotCompleted: number[];
   remaining: number;
   totalHandled: number;
   visitLog: VisitLogRow[];
@@ -843,6 +860,7 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
   let discoveredAfterChange = 0;
   let filesAttached = 0;
   let runsCompleted = 0;
+  const fixtureEntriesNotCompleted: number[] = [];
 
   const queue: QueuedState[] = [];
   const pushState = (state: ControlState, prerequisites: ControlState[]) => {
@@ -952,7 +970,9 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
   // defaults rather than to whatever state the last queued visit left
   // behind. Runs only for the handful of pages whose real processing cannot
   // be reached with the tracer alone.
-  for (const fixture of VALID_SCENARIO_FIXTURES[id] ?? []) {
+  const fixtureEntries = VALID_SCENARIO_FIXTURES[id] ?? [];
+  for (const [entryIndex, fixture] of fixtureEntries.entries()) {
+    const fixtureEntryNumber = entryIndex + 1;
     await resetToDefaults();
 
     if (fixture.mode) {
@@ -998,16 +1018,24 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     if (fixture.inlineFiles) filesAttached += await attachInlineFixtureFiles(page, fixture.inlineFiles, value);
     else if (fixture.file) filesAttached += await attachRealFixtureFiles(page, fixture.file, value);
     else if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
+    // Whether THIS entry completed its run, recorded by position: a page passes only when every entry did (D-252 b), not
+    // when any one of them did.
+    let entryCompleted = false;
     if (await pressRunIfPresent(page)) {
       runsCompleted++;
+      entryCompleted = true;
       await settle(page);
     } else {
       // A page that runs as you type has no Run button: the fixture counts as a
       // completed run only when the automatic run produced output without an
       // input problem or a crash, i.e. it reached the real processing path.
       await settle(page);
-      if (await autoRunSucceeded(page)) runsCompleted++;
+      if (await autoRunSucceeded(page)) {
+        runsCompleted++;
+        entryCompleted = true;
+      }
     }
+    if (!entryCompleted) fixtureEntriesNotCompleted.push(fixtureEntryNumber);
   }
 
   const remaining = pushedKeys.size - visitedKeys.size;
@@ -1023,6 +1051,9 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     discoveredAfterChange,
     filesAttached,
     runsCompleted,
+    fixtureEntries: fixtureEntries.length,
+    fixtureEntriesCompleted: fixtureEntries.length - fixtureEntriesNotCompleted.length,
+    fixtureEntriesNotCompleted,
     remaining,
     totalHandled,
     visitLog,
@@ -1101,6 +1132,17 @@ test.describe('local processing', () => {
       if (fixtures && fixtures.length > 0) {
         expect(report.runsCompleted, `/tools/${id}: the valid-scenario fixture never completed a Run`).toBeGreaterThan(
           0,
+        );
+        // Every entry, not any one: a page whose second entry never reached its real processing must not pass because
+        // its first entry did (D-252 b).
+        expect(
+          report.fixtureEntries,
+          `/tools/${id}: the coverage report counted a different number of fixture entries`,
+        ).toBe(fixtures.length);
+        const excused = FIXTURE_ENTRIES_THAT_STOP[id]?.positions ?? [];
+        const notCompleted = report.fixtureEntriesNotCompleted.filter((position) => !excused.includes(position));
+        expect(notCompleted, `/tools/${id}: fixture entries ${notCompleted.join(', ')} never completed a Run`).toEqual(
+          [],
         );
         if (fixtures.some((f) => f.attachesFile)) {
           expect(
