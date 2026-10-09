@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "picomatch": "4.0.7",
-    "ignore": "7.0.8"
+    "ignore": "7.0.9"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

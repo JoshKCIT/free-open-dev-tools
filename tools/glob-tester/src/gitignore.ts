@@ -62,7 +62,7 @@ export function withoutTrailingSpaces(line: string): string {
 const BLOCK_SIZE = 32;
 
 /**
- * Decides each pasted path with the `ignore` package (version 7.0.8, case-sensitive, as one .gitignore at the top of a
+ * Decides each pasted path with the `ignore` package (version 7.0.9, case-sensitive, as one .gitignore at the top of a
  * repository) and names the pasted line that decided it.
  *
  * The package decides whether the path is ignored: every pattern line is handed to it as a rule marked with its pasted

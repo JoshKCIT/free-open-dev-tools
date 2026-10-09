@@ -14,7 +14,7 @@ Paste glob patterns, .gitignore rules or a CODEOWNERS file and a list of paths, 
 - Glob mode: picomatch 4.0.7 globs with braces, extglobs such as @(*.js|*.ts) and ** across directories; one pattern per line, the first matching line is named and the other matching lines are listed
 - Glob mode reads POSIX classes such as [[:alpha:]] and [[:digit:]] as picomatch does (a letter class, a digit class)
 - Glob options: match dotfiles, and ignore case
-- .gitignore mode: the rules of one .gitignore file at the top of a repository, decided by the ignore package 7.0.8 with case-sensitive matching: negation with ! (a line holding only a ! matches nothing and still counts in the line numbers, as in git), directory-only patterns ending in /, anchoring with a leading or middle /, ** as a whole path segment, backslash escapes, trailing spaces, comments, CRLF line ends and a byte order mark
+- .gitignore mode: the rules of one .gitignore file at the top of a repository, decided by the ignore package 7.0.9 with case-sensitive matching: negation with ! (a line holding only a ! matches nothing and still counts in the line numbers, as in git), directory-only patterns ending in /, anchoring with a leading or middle /, ** as a whole path segment, backslash escapes, trailing spaces, comments, CRLF line ends and a byte order mark
 - The deciding rule for each path in .gitignore mode: the line number and pattern of the last rule that matched (a negation included), the excluded parent directory with its line, or no rule matched
 - Paths one per line, relative to the repository root; end a directory with / (logs/ is the directory, logs is a file); a path written twice gives two rows
 - CODEOWNERS mode: paste a CODEOWNERS file and file paths and see, for each path, its owners and the line that decided it under the rules GitHub documents: the last matching line wins and the owners of earlier lines are never merged
@@ -114,7 +114,7 @@ owners.skipped; // lines GitHub does not support, each with its line number and 
 ## Dependencies
 
 - `picomatch` 4.0.7
-- `ignore` 7.0.8
+- `ignore` 7.0.9
 
 ## Tests
 

@@ -197,7 +197,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [html-minifier-terser](https://terser.org/html-minifier-terser/) | 7.2.0 | MIT | direct | tools/html-formatter |
 | [htmlparser2](git://github.com/fb55/htmlparser2) | 12.0.0 | MIT | direct | tools/bbcode, tools/jsx-converter |
 | [iconv-lite](https://github.com/ashtuchkin/iconv-lite) | 0.6.3 | MIT | transitive (via d3-dsv) | tools/mermaid-renderer |
-| [ignore](https://github.com/kaelzhang/node-ignore) | 7.0.8 | MIT | direct | tools/glob-tester |
+| [ignore](https://github.com/kaelzhang/node-ignore) | 7.0.9 | MIT | direct | tools/glob-tester |
 | [immutable](https://immutable-js.com) | 5.1.9 | MIT | transitive (via sass) | tools/sass-less-compiler |
 | [import-meta-resolve]() | 4.2.0 | MIT | transitive (via @iconify/utils) | tools/mermaid-renderer |
 | [internmap](https://github.com/mbostock/internmap/) | 1.0.1 | ISC | transitive (via d3-array) | tools/mermaid-renderer |
@@ -5870,7 +5870,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ignore 7.0.8
+### ignore 7.0.9
 
 Licence: MIT
 

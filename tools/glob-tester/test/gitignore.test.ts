@@ -5,7 +5,7 @@ import { gitCase, gitCorpus, gitDecision, pathIndex, type GitCase } from './corp
 
 // Expected values are git's own answers, recorded with `git check-ignore -v -n -z --no-index --stdin` (see
 // fixtures/README.md for the git version, the date and the two-repository method): whether each path is ignored and the
-// line git printed. The tool is the `ignore` package 7.0.8 with ignorecase false; the differences between the two are
+// line git printed. The tool is the `ignore` package 7.0.9 with ignorecase false; the differences between the two are
 // listed below, each with the class that meta.json `limits` states, and a listed pair must really differ.
 
 let spies: { log: ReturnType<typeof makeSpy>; warn: ReturnType<typeof makeSpy>; error: ReturnType<typeof makeSpy> };
