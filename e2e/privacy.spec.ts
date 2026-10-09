@@ -1018,8 +1018,8 @@ async function visitEveryMode(page: Page, id: string, value: string): Promise<Co
     if (fixture.inlineFiles) filesAttached += await attachInlineFixtureFiles(page, fixture.inlineFiles, value);
     else if (fixture.file) filesAttached += await attachRealFixtureFiles(page, fixture.file, value);
     else if (fixture.attachesFile) filesAttached += await attachCanaryFiles(page, value);
-    // Whether THIS entry completed its run, recorded by position: a page passes only when every entry did (D-252 b), not
-    // when any one of them did.
+    // Whether THIS entry completed its run, recorded by position: a page passes only when every entry did, not when any
+    // one of them did.
     let entryCompleted = false;
     if (await pressRunIfPresent(page)) {
       runsCompleted++;
@@ -1134,7 +1134,7 @@ test.describe('local processing', () => {
           0,
         );
         // Every entry, not any one: a page whose second entry never reached its real processing must not pass because
-        // its first entry did (D-252 b).
+        // its first entry did.
         expect(
           report.fixtureEntries,
           `/tools/${id}: the coverage report counted a different number of fixture entries`,

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * The browser proof for the Source Map Stack Trace Decoder page's three run guarantees (21-10, D-253 a, D-255 a): Cancel
+ * The browser proof for the Source Map Stack Trace Decoder page's three run guarantees: Cancel
  * stops a decode at once with no half answer and the next run works; a decode still running at 20 seconds of page time
  * is stopped by the page with the fixed sentence and no answer, and not at 19 seconds; and every run gets a new background
  * task that is ended when its run ends. The same file runs on chromium, firefox, webkit and mobile-chrome.
@@ -16,10 +16,10 @@ import { expect, test, type Page } from '@playwright/test';
  * about 20 MB in all 80 MB, each holding one generated line of 3,999,000 segments whose columns run downward so that the
  * decoder has to sort them, and a trace with one frame in each. The maps are built here at run time and written to a
  * temporary folder (Playwright cannot attach more than 50 MB from memory). The decode really runs: it took 1.8 to 5.3
- * seconds in each of the four browsers (measured, three runs each, recorded in the 21-10 summary). That is longer than a
+ * seconds in each of the four browsers (measured, three runs each, when this test was written). That is longer than a
  * Cancel press needs, but not reliably longer than the page clock steps of the limit test need in WebKit on Windows (a
  * single Playwright call there can take most of a second), so the first background task's `done` message is held back
- * from the page, the form D-255 a approves and e2e/dev-workers.spec.ts uses: the run stays in flight for as long as the
+ * from the page, the way e2e/dev-workers.spec.ts holds a result back: the run stays in flight for as long as the
  * test needs, while the decode itself, the Cancel, the 20 second limit and the page are the real ones.
  * The 20 second stop is crossed with Playwright's page clock: it is frozen once the job has been posted and moved by
  * exact amounts from the moment the task said ready, which is when the page's timer began (19 seconds old: still running;
@@ -121,7 +121,7 @@ function cancelButton(page: Page) {
  * message in either direction and every terminate() call is recorded. The tasks do their real work. With
  * `holdFirstDone`, the first task's `done` message is not handed to the page's listener (the log still shows the task
  * said it), so the page cannot hear an answer: the run stays in flight for as long as the test needs, whatever the
- * speed of the browser (D-255 a, the way e2e/dev-workers.spec.ts holds a result back).
+ * speed of the browser (the way e2e/dev-workers.spec.ts holds a result back).
  */
 async function installWorkerWrapper(page: Page, options: { holdFirstDone: boolean }): Promise<void> {
   await page.addInitScript((modes: { holdFirstDone: boolean }) => {
