@@ -262,6 +262,7 @@ test.describe('in-site addresses keep the base path', () => {
     const worker = async () => {
       while (next < addresses.length) {
         const address = addresses[next++];
+        if (address === undefined) return;
         const response = await request.get(address);
         expect(response.status(), address).toBe(200);
       }
