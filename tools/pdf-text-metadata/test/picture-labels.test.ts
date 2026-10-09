@@ -343,3 +343,94 @@ it('stream dictionaries full of strings, comments, brackets and names are read i
   ];
   for (const [name, unit] of units) await expectLinear(name, (n) => manyDictionaries(unit, n), 64);
 }, 300_000);
+
+/** A one page file whose page dictionary also holds `extra` and whose `/Contents` is object 4, `content`. */
+function pageWithExtra(extra: string, content: Buffer): Uint8Array {
+  return buildRawPdf([
+    { number: 1, body: Buffer.from('<< /Type /Catalog /Pages 2 0 R >>') },
+    { number: 2, body: Buffer.from('<< /Type /Pages /Kids [3 0 R] /Count 1 >>') },
+    {
+      number: 3,
+      body: Buffer.from(
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] ${extra} /Resources << /Font << /F1 6 0 R >> >> /Contents 4 0 R >>`,
+        'latin1',
+      ),
+    },
+    { number: 4, body: content },
+    FONT,
+  ]);
+}
+
+it('text in a string or a comment that looks like the start of a stream does not hide the stream after it', async () => {
+  const longString = ' '.repeat(70_000);
+  const extras: [string, string][] = [
+    ['a string holding the end of a dictionary and the keyword', '/X (>> stream\n)'],
+    ['the same with a carriage return and a line feed', '/X (>> stream\r\n)'],
+    ['an escaped parenthesis before it', '/X (\\) >> stream\n)'],
+    ['nested parentheses before it', '/X (a (b) >> stream\n)'],
+    ['a comment', '% >> stream\n'],
+    ['a string holding a whole dictionary and the keyword', '/X (<< >> stream\n)'],
+    ['a string holding a dictionary with a filter and the keyword', '/X (<< /Filter /FlateDecode >> stream\n)'],
+    ['a string longer than the dictionary search reads back', `/X (${longString}>> stream\n)`],
+    ['three hundred keywords after a long string', `/X (${longString}${'>> stream\n'.repeat(300)})`],
+    // Each of these is a stream that is not trusted; the text between them is searched once, not once per stream, so
+    // it cannot fill the 32 MiB of searched text and push the page entry after it out.
+    ['three thousand whole dictionaries and keywords in one string', `/X (${'<< >> stream\n'.repeat(3000)})`],
+  ];
+  for (const [name, extra] of extras) {
+    const bytes = pageWithExtra(extra, streamObject('/Filter /FlateDecode', flateShowing('hiddentext')));
+    // The reader skips the string or the comment and decodes the content stream after it.
+    expect(await pdfJsText(bytes), name).toBe('hiddentext');
+    const error = await refusal(checkExpansion(bytes, { limits: LIMITS }));
+    expect(error.kind, name).toBe('size');
+    expect(error.message, name).toBe(EXPANSION_MESSAGE);
+  }
+
+  // The same with picture-labelled content: the page entry after the string still names it, so it is counted. (After
+  // three hundred keywords the dictionary search has spent its allowance, so the picture's own dictionary is not read
+  // and it is counted as the Flate data it starts with: counted all the same, never left out as an image.)
+  for (const [name, extra] of extras) {
+    const bytes = pageWithExtra(extra, pictureStream('', flateShowing('hiddentext')));
+    const error = await refusal(checkExpansion(bytes, { limits: LIMITS }));
+    expect(error.message, `picture: ${name}`).toBe(EXPANSION_MESSAGE);
+    const report = await checkExpansion(bytes, { limits: { perStream: 4 * MIB } });
+    expect(report.images, `picture: ${name}`).toBe(0);
+    expect(report.decodedBytes, `picture: ${name}`).toBeGreaterThan(2 * MIB);
+  }
+
+  // A stream whose own dictionary holds balanced strings is found and counted as before.
+  const balanced = pageWithExtra(
+    '/Y (a (b) \\) c)',
+    streamObject('/Note (a (b) \\) c) /Filter /FlateDecode', flateShowing('hiddentext')),
+  );
+  expect(await pdfJsText(balanced)).toBe('hiddentext');
+  const report = await checkExpansion(balanced, { limits: { perStream: 4 * MIB } });
+  expect(report.streams).toBe(1);
+  expect(report.decoded).toBe(1);
+  expect((await refusal(checkExpansion(balanced, { limits: LIMITS }))).message).toBe(EXPANSION_MESSAGE);
+});
+
+/** A held picture (so the reference scan runs too) and a page dictionary that repeats `unit` `count` times. */
+function pageRepeating(unit: string, count: number, after = ''): Uint8Array {
+  return new Uint8Array(
+    Buffer.concat([
+      Buffer.from('%PDF-1.5\n9 0 obj\n'),
+      pictureStream('', deflateSync(Buffer.alloc(16))),
+      Buffer.from(`\nendobj\n3 0 obj\n<< /Type /Page /X (${unit.repeat(count)}) >>\nendobj\n${after}`, 'latin1'),
+    ]),
+  );
+}
+
+it('text that looks like many streams in strings and comments is searched in linear time', async () => {
+  const shapes: [string, (n: number) => Uint8Array][] = [
+    ['dictionary ends and keywords in one string', (n) => pageRepeating('>> stream\n', n)],
+    ['whole dictionaries and keywords in one string', (n) => pageRepeating('<< >> stream\n', n)],
+    ['dictionaries with a length and keywords in one string', (n) => pageRepeating('<< /Length 99 >> stream\n', n)],
+    ['ever deeper strings and keywords', (n) => pageRepeating('(>> stream\n', n)],
+    ['comments with keywords', (n) => pageRepeating(')\n% >> stream\n(', n)],
+    ['keywords with one far end marker', (n) => pageRepeating('<< >> stream\n', n, 'endstream\n')],
+    ['objects with headers and no end marker', (n) => pageRepeating(')>>\nendobj\n5 0 obj\n<< >>\nstream\n(', n)],
+  ];
+  // Large enough that the fixed costs (the dictionary search allowance, the warm-up) do not hide how the work grows.
+  for (const [name, make] of shapes) await expectLinear(name, make, 50_000);
+}, 300_000);

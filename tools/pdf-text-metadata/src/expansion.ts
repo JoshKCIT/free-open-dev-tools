@@ -38,9 +38,18 @@
  * run of white space between `obj` and its dictionary, which a reader allows, section 7.2.3) can never be matched to a
  * use, so it is counted whether anything uses it or not: the check fails closed.
  *
+ * How streams are found: by their keyword, with the dictionary read back from the `>>` just before it. When that
+ * dictionary's own text ends inside a string or a comment, the keyword is text and not a stream (a page string may hold
+ * `>> stream`). A stream is trusted only when an object header stands before its dictionary and its `/Length` lands on
+ * `endstream`; the data of a trusted stream is skipped. Any other stream (no header, no usable length, or a dictionary
+ * that could not be read back, as in a string longer than the 64 KiB the search reads back) may be text that only looks
+ * like a stream, so it hides nothing: the search goes on inside its data and its bytes stay in the text searched for
+ * references, each byte once. The search for `endstream` remembers its last answer, so the whole search stays linear.
+ *
  * What it does not do: it is a bound, not a parser of everything PDF.js and pdf-lib read. It finds streams by their
- * keyword and reads the dictionary just before it, so a deliberately crafted file can still hide a stream from it: a
- * dictionary written with an unbalanced string, a reference past the first 32 MiB of text outside streams or the first
+ * keyword and reads the dictionary just before it, so a deliberately crafted file can still hide a stream from it: text
+ * in a string written as a whole object, with an object header, a dictionary whose `/Length` is right and the word
+ * `stream`, a reference past the first 32 MiB of text outside streams or the first
  * 8 MiB (32 MiB in all) of object stream data, a picture among more than 20,000 picture streams, an array of references
  * longer than 64 KiB, or a reference written in a way no pattern here reads. A page string that literally reads
  * `/Contents 12 0 R` where object 12 is a picture makes that picture count, so a file can be refused for it (accepted:
@@ -655,10 +664,11 @@ function shapeOf(text: string): DictShape {
 
 /**
  * Reads the entries this check needs from the text of a stream's dictionary. The picture label is read from the
- * dictionary's own `/Subtype` entries only, as a reader reads them; the other entries are found by pattern.
+ * dictionary's own `/Subtype` entries only, as a reader reads them (`shape` is `shapeOf(text)`); the other entries are
+ * found by pattern.
  */
-function readDict(text: string): StreamDict {
-  const { subtypes } = shapeOf(text);
+function readDict(text: string, shape: DictShape): StreamDict {
+  const { subtypes } = shape;
   // Every own Subtype says Image, so whichever one a reader keeps, it is a picture. A label inside a string, a nested
   // dictionary or an array, or a dictionary that cannot be read, is no label: such a stream is counted.
   const image = subtypes !== null && subtypes.length > 0 && subtypes.every((subtype) => subtype === 'Image');
@@ -695,15 +705,19 @@ function readDict(text: string): StreamDict {
   };
 }
 
+/** What `dictBefore` answers when the `>>` before a `stream` keyword is inside a string or a comment. */
+const NOT_A_STREAM = 'not a stream';
+
 /**
  * The dictionary that ends just before `keyword` (white space aside) and where it starts, or null when none can be
- * found.
+ * found, or `NOT_A_STREAM` when the dictionary's own text shows that its `>>` and the keyword sit inside a string or a
+ * comment (section 7.3.4: a string holds any characters, `>> stream` among them).
  */
 function dictBefore(
   bytes: Uint8Array,
   keyword: number,
   budget: { left: number },
-): { dict: StreamDict; start: number } | null {
+): { dict: StreamDict; start: number } | typeof NOT_A_STREAM | null {
   let end = keyword - 1;
   while (end >= 0 && isSpace(bytes[end])) end--;
   if (end < 1 || bytes[end] !== 0x3e || bytes[end - 1] !== 0x3e) return null;
@@ -717,7 +731,10 @@ function dictBefore(
       depth--;
       at--;
       if (depth === 0) {
-        return latin1 ? { dict: readDict(latin1.decode(bytes.subarray(at, end + 1))), start: at } : null;
+        if (!latin1) return null;
+        const text = latin1.decode(bytes.subarray(at, end + 1));
+        const shape = shapeOf(text);
+        return shape.endsInsideText ? NOT_A_STREAM : { dict: readDict(text, shape), start: at };
       }
     }
   }
@@ -769,11 +786,29 @@ interface FoundStream {
   /** Where the data starts and ends in the file; the bytes between one stream's end and the next one's start are not data. */
   start: number;
   end: number;
+  /** An object header stands before the dictionary and the `/Length` lands on `endstream`, so the data is data. */
+  trusted: boolean;
+}
+
+/**
+ * A search for `word` that is called with ever larger positions: it remembers the last answer, so the bytes are
+ * searched once from start to end however many times it is called.
+ */
+function forwardByteFinder(bytes: Uint8Array, word: string): (at: number) => number {
+  let from = 0;
+  let found = -2;
+  return (at) => {
+    if (found !== -2 && at >= from && (found === -1 || found >= at)) return found;
+    from = at;
+    found = find(bytes, word, at);
+    return found;
+  };
 }
 
 /** Every stream in the file, in file order, without decoding any of them. */
 function* streamsIn(bytes: Uint8Array): Generator<FoundStream> {
   const budget = { left: 16 * 1024 * 1024 + bytes.length };
+  const nextEndstream = forwardByteFinder(bytes, 'endstream');
   let from = 0;
   while (from < bytes.length) {
     const s = find(bytes, 'stream', from);
@@ -798,6 +833,9 @@ function* streamsIn(bytes: Uint8Array): Generator<FoundStream> {
     if (q < 1 || bytes[q] !== 0x3e || bytes[q - 1] !== 0x3e) continue;
 
     const found = dictBefore(bytes, s, budget);
+    // Text inside a string or a comment that only looks like a stream: the search goes on after the keyword, so the
+    // streams after it are still found.
+    if (found === NOT_A_STREAM) continue;
     const dict = found?.dict ?? UNKNOWN_DICT;
     const objectNumber = found ? objectNumberBefore(bytes, found.start) : null;
     let end = -1;
@@ -806,23 +844,29 @@ function* streamsIn(bytes: Uint8Array): Generator<FoundStream> {
       while (probe < bytes.length && probe < data + dict.length + 8 && isSpace(bytes[probe])) probe++;
       if (spells(bytes, probe, 'endstream')) end = data + dict.length;
     }
+    // A stream whose object header stands before its dictionary and whose `/Length` lands on `endstream` is trusted: its
+    // data is skipped. Any other one may be text inside a string that only looks like a stream (a string longer than the
+    // dictionary search can read back, or one that holds a whole `<< ... >>`), so it hides nothing: the search goes on
+    // inside it, and its bytes stay in the text searched for references.
+    const trusted = end >= 0 && objectNumber !== null;
     let next: number;
     if (end >= 0) {
       next = end;
     } else {
-      const marker = find(bytes, 'endstream', data);
+      const marker = nextEndstream(data);
       if (marker < 0) {
-        yield { body: bytes.subarray(data), dict, objectNumber, start: data, end: bytes.length };
-        return;
+        end = bytes.length;
+        next = bytes.length;
+      } else {
+        end = marker;
+        // The end-of-line before `endstream` is not part of the data.
+        if (end > data && bytes[end - 1] === 0x0a) end--;
+        if (end > data && bytes[end - 1] === 0x0d) end--;
+        next = marker;
       }
-      end = marker;
-      // The end-of-line before `endstream` is not part of the data.
-      if (end > data && bytes[end - 1] === 0x0a) end--;
-      if (end > data && bytes[end - 1] === 0x0d) end--;
-      next = marker;
     }
-    yield { body: bytes.subarray(data, end), dict, objectNumber, start: data, end };
-    from = Math.max(from, next);
+    yield { body: bytes.subarray(data, end), dict, objectNumber, start: data, end, trusted };
+    from = trusted ? Math.max(from, next) : Math.max(from, data);
   }
 }
 
@@ -1148,12 +1192,14 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
   const gaps = new GapText(MAX_REFERENCE_TEXT_BYTES);
   let gapFrom = 0;
 
-  for (const { body, dict, objectNumber, start, end } of streamsIn(bytes)) {
+  for (const { body, dict, objectNumber, start, end, trusted } of streamsIn(bytes)) {
     if (options.signal?.aborted) throw options.signal.reason ?? new Error('The check was cancelled.');
     report.streams++;
     if (report.streams % 2000 === 0) options.onProgress?.();
     gaps.add(bytes.subarray(Math.min(gapFrom, start), start));
-    gapFrom = Math.max(gapFrom, end);
+    // The data of a stream that is not trusted may be the rest of a dictionary, so it stays in the searched text: the
+    // next piece starts where this data starts, and every byte is added once.
+    gapFrom = Math.max(gapFrom, trusted ? end : start);
     // A picture whose object number cannot be read can never be matched to a use, so it is not held but counted below:
     // the check fails closed. Ordinary writers put `number generation obj` straight before the dictionary.
     if (dict.image && !dict.objectStream && !dict.xref && objectNumber !== null) {
