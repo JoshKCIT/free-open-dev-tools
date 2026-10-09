@@ -1,5 +1,15 @@
 [
   {
+    "mode": {
+      "field": "source",
+      "value": "paste"
+    },
+    "values": {
+      "pasted": "Received: from relay.example.net (relay.example.net [192.0.2.25])\n        by mx.example.org with ESMTPS id abc123\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:09 +0000\nReceived: from sender.example.com (sender.example.com [192.0.2.10])\n        by relay.example.net with ESMTP id r1\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:03 +0000\nAuthentication-Results: mx.example.org;\n        spf=pass smtp.mailfrom=example.com;\n        dkim=pass header.d=example.com header.s=sel1;\n        dmarc=pass header.from=example.com\nDKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=sel1;\n        t=1791280800; x=1791367200; h=from:to:subject:date:message-id;\n        bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;\n        b=c2lnbmF0dXJlLW5vdC1yZWFs\nFrom: =?UTF-8?B?Sm9zw6kgQmFrZXI=?= <jose@example.com>\nTo: Alice <alice@example.org>\nSubject: =?UTF-8?Q?Caf=C3=A9_menu?=\nDate: Tue, 06 Oct 2026 09:59:58 +0000\nMessage-ID: <msg-1@example.com>\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=\"BOUNDARY-1\""
+    },
+    "attachesFile": false
+  },
+  {
     "attachesFile": true,
     "inlineFiles": [
       {
@@ -18,15 +28,5 @@
         "text": "From: =?UTF-8?B?SG9zdGlsZSBTZW5kZXI=?= <sender@evil.example>\r\nTo: victim@example.org\r\nSubject: Hostile markup {{MARKER}}\r\nDate: Tue, 06 Oct 2026 09:00:00 +0000\r\nMessage-ID: <hostile-1@evil.example>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=\"REL\"\r\n\r\n--REL\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<html><head><base href=\"https://evil.example/\"><meta http-equiv=\"refresh\" content=\"0;url=https://evil.example/r\"><link rel=\"stylesheet\" href=\"https://evil.example/a.css\"><link rel=\"preload\" href=\"https://evil.example/p\" as=\"image\"><style>@import url(https://evil.example/i.css);body{background:url(https://evil.example/b.png)}</style></head><body background=\"https://evil.example/bg.gif\"><img src=\"https://evil.example/1.png\" srcset=\"https://evil.example/2.png 2x\"><picture><source srcset=\"https://evil.example/3.png\"><img src=\"https://evil.example/4.png\"></picture><input type=\"image\" src=\"https://evil.example/5.png\"><svg onload=\"alert(1)\"><image href=\"https://evil.example/6.png\"/><use xlink:href=\"https://evil.example/7.svg#a\"/></svg><a href=\"https://evil.example/click\" ping=\"https://evil.example/ping\">link {{MARKER}}</a><a href=\"jav&#x61;script:alert(1)\">entity scheme</a><a href=\"&#106;avascript:alert(1)\">numeric entity</a><div style=\"background:url('https://evil.example/8.png');width:expression(alert(1));-moz-binding:url(https://evil.example/x.xml#b)\">css</div><div style=\"src:url(https://evil.example/f.woff)\">font</div><div style=\"background-image:image-set('https://evil.example/9.png' 1x)\">set</div><audio src=\"https://evil.example/a.mp3\"></audio><video poster=\"https://evil.example/v.png\" src=\"https://evil.example/v.mp4\"></video><iframe src=\"https://evil.example/frame\"></iframe><object data=\"https://evil.example/o\"></object><embed src=\"https://evil.example/e\"><form action=\"https://evil.example/post\"><input name=q><button formaction=\"https://evil.example/f\">go</button></form><script src=\"https://evil.example/s.js\"></script><script>document.title=\"x\"</script><table background=\"https://evil.example/t.gif\"><tr><td background=\"https://evil.example/td.gif\">x</td></tr></table><img src=\"cid:logo1\" alt=\"logo\"></body></html>\r\n--REL\r\nContent-Type: image/png\r\nContent-ID: <logo1>\r\nContent-Transfer-Encoding: base64\r\n\r\niVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==\r\n--REL--\r\n"
       }
     ]
-  },
-  {
-    "mode": {
-      "field": "source",
-      "value": "paste"
-    },
-    "values": {
-      "pasted": "Received: from relay.example.net (relay.example.net [192.0.2.25])\n        by mx.example.org with ESMTPS id abc123\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:09 +0000\nReceived: from sender.example.com (sender.example.com [192.0.2.10])\n        by relay.example.net with ESMTP id r1\n        for <alice@example.org>; Tue, 06 Oct 2026 10:00:03 +0000\nAuthentication-Results: mx.example.org;\n        spf=pass smtp.mailfrom=example.com;\n        dkim=pass header.d=example.com header.s=sel1;\n        dmarc=pass header.from=example.com\nDKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=sel1;\n        t=1791280800; x=1791367200; h=from:to:subject:date:message-id;\n        bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;\n        b=c2lnbmF0dXJlLW5vdC1yZWFs\nFrom: =?UTF-8?B?Sm9zw6kgQmFrZXI=?= <jose@example.com>\nTo: Alice <alice@example.org>\nSubject: =?UTF-8?Q?Caf=C3=A9_menu?=\nDate: Tue, 06 Oct 2026 09:59:58 +0000\nMessage-ID: <msg-1@example.com>\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=\"BOUNDARY-1\""
-    },
-    "attachesFile": false
   }
 ]
