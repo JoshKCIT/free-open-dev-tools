@@ -5,8 +5,9 @@ import { defineTool, str, num, type OutputBlock, type ToolResult } from '../lib/
 /**
  * Work above this cost runs on the worker so the tab stays
  * responsive; at or below it, calling the package directly is faster than
- * the round trip to a worker would be. Matches the interface design and the
- * warning threshold the package sets.
+ * the round trip to a worker would be. Matches the cost-12 warning stated
+ * in the tool's meta.json; this page shows that warning, as a note on the
+ * result, for the same costs.
  */
 const WORKER_THRESHOLD = 12;
 
