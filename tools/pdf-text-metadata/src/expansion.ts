@@ -491,6 +491,10 @@ const latin1 = typeof TextDecoder === 'function' ? new TextDecoder('latin1') : n
 /** Dictionaries are looked for this far back from the `stream` keyword, and no further. */
 const MAX_DICT_BYTES = 64 * 1024;
 
+/**
+ * PDF white space (ISO 32000-1:2008 section 7.2.2): NUL, tab, line feed, form feed, carriage return and space. Used for
+ * bytes and for character codes alike; a position past the end (undefined, or NaN from `charCodeAt`) is not white space.
+ */
 function isSpace(c: number | undefined): boolean {
   return c === 0x00 || c === 0x09 || c === 0x0a || c === 0x0c || c === 0x0d || c === 0x20;
 }
@@ -1023,10 +1027,6 @@ const KEY_NAMES = 'Contents|FontFile[23]?|ToUnicode|CIDToGIDMap|Encoding|CharPro
 const KEY = `/(${KEY_NAMES})${ENDS_TOKEN}`;
 const NAME_ESCAPE = /#([0-9A-Fa-f]{2})/g;
 
-function isPdfSpaceCode(c: number): boolean {
-  return c === 0x00 || c === 0x09 || c === 0x0a || c === 0x0c || c === 0x0d || c === 0x20;
-}
-
 /** A name may write any character as `#` and two hexadecimal digits (section 7.3.5). */
 function undoNameEscapes(text: string): string {
   if (!text.includes('#')) return text;
@@ -1107,7 +1107,7 @@ function dictionaryCloses(text: string, opens: readonly number[]): Int32Array {
 /** The first position at or after `at` that is not PDF white space. */
 function skipSpace(text: string, at: number): number {
   let to = at;
-  while (to < text.length && isPdfSpaceCode(text.charCodeAt(to))) to++;
+  while (to < text.length && isSpace(text.charCodeAt(to))) to++;
   return to;
 }
 
@@ -1215,7 +1215,7 @@ function referencesOfHeldArrays(
   for (const offset of offsets) {
     let at = offset;
     let steps = 0;
-    while (at < text.length && isPdfSpaceCode(text.charCodeAt(at)) && steps++ < 1024) at++;
+    while (at < text.length && isSpace(text.charCodeAt(at)) && steps++ < 1024) at++;
     if (text.charCodeAt(at) !== 0x5b) continue;
     const close = closeBracket(at);
     if (close < 0 || close - at > MAX_ARRAY_WINDOW) continue;
