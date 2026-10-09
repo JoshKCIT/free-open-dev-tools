@@ -1,0 +1,370 @@
+{
+  "recordedAt": "2026-10-09T02:11:28.500Z",
+  "head": "db77004207ab3ddba20e56eabc20668fbf566cac",
+  "reports": [
+    {
+      "name": "fixture F1_PLAIN",
+      "streams": 3,
+      "decoded": 3,
+      "images": 0,
+      "decodedBytes": 1410
+    },
+    {
+      "name": "fixture F1_FULL",
+      "streams": 7,
+      "decoded": 6,
+      "images": 0,
+      "decodedBytes": 2740
+    },
+    {
+      "name": "fixture F1_FULL_NO_OBJSTM",
+      "streams": 5,
+      "decoded": 3,
+      "images": 0,
+      "decodedBytes": 1410
+    },
+    {
+      "name": "fixture F2_INCREMENTAL",
+      "streams": 7,
+      "decoded": 4,
+      "images": 0,
+      "decodedBytes": 1428
+    },
+    {
+      "name": "fixture F3_OWNER_ENCRYPTED",
+      "streams": 7,
+      "decoded": 7,
+      "images": 0,
+      "decodedBytes": 90
+    },
+    {
+      "name": "fixture F4_USER_ENCRYPTED",
+      "streams": 7,
+      "decoded": 7,
+      "images": 0,
+      "decodedBytes": 90
+    },
+    {
+      "name": "fixture F5_CLEAN_NO_INFO",
+      "streams": 2,
+      "decoded": 2,
+      "images": 0,
+      "decodedBytes": 202
+    },
+    {
+      "name": "fixture F6_UNICODE",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 470
+    },
+    {
+      "name": "fixture F7_BIDI",
+      "streams": 2,
+      "decoded": 2,
+      "images": 0,
+      "decodedBytes": 202
+    },
+    {
+      "name": "fixture F8_NESTED",
+      "streams": 7,
+      "decoded": 3,
+      "images": 0,
+      "decodedBytes": 1410
+    },
+    {
+      "name": "minimal three pages",
+      "streams": 3,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "minimal 501 pages",
+      "streams": 501,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "minimal CJK font page",
+      "streams": 1,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "minimal blank page then text",
+      "streams": 2,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "minimal titled",
+      "streams": 1,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "minimal with open action script",
+      "streams": 1,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "minimal user password",
+      "streams": 1,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "object stream of 2 MiB",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097161
+    },
+    {
+      "name": "content stream of 2 MiB",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097188
+    },
+    {
+      "name": "content stream of 3 MiB",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 3145764
+    },
+    {
+      "name": "image used as an image",
+      "streams": 1,
+      "decoded": 0,
+      "images": 1,
+      "decodedBytes": 0
+    },
+    {
+      "name": "image not drawn by the page",
+      "streams": 1,
+      "decoded": 0,
+      "images": 1,
+      "decodedBytes": 0
+    },
+    {
+      "name": "the same bytes as page content",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "filter spelling /Filter /F#6Cate#44ecode",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "filter spelling /Filter [ /FlateDecode ]",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "filter spelling /Filter /Fl",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "filter spelling /Filter 9 0 R",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "filter spelling /Filter/FlateDecode",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "filter spelling none",
+      "streams": 1,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "doubled flate",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 3148799
+    },
+    {
+      "name": "two stage chain of stored blocks",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1433711
+    },
+    {
+      "name": "three streams of 600 KiB",
+      "streams": 3,
+      "decoded": 3,
+      "images": 0,
+      "decodedBytes": 1843200
+    },
+    {
+      "name": "two streams that do not inflate",
+      "streams": 2,
+      "decoded": 2,
+      "images": 0,
+      "decodedBytes": 0
+    },
+    {
+      "name": "LZW early change 1",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 19003
+    },
+    {
+      "name": "LZW early change 0",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 19003
+    },
+    {
+      "name": "LZW content with a font",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 12000
+    },
+    {
+      "name": "LZW stream of 3 MiB",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 3145728
+    },
+    {
+      "name": "encoding /Filter /ASCII85Decode",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1811
+    },
+    {
+      "name": "encoding /Filter [/A85]",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1811
+    },
+    {
+      "name": "encoding /Filter /ASCIIHexDecode",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1811
+    },
+    {
+      "name": "encoding /Filter /AHx",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1811
+    },
+    {
+      "name": "encoding /Filter /RunLengthDecode",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1811
+    },
+    {
+      "name": "encoding /Filter /RL",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1811
+    },
+    {
+      "name": "encoding /Filter [/ASCII85Decode /FlateDecode]",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1886
+    },
+    {
+      "name": "encoding /Filter [/ASCIIHexDecode /FlateDecode]",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 1886
+    },
+    {
+      "name": "ASCII85 in front of Flate zeros",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 3148799
+    },
+    {
+      "name": "run-length of one byte",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 100000
+    },
+    {
+      "name": "endstream inside the data, right Length",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097162
+    },
+    {
+      "name": "endstream inside the data, no Length",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097162
+    },
+    {
+      "name": "Length far too short",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 2097152
+    },
+    {
+      "name": "flate zeros of 4 MiB",
+      "streams": 1,
+      "decoded": 1,
+      "images": 0,
+      "decodedBytes": 4194304
+    },
+    {
+      "name": "no stream at all",
+      "streams": 0,
+      "decoded": 0,
+      "images": 0,
+      "decodedBytes": 0
+    }
+  ]
+}
