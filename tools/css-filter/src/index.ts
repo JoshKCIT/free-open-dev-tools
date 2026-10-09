@@ -192,14 +192,14 @@ const MAX_LAYERS = 4;
 // would show -- measured this session on chromium at 240x160: safe (matching
 // the unblurred baseline) up to about 0.7px, then a sharp jump; Firefox and
 // mobile Chrome needed a further margin below that chromium-only threshold.
-// See 08-03-SUMMARY.md "Measured per-engine behaviour".
+// Measured per engine.
 const DEFAULT_LAYERS: FilterLayer[] = [
   { name: 'grayscale', amount: 60 },
   { name: 'blur', amount: 0.3 },
 ];
 
 /**
- * A fixed decorative background gradient (D-118: constructed entirely from
+ * A fixed decorative background gradient (constructed entirely from
  * this tool's own literal, allow-listed colours -- never derived from
  * visitor input) so every filter function has real colour and contrast to
  * act on. Chosen once here, not offered as a field.

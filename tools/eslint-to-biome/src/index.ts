@@ -370,8 +370,8 @@ interface FlatParseResult {
 }
 
 /**
- * Parses a flat `eslint.config.js`/`.mjs`/`.cjs` file's syntax tree only
- * (D-107): `acorn.parse` builds the tree, nothing is ever evaluated,
+ * Parses a flat `eslint.config.js`/`.mjs`/`.cjs` file's syntax tree only:
+ * `acorn.parse` builds the tree, nothing is ever evaluated,
  * imported or required. Finds the default export (`export ... default`) or
  * a `module.exports = ...` assignment, and reads it as a list of config
  * entries. Each `import` declaration is listed under `notCarried` naming
@@ -469,7 +469,7 @@ function applyFlatEntry(
  * `biome.json`, using the bundled rule map for a pinned Biome version.
  * Every rule is either mapped or listed as unmapped with a reason; every
  * other recognised key is listed under `notCarried`. Nothing in `text` is
- * ever evaluated, imported or required (D-107).
+ * ever evaluated, imported or required.
  */
 export function translateEslintConfig(
   text: string,

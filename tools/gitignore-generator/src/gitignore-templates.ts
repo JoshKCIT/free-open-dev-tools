@@ -1,7 +1,7 @@
 /**
  * github/gitignore templates (CC0-1.0), bundled from the repository root
  * and `Global/` folder at the pinned commit below -- `community/` is not
- * bundled (D-108). Vendored byte for byte at
+ * bundled. Vendored byte for byte at
  * test/fixtures/github-gitignore/; this module is a generated copy with an
  * explicit wide type so the compiler never infers a literal type for it.
  * See test/build-templates.ts for the generator this module must equal,

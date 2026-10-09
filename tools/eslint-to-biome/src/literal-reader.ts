@@ -4,7 +4,7 @@
  * member expression, a call, a spread, a computed key, a template literal
  * with an expression inside it, a function -- as "could not read
  * statically" with its position and a short description. Nothing here ever
- * evaluates, imports or requires the code the tree came from (D-107); it
+ * evaluates, imports or requires the code the tree came from; it
  * only reads literal syntax already present in the parsed tree.
  */
 import type { Node } from 'acorn';

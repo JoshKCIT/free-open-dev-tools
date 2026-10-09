@@ -240,7 +240,7 @@ function cacheAssetLines(): string[] {
 /**
  * Fetched from ngx_http_auth_basic_module.html: "Syntax: auth_basic string
  * | off;" and "Syntax: auth_basic_user_file file;". Never writes a
- * password (D-95): the password file itself must be made on the server
+ * password: the password file itself must be made on the server
  * with Apache's htpasswd or openssl passwd, as the same fetched page lists.
  */
 function basicAuthLines(auth: NginxBasicAuthOptions): string[] {
@@ -286,7 +286,7 @@ function checkStructure(text: string): void {
 }
 
 /**
- * Builds one nginx `server` block (D-94, D-98) for a static site, a
+ * Builds one nginx `server` block for a static site, a
  * single-page app, a reverse proxy or PHP through FastCGI. Every value
  * passes `assertSingleLine` (AA) and then a strict per-field check before
  * it is written.

@@ -2,8 +2,8 @@
  * Common aspect ratios and resolutions, as plain facts, each cited to the
  * standard that defines or popularised it.
  *
- * D-122 (orchestrator amendment, 2026-09-25) overrides this phase's original
- * plan of bundling Wikipedia's "List of common resolutions" table: that page
+ * Wikipedia's "List of common resolutions" table is deliberately not bundled:
+ * that page
  * is licensed CC BY-SA 4.0, and a share-alike table would bind this file's
  * data to a copyleft licence, against this project's own promise that every
  * tool folder can be taken freely. Nothing here is copied from that or any

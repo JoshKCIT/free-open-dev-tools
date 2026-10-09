@@ -29,8 +29,8 @@ export class MockDataError extends Error {
  * FNV-1a, 32-bit variant: offset basis 2166136261 (0x811c9dc5), prime
  * 16777619 (2^24 + 2^8 + 0x93). Hashes the UTF-8 bytes of `text`. Matches
  * the published test vectors in this package's own test file, fetched
- * live rather than typed from memory. Written by hand for this package
- * (D-56); the algorithm is the same published one every FNV-1a
+ * live rather than typed from memory. Written by hand for this package;
+ * the algorithm is the same published one every FNV-1a
  * implementation follows, not a copy of any other folder's file.
  */
 export function fnv1a32(text: string): number {
@@ -48,7 +48,7 @@ export function fnv1a32(text: string): number {
  * function that yields successive 32-bit UNSIGNED INTEGERS, so an
  * independent implementation (this package's own test re-implements the
  * same steps with BigInt arithmetic) can compare raw outputs exactly.
- * Written by hand for this package (D-56) from the published algorithm,
+ * Written by hand for this package from the published algorithm,
  * not imported or copied from any other folder.
  */
 export function mulberry32(seed: number): () => number {

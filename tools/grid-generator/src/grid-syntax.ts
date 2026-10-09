@@ -4,7 +4,7 @@
  * lists (section 7.2, "Explicit Track Sizing Functions") and
  * `grid-template-areas` (section 7.3, "Named Areas"). Both functions parse
  * and rewrite the visitor's own typed text rather than passing it through
- * (D-118) -- nothing typed reaches the generated CSS unparsed.
+ * -- nothing typed reaches the generated CSS unparsed.
  *
  * Track list grammar this tool accepts, a closed subset of section 7.2's
  * own grammar:

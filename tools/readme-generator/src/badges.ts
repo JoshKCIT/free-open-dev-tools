@@ -1,6 +1,6 @@
 /**
  * Badge definitions and the Markdown they produce. Every badge is written
- * as `[![alt](image-url)](link-url)`: Markdown text only, D-105 -- no badge
+ * as `[![alt](image-url)](link-url)`: Markdown text only -- no badge
  * image is ever loaded by this tool itself (the preview replaces each badge
  * with its own text before rendering, see index.ts).
  */

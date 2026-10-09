@@ -54,7 +54,7 @@ export class RandomStringError extends Error {
 
 /**
  * Named alphabet presets. Each labelled by what it contains, never by a
- * format name that is also a tool in this catalog (D-02): "urlSafe" not
+ * format name that is also a tool in this catalog: "urlSafe" not
  * "base64url", "unambiguous" not any specific format.
  */
 export const ALPHABETS = {

@@ -1,7 +1,7 @@
 /**
  * One entry per MCP client this tool writes for, each fetched and cited to
- * that client's OWN documentation page (never "the MCP spec" -- D-105, this
- * phase's own research note that the remote shape is client-specific).
+ * that client's OWN documentation page (never "the MCP spec", because the remote
+ * shape is client-specific).
  * Every JSON shape and placeholder syntax quoted here is transcribed from a
  * real fetched example on that client's own page, fetched 2026-09-26.
  */
@@ -26,7 +26,7 @@ export interface ClientDefinition {
   label: string;
   /** The file this client reads, exactly as its own page names it. */
   fileName: string;
-  /** Where that file goes, in this project's own words (D-105 AM3: never pasted from the client's page). */
+  /** Where that file goes, in this project's own words (never pasted from the client's page). */
   fileLocationNote: string;
   /** The top-level key holding the map of server entries. */
   topLevelKey: string;

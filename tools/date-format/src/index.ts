@@ -65,7 +65,7 @@ function parseGmtOffset(text: string): number {
  * Resolves a moment to its wall-clock fields in an IANA zone, via
  * `Intl.DateTimeFormat`'s own `formatToParts` -- a local copy of the
  * `formatToParts` approach `tools/unix-timestamp` already uses, ported
- * (never imported) per this phase's D-23.
+ * (never imported) so the tool folder stays self-contained.
  */
 export function wallClock(instant: Date, zone: string): WallClock {
   if (Number.isNaN(instant.getTime())) throw new DateFormatError('That moment is not a valid date.');

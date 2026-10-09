@@ -18,7 +18,7 @@ export interface HtmlToMarkdownResult {
 
 /**
  * Refusal threshold for the count of `<a` opening tags in one document
- * (D-09/D-25, freeze risk). Measured directly against this package (not
+ * (freeze risk). Measured directly against this package (not
  * assumed): a wide document of many separate inline links shows
  * super-linear growth (5,000 links ~575ms, 8,000 ~1.4s, 12,000 ~2.8s), a
  * genuinely different risk from a document's raw byte length -- the same

@@ -3,7 +3,7 @@ import meta from './meta.json';
 // ships only a native tsc binary and drops the classic in-process compiler
 // API (transpileModule, createSourceFile, createProgram) entirely. Never
 // widen this range without re-confirming the classic API still exists at
-// the new version (D-80).
+// the new version.
 import ts from 'typescript';
 
 export { meta };
@@ -74,7 +74,7 @@ function looksLikeJsx(source: string): boolean {
  * (enums, namespaces) into plain JavaScript, using `ts.transpileModule` --
  * a syntactic transform only. This never creates a `ts.Program`, never
  * type-checks and never emits to disk, so the pasted code is only parsed
- * and rewritten, never executed (D-70).
+ * and rewritten, never executed.
  */
 export function stripTypes(source: string, options: StripTypesOptions = {}): StripTypesResult {
   const { target = 'ES2022', module = 'preserve', jsx = 'preserve', removeComments = false } = options;

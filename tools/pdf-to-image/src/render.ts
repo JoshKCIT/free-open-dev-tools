@@ -46,7 +46,7 @@ const ACCEPTED_KINDS: FileKind[] = ['pdf'];
 /**
  * PDF.js's own fixed options for this tool, chosen so that once a document
  * is loaded, rendering it can never make a network request of any kind
- * (success criterion 2, D-138): `useWorkerFetch: false` forces every
+ *: `useWorkerFetch: false` forces every
  * cMap/standard-font/wasm request through the caller's own
  * `BinaryDataFactory` rather than the worker's built-in `fetch`; no
  * `cMapUrl`, `standardFontDataUrl` or `wasmUrl` is ever set (undefined,
@@ -218,7 +218,7 @@ export interface SurfaceFactory {
   create(width: number, height: number): RenderSurfacePair;
   reset(pair: RenderSurfacePair, width: number, height: number): void;
   destroy(pair: RenderSurfacePair): void;
-  /** Encodes the finished canvas to bytes, reporting the media type actually produced (D-139: a browser may silently substitute one). */
+  /** Encodes the finished canvas to bytes, reporting the media type actually produced (a browser may silently substitute one). */
   encode(canvas: unknown, mimeType: string, quality?: number): Promise<{ type: string; bytes: Uint8Array }>;
 }
 

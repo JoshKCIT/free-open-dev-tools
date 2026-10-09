@@ -276,7 +276,7 @@ function resolveFrames(frames: AnimationFrame[] | undefined, warnings: string[])
   const resolved: ResolvedFrame[] = raw.map((f, i) => {
     const name = `Frame ${i + 1}`;
     // Rounded to a whole percent: css-safe.ts's own keyframe-selector
-    // grammar (shared by every phase 8 tool) is "from | to | a 1-3 digit
+    // grammar (shared by every CSS generator) is "from | to | a 1-3 digit
     // percentage", which excludes a fractional percentage such as "33.3%".
     const atRaw = clampNumber(`${name} position`, f.at, 0, 100, i === 0 ? 0 : 100);
     const at = { value: Math.round(atRaw.value), warning: atRaw.warning };

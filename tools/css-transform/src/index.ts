@@ -34,7 +34,7 @@ export type TransformFn =
   | { type: 'scale'; x: number; y: number }
   | { type: 'skew'; x: number; y: number };
 
-/** The order presets a visitor can choose from (D-116-adjacent field, this tool's own closed list). */
+/** The order presets a visitor can choose from (this tool's own closed list). */
 export const ORDER_PRESETS: Record<string, TransformFn['type'][]> = {
   'translate-rotate-scale-skew': ['translate', 'rotate', 'scale', 'skew'],
   'rotate-translate-scale-skew': ['rotate', 'translate', 'scale', 'skew'],
@@ -90,7 +90,7 @@ export interface GenerateTransformResult {
 }
 
 // A lighter blue than this phase's other generators' own default (measured
-// this session, see 08-04-SUMMARY.md "Measured per-engine behaviour"): a
+// this session on every engine): a
 // rotated box's own straight edges are not pixel-snapped, and a full
 // diagonal perimeter (unlike a border-radius curve or a shadow's own edge)
 // produces far more anti-aliased edge pixels against a high-contrast
@@ -208,8 +208,8 @@ export function generateTransform(options: GenerateTransformOptions): GenerateTr
   const originIn = options.origin ?? { x: 50, y: 50 };
   const ox = clampNumber('Origin horizontal', originIn.x, 0, 100, 50);
   const oy = clampNumber('Origin vertical', originIn.y, 0, 100, 50);
-  // Default 120, not the tool's own maximum of 240: measured this session
-  // (see 08-04-SUMMARY.md), a smaller box means a shorter rotated diagonal
+  // Default 120, not the tool's own maximum of 240: measured this session,
+  // a smaller box means a shorter rotated diagonal
   // perimeter and fewer anti-aliased edge pixels for the shared
   // paste-compare harness's fixed pixel-difference budget to absorb.
   const widthResult = clampNumber('Width', options.width ?? 120, 40, 240, 120);

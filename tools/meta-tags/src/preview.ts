@@ -1,7 +1,7 @@
 /**
  * Builds mock Open Graph and X card previews from escaped text only, so the
  * unsanitised markup this module returns is already inert before it ever
- * reaches the canonical sanitiser (D-92). No `img`, no `a`, and no `src`,
+ * reaches the canonical sanitiser. No `img`, no `a`, and no `src`,
  * `href`, `srcset` or `poster` attribute is ever written; every `style`
  * attribute holds a fixed set of harmless declarations with no `url(`
  * inside it. Never reads a DOM global: everything here is string building.

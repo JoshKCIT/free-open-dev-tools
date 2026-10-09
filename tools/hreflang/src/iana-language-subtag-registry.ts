@@ -3,7 +3,7 @@
  * (File-Date: 2026-09-17), fetched from
  * https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
  * on 2026-09-17 and shown on the page so the check is dated rather than
- * asserted (D-91).
+ * asserted.
  *
  * 9296 records total: 8276 language, 258 extlang, 225 script, 305 region, 139 variant, 26 grandfathered,
  * 67 redundant (RFC 5646 section 3.1.3's seven record 'Type' values).

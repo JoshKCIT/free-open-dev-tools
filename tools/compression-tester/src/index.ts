@@ -179,7 +179,7 @@ export async function measureCompression(
  * can differ from Node zlib's own default-level output on the browser
  * engines the four-browser spec measures, with at least 50% headroom over
  * the largest measured normal difference (never more than 5 percent or 64
- * bytes, per this project's own D-103 ceiling). Measured directly this
+ * bytes, per this project's own ceiling). Measured directly this
  * session: Firefox and WebKit both differ from Node zlib by about 2% on a
  * varied JSON-like sample (the largest difference any engine shows across
  * every sample except the two named exceptions below), so 3% gives that

@@ -2,7 +2,7 @@
  * Parses Markdown into the shared document tree (`tree.ts`), using
  * `mdast-util-from-markdown` with `micromark-extension-gfm`/`mdast-util-gfm`
  * (tables, strikethrough, autolinks, task lists, footnotes) -- the same
- * combination `markdown-html` (phase 5 plan 05-07) tests against the
+ * combination `markdown-html` tests against the
  * CommonMark 0.31.2 specification's own example set and the GitHub Flavored
  * Markdown spec's extension examples. This module never renders anything;
  * `fromMarkdown` builds a syntax tree only, and never runs a script or loads

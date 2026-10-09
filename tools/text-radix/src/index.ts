@@ -192,7 +192,7 @@ export interface TextToRadixOptions {
  * This ALWAYS reads its input as characters, never as a numeric value: the
  * text "255" produces the bytes of the three characters '2', '5' and '5',
  * never the single byte 255 or the sixteen bits of the integer 255. There is
- * no option, mode or heuristic anywhere in this file that changes that (D-03).
+ * no option, mode or heuristic anywhere in this file that changes that.
  */
 export function textToRadix(text: string, options: TextToRadixOptions = {}): string {
   const { radix = 'hexadecimal', encoding = 'utf-8', separator = ' ', fixedWidth = true, upperCase = false } = options;

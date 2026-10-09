@@ -119,7 +119,7 @@ async function minifyJS(text: string): Promise<string> {
  * Beautifies HTML with Prettier's own HTML printer (embedded `<style>` and
  * `<script>` are formatted too, via the CSS and JS plugins, never run), or
  * minifies it with html-minifier-terser. Neither mode ever evaluates the
- * pasted markup or its embedded code (D-70): both work from a parsed tree,
+ * pasted markup or its embedded code: both work from a parsed tree,
  * and minifying reuses this site's own csso/terser wrappers for anything
  * embedded, so nothing embedded ever loads a file or a network address.
  */

@@ -61,7 +61,7 @@ const DEFAULT_BACKGROUND = '#eef2ff';
 // A lower-contrast cell colour than a first, more vivid draft (measured
 // this session): a grid of several cells has a boundary between every pair
 // of adjacent cells, and the shared paste-compare harness's own
-// already-documented stage-position difference (see 08-01-SUMMARY.md, "the
+// already-documented stage-position difference ("the
 // stage's own top edge can land on a fractional CSS pixel") recurs at
 // every one of those boundaries, not just once -- a high-contrast cell
 // fill turns that small, per-engine sub-pixel offset into a much wider
@@ -143,8 +143,8 @@ export function generateGrid(options: GenerateGridOptions): GenerateGridResult {
   // A small non-zero default gap (rather than 0), so unrelated cells read as
   // visually distinct without needing a border -- measured this session: a
   // border at every cell edge multiplies the shared paste-compare harness's
-  // own already-documented stage-position difference (see
-  // 08-01-SUMMARY.md) across many more boundaries than a background-colour
+  // own already-documented stage-position difference
+  // across many more boundaries than a background-colour
   // gap does, the same lesson flexbox-playground's own item spacing found.
   const columnGapResult = clampNumber('Column gap', options.columnGap ?? 8, 0, 64, 8);
   const rowGapResult = clampNumber('Row gap', options.rowGap ?? 8, 0, 64, 8);
@@ -207,7 +207,7 @@ function cellRule(): { selector: string; declarations: [string, string][] } {
       // single biggest source of paste-compare mismatch -- text glyphs at
       // any size are almost entirely anti-aliased edge pixels, so the same
       // sub-pixel stage-position difference this phase's other generators
-      // measured (08-01-SUMMARY.md) affects nearly the whole glyph rather
+      // measured affects nearly the whole glyph rather
       // than a thin ring the way a solid fill's own edge does.
       ['color', '#b4bffb'],
       ['display', 'flex'],

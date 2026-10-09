@@ -1,7 +1,7 @@
 /**
  * A rule-mapping table generated from Biome's own generated ESLint migrate
  * match arms (MIT OR Apache-2.0), bundled for a pinned Biome version and
- * scoped to ESLint core plus six common plugins (D-108). Vendored byte for
+ * scoped to ESLint core plus six common plugins. Vendored byte for
  * byte at test/fixtures/biome/; this module is a generated copy with an
  * explicit wide type so the compiler never infers a literal type for it.
  * See test/build-rule-map.ts for the generator this module must equal,

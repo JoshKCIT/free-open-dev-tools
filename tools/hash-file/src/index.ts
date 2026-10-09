@@ -1,6 +1,6 @@
 /**
  * Chunk-at-a-time multi-algorithm digesting over byte arrays, plus checksum
- * comparison. Create, update, finish -- the shape D-15 specifies.
+ * comparison. Create, update, finish -- the incremental shape a chunked file reader needs.
  *
  * This file takes byte arrays only and mentions no browser-only type
  * anywhere, not even in a comment: the folder is copied out and built and

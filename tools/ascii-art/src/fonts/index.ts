@@ -5,7 +5,7 @@
  * every one of FIGlet 2.2.5's fonts directly and reading its header this
  * session -- see FIGLET-NOTICE.txt for the full per-font evidence. Three
  * fonts published in the same repository (ivrit, mnemonic, banner) carry no
- * such line and are deliberately excluded (D-41).
+ * such line and are deliberately excluded.
  */
 import { STANDARD_FLF } from './standard';
 import { SMALL_FLF } from './small';
@@ -23,7 +23,7 @@ import { SMSHADOW_FLF } from './smshadow';
 import { SMSLANT_FLF } from './smslant';
 import { TERM_FLF } from './term';
 
-/** The 15 D-41 font names, in the order this package documents and tests them. */
+/** The 15 bundled font names, in the order this package documents and tests them. */
 export const FONT_NAMES = [
   'standard',
   'small',

@@ -8,7 +8,7 @@ import { checkWoff1Output, unwrapWoff1 } from './woff1';
 import { checkWoff2Output, unpackWoff2 } from './woff2';
 
 /**
- * The re-read check of a conversion (D-232). Every converted file is read back before it is offered, and it is offered only
+ * The re-read check of a conversion. Every converted file is read back before it is offered, and it is offered only
  * when this check finds no problem. The steps, in order:
  *
  * 1. the output's own container is parsed again (the WOFF or WOFF2 header and directory under every cap; a WOFF2 file that

@@ -316,7 +316,7 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
   const warnings: string[] = [];
 
   // YAML to YAML re-serialises the same parsed document, so comments and
-  // original scalar styles survive (D-52) instead of resolving to plain
+  // original scalar styles survive instead of resolving to plain
   // values and writing a fresh document.
   if (from === 'yaml' && to === 'yaml') {
     const doc = parseDocument(text, { logLevel: 'error', uniqueKeys: true, prettyErrors: true });
@@ -453,7 +453,7 @@ export function convertData(text: string, options: ConvertOptions): ConvertResul
 
   if (to === 'toml' && from !== 'toml') {
     // A TOML target written from a non-TOML source lists every plain key
-    // before any table, which can change the input's key order (D-52).
+    // before any table, which can change the input's key order.
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const values = Object.values(value as Record<string, unknown>);
       const hasPlain = values.some((v) => v === null || typeof v !== 'object');

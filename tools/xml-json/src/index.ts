@@ -84,7 +84,7 @@ const PREDEFINED_ENTITIES: Record<string, string> = { quot: '"', amp: '&', apos:
  * Decodes the five predefined XML entities and decimal/hexadecimal numeric
  * character references in one left-to-right pass. Used instead of the
  * library's own entity decoding, which this page's `processEntities: false`
- * configuration (required to keep DOCTYPE entities from ever expanding, D-58)
+ * configuration (required to keep DOCTYPE entities from ever expanding)
  * also turns off for these five safe, non-DOCTYPE entities.
  */
 export function decodeXmlEntities(text: string): string {
@@ -122,7 +122,7 @@ function hasDoctype(text: string): boolean {
   return /<!DOCTYPE/i.test(text);
 }
 
-/** Reads XML text into a JSON-friendly value. Refuses any document with a DOCTYPE before parsing (D-58). */
+/** Reads XML text into a JSON-friendly value. Refuses any document with a DOCTYPE before parsing. */
 export function xmlToJson(text: string, options: XmlToJsonOptions = {}): XmlJsonResult {
   const {
     attributePrefix = '@_',

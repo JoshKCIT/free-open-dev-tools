@@ -75,7 +75,7 @@ function looksLikeSpaRoute(hash: string): boolean {
 }
 
 /**
- * Attaches campaign parameters to a URL (D-91). Every existing query pair is
+ * Attaches campaign parameters to a URL. Every existing query pair is
  * kept exactly as it appears in the URL, byte for byte; only a pair whose
  * decoded name is one of `UTM_PARAMETERS` is removed to make way for its new
  * value. New values are encoded with the WHATWG URL Standard's component
@@ -162,7 +162,7 @@ export function buildCampaignUrl(
 
   url.search = [...keptPairs, ...newPairs].join('&');
 
-  // Reparse check (D-91): every typed value must come back exactly.
+  // Reparse check: every typed value must come back exactly.
   const check = new URL(url.href);
   for (const { name } of UTM_PARAMETERS) {
     const raw = params[name];

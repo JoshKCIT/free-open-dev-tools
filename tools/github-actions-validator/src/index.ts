@@ -302,8 +302,8 @@ function pointerTokens(pointer: string): string[] {
  * Every `${{ }}` expression in the document (found by `findExpressions`,
  * which already handles a delimiter-less job/step `if`) is parsed with
  * `parseExpression` and turned into a finding per problem, at the exact
- * line and column inside the value, with the key path that holds it
- * (D-100, success criterion 2). Two further checks read each expression's
+ * line and column inside the value, with the key path that holds it.
+ * Two further checks read each expression's
  * own context references, cited to the Contexts reference page
  * (https://docs.github.com/en/actions/learn-github-actions/contexts,
  * fetched 2026-09-26): a `steps.<id>` reference naming no step that runs

@@ -17,7 +17,7 @@ export type { ImageEdits, EditPlan, CropRect, Rotation, FlipMode } from './edits
 export { scanSvg, looksLikeSvg, looksLikeSvgStart, SvgGuardError, MAX_USE_ELEMENTS } from './svg-guard';
 export { svgSize, SvgSizeError, MAX_SVG_PIXELS } from './svg-size';
 
-/** The five raster formats this tool reads. AVIF, HEIC and TIFF are never accepted as input (D-133). */
+/** The five raster formats this tool reads. AVIF, HEIC and TIFF are never accepted as input. */
 const ACCEPTED_KINDS: FileKind[] = ['png', 'jpeg', 'gif', 'webp', 'bmp'];
 
 /** 100 MB, checked from the file's own reported size before anything is read into memory. */

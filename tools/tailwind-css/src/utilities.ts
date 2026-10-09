@@ -1,6 +1,6 @@
 /**
  * Core utility families of Tailwind CSS 4 (the pinned version this folder
- * tests against, D-76): resolves a class name to the plain CSS declarations
+ * tests against): resolves a class name to the plain CSS declarations
  * Tailwind's own compiler would give it, with every theme variable resolved
  * to its value and every internal `--tw-*` custom property resolved to its
  * registered initial value (or dropped, when the class only ever sets one

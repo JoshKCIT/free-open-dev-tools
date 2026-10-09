@@ -106,7 +106,7 @@ function mapError(e: ErrorObject): ValidationError {
  * Validates `dataText` against `schemaText` for draft-07 or JSON Schema
  * 2020-12. Builds a fresh Ajv instance every call -- never reused -- so one
  * schema's own keywords, formats or compiled cache can never leak into the
- * next call. `logger: false` (D-63/E4) keeps every part of this process,
+ * next call. `logger: false` keeps every part of this process,
  * including a schema compile failure, from ever writing to the console: Ajv
  * only logs through the `logger` option, and this package never calls
  * console itself.

@@ -24,7 +24,7 @@ export interface CostRange {
 }
 
 /**
- * D-06's generation bounds. The algorithm itself (and `bcrypt-ts`, read
+ * The generation bounds. The algorithm itself (and `bcrypt-ts`, read
  * directly in `hash.ts`) allows 4 to 31; this tool narrows *generation* to
  * 4-15 with a default of 10, because a cost in the twenties in a browser
  * tab is a very long wait with no way out. Verification is unbounded — see
@@ -82,8 +82,7 @@ export interface TagNormalisation {
 /**
  * Rewrites a `$2x$` tag to `$2a$` so `bcrypt-ts` will parse the hash at
  * all — its salt parser only accepts a bare `$2$` or minor version `a`,
- * `b` or `y`, and throws synchronously on `x` (`02-RESEARCH.md` Pitfall
- * 1, read directly from the library's `hash.ts`). Once past that check the
+ * `b` or `y`, and throws synchronously on `x` (read directly from the library's `hash.ts`). Once past that check the
  * library treats every accepted minor version identically: verification
  * only has to reproduce the stored digest, not echo the original tag back,
  * so rewriting the tag and leaving the salt and digest alone is enough to
@@ -221,7 +220,7 @@ export interface HashOptions {
 export interface HashReport {
   hash: string;
   cost: number;
-  /** Generation always produces this tag. D-07: never a tag known to be wrong. */
+  /** Generation always produces this tag. Never a tag known to be wrong. */
   tag: '2b';
   truncation: TruncationReport;
 }
@@ -286,11 +285,11 @@ const CANNOT_CHECK_MESSAGE =
 
 /**
  * Verifies a password against a hash carrying any of the tags the
- * algorithm has used: `$2$`, `$2a$`, `$2b$`, `$2x$` or `$2y$` (D-07). The
+ * algorithm has used: `$2$`, `$2a$`, `$2b$`, `$2x$` or `$2y$`. The
  * cost comes from the hash itself, so a hash from a production system at
  * a cost far above this tool's own generation maximum still verifies.
  *
- * D-07 was narrowed by the owner (`02-CONTEXT.md`, 2026-09-22): a `$2x$`
+ * Verification was narrowed by the owner on 2026-09-22: a `$2x$`
  * verifier that does not reproduce the sign-extension bug must never
  * report "incorrect" for a password that is in fact correct. This
  * package took **route 2**: `bcrypt-ts`'s key-mixing step masks every

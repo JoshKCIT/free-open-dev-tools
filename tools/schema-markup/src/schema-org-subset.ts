@@ -5,7 +5,7 @@
  * github.com/schemaorg/schemaorg at commit 5f2d8cdec99b7329459ef6584e94b6a840f88471,
  * fetched 2026-09-25).
  *
- * 36 types (the twelve D-99 content types plus every type
+ * 36 types (the twelve content types plus every type
  * NESTED_DEFAULTS in index.ts reaches, plus every ancestor of those
  * reached by walking rdfs:subClassOf) and their applicable properties
  * (schema:domainIncludes on the type or a parent), and

@@ -198,7 +198,7 @@ function findIpv6(text: string): RawMatch[] {
   return out;
 }
 
-// ---------------------------------------------------------------- phone (D-37, ITU-T E.164)
+// ---------------------------------------------------------------- phone (ITU-T E.164)
 
 const DATE_SHAPE_RES = [
   /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD

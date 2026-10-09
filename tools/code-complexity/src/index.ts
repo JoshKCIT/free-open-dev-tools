@@ -3,7 +3,7 @@
  * initializer and class static block in pasted JavaScript or TypeScript.
  * Parses with `@babel/parser` to a syntax tree and walks it with an explicit
  * stack (never recursion, so deeply nested input cannot overflow the call
- * stack); the code is never run (D-70).
+ * stack); the code is never run.
  *
  * Counting rules are ported from the installed `eslint` package's own
  * `lib/rules/complexity.js` (eslint 9.39.5, `classic` variant -- the

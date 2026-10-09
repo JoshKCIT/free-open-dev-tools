@@ -13,7 +13,7 @@ export interface KindEntry {
 }
 
 /**
- * The twelve common kinds this tool bundles a schema for (D-101). Any other
+ * The twelve common kinds this tool bundles a schema for. Any other
  * `kind` is reported "not checked", never silently treated as valid.
  * `apiVersion` and `kind` are read from each vendored kind file's own
  * `x-kubernetes-group-version-kind` entry (see `test/build-schema-subset.ts`).

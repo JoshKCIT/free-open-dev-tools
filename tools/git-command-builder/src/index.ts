@@ -123,7 +123,7 @@ function applyFlag(
 /**
  * Assembles a git command from a chosen command, its flags and its
  * positionals, for either a POSIX shell or PowerShell (`buildGitCommand`,
- * per 07-01 AM3's own-words rule -- no git documentation sentence is copied
+ * in this project's own words -- no git documentation sentence is copied
  * into this function; only option identifiers and this project's own
  * explanations appear here).
  *

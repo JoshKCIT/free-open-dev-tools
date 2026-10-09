@@ -12,7 +12,7 @@
  */
 import { isMap, isSeq, isScalar, type Document } from 'yaml';
 
-/** Refused beyond this many characters (never a crash; D-109/AM). */
+/** Refused beyond this many characters (never a crash). */
 export const MAX_EXPRESSION_LENGTH = 8192;
 
 /** Refused beyond this parenthesis/bracket/call nesting depth (never a crash). */
@@ -380,7 +380,7 @@ class ExpressionParser {
     return undefined;
   }
 
-  /** Guards every recursive descent step against runaway nesting (D-109/AM: never a crash, refused beyond MAX_EXPRESSION_DEPTH). */
+  /** Guards every recursive descent step against runaway nesting (never a crash, refused beyond MAX_EXPRESSION_DEPTH). */
   private enter(): boolean {
     this.depth++;
     if (this.depth > MAX_EXPRESSION_DEPTH && !this.refused) {

@@ -59,7 +59,7 @@ function safeColorToRgba(text: string | undefined, fallback: string, fieldName: 
 /**
  * Checks `foreground` against `background` for WCAG 2.2 contrast (Success
  * Criteria 1.4.3, 1.4.6, 1.4.11) and reports an independent APCA lightness
- * contrast figure, kept entirely separate (D-114): the two scales are never
+ * contrast figure, kept entirely separate: the two scales are never
  * combined into one number or one pass/fail badge. A translucent foreground
  * is composited over the background; a translucent background is first
  * composited over white, per the WCAG 2.2 Understanding document's own

@@ -7,7 +7,7 @@
  * License" restricts use to web content in support of WCAG accessibility
  * guidelines and forbids unrestricted commercial redistribution, which is
  * not compatible with this MIT-licensed project shipping and redistributing
- * its own source freely (D-119) -- so its source and prose are never read,
+ * its own source freely -- so its source and prose are never read,
  * copied or installed here; only the published numeric constants and the
  * "Plain English Steps" below are used, rewritten in this project's own
  * words and code.
@@ -16,7 +16,7 @@
  * 106, not a ratio: a positive Lc means dark text on a light background, a
  * negative Lc means light text on a dark background. It is NOT a WCAG 2.2
  * result and must never be shown as one, combined with a WCAG ratio, or
- * given a pass/fail mark against a WCAG threshold (D-114).
+ * given a pass/fail mark against a WCAG threshold.
  */
 
 import type { RgbColor } from './wcag';

@@ -14,7 +14,7 @@ import { minify as terserMinify } from 'terser';
 // PINNED to the 5.x line -- TypeScript 7's `latest` dist-tag ships only a
 // native `tsc` binary and drops the classic in-process compiler API
 // (`transpileModule`) entirely. Never widen this range without re-confirming
-// the classic API still exists at the new version (D-80). Same handling as
+// the classic API still exists at the new version. Same handling as
 // `tools/ts-to-js/src/index.ts`.
 import ts from 'typescript';
 
@@ -139,7 +139,7 @@ async function minifyJavaScript(source: string, opts: FormatJsOptions): Promise<
  * minified down to JavaScript: types are stripped by `ts.transpileModule`
  * (a syntactic transform only -- it never creates a `Program`, never
  * type-checks and never emits to disk) before terser runs. Neither path ever
- * evaluates the pasted code (D-70): Prettier and terser both work from a
+ * evaluates the pasted code: Prettier and terser both work from a
  * parsed syntax tree, and `ts.transpileModule` only rewrites syntax.
  */
 export async function formatJs(source: string, options: FormatJsOptions = {}): Promise<FormatJsResult> {

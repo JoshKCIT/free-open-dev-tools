@@ -173,8 +173,8 @@ export function buildMetaTags(fields: MetaTagsFields = {}): BuildMetaTagsResult 
 
 /**
  * Builds the mock social preview from `fields` only, then sanitises it with
- * the canonical, byte-identical `sanitiseMarkup('html')` before returning it
- * (D-92): the preview markup this module builds carries no `src`, `href`,
+ * the canonical, byte-identical `sanitiseMarkup('html')` before returning it:
+ * the preview markup this module builds carries no `src`, `href`,
  * `srcset` or `poster` attribute by construction, and the sanitiser removes
  * anything else that should not be there.
  */

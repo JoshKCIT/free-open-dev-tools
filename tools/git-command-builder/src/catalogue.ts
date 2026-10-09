@@ -1,7 +1,7 @@
 /**
  * Commands and flags this tool can assemble, each flag explained in this
  * project's own words (git's own documentation is GPL-2.0, so its sentences
- * are never copied into this file -- 07-01 AM3) with a link to the git
+ * are never copied into this file) with a link to the git
  * documentation for the pinned version. Every synopsis line a test cites is
  * quoted in that test's own comment, never here.
  *

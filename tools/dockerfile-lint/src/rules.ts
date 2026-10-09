@@ -19,7 +19,7 @@ export interface RuleDefinition {
   explanation: string;
   docsUrl: string;
   severity: RuleSeverity;
-  /** A well-known linter's id for the same idea, cited by name only -- never a source of text (D-101, hadolint is GPL-3.0). */
+  /** A well-known linter's id for the same idea, cited by name only -- never a source of text (hadolint is GPL-3.0). */
   inSpiritOf?: string;
 }
 

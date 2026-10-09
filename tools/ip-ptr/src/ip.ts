@@ -5,9 +5,8 @@
  * decimal), RFC 4291 section 2.2 (the three conventional IPv6 text forms)
  * and RFC 5952 (the recommended canonical text form for an IPv6 address).
  * Every function here is copied byte for byte from an already-proven,
- * already-tested implementation elsewhere in this project (D-23: copy,
- * never import, across tool packages) -- see this plan's own SUMMARY for
- * exactly where it was copied from and the line range copied.
+ * already-tested implementation elsewhere in this project (copied, never imported,
+ * across tool packages).
  */
 
 export type IpVersion = 4 | 6;

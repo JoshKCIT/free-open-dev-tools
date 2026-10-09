@@ -174,10 +174,10 @@ function describeNode(node: XmldomNode, maxMarkupLength: number): XPathNodeResul
 
 /**
  * Evaluates an XPath 1.0 expression against an XML document, refusing a
- * DOCTYPE before any parser reads it (D-74). Parses with `@xmldom/xmldom`'s
+ * DOCTYPE before any parser reads it. Parses with `@xmldom/xmldom`'s
  * `DOMParser`, collecting every parser problem through `onError` so nothing
  * reaches the console, then evaluates with the `xpath` package -- one
- * engine, shared with the browser page (D-73).
+ * engine, shared with the browser page.
  */
 export function evaluateXPath(
   xml: string,

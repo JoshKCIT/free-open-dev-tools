@@ -43,7 +43,7 @@ export const HTPASSWD_COST: HtpasswdCostRange = { min: 4, max: 15, default: 5 };
 const MAX_PASSWORD_BYTES = 72;
 
 export interface HtpasswdLineResult {
-  /** `user:hash`, tagged `$2y$` (D-97). Never contains the password. */
+  /** `user:hash`, tagged `$2y$`. Never contains the password. */
   line: string;
   cost: number;
   warnings: string[];
@@ -56,10 +56,10 @@ function assertIntegerCost(cost: unknown): asserts cost is number {
 }
 
 /**
- * Makes one `user:hash` `.htpasswd` line (D-95). Hashes with `bcrypt-ts`,
+ * Makes one `user:hash` `.htpasswd` line. Hashes with `bcrypt-ts`,
  * which always tags its output `$2b$`, then relabels only the three-byte
  * tag to `$2y$` -- never the cost, salt or digest -- because Apache's own
- * `htpasswd -B` writes `$2y$` (D-97): `$2b$` and `$2y$` are the same
+ * `htpasswd -B` writes `$2y$`: `$2b$` and `$2y$` are the same
  * algorithm, so the relabelled line verifies exactly like the original
  * `$2b$` hash and against every Apache 2.4 build's own `apr-util`.
  *

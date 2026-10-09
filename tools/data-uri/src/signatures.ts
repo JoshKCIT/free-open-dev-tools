@@ -1,5 +1,5 @@
 /**
- * A repo-owned media-type signature table (D-08): roughly thirty to forty
+ * A repo-owned media-type signature table: roughly thirty to forty
  * common formats detected from their own leading bytes, so a data URI's
  * media type comes from what the file actually is rather than from a file
  * extension that can lie. No dependency is added for this -- it is exactly
@@ -175,7 +175,7 @@ export const SIGNATURES: Signature[] = [
   },
   {
     // Same offset and pattern length as the generic entry above, but every
-    // byte fixed: this is the "equal-length masked matches" case D-08's
+    // byte fixed: this is the "equal-length masked matches" case the table's
     // matching order resolves by fixed-byte count, and the test that
     // motivated it lives in signatures.test.ts.
     mediaType: 'video/mp4',

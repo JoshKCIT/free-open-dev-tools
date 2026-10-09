@@ -55,7 +55,7 @@ function sanitizeExportName(name: string): { name: string; changed: boolean } {
 
 // ---------------------------------------------------------------------------
 // Sample mode: this package's own smaller inference, written independently
-// rather than imported across a tool folder boundary (D-23). Same
+// rather than imported across a tool folder boundary. Same
 // simplification rules as the eight-language type generator elsewhere on
 // this site: optional for
 // a missing key, .nullable() for null seen alongside a type, z.number().int()

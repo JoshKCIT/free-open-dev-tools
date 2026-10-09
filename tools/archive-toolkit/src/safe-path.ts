@@ -1,13 +1,13 @@
 /**
  * Neutralises an archive entry's own stored name before it is ever used as
- * a download name (D-135, T-09-50, the "zip-slip" family of vulnerabilities:
+ * a download name (the "zip-slip" family of vulnerabilities:
  * a crafted entry name that climbs out of the intended extraction directory
  * with `../` segments, or writes to an absolute path, letting an archive
  * overwrite an arbitrary file when a naive extractor joins the name onto a
  * destination directory without checking it first).
  *
  * This package never writes to a real filesystem -- results are offered as
- * browser downloads -- but D-135 requires this defense unconditionally, both
+ * browser downloads -- but this defense is required unconditionally, both
  * because a hostile name can otherwise produce confusing or colliding
  * entries in the list of files a visitor is offered, and because it is what
  * makes this reader's own output safe to hand to any later feature (a

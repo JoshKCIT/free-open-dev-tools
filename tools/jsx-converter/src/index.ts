@@ -2,7 +2,7 @@
  * Converts pasted HTML or SVG markup into JSX source text. Parses with
  * `htmlparser2`'s `parseDocument` -- a tokeniser that builds a plain object
  * tree, never a DOM, so nothing in the input ever loads or runs while
- * parsing it (D-70). Inline event handler attributes and `script` elements
+ * parsing it. Inline event handler attributes and `script` elements
  * are dropped with a warning; their text is never turned into code, read as
  * an expression, or evaluated in any way.
  *

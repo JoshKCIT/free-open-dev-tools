@@ -13,7 +13,7 @@ export class SchemaMarkupError extends Error {
 
 const MAX_LINES = 2000;
 
-/** The twelve common content types this tool builds JSON-LD for (D-99). */
+/** The twelve common content types this tool builds JSON-LD for. */
 export const CONTENT_TYPES = [
   'Article',
   'BlogPosting',

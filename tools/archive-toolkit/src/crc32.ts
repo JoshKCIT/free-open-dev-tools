@@ -7,7 +7,7 @@
  * have both an assembler language and C listing of the CRC-32 algorithm.")
  * and the same polynomial the W3C PNG specification's Annex D quotes in
  * full C source, and RFC 1952 section 8 cites by reference -- one table
- * and one accumulator function reused by every phase 9 reader that needs
+ * and one accumulator function reused by every reader that needs
  * this checksum.
  */
 

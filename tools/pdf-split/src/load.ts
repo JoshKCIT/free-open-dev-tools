@@ -1,10 +1,10 @@
 /**
  * Loads a PDF through @cantoo/pdf-lib (the actively maintained fork of the
- * stale upstream `pdf-lib`, D-134/D-137), refusing anything this tool
+ * stale upstream `pdf-lib`), refusing anything this tool
  * cannot safely rewrite: a file whose header is not a PDF's, and any
  * encrypted document. Written the same way `tools/pdf-merge/src/load.ts`
- * is; not a shared file, since each phase 9 PDF-writing tool owns its own
- * copy (09-05 plan text).
+ * is; not a shared file, since each PDF-writing tool owns its own
+ * copy.
  *
  * ISO 32000-1:2008 section 7.6 "Encryption": an encrypted document's
  * trailer carries an `/Encrypt` entry naming a security handler. This tool

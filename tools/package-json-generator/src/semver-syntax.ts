@@ -6,7 +6,7 @@
  * `semver` package's own README range grammar
  * (https://github.com/npm/node-semver#ranges) for `isValidRange`, whose hand
  * -written parser is proven against the real, devDependency-only `semver`
- * package (never bundled -- D-82) on the README's own examples plus a
+ * package (never bundled) on the README's own examples plus a
  * generated battery in `test/index.test.ts`.
  */
 

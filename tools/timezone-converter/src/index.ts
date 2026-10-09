@@ -70,7 +70,7 @@ export interface ZoneReading {
 /**
  * The zone's reading of `date`: local wall clock, UTC offset and
  * abbreviation, built entirely from the platform's own `Intl.DateTimeFormat`
- * (no bundled tz database, per D-30).
+ * (no bundled tz database).
  */
 export function zoneParts(date: Date, timeZone: string): ZoneReading {
   // 'longOffset', not 'shortOffset': shortOffset is inconsistent across

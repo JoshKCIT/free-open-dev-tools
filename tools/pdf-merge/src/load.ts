@@ -1,6 +1,6 @@
 /**
  * Loads a PDF through @cantoo/pdf-lib (the actively maintained fork of the
- * stale upstream `pdf-lib`, D-134/D-137), refusing anything this tool
+ * stale upstream `pdf-lib`), refusing anything this tool
  * cannot safely rewrite: a file whose header is not a PDF's, and any
  * encrypted document.
  *

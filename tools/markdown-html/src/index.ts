@@ -17,7 +17,7 @@ export class MarkdownHtmlError extends Error {
 
 /**
  * Refusal threshold for the count of `*`, `_` and `~` characters in one
- * document (D-09/D-25, freeze risk). Measured directly against this
+ * document (freeze risk). Measured directly against this
  * package (not assumed): a dense run of small, separately-closed emphasis
  * spans on one line shows super-linear growth in micromark's own delimiter
  * resolution (20,000 `*` characters ~500ms, 30,000 ~1.1s, 40,000 ~1.7s), a

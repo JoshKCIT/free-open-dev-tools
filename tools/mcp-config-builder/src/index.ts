@@ -118,8 +118,8 @@ export interface VscodeInput {
  * Builds the env or headers object for one server entry, applying the
  * chosen client's own secret-placeholder mechanism (or none) to every
  * value when `secretPlaceholders` is on, and always flagging a
- * credential-shaped key whose value ends up written in plain text (AQ/D-105:
- * every phase 7 tool names what it cannot fully protect the visitor from).
+ * credential-shaped key whose value ends up written in plain text (every config writing tool names
+ * what it cannot fully protect the visitor from).
  */
 function buildValueMap(
   text: string,
@@ -169,7 +169,7 @@ function buildValueMap(
 
 /**
  * Builds one MCP server configuration entry in the shape the chosen
- * client's own documentation shows (D-105): `meta.json`'s `standards` names
+ * client's own documentation shows: `meta.json`'s `standards` names
  * each client's own fetched page. Never starts, contacts or checks the
  * named server -- see `limits` for what only the client itself can show.
  */

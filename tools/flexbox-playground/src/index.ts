@@ -115,7 +115,7 @@ const DEFAULT_BACKGROUND = '#eef2ff';
 // A lower-contrast item colour than a first, more vivid draft (measured
 // this session): with several items and gaps stacked, the shared
 // paste-compare harness's own already-documented stage-position difference
-// (see 08-01-SUMMARY.md, "the stage's own top edge can land on a
+// ("the stage's own top edge can land on a
 // fractional CSS pixel") recurs at every item/gap boundary rather than
 // just once, so a high-contrast item fill turns that small, per-engine
 // sub-pixel offset into a much wider band of differing pixels across all

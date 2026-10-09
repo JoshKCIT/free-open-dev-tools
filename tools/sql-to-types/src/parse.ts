@@ -5,7 +5,7 @@
  * fetched CREATE TABLE reference (see this package's meta.json standards
  * list). Anything outside the subset -- other statements, other
  * constraints, other default expressions, table options and unknown types
- * -- is reported in `notConverted` with its line, never guessed at (D-54);
+ * -- is reported in `notConverted` with its line, never guessed at;
  * the column it was found on still converts using whatever was already
  * read from it.
  */
@@ -321,7 +321,7 @@ function parseColumn(stream: TokenStream, notConverted: NotConverted[]): ColumnD
 
   if (typeInfo.kind === null) {
     // The type name is not in this subset's lookup table. This column is
-    // reported, not guessed at (D-54): the rest of the column definition is
+    // reported, not guessed at: the rest of the column definition is
     // still consumed here so the table's closing paren and sibling columns
     // parse normally, but no ColumnDef is produced for it.
     const rest = skipToBoundary(stream);

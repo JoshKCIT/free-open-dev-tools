@@ -177,7 +177,7 @@ export function buildReadme(options: BuildReadmeOptions): BuildReadmeResult {
 /**
  * Replaces each badge Markdown image link `[![alt](image)](link)` with the
  * same alt text shown as inline code instead, so the preview never loads a
- * badge image (D-105): a badge is an image hosted elsewhere, and loading it
+ * badge image: a badge is an image hosted elsewhere, and loading it
  * would be a request no different from any other external image this
  * project's sanitiser already strips.
  */
@@ -192,8 +192,8 @@ export interface RenderPreviewResult {
 
 /**
  * Removes every `<img>` element outright (not just its `src`, which the
- * shared sanitiser already neutralises for an external reference). D-105
- * says no image is ever loaded by this preview; taken to its conclusion, no
+ * shared sanitiser already neutralises for an external reference). The
+ * rule says no image is ever loaded by this preview; taken to its conclusion, no
  * `<img>` element belongs in a README preview at all -- a legitimate badge
  * is already text by the time this runs (see `replaceBadgesWithText`), so
  * the only way an `<img>` could still appear is a visitor typing raw
@@ -207,8 +207,8 @@ function stripImages(fragment: DocumentFragment): number {
 }
 
 /**
- * Refusal threshold for the count of Markdown list-item lines (D-09/D-25,
- * freeze risk). Measured directly against this package in a real browser,
+ * Refusal threshold for the count of Markdown list-item lines (freeze
+ * risk). Measured directly against this package in a real browser,
  * not assumed: a flat bullet list's rendering-plus-sanitising time grows
  * super-linearly with its item count once it passes roughly a thousand
  * items (measured in chromium: 800 items ~0.9s, 1,000 ~1.2s, 3,000 ~9.2s,
@@ -233,7 +233,7 @@ function countListItemLines(markdown: string): number {
 
 /**
  * Renders `markdown` to a sanitised HTML preview: badges are replaced by
- * their own text first (D-105, so no badge image is ever fetched), then
+ * their own text first (so no badge image is ever fetched), then
  * rendered with `micromark` plus `micromark-extension-gfm` (the same
  * combination and options this project's own Markdown-rendering pages use,
  * quoted from micromark's installed README: `allowDangerousHtml: true` lets

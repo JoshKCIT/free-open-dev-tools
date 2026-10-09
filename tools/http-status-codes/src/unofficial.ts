@@ -1,5 +1,5 @@
 /**
- * Widely used unofficial HTTP status codes, not in the IANA registry (D-33).
+ * Widely used unofficial HTTP status codes, not in the IANA registry.
  * Included only because each origin was fetched this session; if a source
  * cannot be fetched, its codes are dropped and the omission is recorded in
  * the plan SUMMARY rather than transcribed from memory.

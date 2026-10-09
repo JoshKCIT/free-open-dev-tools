@@ -8,7 +8,7 @@
  * table that page is generated from, so the two never disagree). Every
  * explanation below is written in this project's own words; the compiler
  * and the reference page are cited by category and by link, never quoted
- * into this file (AM3).
+ * into this file.
  *
  * `ts6` flags come from the TypeScript 6.0 release notes' own "Breaking
  * Changes and Deprecations" section

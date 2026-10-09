@@ -224,7 +224,7 @@ function protectLines(realm: string, userFile: string, warnings: string[]): stri
 }
 
 /**
- * Builds Apache 2.4 `.htaccess` rule text (D-94, D-98): forcing HTTPS,
+ * Builds Apache 2.4 `.htaccess` rule text: forcing HTTPS,
  * choosing the `www` or bare host, path redirects, caching and turning off
  * directory listings, one `#`-commented section per feature, in a fixed
  * order. Every value passes `assertSingleLine` (AA) before it is written.

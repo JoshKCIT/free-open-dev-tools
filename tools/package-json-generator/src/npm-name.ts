@@ -3,7 +3,7 @@
  * package's source (the `npm` GitHub organisation, its `lib/index.js`,
  * fetched this session) -- the exact rules, and the exact wording of every
  * error and warning message, so this tool's own answer always matches what
- * that package (a devDependency-only test oracle, never bundled -- D-82)
+ * that package (a devDependency-only test oracle, never bundled)
  * decides. Its name is deliberately not spelled out in this file (see
  * `test/npm-oracles.test.ts` for the import): the release gate refuses to
  * ship a package name literal inside this folder's own runtime source.
