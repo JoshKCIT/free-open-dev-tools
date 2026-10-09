@@ -9,7 +9,7 @@
  * - every `src/tools/<id>.ts` entry in Vite's manifest has a closure of built chunks (its own code and everything it
  *   loads, never expanding the shared shell chunks) whose scanned tokens agree with that tool's `needs` declaration in
  *   `tools/<id>/src/meta.json`, apart from the proven false positives in `scripts/csp-acks.json`;
- * - run-time code generation appears only on the fixed list `EVAL_PAGES`, and the reserved WebAssembly inspector
+ * - run-time code generation appears only on the fixed list `EVAL_PAGES`, and the WebAssembly inspector
  *   never declares WebAssembly or code generation;
  * - no network call (the fetch class) appears in any page closure without a reviewed acknowledgement, and none of
  *   the four code-behaviour token classes appears in the shell chunks;
@@ -33,7 +33,7 @@ import { NEEDS, inlineScriptHashes, mermaidFrameHashes, parsePolicy, policyFor }
 
 /**
  * Pages that may use run-time code generation (`'unsafe-eval'`). Fixed here on purpose: a change needs an edit to this
- * list and to its unit test. `font-inspector` has no page yet.
+ * list and to its unit test.
  */
 export const EVAL_PAGES = Object.freeze([
   'docker-compose-validator',
@@ -52,7 +52,10 @@ export const MERMAID_FRAME_PAGES = Object.freeze(['mermaid-renderer']);
 /** Pages that may never declare WebAssembly or run-time code generation, so the browser proves they never need it. */
 export const NO_COMPILE_PAGES = Object.freeze(['wasm-inspector']);
 
-/** Ids named by the fixed lists that have no page yet. Such an id is reported as reserved and does not fail. */
+/**
+ * Ids the fixed lists may name before their page exists. Such an id is reported and does not fail. Both ids on this
+ * list have pages now, so a real build reports none.
+ */
 export const RESERVED_IDS = Object.freeze(['font-inspector', 'wasm-inspector']);
 
 /**
@@ -263,7 +266,7 @@ export function judgePage({ id, needs, tokens, acks }) {
     fail('this page is on the fixed run-time code generation list and must declare "eval".');
   }
 
-  // The reserved inspector proves it never compiles anything.
+  // The WebAssembly inspector proves it never compiles anything.
   if (NO_COMPILE_PAGES.includes(id)) {
     for (const term of ['wasm', 'eval']) {
       if (declared.has(term)) fail(`this page may never declare "${term}": the browser must prove it never compiles.`);

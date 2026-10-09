@@ -5,9 +5,9 @@
  *
  * This gate deliberately never learns the forbidden names itself. It reads
  * them out of band (a CI repository secret, or a git-ignored local file),
- * so this file can be the mechanism without ever being the record. See
- * `.planning/phases/01-provenance-removal/01-CONTEXT.md` D-20 for the full
- * reasoning; that document is git-ignored and never enters this repository.
+ * so this file can be the mechanism without ever being the record. A gate
+ * that listed the forbidden names would itself be a list of them in the
+ * repository, which is the thing it exists to prevent.
  *
  * Three independent layers, all collected before anything is reported:
  *   1. Names   — the out-of-band denylist, matched against tracked file
@@ -42,9 +42,9 @@ const DIST_EXTENSIONS = new Set(['.js', '.html', '.css', '.json', '.xml', '.txt'
 const problems = [];
 // Single choke point: every problem message is redacted against the resolved
 // denylist before it is stored, so no call site -- present or future -- can
-// leak a matched token into stderr, a hook's output, or a public CI log
-// (CR-01, 01-REVIEW.md). `denylistTokens` is declared with `let` below; this
-// closure reads its value at call time, which is always after resolution.
+// leak a matched token into stderr, a hook's output, or a public CI log.
+// `denylistTokens` is declared with `let` below; this closure reads its value
+// at call time, which is always after resolution.
 const note = (msg) => problems.push(redactDenylistTokens(msg, denylistTokens));
 
 /**
@@ -59,11 +59,11 @@ const SELF_EXEMPT = new Set(['scripts/check-provenance.mjs', '.githooks/pre-comm
 
 const MAX_SCAN_BYTES = 2 * 1024 * 1024;
 
-/** Derivation wording written in fresh words, independent of any name list (D-21 layer 3). */
+/** Derivation wording written in fresh words, independent of any name list (the third layer). */
 const PHRASE_PATTERNS = ['source site', 'source tools', 'surveyed', 'inventoried', 'four sites'];
 // Deliberately omits "deduplicate": one of the catalog's own tools legitimately sorts and
 // deduplicates lines, and a tool test asserts on that word. A gate that fires on legitimate
-// content is a gate someone switches off, which is worse than no gate at all (D-22).
+// content is a gate someone switches off, which is worse than no gate at all.
 
 function report() {
   if (problems.length > 0) {
@@ -138,7 +138,7 @@ try {
  * by Windows Notepad, or produced by a tool that defaults to UTF-16 on
  * Windows). Such a file is mostly NUL bytes interleaved with ASCII code
  * points, and a plain "any NUL byte means binary" check would otherwise
- * skip it in every layer (WR-04, 01-REVIEW.md). Returns 'LE', 'BE', or null
+ * skip it in every layer. Returns 'LE', 'BE', or null
  * (not recognised -- still treated as binary and skipped). This does not
  * attempt general encoding detection: non-ASCII UTF-16 content, or other
  * wide encodings, still falls through to the binary path.
@@ -248,7 +248,7 @@ if (existsSync(GENERATED_CATALOG_PATH)) {
     if (!found) {
       // Silently treating "could not locate the entry array" as "there are
       // no entries to check" is exactly how this layer went dead the last
-      // time the catalog's shape changed (CR-02, 01-REVIEW.md). Make that
+      // time the catalog's shape changed. Make that
       // state loud instead of a silent pass.
       note(
         `${rel}: could not locate a catalog entry array under any known shape (layer 2, structure). ` +

@@ -4,7 +4,7 @@
  *
  * Catalog consistency (no duplicate id, every category known, tier in
  * range, name and summary non-empty) is enforced inside `loadCatalog()`
- * itself now, so every caller gets it for free (WR-01, 01-REVIEW.md). This
+ * itself, so every caller gets it for free. This
  * script just reports it in a CI-friendly form instead of leaving a thrown
  * Error's raw stack trace as the only output.
  */
