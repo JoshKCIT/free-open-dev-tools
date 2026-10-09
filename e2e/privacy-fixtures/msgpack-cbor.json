@@ -1,16 +1,14 @@
 [
   {
     "attachesFile": true,
-    "inlineFiles": [{ "name": "sample.msgpack", "mimeType": "application/octet-stream", "base64": "gaFhAQ==" }]
+    "inlineFiles": [
+      {
+        "name": "sample.msgpack",
+        "mimeType": "application/octet-stream",
+        "base64": "gaFh2SFDQU5BUlktN2YzYTkxLW1zZ3BhY2stY2Jvci1kNGU4YjI="
+      }
+    ]
   },
-  {
-    "mode": { "field": "format", "value": "cbor" },
-    "values": { "input": "a1 61 61 01" },
-    "attachesFile": false
-  },
-  {
-    "mode": { "field": "direction", "value": "from-json" },
-    "values": { "input": "{\"a\":1}" },
-    "attachesFile": false
-  }
+  { "mode": { "field": "format", "value": "cbor" }, "values": { "input": "a1 61 61 01" }, "attachesFile": false },
+  { "mode": { "field": "direction", "value": "from-json" }, "values": { "input": "{\"a\":1}" }, "attachesFile": false }
 ]

@@ -1,7 +1,13 @@
 [
   {
     "attachesFile": true,
-    "inlineFiles": [{ "name": "sample.bin", "mimeType": "application/octet-stream", "base64": "CJYB" }]
+    "inlineFiles": [
+      {
+        "name": "sample.bin",
+        "mimeType": "application/octet-stream",
+        "base64": "CiVDQU5BUlktN2YzYTkxLXByb3RvYnVmLWRlY29kZXItZDRlOGIyEJYB"
+      }
+    ]
   },
   { "values": { "input": "089601" }, "attachesFile": false }
 ]
