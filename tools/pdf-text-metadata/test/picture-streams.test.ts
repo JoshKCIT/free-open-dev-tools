@@ -227,15 +227,18 @@ it('a picture label written inside a string does not exempt a content stream', a
   expect(error.kind).toBe('size');
   expect(error.message).toBe(EXPANSION_MESSAGE);
   const report = await checkExpansion(used, { limits: { perStream: 4 * MIB } });
-  expect(report.picturesCounted).toBe(1);
+  expect(report.picturesCounted).toBe(0);
   expect(report.images).toBe(0);
 
-  // A stream that nothing uses stays out, whatever its dictionary says.
+  // A label inside a string is not a label: the dictionary has no Subtype entry, so to a reader this stream is no picture,
+  // and it is counted even when nothing in the file seems to use it (a form or the metadata can reach it another way).
   const unused = pageWith('', [{ number: 4, body: streamObject(dictionary, BOMB) }]);
-  const unusedReport = await checkExpansion(unused, { limits: LIMITS });
-  expect(unusedReport.images).toBe(1);
+  const unusedError = await refusal(checkExpansion(unused, { limits: LIMITS }));
+  expect(unusedError.message).toBe(EXPANSION_MESSAGE);
+  const unusedReport = await checkExpansion(unused, { limits: { perStream: 4 * MIB } });
+  expect(unusedReport.images).toBe(0);
   expect(unusedReport.picturesCounted).toBe(0);
-  expect(unusedReport.decodedBytes).toBe(0);
+  expect(unusedReport.decodedBytes).toBe(2 * MIB);
 });
 
 it('pictures used only as images, soft masks or masks are still left out and counted as images', async () => {

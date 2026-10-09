@@ -14,7 +14,10 @@
  * (LZWDecode and its `/EarlyChange` entry), sections 7.4.2, 7.4.3 and 7.4.5 (ASCIIHexDecode, ASCII85Decode,
  * RunLengthDecode). Every stage of a chain is counted, so a doubled filter (`/Filter [/FlateDecode /FlateDecode]`) costs
  * both stages. A stream whose dictionary says `/Subtype /Image` is not counted while it is only an image: neither library
- * decodes an image to read text or metadata, and a large photograph is a legitimate file. But the readers do not look at
+ * decodes an image to read text or metadata, and a large photograph is a legitimate file. The label is read the way a
+ * reader reads the dictionary (section 7.3.7): only the dictionary's own `/Subtype` entries count, every one of them must
+ * say `/Image`, and a label written inside a string, a nested dictionary or an array is no label, so a form, the metadata
+ * or any other stream that only carries such text is counted like every other stream. But the readers do not look at
  * that label when they decode a stream a page, a font or the file's own structure uses (PDF.js was run on a picture-
  * labelled stream under each of these keys and decoded all of them), so a picture-labelled stream is counted when:
  * a page's `/Contents` points at it, as one reference, an array of references or an indirect array (section 7.8.2); a
@@ -526,9 +529,137 @@ const UNKNOWN_DICT: StreamDict = {
   earlyChange: 1,
 };
 
-/** Reads the entries this check needs from the text of a stream's dictionary. */
+/** The characters that end a name or a keyword besides white space (ISO 32000-1:2008 section 7.2.2). */
+function isDelimiter(c: number): boolean {
+  return (
+    c === 0x28 ||
+    c === 0x29 ||
+    c === 0x3c ||
+    c === 0x3e ||
+    c === 0x5b ||
+    c === 0x5d ||
+    c === 0x7b ||
+    c === 0x7d ||
+    c === 0x2f ||
+    c === 0x25
+  );
+}
+
+/** What one forward reading of a dictionary's text finds. */
+interface DictShape {
+  /**
+   * The text ends inside a string or a comment, so the `>>` it ends with is not the end of a dictionary to a reader and
+   * the `stream` keyword after it is not the start of a stream.
+   */
+  endsInsideText: boolean;
+  /**
+   * The value of every `/Subtype` key of the outermost dictionary, with name escapes undone: the name, or `''` when the
+   * value is not a name. Null when the text cannot be read the way a reader reads it: a `)` with no `(` before it, a
+   * backslash outside a string, a comment, or an outermost dictionary that does not end exactly where the text ends.
+   */
+  subtypes: string[] | null;
+}
+
+/**
+ * Reads a dictionary's text from its `<<` forward the way a reader does (ISO 32000-1:2008 sections 7.2 and 7.3): a
+ * literal string runs to its balancing `)` with backslash escapes, a hexadecimal string to the next `>`, a comment to the
+ * end of the line, and a nested dictionary or array is stepped over, so a `/Subtype /Image` inside any of them is not
+ * one of this dictionary's own entries. Every character is looked at once or twice, so the work is linear.
+ */
+function shapeOf(text: string): DictShape {
+  /** The open brackets, `<` for a dictionary and `[` for an array, outermost first. */
+  const open: number[] = [];
+  const subtypes: string[] = [];
+  let readable = true;
+  let closedAt = -1;
+  let awaitingSubtype = false;
+  const takeValue = (name: string): void => {
+    if (!awaitingSubtype) return;
+    subtypes.push(name);
+    awaitingSubtype = false;
+  };
+  let i = 0;
+  while (i < text.length) {
+    const c = text.charCodeAt(i);
+    // At the top level of the outermost dictionary: where its own keys and values are.
+    const top = open.length === 1 && open[0] === 0x3c;
+    if (c === 0x28) {
+      if (top) takeValue('');
+      let depth = 1;
+      i++;
+      while (i < text.length && depth > 0) {
+        const d = text.charCodeAt(i);
+        if (d === 0x5c) i++;
+        else if (d === 0x28) depth++;
+        else if (d === 0x29) depth--;
+        i++;
+      }
+      if (depth > 0) return { endsInsideText: true, subtypes: null };
+    } else if (c === 0x25) {
+      readable = false;
+      while (i < text.length && text.charCodeAt(i) !== 0x0a && text.charCodeAt(i) !== 0x0d) i++;
+      if (i >= text.length) return { endsInsideText: true, subtypes: null };
+    } else if (c === 0x29 || c === 0x5c) {
+      readable = false;
+      i++;
+    } else if (c === 0x3c && text.charCodeAt(i + 1) === 0x3c) {
+      if (top) takeValue('');
+      open.push(0x3c);
+      i += 2;
+    } else if (c === 0x3c) {
+      if (top) takeValue('');
+      const end = text.indexOf('>', i + 1);
+      if (end < 0) {
+        readable = false;
+        break;
+      }
+      i = end + 1;
+    } else if (c === 0x3e && text.charCodeAt(i + 1) === 0x3e) {
+      // A reader closes a dictionary only with `>>` and an array only with `]`; a stray one is not a close.
+      if (open[open.length - 1] === 0x3c) {
+        if (top) takeValue('');
+        open.pop();
+        if (open.length === 0 && closedAt < 0) closedAt = i + 2;
+      }
+      i += 2;
+    } else if (c === 0x5b) {
+      if (top) takeValue('');
+      open.push(0x5b);
+      i++;
+    } else if (c === 0x5d) {
+      if (open[open.length - 1] === 0x5b) open.pop();
+      i++;
+    } else if (c === 0x2f) {
+      let end = i + 1;
+      while (end < text.length && !isSpace(text.charCodeAt(end)) && !isDelimiter(text.charCodeAt(end))) end++;
+      if (top) {
+        const name = undoNameEscapes(text.slice(i + 1, end));
+        if (awaitingSubtype) takeValue(name);
+        else if (name === 'Subtype') awaitingSubtype = true;
+      }
+      i = end;
+    } else if (isSpace(c)) {
+      i++;
+    } else {
+      // A number, a keyword or any other run of regular characters: a value that is not a name.
+      if (top) takeValue('');
+      i++;
+      while (i < text.length && !isSpace(text.charCodeAt(i)) && !isDelimiter(text.charCodeAt(i))) i++;
+    }
+  }
+  if (awaitingSubtype) subtypes.push('');
+  return { endsInsideText: false, subtypes: readable && closedAt === text.length ? subtypes : null };
+}
+
+/**
+ * Reads the entries this check needs from the text of a stream's dictionary. The picture label is read from the
+ * dictionary's own `/Subtype` entries only, as a reader reads them; the other entries are found by pattern.
+ */
 function readDict(text: string): StreamDict {
-  const image = /\/Subtype\s*\/Image(?![A-Za-z0-9#])/.test(text);
+  const { subtypes } = shapeOf(text);
+  // Every own Subtype says Image, so whichever one a reader keeps, it is a picture. A label inside a string, a nested
+  // dictionary or an array, or a dictionary that cannot be read, is no label: such a stream is counted.
+  const image = subtypes !== null && subtypes.length > 0 && subtypes.every((subtype) => subtype === 'Image');
   // The type of a stream may be written with name escapes too (section 7.3.5); the readers undo them.
   const plain = undoNameEscapes(text);
   const objectStream = /\/Type\s*\/ObjStm(?![A-Za-z0-9#])/.test(plain);
