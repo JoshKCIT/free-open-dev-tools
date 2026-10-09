@@ -19,7 +19,13 @@ it('the limits state the very large paste that reaches the 5 second stop, with t
   expect(stopEntries).toHaveLength(1);
 
   const entry = stopEntries[0] as string;
-  for (const part of ['1,000 rules', '5,000 paths', 're-includes', 'split it into smaller pastes']) {
+  for (const part of [
+    '1,000 rules',
+    '5,000 paths',
+    're-includes',
+    'only the longer pastes of that shape end with the stop message',
+    'split it into smaller pastes',
+  ]) {
     expect(entry).toContain(part);
   }
 
@@ -31,8 +37,10 @@ it('the limits state the very large paste that reaches the 5 second stop, with t
   expect(lengths[1]).toBeLessThan(lengths[2] as number);
   expect(seconds[0]).toBeLessThanOrEqual(seconds[1] as number);
   expect(seconds[1]).toBeLessThanOrEqual(seconds[2] as number);
-  // The longest measured paste is the one that went past the stop.
+  // The longest measured paste is the one that went past the stop, and the shortest finished inside it, which is why
+  // the sentence says only the longer pastes reach the stop.
   expect(seconds[2]).toBeGreaterThan(5);
+  expect(seconds[0]).toBeLessThan(5);
 
   // The entry was added after the earlier ones, so every earlier entry keeps its place.
   expect(limits[limits.length - 1]).toBe(entry);
