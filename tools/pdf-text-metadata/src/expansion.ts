@@ -49,13 +49,14 @@
  * What it does not do: it is a bound, not a parser of everything PDF.js and pdf-lib read. It finds streams by their
  * keyword and reads the dictionary just before it, so a deliberately crafted file can still hide a stream from it: text
  * in a string written as a whole object, with an object header, a dictionary whose `/Length` is right and the word
- * `stream`, a reference past the first 32 MiB of text outside streams or the first
- * 8 MiB (32 MiB in all) of object stream data, a picture among more than 20,000 picture streams, an array of references
- * longer than 64 KiB, or a reference written in a way no pattern here reads. A page string that literally reads
- * `/Contents 12 0 R` where object 12 is a picture makes that picture count, so a file can be refused for it (accepted:
- * a legitimate file does not do this). A stream that fails to inflate is left for the library to judge and is not
- * refused here. The decoded bytes of the stages are counted as they are produced and never held, except the object
- * stream data above, so the check itself needs only a few chunks of memory.
+ * `stream`, a reference past the first 32 MiB of text outside streams or the first 8 MiB (32 MiB in all) of object
+ * stream data, a picture among more than 20,000 picture streams, an array or dictionary of references longer than
+ * 64 KiB, a page content array object named after more than 100,000 page content references, an object past the first
+ * 1 MiB of an object stream header, or a reference written in a way no pattern here reads. A page string that literally
+ * reads `/Contents 12 0 R` where object 12 is a picture makes that picture count, so a file can be refused for it
+ * (accepted: a legitimate file does not do this). A stream that fails to inflate is left for the library to judge and
+ * is not refused here. The decoded bytes of the stages are counted as they are produced and never held, except the
+ * object stream data above, so the check itself needs only a few chunks of memory.
  *
  * Inflation is done by the platform's `DecompressionStream`; where a browser has none the check cannot run and
  * `expansionCheckAvailable()` says so. This file imports only the shared module, so the removal worker can import it by

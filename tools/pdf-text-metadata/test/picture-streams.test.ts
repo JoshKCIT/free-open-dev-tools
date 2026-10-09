@@ -451,7 +451,22 @@ it('the limits say which pictures are counted and what a crafted file can still 
       'A file whose compressed streams would decode to more than 64 MiB in one stream, or 256 MiB in all, is refused before it is read, with the message that it expands to more data than this page can hold in memory',
     ),
   ).toBe(true);
-  for (const phrase of ['page content', 'a font', 'a character map', 'an object stream', '20,000', '32 MiB']) {
+  for (const phrase of [
+    'page content',
+    'a font',
+    'a character map',
+    'an object stream',
+    '20,000',
+    '32 MiB',
+    // What a picture is, and the one that is counted because its object number cannot be read.
+    'every Subtype entry of its own dictionary',
+    'object number cannot be read',
+    // Every cap of the reference search, and the accepted false refusal.
+    '64 KiB',
+    '100,000 page content references',
+    'first 1 MiB of an object stream header',
+    'even inside a string, is refused',
+  ]) {
     expect(text, phrase).toContain(phrase);
   }
   expect(text).toContain('A crafted file can still hide a stream from this check');
