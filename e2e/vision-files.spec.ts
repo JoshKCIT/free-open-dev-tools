@@ -3947,3 +3947,62 @@ test('chart-maker: a pie of 1,000,000 against 1 is drawn as a full circle in the
   }
   expect(offending(requests)).toEqual([]);
 });
+
+/**
+ * A file under 400 KB whose page content is a stream the file labels as a picture (`/Subtype /Image`) and that inflates
+ * to 100 MiB, past the 64 MiB one stream may reach. Readers decode a page's `/Contents` whatever its dictionary says
+ * (ISO 32000-1:2008 section 7.8.2), so the label must not exempt it from the memory check.
+ */
+function pictureContentPdf(): PickedFile {
+  const zeros = Buffer.alloc(100 * 1024 * 1024);
+  const pages: RawObject = { number: 2, body: Buffer.from('<< /Type /Pages /Kids [3 0 R] /Count 1 >>') };
+  const page: RawObject = {
+    number: 3,
+    body: Buffer.from(
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    ),
+  };
+  const content = Buffer.concat([Buffer.from('BT /F1 12 Tf 10 10 Td (hello) Tj ET\n'), zeros]);
+  const dictionary =
+    '/Type /XObject /Subtype /Image /Width 1 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray /Filter /FlateDecode';
+  return {
+    name: 'expands-picture-content.pdf',
+    mimeType: 'application/pdf',
+    buffer: rawPdf([
+      CATALOG_OBJECT,
+      pages,
+      page,
+      { number: 4, body: streamBody(dictionary, deflateSync(content)) },
+      HELVETICA_OBJECT,
+    ]),
+  };
+}
+
+test('pdf-text-metadata: a small file whose picture-labelled content stream expands past the memory cap is refused in every mode before PDF.js is built', async ({
+  page,
+}) => {
+  await slowPdfWorker(page, 0);
+  await openTool(page, 'pdf-text-metadata');
+  const requests = recordRequests(page);
+  const file = pictureContentPdf();
+  expect(file.buffer.length, 'the file is small on disk').toBeLessThan(400 * 1024);
+  await attachFile(page, file);
+  for (const mode of ['text', 'metadata', 'remove'] as const) {
+    await chooseMode(page, mode);
+    await runButtonOf(page).click();
+    await expect(outputArea(page).locator('.issue-list'), `${mode} mode`).toContainText(EXPANSION_MESSAGE, {
+      timeout: 30_000,
+    });
+    expect(await outputArea(page).locator('pre.output').count()).toBe(0);
+    expect(await outputArea(page).getByRole('button', { name: 'Download' }).count()).toBe(0);
+    // Reading and metadata never built PDF.js's worker; Remove built its own one and ended it.
+    const expected = mode === 'remove' ? { built: 1, ended: 1 } : { built: 0, ended: 0 };
+    await expect.poll(() => workerCounts(page)).toEqual(expected);
+  }
+  // The page stays usable: an ordinary file reads on the same page afterwards.
+  await attachFile(page, pdfFile('ordinary.pdf', TAGGED_PDF));
+  await chooseMode(page, 'text');
+  await runButtonOf(page).click();
+  await expect(outputArea(page)).toContainText('--- Page 1 ---', { timeout: 30_000 });
+  expect(offending(requests)).toEqual([]);
+});
