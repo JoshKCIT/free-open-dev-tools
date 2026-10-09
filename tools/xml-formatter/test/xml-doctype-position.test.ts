@@ -90,7 +90,7 @@ it('a DOCTYPE in any ASCII letter case is still found and a lookalike is not', (
   // Every combination of letter case for the seven letters.
   for (let mask = 0; mask < 1 << word.length; mask++) {
     let spelled = '';
-    for (let i = 0; i < word.length; i++) spelled += mask & (1 << i) ? word[i].toUpperCase() : word[i];
+    for (let i = 0; i < word.length; i++) spelled += mask & (1 << i) ? word.charAt(i).toUpperCase() : word.charAt(i);
     expect(findDoctype('<?xml version="1.0"?>' + LF + '<!' + spelled + ' a>'), spelled).toEqual({ line: 2, column: 1 });
     // And after a character whose lower case is longer, on the same line.
     expect(findDoctype(I_DOT + '<!' + spelled + ' a>'), spelled).toEqual({ line: 1, column: 2 });
