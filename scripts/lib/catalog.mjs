@@ -58,7 +58,7 @@ export function validateCatalog(rows) {
  * (duplicate id, unknown category, out-of-range tier, empty name/summary)
  * instead of silently returning a malformed row through to a caller -- every
  * one of the six callers of this function inherits the check, not just
- * `build-catalog.mjs`'s own separate validation (WR-01, 01-REVIEW.md).
+ * `build-catalog.mjs`'s own separate validation.
  */
 export function loadCatalog() {
   const rows = JSON.parse(readFileSync(join(ROOT, 'docs', 'catalog.json'), 'utf8'));

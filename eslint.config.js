@@ -43,7 +43,7 @@ const codeGenSyntax = (message) => [
 export default tseslint.config(
   {
     // Vendored fixtures under tools/*/test/fixtures/** are third-party
-    // snapshots (AM1: never edited), so this project's own lint rules never
+    // snapshots (never edited), so this project's own lint rules never
     // apply to them -- linting the same rule set on a foreign CommonJS test
     // file (motdotla/dotenv's own upstream tap tests, for example) would
     // otherwise fail on `require`/`Buffer`, which this repo's own source

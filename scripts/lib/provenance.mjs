@@ -14,7 +14,7 @@
  * (see `note()` in check-provenance.mjs). Redacting here, rather than at
  * each call site that builds a message, means a future call site that
  * prints a tracked path after a name-layer match cannot reintroduce a
- * token leak into gate output, CI logs, or hook output (CR-01, 01-REVIEW.md).
+ * token leak into gate output, CI logs, or hook output.
  */
 export function redactDenylistTokens(text, denylistTokens) {
   let out = text;
@@ -35,8 +35,7 @@ export function redactDenylistTokens(text, denylistTokens) {
  * itself a problem worth reporting (the structural per-entry check has
  * nothing to inspect), not a silent pass. The array-shape and `.canonical`
  * fallbacks exist only for robustness against a *future* rename; `.tools`
- * is the shape `scripts/build-catalog.mjs` actually writes today
- * (CR-02, 01-REVIEW.md).
+ * is the shape `scripts/build-catalog.mjs` actually writes today.
  */
 export function extractCatalogEntries(data) {
   if (Array.isArray(data)) return { entries: data, found: true };
@@ -49,11 +48,10 @@ export function extractCatalogEntries(data) {
  * The text this project wrote, taken out of a built chunk's source map: the
  * original content of every source that is not a third-party dependency.
  *
- * The phrase layer (D-21 layer 3) exists to catch derivation wording in our
+ * The phrase layer (the third layer) exists to catch derivation wording in our
  * own words. A bundled dependency can legitimately contain an ordinary word
  * from the phrase list (a password scorer's English dictionary holds one),
- * and a gate that fires on legitimate content gets switched off
- * (the D-22 reasoning). So for a chunk that has a source map, the phrase
+ * and a gate that fires on legitimate content gets switched off. So for a chunk that has a source map, the phrase
  * layer reads only the authored sources recovered here.
  *
  * Returns `null` when the map cannot be read or carries no sourcesContent,

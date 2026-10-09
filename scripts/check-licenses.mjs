@@ -38,7 +38,7 @@ const ALLOWED = new Set([
   '(MIT OR CC0-1.0)',
   '(MIT OR Apache-2.0)',
   'MIT AND ISC',
-  // Elected 2026-09-25 (D-81): this project elects the Apache-2.0 disjunct of
+  // Elected 2026-09-25: this project elects the Apache-2.0 disjunct of
   // DOMPurify's dual licence. The BLOCKED list below matches /MPL/i, which
   // would otherwise catch this exact string too, so this entry only helps
   // once an exact ALLOWED match is checked before BLOCKED runs (see below).
@@ -270,7 +270,7 @@ for (const dep of dependencies) {
 
   // An exact match on the reviewed ALLOWED list is accepted before BLOCKED
   // ever runs: a licence string this project has specifically reviewed and
-  // elected (e.g. DOMPurify's dual `(MPL-2.0 OR Apache-2.0)`, D-81) must
+  // elected (e.g. DOMPurify's dual `(MPL-2.0 OR Apache-2.0)`) must
   // never be caught by a pattern like /MPL/i that exists to catch licences
   // nobody has reviewed. Anything not on the list is still tested against
   // BLOCKED exactly as before.
