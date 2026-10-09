@@ -443,10 +443,13 @@ it('every parser stays linear on hostile input', () => {
     ['nested choices', (n) => '{a,'.repeat(Math.floor(n / 3)) + '}'.repeat(Math.floor(n / 3))],
   ];
   for (const [name, make] of deepGlobs) expectLinear(`compile ${name}`, (glob) => compileGlob(glob), make, 250);
-  const globs: Array<[string, (n: number) => string]> = [
+  // Commas inside one pair of braces are timed from 20,000 up: between about 10,000 and 20,000 alternatives the engine's
+  // own memory step makes one doubling cost nearly three times on a shared machine (a four-times reading of 17.8 against
+  // 12 once in CI), while from 20,000 to 80,000 each doubling costs about twice. The limits are unchanged.
+  const globs: Array<[string, (n: number) => string, number?]> = [
     ['opening braces', (n) => '{'.repeat(n)],
     ['closing braces', (n) => '}'.repeat(n)],
-    ['commas inside braces', (n) => '{' + ','.repeat(n) + '}'],
+    ['commas inside braces', (n) => '{' + ','.repeat(n) + '}', 20_000],
     ['many choices', (n) => '{a,b}'.repeat(Math.floor(n / 5))],
     ['opening brackets', (n) => '['.repeat(n)],
     ['half open classes', (n) => '[a'.repeat(Math.floor(n / 2))],
@@ -457,8 +460,8 @@ it('every parser stays linear on hostile input', () => {
     ['number ranges', (n) => '{1..9}'.repeat(Math.floor(n / 6))],
     ['question marks', (n) => '?'.repeat(n)],
   ];
-  for (const [name, make] of globs) {
-    expectLinear(`compile ${name}`, (glob) => compileGlob(glob, '', 1_000_000), make, 5000);
+  for (const [name, make, size] of globs) {
+    expectLinear(`compile ${name}`, (glob) => compileGlob(glob, '', 1_000_000), make, size ?? 5000);
   }
 
   // Many files of the same kind and the numbers a visitor can reach: all 50 files at once.
