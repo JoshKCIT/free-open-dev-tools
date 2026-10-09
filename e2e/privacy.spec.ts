@@ -74,15 +74,33 @@ interface Recorder {
   requests: Request[];
   consoleText: string[];
   arm(): void;
+  /** The addresses of requests that started and have neither finished nor failed. Counted whether or not the recorder is armed. */
+  inFlight(): string[];
+  /** The time (Date.now) of the last request event: a start, a finish or a failure. Counted whether or not the recorder is armed. */
+  lastRequestEventAt(): number;
 }
 
 async function instrument(page: Page): Promise<Recorder> {
   const requests: Request[] = [];
   const consoleText: string[] = [];
   let armed = false;
+  // The page's requests in flight and the time of the last request event, counted from the same page request events
+  // the leak check reads (the three listeners below are the only source), from the moment the recorder exists.
+  const pending = new Set<Request>();
+  let lastEventAt = Date.now();
 
   page.on('request', (request) => {
+    pending.add(request);
+    lastEventAt = Date.now();
     if (armed) requests.push(request);
+  });
+  page.on('requestfinished', (request) => {
+    pending.delete(request);
+    lastEventAt = Date.now();
+  });
+  page.on('requestfailed', (request) => {
+    pending.delete(request);
+    lastEventAt = Date.now();
   });
   page.on('console', (msg) => {
     if (armed) consoleText.push(msg.text());
@@ -97,7 +115,44 @@ async function instrument(page: Page): Promise<Recorder> {
     arm() {
       armed = true;
     },
+    inFlight() {
+      return Array.from(pending, (request) => request.url());
+    },
+    lastRequestEventAt() {
+      return lastEventAt;
+    },
   };
+}
+
+/**
+ * Waits until the page has had no request in flight for `quietMs`, judged from the requests the recorder saw.
+ *
+ * This replaces Playwright's own network idle wait for the last wait of a privacy test. That wait stops its timer when a
+ * request starts after the page first went idle and does not start it again while the idle state is still recorded, and a
+ * frame that attaches afterwards then removes the idle state for good. A page that runs a worker (every worker asks the
+ * main frame for a blob address) and then shows a preview frame ends in exactly that state, and the wait never returns.
+ * This is the same rule, no request in flight for 500 ms, computed from the request events the leak check already reads,
+ * so it cannot be fooled by the order in which requests and frames come and go. It only waits: it adds nothing to what
+ * counts as a leak, and a request the page makes while it waits is recorded as always.
+ *
+ * It is bounded: after `timeoutMs` it fails naming the page and the addresses still in flight, as the idle wait it
+ * replaces would also have failed.
+ */
+async function waitForQuietNetwork(
+  page: Page,
+  recorder: Recorder,
+  options: { quietMs: number; timeoutMs?: number },
+): Promise<void> {
+  const deadline = Date.now() + (options.timeoutMs ?? 60_000);
+  for (;;) {
+    if (recorder.inFlight().length === 0 && Date.now() - recorder.lastRequestEventAt() >= options.quietMs) return;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `The network on ${page.url()} was not quiet after ${options.timeoutMs ?? 60_000} ms; still in flight: ${recorder.inFlight().join(', ') || 'nothing, but requests kept starting'}`,
+      );
+    }
+    await page.waitForTimeout(50);
+  }
 }
 
 /**
@@ -1060,9 +1115,12 @@ test.describe('local processing', () => {
         }
       }
 
-      // Give auto-run, debouncing and any worker time to finish.
+      // Give auto-run, debouncing and any worker time to finish: a fixed pause, then the page's own run (the Output
+      // section's aria-busy back at false), then 500 ms with no request in flight. Not Playwright's network idle wait,
+      // which can hang on a page that runs a worker and then shows a preview frame (see waitForQuietNetwork).
       await page.waitForTimeout(1200);
-      await page.waitForLoadState('networkidle');
+      await settle(page);
+      await waitForQuietNetwork(page, recorder, { quietMs: 500 });
 
       const offending = recorder.requests.filter((r) => {
         const url = r.url();
