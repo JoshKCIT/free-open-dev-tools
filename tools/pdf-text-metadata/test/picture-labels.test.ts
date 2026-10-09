@@ -434,3 +434,59 @@ it('text that looks like many streams in strings and comments is searched in lin
   // Large enough that the fixed costs (the dictionary search allowance, the warm-up) do not hide how the work grows.
   for (const [name, make] of shapes) await expectLinear(name, make, 50_000);
 }, 300_000);
+
+it('a nested dictionary placed first in a dictionary of glyph references does not end the reading early', async () => {
+  const bomb = deflateSync(Buffer.alloc(2 * MIB));
+  const type3 = (charProcs: string): Buffer =>
+    Buffer.from(
+      `<< /Type /Font /Subtype /Type3 /FontBBox [0 0 1000 1000] /FontMatrix [0.001 0 0 0.001 0 0] /CharProcs ${charProcs} /Encoding << /Differences [97 /a] >> /FirstChar 97 /LastChar 97 /Widths [1000] >>`,
+    );
+  const cases: [string, string][] = [
+    ['an empty dictionary first', '<< /x << >> /a 5 0 R >>'],
+    ['two levels of dictionaries first', '<< /x << /y << >> >> /a 5 0 R >>'],
+    ['dictionaries before and after', '<< /x << >> /a 5 0 R /z << /w 1 >> >>'],
+    ['a dictionary written without spaces', '<</x<<>>/a 5 0 R>>'],
+  ];
+  for (const [name, charProcs] of cases) {
+    const bytes = pageWith('/Resources << /Font << /F1 6 0 R >> >>', [
+      { number: 5, body: pictureStream('', bomb) },
+      { number: 6, body: type3(charProcs) },
+    ]);
+    const error = await refusal(checkExpansion(bytes, { limits: LIMITS }));
+    expect(error.message, name).toBe(EXPANSION_MESSAGE);
+    const report = await checkExpansion(bytes, { limits: { perStream: 4 * MIB } });
+    expect(report.picturesCounted, name).toBe(1);
+  }
+  // A reference after the dictionary has closed is no glyph of it.
+  const after = pageWith('/Resources << /Font << /F1 6 0 R >> >> /Probe 5 0 R', [
+    { number: 5, body: pictureStream('', bomb) },
+    { number: 6, body: type3('<< /x << >> /b 9 0 R >>') },
+  ]);
+  expect((await checkExpansion(after, { limits: LIMITS })).images).toBe(1);
+});
+
+/** A held picture (so the reference scan runs) and a page dictionary whose entries are `text`. */
+function pageWithText(text: string): Uint8Array {
+  return new Uint8Array(
+    Buffer.concat([
+      Buffer.from('%PDF-1.5\n9 0 obj\n'),
+      pictureStream('', deflateSync(Buffer.alloc(16))),
+      Buffer.from(`\nendobj\n3 0 obj\n<< /Type /Page ${text} >>\nendobj\n`, 'latin1'),
+    ]),
+  );
+}
+
+it('dictionaries of references that never close or nest deeply are read in linear time', async () => {
+  const shapes: [string, (n: number) => Uint8Array][] = [
+    ['keys whose dictionary never closes', (n) => pageWithText('/CharProcs << '.repeat(n))],
+    ['keys with a nested dictionary first', (n) => pageWithText('/CharProcs << /x << >> '.repeat(n))],
+    ['one key before deep nesting that never closes', (n) => pageWithText(`/CharProcs ${'<< '.repeat(n)}`)],
+    [
+      'one key before deep nesting that closes',
+      (n) => pageWithText(`/CharProcs ${'<< '.repeat(n)}5 0 R ${'>> '.repeat(n)}`),
+    ],
+    ['closed dictionaries with a reference', (n) => pageWithText('/CharProcs << /a 5 0 R >> '.repeat(n))],
+    ['keys before dictionary ends only', (n) => pageWithText(`/CharProcs ${'>> '.repeat(n)}`)],
+  ];
+  for (const [name, make] of shapes) await expectLinear(name, make, 50_000);
+}, 300_000);

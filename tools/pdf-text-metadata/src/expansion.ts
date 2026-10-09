@@ -1059,12 +1059,66 @@ function referencesIn(part: string, onReference: (objectNumber: number) => void)
 }
 
 /**
+ * For the `<<` at each position of `opens` (in increasing order), the position of its own `>>`, or -1 when that is not
+ * within `MAX_ARRAY_WINDOW` characters. Nested `<<` and `>>` are counted (section 7.3.7: a value may itself be a
+ * dictionary), so `<< /x << >> /a 4 0 R >>` ends at its last `>>`. One pass from the first open onward, which jumps to
+ * the next open whenever nothing is waiting. The waiting opens are kept in a ring as large as the window allows: an open
+ * further back than that can no longer end in time and is let go. So the work is linear and the memory is fixed.
+ */
+function dictionaryCloses(text: string, opens: readonly number[]): Int32Array {
+  const closes = new Int32Array(opens.length).fill(-1);
+  const size = (MAX_ARRAY_WINDOW >> 1) + 1;
+  const position = new Int32Array(size);
+  /** The index in `opens` of each waiting open, or -1 for a `<<` that no key named. */
+  const index = new Int32Array(size);
+  let top = 0;
+  let waiting = 0;
+  let next = 0;
+  let at = 0;
+  while (at < text.length - 1) {
+    if (waiting === 0) {
+      while (next < opens.length && opens[next]! < at) next++;
+      if (next >= opens.length) break;
+      at = opens[next]!;
+    }
+    const c = text.charCodeAt(at);
+    if (c === 0x3c && text.charCodeAt(at + 1) === 0x3c) {
+      while (next < opens.length && opens[next]! < at) next++;
+      position[top] = at;
+      index[top] = next < opens.length && opens[next] === at ? next++ : -1;
+      top = (top + 1) % size;
+      if (waiting < size) waiting++;
+      at += 2;
+    } else if (c === 0x3e && text.charCodeAt(at + 1) === 0x3e) {
+      if (waiting > 0) {
+        top = (top + size - 1) % size;
+        waiting--;
+        const which = index[top]!;
+        if (which >= 0 && at - position[top]! <= MAX_ARRAY_WINDOW) closes[which] = at;
+      }
+      at += 2;
+    } else {
+      at++;
+    }
+  }
+  return closes;
+}
+
+/** The first position at or after `at` that is not PDF white space. */
+function skipSpace(text: string, at: number): number {
+  let to = at;
+  while (to < text.length && isPdfSpaceCode(text.charCodeAt(to))) to++;
+  return to;
+}
+
+/**
  * Calls `onReference` with the object number of every reference that the entries named in `KEY_NAMES` point at: one
  * reference (`/Contents 4 0 R`), an array of them (`/Contents [4 0 R 5 0 R]`) or a dictionary of them
- * (`/CharProcs << /a 4 0 R >>`) whose closing bracket is within `MAX_ARRAY_WINDOW` characters. `onContents` is also
- * called for a single reference given to `/Contents`, which may name an array object instead of a stream. Name escapes
- * are undone first, so `/Cont#65nts` is found. The text is searched once from start to end; an array or dictionary
- * nested inside the span of an earlier one is not read again, so the work is linear.
+ * (`/CharProcs << /a 4 0 R >>`, nested dictionaries included) whose closing bracket is within `MAX_ARRAY_WINDOW`
+ * characters. `onContents` is also called for a single reference given to `/Contents`, which may name an array object
+ * instead of a stream. Name escapes are undone first, so `/Cont#65nts` is found. The keys are found twice, once to learn
+ * where each dictionary value ends (`dictionaryCloses`) and once to read the values; an array or dictionary nested inside
+ * the span of an earlier one is not read again, so the work is linear.
  */
 function collectReferences(
   raw: string,
@@ -1073,13 +1127,19 @@ function collectReferences(
 ): void {
   const text = undoNameEscapes(raw);
   const keys = new RegExp(KEY, 'g');
+  const opens: number[] = [];
+  for (let m = keys.exec(text); m; m = keys.exec(text)) {
+    const at = skipSpace(text, m.index + m[0].length);
+    if (text.charCodeAt(at) === 0x3c && text.charCodeAt(at + 1) === 0x3c) opens.push(at);
+  }
+  const closes = dictionaryCloses(text, opens);
+  let nextOpen = 0;
   const closeBracket = forwardFinder(text, ']');
-  const closeDictionary = forwardFinder(text, '>>');
   let scannedArray = 0;
   let scannedDictionary = 0;
+  keys.lastIndex = 0;
   for (let m = keys.exec(text); m; m = keys.exec(text)) {
-    let at = m.index + m[0].length;
-    while (at < text.length && isPdfSpaceCode(text.charCodeAt(at))) at++;
+    const at = skipSpace(text, m.index + m[0].length);
     const c = text.charCodeAt(at);
     if (c === 0x5b) {
       const close = closeBracket(at);
@@ -1088,8 +1148,9 @@ function collectReferences(
       if (close > from) referencesIn(text.slice(from, close), onReference);
       if (close > scannedArray) scannedArray = close;
     } else if (c === 0x3c && text.charCodeAt(at + 1) === 0x3c) {
-      const close = closeDictionary(at + 2);
-      if (close < 0 || close - at > MAX_ARRAY_WINDOW) continue;
+      // The keys come in the same order as in the first search, so this is the next dictionary it noted.
+      const close = closes[nextOpen++]!;
+      if (close < 0) continue;
       const from = Math.max(at + 2, scannedDictionary);
       if (close > from) referencesIn(text.slice(from, close), onReference);
       if (close > scannedDictionary) scannedDictionary = close;
