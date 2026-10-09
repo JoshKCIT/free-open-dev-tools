@@ -112,7 +112,8 @@ export function checkSizes(text: string): void {
  * Code point ranges that are shown as an escape instead of themselves: the control characters, the characters that change
  * the direction of the text around them (Unicode Standard Annex 9), characters with no visible shape (soft hyphen, zero
  * width space, joiners, word joiner, byte order mark, variation selectors, the invisible filler characters and the tag
- * characters), blank characters that look like a space, and unpaired surrogates. Domain name spoofing lives in exactly
+ * characters), blank characters that look like a space (such as the no-break space, the ideographic space and the Braille
+ * blank), and unpaired surrogates. Domain name spoofing lives in exactly
  * these characters.
  */
 const HIDDEN_RANGES: readonly (readonly [number, number])[] = [
@@ -129,6 +130,7 @@ const HIDDEN_RANGES: readonly (readonly [number, number])[] = [
   [0x2000, 0x200f],
   [0x2028, 0x202f],
   [0x205f, 0x206f],
+  [0x2800, 0x2800],
   [0x3000, 0x3000],
   [0x3164, 0x3164],
   [0xd800, 0xdfff],
