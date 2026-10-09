@@ -19,7 +19,7 @@ it('Sass-spec cases for loops, conditionals, variables and extend compile to the
     const result = await compileStylesheet(published.source, { language: published.syntax, style: 'expanded' });
     expect(result.css, published.path).toBe(published.expected);
     expect(result.warnings, published.path).toEqual([]);
-    expect(result.engine).toBe('Sass 1.103.1');
+    expect(result.engine).toBe('Sass 1.104.0');
   }
   // The first case is the one the plan names: a @for from 1 through 5 writes five b declarations.
   expect(SASS_CASES[0]!.path).toContain('inclusive_forward');

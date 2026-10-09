@@ -309,7 +309,7 @@ Original code in this repository is MIT licensed. See [LICENSE](../LICENSE).
 | [roughjs](https://roughjs.com) | 4.6.6 | MIT | transitive (via mermaid) | tools/mermaid-renderer |
 | [rw](https://github.com/mbostock/rw) | 1.3.3 | BSD-3-Clause | transitive (via d3-dsv) | tools/mermaid-renderer |
 | [safer-buffer](https://github.com/ChALkeR/safer-buffer) | 2.1.2 | MIT | transitive (via iconv-lite) | tools/mermaid-renderer |
-| [sass](https://github.com/sass/dart-sass) | 1.103.1 | MIT | direct | tools/sass-less-compiler |
+| [sass](https://github.com/sass/dart-sass) | 1.104.0 | MIT | direct | tools/sass-less-compiler |
 | [sax](ssh://git@github.com/isaacs/sax-js) | 1.6.1 | BlueOak-1.0.0 | transitive (via svgo) | tools/svg-optimizer |
 | [scheduler](https://react.dev/) | 0.28.0 | MIT | transitive (via react-dom) | apps/web |
 | [semver](https://github.com/npm/node-semver) | 7.8.5 | ISC | direct | tools/semver-checker |
@@ -9674,7 +9674,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### sass 1.103.1
+### sass 1.104.0
 
 Licence: MIT
 

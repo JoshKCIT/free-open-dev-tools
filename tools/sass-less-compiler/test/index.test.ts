@@ -400,12 +400,12 @@ it('Sass warn and debug messages are captured and capped at 20 messages of 200 c
   expect(less.warnings).toEqual([]);
 }, 60_000);
 
-it('meta pins sass 1.103.1 and less 4.9.1 exactly', async () => {
-  expect(toolMeta.dependencies).toEqual({ sass: '1.103.1', less: '4.9.1' });
+it('meta pins sass 1.104.0 and less 4.9.1 exactly', async () => {
+  expect(toolMeta.dependencies).toEqual({ sass: '1.104.0', less: '4.9.1' });
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
     dependencies: Record<string, string>;
   };
-  expect(pkg.dependencies).toEqual({ sass: '1.103.1', less: '4.9.1' });
+  expect(pkg.dependencies).toEqual({ sass: '1.104.0', less: '4.9.1' });
   // The installed packages are the pinned versions, and the engines report them.
   for (const name of ['sass', 'less']) {
     const installed = JSON.parse(
@@ -416,8 +416,8 @@ it('meta pins sass 1.103.1 and less 4.9.1 exactly', async () => {
     expect(installed.version).toBe(toolMeta.dependencies[name as 'sass' | 'less']);
   }
   expect(LESS_VERSION).toBe('4.9.1');
-  expect((await compileStylesheet('a { b: c }', { language: 'scss', style: 'expanded' })).engine).toBe('Sass 1.103.1');
-  expect((await compileStylesheet('a\n  b: c\n', { language: 'sass', style: 'expanded' })).engine).toBe('Sass 1.103.1');
+  expect((await compileStylesheet('a { b: c }', { language: 'scss', style: 'expanded' })).engine).toBe('Sass 1.104.0');
+  expect((await compileStylesheet('a\n  b: c\n', { language: 'sass', style: 'expanded' })).engine).toBe('Sass 1.104.0');
   expect((await compileStylesheet('a { b: c }', { language: 'less', style: 'expanded' })).engine).toBe('Less 4.9.1');
 });
 

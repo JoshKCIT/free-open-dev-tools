@@ -34,7 +34,8 @@ it('a colour channel that is not a number is written as 0', async () => {
     language: 'scss',
     style: 'expanded',
   });
-  expect(bare.css).toBe('a {\n  b: red;\n}');
+  // A colour made with hsl() keeps the hsl form when written: the hue is now 0 (it was kept as a NaN calculation).
+  expect(bare.css).toBe('a {\n  b: hsl(0, 100%, 50%);\n}');
 });
 
 it('the limits state the negative zero and NaN colour change', () => {

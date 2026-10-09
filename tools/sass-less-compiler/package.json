@@ -35,7 +35,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "sass": "1.103.1",
+    "sass": "1.104.0",
     "less": "4.9.1"
   },
   "devDependencies": {

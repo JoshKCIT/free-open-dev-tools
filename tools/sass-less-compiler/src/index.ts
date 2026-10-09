@@ -24,7 +24,7 @@ export type OutputStyle = 'expanded' | 'compressed';
 export interface CompileResult {
   css: string;
   warnings: string[];
-  /** The engine and its version as the engine reports them, for example `Sass 1.103.1` or `Less 4.9.1`. */
+  /** The engine and its version as the engine reports them, for example `Sass 1.104.0` or `Less 4.9.1`. */
   engine: string;
 }
 

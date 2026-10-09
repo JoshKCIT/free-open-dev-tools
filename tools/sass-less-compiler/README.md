@@ -12,7 +12,7 @@ Compiles SCSS, the indented Sass syntax or Less to CSS with the official Sass co
 ## Supported
 
 - SCSS, the indented Sass syntax and Less, each compiled by its own official compiler
-- Dart Sass 1.103.1 language features, including the built-in modules such as sass:math and sass:color, and Less 4.9.1 with its default math mode, where a division is calculated only inside parentheses
+- Dart Sass 1.104.0 language features, including the built-in modules such as sass:math and sass:color, and Less 4.9.1 with its default math mode, where a division is calculated only inside parentheses
 - Expanded or compressed CSS output, shown with its size and ready to copy or download as compiled.css
 - Warnings from Sass @warn and @debug, shown separately from the CSS
 - Syntax errors shown with their line and column, counted from 1 as a reader counts them
@@ -25,6 +25,7 @@ Compiles SCSS, the indented Sass syntax or Less to CSS with the official Sass co
 - Compiling stops after 8 seconds with a message, because a short stylesheet can make the compiler use more and more memory until it is stopped; Cancel stops it at once.
 - Only the built-in Sass modules are available, such as sass:math and sass:color.
 - At most 20 Sass warnings are shown, each cut at 200 characters.
+- Dart Sass 1.104 and later writes negative zero as -0 and treats a colour channel that is not a number as 0.
 
 ## Ambiguous cases, and what this does about them
 
@@ -64,7 +65,7 @@ const { css, warnings, engine } = await compileStylesheet('$c: #336699;\n.a { co
   language: 'scss',
   style: 'expanded',
 });
-// css is '.a {\n  color: #336699;\n}', engine is 'Sass 1.103.1'.
+// css is '.a {\n  color: #336699;\n}', engine is 'Sass 1.104.0'.
 // A source that names another file or address throws a StylesheetError with kind 'import', a line and a column.
 ```
 
@@ -72,7 +73,7 @@ const { css, warnings, engine } = await compileStylesheet('$c: #336699;\n.a { co
 
 ## Dependencies
 
-- `sass` 1.103.1
+- `sass` 1.104.0
 - `less` 4.9.1
 
 ## Tests
