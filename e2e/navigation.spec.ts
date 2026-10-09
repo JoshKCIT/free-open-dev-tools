@@ -255,10 +255,18 @@ test.describe('in-site addresses keep the base path', () => {
     }
     // Enough distinct addresses that the check cannot pass by finding nothing.
     expect(seen.size).toBeGreaterThan(15);
-    for (const address of seen) {
-      const response = await request.get(address);
-      expect(response.status(), address).toBe(200);
-    }
+    // A pool of 8 workers takes the addresses from one list, so at most 8 requests are in flight at once. One after
+    // another, the same fetches ran past the 45 second limit on a phone-sized browser against the live site.
+    const addresses = [...seen];
+    let next = 0;
+    const worker = async () => {
+      while (next < addresses.length) {
+        const address = addresses[next++];
+        const response = await request.get(address);
+        expect(response.status(), address).toBe(200);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(8, addresses.length) }, worker));
   });
 });
 
