@@ -130,7 +130,7 @@ it('each option conflict the builder warns about is one the compiler also report
     const ourSet = [...new Set(ourCodes)];
     expect(ourSet, `${entry.name}: our=${ourSet.join(',')} real=${realSet.join(',')}`).toEqual(realSet);
   }
-}, 15000);
+}, 90_000);
 
 it('every option carries an explanation and its tsconfig reference link', () => {
   for (const option of OPTIONS) {

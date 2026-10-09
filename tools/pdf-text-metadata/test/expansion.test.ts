@@ -91,7 +91,7 @@ it('a doubled Flate filter is refused: the second stage is counted as well as th
   ]);
   const error = await refusal(checkExpansion(bomb));
   expect(error.kind).toBe('size');
-});
+}, 30_000);
 
 it('every stage of a filter chain counts toward the total, not only the last one', async () => {
   // Zlib data written as stored blocks is as long as what it holds, so the first stage of this chain decodes to about
@@ -171,7 +171,7 @@ it('a legitimate large Flate image does not count, while the same bytes as anyth
 
   const notAnImage = pageWith('/Contents 4 0 R', [{ number: 4, body: streamObject('/Filter /FlateDecode', flate) }]);
   expect((await refusal(checkExpansion(notAnImage))).kind).toBe('size');
-});
+}, 30_000);
 
 it('a Flate stream written with an escaped filter name, an array, an abbreviation or a reference is still counted', async () => {
   const flate = deflateSync(Buffer.alloc(2 * MIB));

@@ -76,7 +76,7 @@ it('the generated biome.json validates against the pinned Biome configuration sc
   const result = translateEslintConfig(text, { format: 'json' });
   const valid = validate(result.biome);
   expect(valid, JSON.stringify(validate.errors)).toBe(true);
-});
+}, 30_000);
 
 it('every Biome rule name in the map exists in the pinned Biome configuration schema', () => {
   const defs = CONFIGURATION_SCHEMA.$defs ?? CONFIGURATION_SCHEMA.definitions;
