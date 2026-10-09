@@ -15,23 +15,33 @@
  * RunLengthDecode). Every stage of a chain is counted, so a doubled filter (`/Filter [/FlateDecode /FlateDecode]`) costs
  * both stages. A stream whose dictionary says `/Subtype /Image` is not counted while it is only an image: neither library
  * decodes an image to read text or metadata, and a large photograph is a legitimate file. But the readers do not look at
- * that label when they decode a stream a page or a font uses, so a picture-labelled stream is counted when a page's
- * `/Contents` (one reference or an array) points at it (section 7.8.2). The image filters (DCT, CCITT, JBIG2, JPX) are
- * never run; a chain stops at the first filter this module does not decode.
+ * that label when they decode a stream a page, a font or the file's own structure uses (PDF.js was run on a picture-
+ * labelled stream under each of these keys and decoded all of them), so a picture-labelled stream is counted when:
+ * a page's `/Contents` points at it, as one reference, an array of references or an indirect array (section 7.8.2); a
+ * `/FontFile`, `/FontFile2`, `/FontFile3`, `/ToUnicode`, `/CIDToGIDMap` or `/Encoding` entry points at it, or a
+ * `/CharProcs` dictionary does (sections 9.6 to 9.10); or its own dictionary says `/Type /ObjStm` or `/Type /XRef`
+ * (sections 7.5.7 and 7.5.8), which is counted whether anything points at it or not. Pictures used only as images, soft
+ * masks or masks stay free. The image filters (DCT, CCITT, JBIG2, JPX) are never run; a chain stops at the first filter
+ * this module does not decode.
  *
  * How a picture is found to be used: the first pass over the file's streams notes each stream's object number (the
  * `number generation obj` just before its dictionary), holds every picture-labelled stream as a view of the file (no
- * copy, at most `MAX_HELD_PICTURES`) and joins the bytes outside stream data with a space (at most
- * `MAX_REFERENCE_TEXT_BYTES`), so binary data can never produce a reference. The reference scan then reads that text with
- * name escapes undone (section 7.3.5), using bounded patterns and a monotone search for the closing bracket so a hostile
- * file cannot make it slow, and a second pass decodes the used pictures through the same filters, the same meter and the
- * same caps. A picture used twice is decoded once.
+ * copy, at most `MAX_HELD_PICTURES` = 20,000), keeps the decoded data of every object stream (at most 8 MiB each and
+ * 32 MiB in all, at most 20,000 streams) and joins the bytes outside stream data with a space (at most 32 MiB), so
+ * binary stream data can never produce a reference. The reference scan then reads that text and the object stream data,
+ * with name escapes undone (section 7.3.5), using bounded patterns and a forward-only search for the closing bracket so a
+ * hostile file cannot make it slow. A second pass decodes the used pictures through the same filters, the same meter and
+ * the same caps. A picture used twice is decoded once.
  *
  * What it does not do: it is a bound, not a parser of everything PDF.js and pdf-lib read. It finds streams by their
- * keyword and reads the dictionary just before it, so a deliberately crafted file can hide a stream from it (a
- * dictionary written with an unbalanced string). A stream that fails to inflate is
- * left for the library to judge and is not refused here. The decoded bytes of the stages are counted as they are
- * produced and never held, so the check itself needs only a few chunks of memory.
+ * keyword and reads the dictionary just before it, so a deliberately crafted file can still hide a stream from it: a
+ * dictionary written with an unbalanced string, a reference past the first 32 MiB of text outside streams or the first
+ * 8 MiB (32 MiB in all) of object stream data, a picture among more than 20,000 picture streams, an array of references
+ * longer than 64 KiB, or a reference written in a way no pattern here reads. A page string that literally reads
+ * `/Contents 12 0 R` where object 12 is a picture makes that picture count, so a file can be refused for it (accepted:
+ * a legitimate file does not do this). A stream that fails to inflate is left for the library to judge and is not
+ * refused here. The decoded bytes of the stages are counted as they are produced and never held, except the object
+ * stream data above, so the check itself needs only a few chunks of memory.
  *
  * Inflation is done by the platform's `DecompressionStream`; where a browser has none the check cannot run and
  * `expansionCheckAvailable()` says so. This file imports only the shared module, so the removal worker can import it by
@@ -54,8 +64,24 @@ const MAX_REFERENCE_TEXT_BYTES = 32 * 1024 * 1024;
 /** Picture-labelled streams held (as views of the file) while the references are found; the rest stay exempt. */
 const MAX_HELD_PICTURES = 20_000;
 
-/** An array of references is read only when its closing bracket is within this many characters. */
+/** An array or dictionary of references is read only when its end is within this many characters. */
 const MAX_ARRAY_WINDOW = 64 * 1024;
+
+/** The decoded data of one object stream is kept for the reference scan up to this many bytes. */
+const MAX_OBJECT_STREAM_TEXT_BYTES = 8 * 1024 * 1024;
+
+/** The decoded data of all object streams together is kept up to this many bytes. */
+const MAX_RETAINED_BYTES = 32 * 1024 * 1024;
+
+/** At most this many object streams are kept. */
+const MAX_RETAINED_OBJECT_STREAMS = 20_000;
+
+/** At most this many `/Contents` references are remembered while the objects they name are looked up. */
+const MAX_INDIRECT_CANDIDATES = 100_000;
+
+/** Of an object stream's header, at most this many characters and this many pairs are read. */
+const MAX_OBJECT_STREAM_HEADER = 1024 * 1024;
+const MAX_OBJECT_STREAM_OBJECTS = 100_000;
 
 export interface ExpansionLimits {
   /** The most one stage of one stream may decode to. */
@@ -475,6 +501,13 @@ function find(bytes: Uint8Array, word: string, from: number): number {
 
 interface StreamDict {
   image: boolean;
+  /** The dictionary says `/Type /ObjStm` (section 7.5.7): readers decode the stream whatever its other entries say. */
+  objectStream: boolean;
+  /** The dictionary says `/Type /XRef` (section 7.5.8): readers decode the stream whatever its other entries say. */
+  xref: boolean;
+  /** An object stream's `/First` (where its first object starts) and `/N` (how many it holds), when plain numbers. */
+  first: number | null;
+  count: number | null;
   /** The filter names in order, `[]` when the dictionary has no filter, `null` when they cannot be told. */
   filters: string[] | null;
   /** The `/Length` when it is a plain number. */
@@ -482,11 +515,26 @@ interface StreamDict {
   earlyChange: number;
 }
 
-const UNKNOWN_DICT: StreamDict = { image: false, filters: null, length: null, earlyChange: 1 };
+const UNKNOWN_DICT: StreamDict = {
+  image: false,
+  objectStream: false,
+  xref: false,
+  first: null,
+  count: null,
+  filters: null,
+  length: null,
+  earlyChange: 1,
+};
 
-/** Reads the three entries this check needs from the text of a stream's dictionary. */
+/** Reads the entries this check needs from the text of a stream's dictionary. */
 function readDict(text: string): StreamDict {
   const image = /\/Subtype\s*\/Image(?![A-Za-z0-9#])/.test(text);
+  // The type of a stream may be written with name escapes too (section 7.3.5); the readers undo them.
+  const plain = undoNameEscapes(text);
+  const objectStream = /\/Type\s*\/ObjStm(?![A-Za-z0-9#])/.test(plain);
+  const xref = /\/Type\s*\/XRef(?![A-Za-z0-9#])/.test(plain);
+  const first = objectStream ? /\/First(?![A-Za-z0-9#])\s+(\d{1,10})/.exec(plain) : null;
+  const count = objectStream ? /\/N(?![A-Za-z0-9#])\s+(\d{1,10})/.exec(plain) : null;
   let filters: string[] | null = [];
   const filter = /\/Filter(?![A-Za-z0-9#])\s*(\[[^\]]*\]|\/[^\s/[\]<>()%]+|\d+\s+\d+\s+R)/.exec(text);
   if (filter) {
@@ -504,6 +552,10 @@ function readDict(text: string): StreamDict {
   const early = /\/EarlyChange(?![A-Za-z0-9#])\s+(\d)/.exec(text);
   return {
     image,
+    objectStream,
+    xref,
+    first: first ? Number(first[1]) : null,
+    count: count ? Number(count[1]) : null,
     filters,
     length: lengthMatch ? Number(lengthMatch[1]) : null,
     earlyChange: early ? Number(early[1]) : 1,
@@ -647,8 +699,11 @@ async function* chunksOf(body: Uint8Array): Chunks {
   for (let at = 0; at < body.length; at += size) yield body.subarray(at, Math.min(body.length, at + size));
 }
 
-/** The filters of a stream that this module decodes, in order. Empty when the stream costs nothing to decode. */
-function stagesFor(dict: StreamDict, body: Uint8Array): Stage[] {
+/**
+ * The filters of a stream that this module decodes, in order, and whether they are the stream's whole chain (so that what
+ * they produce is the stream's real data and not the output of a half-decoded chain).
+ */
+function stagesFor(dict: StreamDict, body: Uint8Array): { stages: Stage[]; complete: boolean } {
   // A dictionary that could not be read, or a filter written as a reference, is treated as Flate when the data starts
   // like zlib data; any other stream with no decoding filter costs nothing to decode.
   const names = dict.filters ?? (looksLikeZlib(body) ? ['FlateDecode'] : []);
@@ -658,21 +713,25 @@ function stagesFor(dict: StreamDict, body: Uint8Array): Stage[] {
     if (!stage) break;
     stages.push(stage);
   }
-  return stages;
+  return { stages, complete: stages.length === names.length };
 }
 
-/** Runs the body through the stages and counts what they produce; throws the plain refusal when a cap is passed. */
+/**
+ * Runs the body through the stages and counts what they produce; throws the plain refusal when a cap is passed. Each
+ * chunk the last stage produces is handed to `sink` when there is one.
+ */
 async function countThrough(
   body: Uint8Array,
   dict: StreamDict,
   stages: Stage[],
   counter: Counter,
   options: ExpansionOptions,
+  sink?: (chunk: Uint8Array) => void,
 ): Promise<void> {
   let output: Chunks = chunksOf(body);
   for (const stage of stages) output = stage(output, stageMeter(counter), { earlyChange: dict.earlyChange });
   try {
-    for await (const chunk of output) void chunk;
+    for await (const chunk of output) sink?.(chunk);
   } catch (err) {
     if (counter.exceeded) throw new PdfToolError('size', EXPANSION_MESSAGE);
     if (options.signal?.aborted) throw err;
@@ -717,6 +776,54 @@ class GapText {
   }
 }
 
+/** The decoded data of an object stream (section 7.5.7), kept so the references inside it can be read. */
+interface RetainedObjectStream {
+  bytes: Uint8Array;
+  first: number | null;
+  count: number | null;
+}
+
+interface Retained {
+  items: RetainedObjectStream[];
+  /** The bytes kept over all of the items. */
+  total: number;
+}
+
+/**
+ * A place to collect what an object stream decodes to, up to `MAX_OBJECT_STREAM_TEXT_BYTES` for this stream and
+ * `MAX_RETAINED_BYTES` for all of them, or null when `MAX_RETAINED_OBJECT_STREAMS` are kept already. What passes the
+ * caps is still decoded and counted by the caller; it is only not kept.
+ */
+function retainObjectStream(
+  retained: Retained,
+  dict: StreamDict,
+): { add(chunk: Uint8Array): void; finish(): void } | null {
+  if (retained.items.length >= MAX_RETAINED_OBJECT_STREAMS) return null;
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  return {
+    add(chunk) {
+      const room = Math.min(MAX_OBJECT_STREAM_TEXT_BYTES - size, MAX_RETAINED_BYTES - retained.total);
+      if (room <= 0 || chunk.length === 0) return;
+      // A copy: the chunk belongs to the stage that produced it.
+      const part = chunk.slice(0, room);
+      parts.push(part);
+      size += part.length;
+      retained.total += part.length;
+    },
+    finish() {
+      if (size === 0) return;
+      const bytes = new Uint8Array(size);
+      let at = 0;
+      for (const part of parts) {
+        bytes.set(part, at);
+        at += part.length;
+      }
+      retained.items.push({ bytes, first: dict.first, count: dict.count });
+    },
+  };
+}
+
 const NUL = String.fromCharCode(0);
 /** PDF white space (ISO 32000-1:2008 section 7.2.2): NUL, tab, line feed, form feed, carriage return and space. */
 const WS = `[${NUL}\\t\\n\\f\\r ]`;
@@ -726,8 +833,16 @@ const ENDS_TOKEN = `(?=[${NUL}\\t\\n\\f\\r ()<>\\[\\]{}/%]|$)`;
 const REFERENCE_SOURCE = `(\\d{1,10})${WS}+\\d{1,5}${WS}+R${ENDS_TOKEN}`;
 const REFERENCES_IN_TEXT = new RegExp(REFERENCE_SOURCE, 'g');
 const REFERENCE_HERE = new RegExp(REFERENCE_SOURCE, 'y');
-/** The entries whose value is a reference or an array of references to a stream a reader decodes (see `collectReferences`). */
-const KEY_NAMES = 'Contents';
+/** `number generation obj` followed by the `[` that opens an array object (sections 7.3.6 and 7.3.10). */
+const ARRAY_OBJECT = new RegExp(`(\\d{1,10})${WS}+\\d{1,5}${WS}+obj${WS}*\\[`, 'g');
+/** One `object-number offset` pair of an object stream's header (section 7.5.7). */
+const HEADER_PAIR = new RegExp(`(\\d{1,10})${WS}+(\\d{1,10})`, 'g');
+/**
+ * The entries whose value is a reference to a stream a reader decodes, an array of references or (for `CharProcs`) a
+ * dictionary of references: a page's content (section 7.8.2), the embedded font programs, the `ToUnicode` map, the
+ * `CIDToGIDMap`, a CMap named by `Encoding` and the glyph descriptions of a Type 3 font (sections 9.6 to 9.10).
+ */
+const KEY_NAMES = 'Contents|FontFile[23]?|ToUnicode|CIDToGIDMap|Encoding|CharProcs';
 const KEY = `/(${KEY_NAMES})${ENDS_TOKEN}`;
 const NAME_ESCAPE = /#([0-9A-Fa-f]{2})/g;
 
@@ -768,15 +883,23 @@ function referencesIn(part: string, onReference: (objectNumber: number) => void)
 
 /**
  * Calls `onReference` with the object number of every reference that the entries named in `KEY_NAMES` point at: one
- * reference (`/Contents 4 0 R`) or an array of them (`/Contents [4 0 R 5 0 R]`) whose closing bracket is within
- * `MAX_ARRAY_WINDOW` characters. Name escapes are undone first, so `/Cont#65nts` is found. The text is searched once from
- * start to end; an array nested inside the span of an earlier one is not read again, so the work is linear.
+ * reference (`/Contents 4 0 R`), an array of them (`/Contents [4 0 R 5 0 R]`) or a dictionary of them
+ * (`/CharProcs << /a 4 0 R >>`) whose closing bracket is within `MAX_ARRAY_WINDOW` characters. `onContents` is also
+ * called for a single reference given to `/Contents`, which may name an array object instead of a stream. Name escapes
+ * are undone first, so `/Cont#65nts` is found. The text is searched once from start to end; an array or dictionary
+ * nested inside the span of an earlier one is not read again, so the work is linear.
  */
-function collectReferences(raw: string, onReference: (objectNumber: number) => void): void {
+function collectReferences(
+  raw: string,
+  onReference: (objectNumber: number) => void,
+  onContents: (objectNumber: number) => void,
+): void {
   const text = undoNameEscapes(raw);
   const keys = new RegExp(KEY, 'g');
   const closeBracket = forwardFinder(text, ']');
-  let scanned = 0;
+  const closeDictionary = forwardFinder(text, '>>');
+  let scannedArray = 0;
+  let scannedDictionary = 0;
   for (let m = keys.exec(text); m; m = keys.exec(text)) {
     let at = m.index + m[0].length;
     while (at < text.length && isPdfSpaceCode(text.charCodeAt(at))) at++;
@@ -784,14 +907,83 @@ function collectReferences(raw: string, onReference: (objectNumber: number) => v
     if (c === 0x5b) {
       const close = closeBracket(at);
       if (close < 0 || close - at > MAX_ARRAY_WINDOW) continue;
-      const from = Math.max(at, scanned);
+      const from = Math.max(at, scannedArray);
       if (close > from) referencesIn(text.slice(from, close), onReference);
-      if (close > scanned) scanned = close;
+      if (close > scannedArray) scannedArray = close;
+    } else if (c === 0x3c && text.charCodeAt(at + 1) === 0x3c) {
+      const close = closeDictionary(at + 2);
+      if (close < 0 || close - at > MAX_ARRAY_WINDOW) continue;
+      const from = Math.max(at + 2, scannedDictionary);
+      if (close > from) referencesIn(text.slice(from, close), onReference);
+      if (close > scannedDictionary) scannedDictionary = close;
     } else if (c >= 0x30 && c <= 0x39) {
       REFERENCE_HERE.lastIndex = at;
       const reference = REFERENCE_HERE.exec(text);
-      if (reference) onReference(Number(reference[1]));
+      if (!reference) continue;
+      onReference(Number(reference[1]));
+      if (m[1] === 'Contents') onContents(Number(reference[1]));
     }
+  }
+}
+
+/**
+ * One step of indirection (section 7.8.2: `/Contents` may be a reference to an array object): for every object in
+ * `candidates` that is written in `text` as `number generation obj [ ... ]`, calls `onReference` with the references
+ * inside the array. Linear, for the same reasons as `collectReferences`.
+ */
+function referencesOfArrayObjects(
+  text: string,
+  candidates: ReadonlySet<number>,
+  onReference: (objectNumber: number) => void,
+): void {
+  const closeBracket = forwardFinder(text, ']');
+  let scanned = 0;
+  ARRAY_OBJECT.lastIndex = 0;
+  for (let m = ARRAY_OBJECT.exec(text); m; m = ARRAY_OBJECT.exec(text)) {
+    const before = m.index > 0 ? text.charCodeAt(m.index - 1) : 0;
+    if ((before >= 0x30 && before <= 0x39) || !candidates.has(Number(m[1]))) continue;
+    const open = m.index + m[0].length - 1;
+    const close = closeBracket(open);
+    if (close < 0 || close - open > MAX_ARRAY_WINDOW) continue;
+    const from = Math.max(open + 1, scanned);
+    if (close > from) referencesIn(text.slice(from, close), onReference);
+    if (close > scanned) scanned = close;
+  }
+}
+
+/**
+ * The same one step of indirection for the objects held inside an object stream: its header lists `number offset`
+ * pairs and each offset is counted from `/First` (section 7.5.7). At most `MAX_OBJECT_STREAM_OBJECTS` pairs are read.
+ */
+function referencesOfHeldArrays(
+  text: string,
+  stream: RetainedObjectStream,
+  candidates: ReadonlySet<number>,
+  onReference: (objectNumber: number) => void,
+): void {
+  if (stream.first === null || stream.count === null) return;
+  const header = text.slice(0, Math.min(stream.first, MAX_OBJECT_STREAM_HEADER));
+  const offsets: number[] = [];
+  const pairs = Math.min(stream.count, MAX_OBJECT_STREAM_OBJECTS);
+  HEADER_PAIR.lastIndex = 0;
+  let m = HEADER_PAIR.exec(header);
+  for (let read = 0; m && read < pairs; read++) {
+    if (candidates.has(Number(m[1]))) offsets.push(stream.first + Number(m[2]));
+    m = HEADER_PAIR.exec(header);
+  }
+  offsets.sort((a, b) => a - b);
+  const closeBracket = forwardFinder(text, ']');
+  let scanned = 0;
+  for (const offset of offsets) {
+    let at = offset;
+    let steps = 0;
+    while (at < text.length && isPdfSpaceCode(text.charCodeAt(at)) && steps++ < 1024) at++;
+    if (text.charCodeAt(at) !== 0x5b) continue;
+    const close = closeBracket(at);
+    if (close < 0 || close - at > MAX_ARRAY_WINDOW) continue;
+    const from = Math.max(at + 1, scanned);
+    if (close > from) referencesIn(text.slice(from, close), onReference);
+    if (close > scanned) scanned = close;
   }
 }
 
@@ -801,6 +993,9 @@ function collectReferences(raw: string, onReference: (objectNumber: number) => v
  * (default 256 MiB). Resolves with a report when neither is passed. Where the platform has no `DecompressionStream`
  * the check cannot run and resolves at once with nothing counted. A stream that fails to decode is not refused here:
  * the bytes it did produce are counted and the reader that opens the file judges the rest.
+ *
+ * A stream labelled as a picture is counted only when something uses it (see the header of this file), except an
+ * object stream or a cross-reference stream, which is counted whatever it is labelled.
  */
 export async function checkExpansion(bytes: Uint8Array, options: ExpansionOptions = {}): Promise<ExpansionReport> {
   const report: ExpansionReport = { streams: 0, decoded: 0, images: 0, picturesCounted: 0, decodedBytes: 0 };
@@ -816,6 +1011,7 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
   };
 
   const held: HeldPicture[] = [];
+  const retained: Retained = { items: [], total: 0 };
   const gaps = new GapText(MAX_REFERENCE_TEXT_BYTES);
   let gapFrom = 0;
 
@@ -825,30 +1021,62 @@ export async function checkExpansion(bytes: Uint8Array, options: ExpansionOption
     if (report.streams % 2000 === 0) options.onProgress?.();
     gaps.add(bytes.subarray(Math.min(gapFrom, start), start));
     gapFrom = Math.max(gapFrom, end);
-    if (dict.image) {
+    if (dict.image && !dict.objectStream && !dict.xref) {
       // Whether something a reader decodes uses this picture is known only once the whole file has been read.
       report.images++;
       if (held.length < MAX_HELD_PICTURES) held.push({ objectNumber, body, dict });
       continue;
     }
-    const stages = stagesFor(dict, body);
-    if (stages.length === 0) continue;
+    const { stages, complete } = stagesFor(dict, body);
+    if (stages.length === 0) {
+      // An object stream with nothing to decode holds its objects as they are.
+      if (dict.objectStream && complete && retained.items.length < MAX_RETAINED_OBJECT_STREAMS) {
+        const room = Math.min(MAX_OBJECT_STREAM_TEXT_BYTES, MAX_RETAINED_BYTES - retained.total);
+        if (room > 0 && body.length > 0) {
+          const kept = body.subarray(0, room);
+          retained.items.push({ bytes: kept, first: dict.first, count: dict.count });
+          retained.total += kept.length;
+        }
+      }
+      continue;
+    }
     report.decoded++;
-    await countThrough(body, dict, stages, counter, options);
+    // A picture label does not exempt an object stream or a cross-reference stream: the readers decode them regardless.
+    if (dict.image) report.picturesCounted++;
+    const keeping = dict.objectStream && complete ? retainObjectStream(retained, dict) : null;
+    await countThrough(body, dict, stages, counter, options, keeping?.add);
+    keeping?.finish();
   }
 
   if (held.length > 0) {
     gaps.add(bytes.subarray(Math.min(gapFrom, bytes.length)));
+    options.onProgress?.();
     const wanted = new Set<number>();
     for (const picture of held) if (picture.objectNumber !== null) wanted.add(picture.objectNumber);
     const used = new Set<number>();
-    collectReferences(gaps.text(), (n) => {
+    const candidates = new Set<number>();
+    const noteReference = (n: number): void => {
       if (wanted.has(n)) used.add(n);
-    });
+    };
+    const noteContents = (n: number): void => {
+      if (!wanted.has(n) && candidates.size < MAX_INDIRECT_CANDIDATES) candidates.add(n);
+    };
+    const fileText = gaps.text();
+    const objectStreamTexts = latin1 ? retained.items.map((item) => latin1.decode(item.bytes)) : [];
+    collectReferences(fileText, noteReference, noteContents);
+    for (const text of objectStreamTexts) collectReferences(text, noteReference, noteContents);
+    if (candidates.size > 0) {
+      referencesOfArrayObjects(fileText, candidates, noteReference);
+      retained.items.forEach((item, i) => {
+        referencesOfHeldArrays(objectStreamTexts[i]!, item, candidates, noteReference);
+      });
+    }
+    options.onProgress?.();
+
     for (const picture of held) {
       if (options.signal?.aborted) throw options.signal.reason ?? new Error('The check was cancelled.');
       if (picture.objectNumber === null || !used.has(picture.objectNumber)) continue;
-      const stages = stagesFor(picture.dict, picture.body);
+      const { stages } = stagesFor(picture.dict, picture.body);
       if (stages.length === 0) continue;
       // Counted as used, no longer as an image.
       report.images--;
