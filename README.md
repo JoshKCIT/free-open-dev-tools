@@ -122,8 +122,8 @@ All **224** tools in the catalog are built, tested and live, in fourteen categor
 - [`docs/LEDGER.md`](docs/LEDGER.md) lists every tool, by category.
 - The release manifest, mapping each tool to its version and its verification result, is not a file in this
   repository: it is produced fresh on every CI run and published as that run's job summary and workflow artifact. A
-  push's run records the tools it rechecked and lists the rest as not run in that build; the daily full run's manifest
-  covers every tool.
+  push's run records the tools it rechecked and lists the rest as not run in that build; a full run, started by hand
+  from the CI workflow's Run workflow button, covers every tool.
 
 ## Contributing
 

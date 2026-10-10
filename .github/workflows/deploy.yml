@@ -26,7 +26,7 @@ jobs:
   # The whole workflow is skipped unless CI passed on this exact commit, so a
   # failing test cannot be followed by a deploy. A skipped run is visibly
   # different from a successful one, which a gate job returning false was not.
-  # Only a push's CI run deploys: the nightly and hand-started full runs recheck
+  # Only a push's CI run deploys: a hand-started (or scheduled) full run rechecks
   # a commit that is already live (redeploying it would publish the same site
   # again), and a pull request's run must never publish anything. The Run
   # workflow button on this workflow is still how a known-good commit is

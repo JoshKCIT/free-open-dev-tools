@@ -119,7 +119,7 @@ push to main
 ```
 
 ```
-nightly run (08:23 UTC) or the CI "Run workflow" button
+the CI "Run workflow" button
      |
      v
   CI workflow          checks everything, and no deploy follows
@@ -127,7 +127,7 @@ nightly run (08:23 UTC) or the CI "Run workflow" button
 
 The deploy workflow triggers on **completion of the CI workflow**, and its first job refuses to continue unless CI
 concluded `success` **and** that CI run was started by a push to `main`. A failing test therefore stops a deploy,
-rather than the two racing each other, and a nightly, hand-started or pull-request CI run never publishes anything.
+rather than the two racing each other, and a hand-started or pull-request CI run never publishes anything.
 The Deploy workflow's own Run workflow button is separate and still deploys any commit (see Rollback).
 
 ### What a push rechecks
@@ -151,14 +151,15 @@ Locally, `node scripts/affected-tools.mjs --base origin/main` prints the same pl
 
 ### Full runs
 
-CI runs everything once a day, scheduled for 08:23 UTC (GitHub often starts scheduled runs hours late, and the run is
-skipped when that commit already passed a full run), and whenever someone presses Run workflow on the CI workflow in
-the Actions tab. A full run never deploys.
+CI runs everything whenever someone presses Run workflow on the CI workflow in the Actions tab. There is no scheduled
+full run: the last one, on the final release commit, passed every check on every tool. A full run never deploys.
 
-The trade-off, stated plainly: a push whose partial check passes is deployed, and the daily full run is the safety
-net. If a daily run fails, fix it promptly, because push runs compare with the last passing run and will not recheck
-that tool on their own. GitHub turns off scheduled workflows in a public repository after 60 days with no activity;
-re-enable it from the Actions tab if that happens.
+The trade-off, stated plainly: a push whose partial check passes is deployed, and a hand-started full run is the
+safety net. Start one after a change to shared files, before a release, or after a long pause (browser engines and
+GitHub's runner images change over time). If it fails, fix it promptly, because push runs compare with the last
+passing run and will not recheck that tool on their own. To check on a timetable again, add a schedule trigger to
+`.github/workflows/ci.yml` (the comment at its top shows a weekly one); its run is skipped when that commit already
+passed a full run.
 
 ### The release gate
 

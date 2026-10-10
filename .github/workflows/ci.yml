@@ -1,14 +1,13 @@
 name: CI
 
 # A push or pull request rechecks only what its changes reach (the plan job
-# below works it out and explains every file in its summary). The nightly run
-# and the Run workflow button check everything.
+# below works it out and explains every file in its summary). The Run workflow
+# button checks everything. There is no scheduled full run; to bring one back,
+# add a schedule trigger here (for example weekly: cron '23 8 * * 1').
 on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: '23 8 * * *'
   workflow_dispatch:
 
 # Any failing job here blocks the deploy workflow, which requires this one.
